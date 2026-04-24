@@ -2202,7 +2202,15 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .hero-banner{margin:0 !important;border-radius:0 !important;padding:40px 56px !important}
         .hero-cta{display:none !important}
         .hero-banner .hero-sub{margin-bottom:18px !important}
-        .hero-banner .hero-curl{margin-top:0 !important}
+        .hero-banner .hero-curl{margin-top:0 !important;width:100% !important;max-width:none !important}
+        /* in bare mode curl moves into left col; give left col more room so curl fits */
+        .hero-banner .hero-grid{grid-template-columns:1.05fr 1fr !important;gap:32px !important}
+        /* ensure eyebrow / wordmark stack vertically and in correct order */
+        .hero-banner .hero-eyebrow{display:inline-flex !important;margin-bottom:14px !important}
+        .hero-banner .hero-wordmark{display:block !important;margin:0 0 12px !important}
+        /* allow curl command to wrap onto a second line if needed */
+        .hero-banner .hero-curl .cmd{white-space:pre-wrap !important;word-break:break-all !important}
+        .hero-banner .hero-curl .resp{white-space:pre-wrap !important;word-break:break-all !important}
       `;
       document.head.appendChild(extra);
       const curl = document.querySelector('.hero-banner .hero-curl');
