@@ -1,18 +1,12 @@
+<a href="https://boyzhong123.github.io/mcp22/">
+  <img src="./assets/hero.png" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend." width="100%"/>
+</a>
+
 <div align="center">
-
-<br/>
-
-<img src="https://img.shields.io/badge/Since_2011-MCP--native-1a7f37?style=for-the-badge" alt="Since 2011 — MCP-native"/>
-
-<h1>Chivox <span style="color:#0ea5e9">MCP</span></h1>
-
-<b>Give your LLM ears.</b><br/>
-Ship a Mandarin tutor or IELTS coach in a weekend.
-
-<br/><br/>
 
 <a href="#-quickstart"><img src="https://img.shields.io/badge/▶_Install_in_30_seconds-1a7f37?style=for-the-badge" alt="Install in 30 seconds"/></a>
 <a href="https://boyzhong123.github.io/mcp22/"><img src="https://img.shields.io/badge/🎬_Live_preview-grey?style=for-the-badge" alt="Live preview"/></a>
+<a href="https://chivoxmcp2.netlify.app/global"><img src="https://img.shields.io/badge/🌐_Website-0969da?style=for-the-badge" alt="Website"/></a>
 
 <br/><br/>
 

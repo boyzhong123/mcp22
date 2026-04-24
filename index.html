@@ -2121,5 +2121,25 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     <div id="videoSlot" style="width:100%;height:100%"></div>
   </div>
 </div>
+<script>
+  // ?bare=hero → render only the hero banner (for exporting a PNG for GitHub README)
+  (function(){
+    const p = new URLSearchParams(location.search);
+    const mode = p.get('bare');
+    if (!mode) return;
+    const css = document.createElement('style');
+    css.textContent = `
+      body{background:#fff !important;margin:0 !important;padding:0 !important}
+      .ghnav,.repohead,.sidebar,.file-toolbar,.file-row,.readme-toolbar,.card:not(:last-child){display:none !important}
+      main.body{display:block !important;padding:0 !important;max-width:none !important;margin:0 !important}
+      .col-main{width:100% !important;margin:0 !important;padding:0 !important}
+      .card{border:none !important;box-shadow:none !important;margin:0 !important;border-radius:0 !important}
+      .readme{padding:0 !important;max-width:none !important}
+      .readme > *:not(.hero-banner){display:none !important}
+      .hero-banner{margin:0 !important;border-radius:0 !important;padding:48px 56px !important}
+    `;
+    document.head.appendChild(css);
+  })();
+</script>
 </body>
 </html>
