@@ -1,5 +1,5 @@
 <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
-  <img src="./assets/hero-v2.png" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo." width="100%"/>
+  <img src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v3.png?v=3" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo." width="100%"/>
 </a>
 
 <div align="center">
@@ -42,12 +42,7 @@
 
 ## 🎯 Is this for you?
 
-|  ✅ Use Chivox if you…                                                                  |  ❌ You probably want…                                                     |
-| :--------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
-| Are building an **AI tutor, language app, or reading-aloud** product                     | …**Whisper / Deepgram / AssemblyAI** for plain transcription               |
-| Need to know **how well** someone spoke — not **what** they said                         | …**ElevenLabs / OpenAI TTS** for generating speech                         |
-| Want **Mandarin** assessment that actually hears tones, erhua, sandhi                    | …**Azure / AWS** for compliance / content moderation                       |
-| Ship through **MCP clients** (Cursor / Claude / Agents SDK / LangChain)                  | …**Picovoice / Rhino** for keyword spotting on-device                      |
+<img src="./assets/fit.png" alt="Is this for you? fit check" width="100%"/>
 
 > Most production teams run **Whisper + Chivox together**: Whisper to transcribe what was said, Chivox to score how well. They don't compete.
 

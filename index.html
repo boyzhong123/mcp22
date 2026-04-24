@@ -374,7 +374,7 @@
   }
   .hero-grid {
     position: relative; z-index: 2;
-    display: grid; grid-template-columns: minmax(300px, 0.85fr) 1.6fr; gap: 40px; align-items: start;
+    display: grid; grid-template-columns: minmax(340px, 1.25fr) 1fr; gap: 36px; align-items: start;
   }
   .hero-right { display: flex; flex-direction: column; gap: 14px; }
   @media (max-width: 900px) {
@@ -495,7 +495,7 @@
     position: absolute; top: -40px; right: 0; color: #fff; background: transparent;
     border: 0; font-size: 22px; cursor: pointer;
   }
-  .hero-art > svg { width: 100%; max-width: 560px; height: auto; display: block; margin-top: 4px; }
+  .hero-art > svg { width: 100%; max-width: 480px; height: auto; display: block; margin-top: 4px; }
   .hero-art .wave-path { stroke: url(#waveGrad); stroke-width: 2.5; fill: none;
     stroke-linecap: round; stroke-linejoin: round; }
   .hero-art .wave-bars rect { animation: wavepulse 1.5s ease-in-out infinite; }
@@ -565,7 +565,7 @@
     background: #0d1117;
     border: 1px solid #30363d; border-radius: 8px;
     font-family: "JetBrains Mono", ui-monospace, monospace;
-    color: #e6edf3; font-size: 11.5px;
+    color: #e6edf3; font-size: 12.5px;
     box-shadow: 0 4px 14px -8px rgba(0,0,0,0.3);
     overflow: hidden;
   }
@@ -600,9 +600,36 @@
   .hero-curl .copy.copied { color: #3fb950; border-color: rgba(63,185,80,0.4); }
   /* Body — single scroll line */
   .hero-curl .cmd {
-    padding: 8px 12px; line-height: 1.5;
+    padding: 10px 12px; line-height: 1.55;
     overflow-x: auto; white-space: nowrap;
   }
+
+  /* centered play pill — sits above the curl card */
+  .hero-curl .curl-play {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 6;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.22);
+    color: #fff;
+    font: 800 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    box-shadow: 0 12px 30px -18px rgba(0,0,0,0.55);
+    opacity: .92;
+    transition: transform .18s ease, opacity .18s ease, background .18s ease;
+  }
+  .hero-curl .curl-play:hover {
+    opacity: 1;
+    background: rgba(16,163,127,0.85);
+    transform: translate(-50%, -50%) scale(1.03);
+  }
+  .hero-curl .curl-play svg { filter: drop-shadow(0 4px 14px rgba(0,0,0,.25)); }
   .hero-curl .cmd::-webkit-scrollbar { height: 3px; }
   .hero-curl .cmd::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
   .hero-curl .prompt { color: #7ee787; user-select: none; margin-right: 6px; }
@@ -1157,18 +1184,29 @@
         <a class="btn" href="https://chivoxmcp2.netlify.app/global/docs">📖 Docs</a>
       </div>
 
+      <!-- instant-try curl — bigger, sits under the headline (left column) -->
+      <div class="hero-curl" id="heroCurl">
+        <button class="curl-play" onclick="playHeroVideo()" aria-label="Play 15s product demo">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M4 2.5v11l9-5.5-9-5.5Z"/>
+          </svg>
+          Play 15s product demo
+        </button>
+        <div class="bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="label">try.sh <span class="badge">no signup</span></span>
+          <button class="copy" onclick="copyCurl(this)" aria-label="Copy">Copy</button>
+        </div>
+        <div class="cmd" id="heroCurlBody"><span class="prompt">$</span><span class="k">curl</span> speech-eval.site/mcp/try -d <span class="s">'{"ref":"你好","url":"…"}'</span></div>
+        <div class="resp"><span class="status">200</span><span class="arrow">←</span><span class="j-punct">{</span><span class="j-key">"overall"</span><span class="j-punct">:</span><span class="j-num">82</span><span class="j-punct">,</span> <span class="j-key">"tones"</span><span class="j-punct">:</span><span class="j-punct">[</span><span class="j-num">3</span><span class="j-punct">,</span><span class="j-num">3</span><span class="j-punct">]</span><span class="j-punct">,</span> <span class="j-key">"verdict"</span><span class="j-punct">:</span><span class="j-str">"native-like"</span><span class="j-punct">}</span></div>
+      </div>
+
     </div>
 
     <!-- ── Right column: video card + curl demo stacked ── -->
     <div class="hero-right">
     <!-- ── Hero art: audio → MCP → structured fields → LLM ear ── -->
     <div class="hero-art">
-      <button class="play-btn" onclick="playHeroVideo()" aria-label="Play 15s product demo">
-        <svg width="88" height="88" viewBox="0 0 64 64">
-          <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.45)" stroke="rgba(255,255,255,0.85)" stroke-width="1.5"/>
-          <polygon points="26,20 26,44 46,32" fill="#fff"/>
-        </svg>
-      </button>
       <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" role="img"
            aria-label="Audio waveform becomes structured JSON, feeding an LLM">
         <defs>
@@ -1271,16 +1309,6 @@
       </svg>
     </div>
 
-    <!-- instant-try curl — now lives under the video card -->
-    <div class="hero-curl" id="heroCurl">
-      <div class="bar">
-        <span class="dots"><i></i><i></i><i></i></span>
-        <span class="label">try.sh <span class="badge">no signup</span></span>
-        <button class="copy" onclick="copyCurl(this)" aria-label="Copy">Copy</button>
-      </div>
-      <div class="cmd" id="heroCurlBody"><span class="prompt">$</span><span class="k">curl</span> speech-eval.site/mcp/try -d <span class="s">'{"ref":"你好","url":"…"}'</span></div>
-      <div class="resp"><span class="status">200</span><span class="arrow">←</span><span class="j-punct">{</span><span class="j-key">"overall"</span><span class="j-punct">:</span><span class="j-num">82</span><span class="j-punct">,</span> <span class="j-key">"tones"</span><span class="j-punct">:</span><span class="j-punct">[</span><span class="j-num">3</span><span class="j-punct">,</span><span class="j-num">3</span><span class="j-punct">]</span><span class="j-punct">,</span> <span class="j-key">"verdict"</span><span class="j-punct">:</span><span class="j-str">"native-like"</span><span class="j-punct">}</span></div>
-    </div>
     </div><!-- /.hero-right -->
   </div>
 </div>
@@ -1307,34 +1335,36 @@
   <b>TL;DR</b> — LLMs can't hear audio. Chivox MCP gives them ears: one tool call returns <code>overall / accuracy / fluency / phonemes[]</code> — a structured JSON your model can reason over directly. No SDK wrapping, no feature extraction, no glue code.
 </blockquote>
 
-<h3 style="border:0; padding:0; margin: 24px 0 12px; font-size: 16px; font-weight: 700;">
-  Is this for you?
-</h3>
+<div class="is-for-you">
+  <h3 style="border:0; padding:0; margin: 24px 0 12px; font-size: 16px; font-weight: 700;">
+    Is this for you?
+  </h3>
 
-<div class="fit-check">
-  <div class="col yes">
-    <h4>✓ Use Chivox if you…</h4>
-    <ul>
-      <li>Are building an AI tutor, language app, or reading-aloud product</li>
-      <li>Need to know <b>how well</b> someone spoke — not <b>what</b> they said</li>
-      <li>Want <b>Mandarin</b> assessment that actually hears tones, erhua, sandhi</li>
-      <li>Ship through <b>MCP clients</b> (Cursor / Claude / Agents SDK / LangChain)</li>
-    </ul>
+  <div class="fit-check">
+    <div class="col yes">
+      <h4>✓ Use Chivox if you…</h4>
+      <ul>
+        <li>Are building an AI tutor, language app, or reading-aloud product</li>
+        <li>Need to know <b>how well</b> someone spoke — not <b>what</b> they said</li>
+        <li>Want <b>Mandarin</b> assessment that actually hears tones, erhua, sandhi</li>
+        <li>Ship through <b>MCP clients</b> (Cursor / Claude / Agents SDK / LangChain)</li>
+      </ul>
+    </div>
+    <div class="col no">
+      <h4>✗ You probably want…</h4>
+      <ul>
+        <li>…<b>Whisper / Deepgram / AssemblyAI</b> for plain transcription</li>
+        <li>…<b>ElevenLabs / OpenAI TTS</b> for generating speech</li>
+        <li>…<b>Azure / AWS</b> for compliance / content moderation</li>
+        <li>…<b>Picovoice / Rhino</b> for keyword spotting on-device</li>
+      </ul>
+    </div>
   </div>
-  <div class="col no">
-    <h4>✗ You probably want…</h4>
-    <ul>
-      <li>…<b>Whisper / Deepgram / AssemblyAI</b> for plain transcription</li>
-      <li>…<b>ElevenLabs / OpenAI TTS</b> for generating speech</li>
-      <li>…<b>Azure / AWS</b> for compliance / content moderation</li>
-      <li>…<b>Picovoice / Rhino</b> for keyword spotting on-device</li>
-    </ul>
-  </div>
+
+  <p class="micro" style="margin-top:-8px">
+    Most production teams run <b>Whisper + Chivox together</b>: Whisper to transcribe what was said, Chivox to score how well. They don't compete.
+  </p>
 </div>
-
-<p class="micro" style="margin-top:-8px">
-  Most production teams run <b>Whisper + Chivox together</b>: Whisper to transcribe what was said, Chivox to score how well. They don't compete.
-</p>
 
 <hr/>
 
@@ -2136,6 +2166,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     const MODES = {
       hero:     ['.hero-banner'],
       compare:  ['.compare-matrix'],
+      fit:      ['.is-for-you'],
       loop:     ['.loop'],
       mandarin: ['.mandarin-spot'],
       english:  ['.english-spot'],
@@ -2174,6 +2205,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     // tighten crop per mode so the image visually fills GitHub width
     const PAD = {
       compare:  '8px 10px',
+      fit:      '10px 12px',
       loop:     '10px 12px',
       pricing:  '8px 10px',
       mandarin: '10px 12px',
@@ -2251,6 +2283,20 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .loop-stage .title{font-size:15px !important}
         .loop-stage .desc{font-size:13px !important}
         .loop-stage pre{font-size:12.5px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'fit') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:10px 12px !important}
+        .is-for-you h3{font-size:20px !important;margin:0 0 14px !important}
+        .fit-check{margin:0 !important}
+        .fit-check .col{padding:16px 18px !important}
+        .fit-check h4{font-size:16px !important;margin:0 0 10px !important}
+        .fit-check li{font-size:15px !important;line-height:1.45 !important;margin:0 0 8px !important}
+        .is-for-you .micro{font-size:14px !important;margin-top:10px !important}
       `;
       document.head.appendChild(s);
     }
