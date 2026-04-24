@@ -13,7 +13,7 @@
 <a href="https://chivoxmcp2.netlify.app/global/demo"><img src="https://img.shields.io/badge/🎬_Live_preview-grey?style=for-the-badge" alt="Live preview"/></a>
 <a href="https://chivoxmcp2.netlify.app/global"><img src="https://img.shields.io/badge/🌐_Website-0969da?style=for-the-badge" alt="Website"/></a>
 
-<br/><br/>
+<br/>
 
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
@@ -22,11 +22,9 @@
 <img src="https://img.shields.io/badge/ISO%2027001-certified-2563EB?style=flat-square" alt="iso"/>
 <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="prs"/>
 
-<br/><br/>
+<br/>
 
 <img src="./assets/stats-v1-2x.png" alt="9.2B+ evals/year · 185 countries · 95%+ human agreement · <200ms P99 first token" width="100%"/>
-
-<br/>
 
 </div>
 
