@@ -1,8 +1,8 @@
-<a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
+<a href="https://chivoxmcp2.netlify.app/global/demo" title="Open live demo">
   <img
     src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8"
     srcset="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8 2x"
-    alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo."
+    alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to open the live demo."
     width="100%"
   />
 </a>
