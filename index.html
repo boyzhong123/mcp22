@@ -2153,7 +2153,8 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       main.body{display:block !important;padding:0 !important;max-width:none !important;margin:0 !important;width:1280px !important}
       .col-main{width:1280px !important;margin:0 !important;padding:0 !important}
       .card{border:none !important;box-shadow:none !important;margin:0 !important;border-radius:0 !important;width:1280px !important}
-      .readme{padding:40px 56px !important;max-width:none !important;background:#fff !important;width:1168px !important;box-sizing:content-box !important}
+      /* start with zero padding; each mode sets its own tight crop */
+      .readme{padding:0 !important;max-width:none !important;background:#fff !important;width:1280px !important;box-sizing:border-box !important}
       /* force horizontal layouts regardless of viewport-media-query quirks */
       .pricing{grid-template-columns:repeat(3, 1fr) !important}
       .loop{grid-template-columns:1fr 40px 1fr 40px 1fr !important}
@@ -2169,6 +2170,23 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       ${sel.map(s => `.readme ${s}`).join(', ')}{display:block !important}
     `;
     document.head.appendChild(css);
+
+    // tighten crop per mode so the image visually fills GitHub width
+    const PAD = {
+      compare:  '8px 10px',
+      loop:     '10px 12px',
+      pricing:  '8px 10px',
+      mandarin: '10px 12px',
+      english:  '10px 12px',
+      pillars:  '8px 10px',
+      tools:    '10px 12px',
+    };
+    if (mode !== 'hero') {
+      const pad = PAD[mode] || '10px 12px';
+      document.querySelectorAll('.readme').forEach(el => {
+        el.style.setProperty('padding', pad, 'important');
+      });
+    }
 
     // force grid layout on the TARGET selector only (via inline style)
     const GRIDS = {
@@ -2199,7 +2217,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       const s = document.createElement('style');
       s.textContent = `
         /* make the matrix fill the whole image */
-        .readme{padding:10px 16px !important}
+        .readme{padding:8px 10px !important}
         .compare-matrix{margin:0 !important; overflow: visible !important}
         .compare-matrix table{font-size:18px !important}
         .compare-matrix th, .compare-matrix td{padding:16px 16px !important}
@@ -2215,7 +2233,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     if (mode === 'pricing') {
       const s = document.createElement('style');
       s.textContent = `
-        .readme{padding:28px 40px !important}
+        .readme{padding:8px 10px !important}
         .price-card{padding:18px !important}
         .price-card .plan-name{font-size:12px !important}
         .price-card .price{font-size:34px !important}
@@ -2228,7 +2246,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     if (mode === 'loop') {
       const s = document.createElement('style');
       s.textContent = `
-        .readme{padding:28px 40px !important}
+        .readme{padding:10px 12px !important}
         .loop-stage{padding:18px !important}
         .loop-stage .title{font-size:15px !important}
         .loop-stage .desc{font-size:13px !important}
