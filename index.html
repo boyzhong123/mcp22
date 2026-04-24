@@ -2337,8 +2337,15 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .hero-banner .hero-curl .resp{font-size:18px !important; padding:13px 16px !important; line-height:1.55 !important}
         .hero-banner .hero-curl .resp .status{font-size:13px !important; padding:2px 8px !important}
         /* ensure eyebrow / wordmark stack vertically and in correct order */
-        .hero-banner .hero-eyebrow{display:inline-flex !important;margin-bottom:14px !important}
-        .hero-banner .hero-wordmark{display:block !important;margin:0 0 12px !important}
+        .hero-banner .hero-eyebrow{
+          display:inline-flex !important;
+          margin-bottom:14px !important;
+          font-size:13px !important;
+          padding:6px 14px 6px 11px !important;
+        }
+        .hero-banner .hero-wordmark{display:block !important;margin:0 0 12px !important; max-width:360px !important}
+        .hero-banner .hero-tag{font-size:28px !important; line-height:1.25 !important}
+        .hero-banner .hero-sub{font-size:16.5px !important; line-height:1.55 !important; max-width:560px !important}
         /* make centered play icon visible in exported banner */
         .hero-banner .hero-art .play-btn{display:none !important}
         .hero-banner .banner-play{display:block !important}
