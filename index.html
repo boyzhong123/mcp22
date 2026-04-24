@@ -376,6 +376,13 @@
     position: relative; z-index: 2;
     display: grid; grid-template-columns: minmax(340px, 1.25fr) 1fr; gap: 36px; align-items: start;
   }
+  .hero-banner { position: relative; }
+  .hero-banner .banner-play{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    z-index: 50; border:0; background:transparent; padding:0; cursor:pointer;
+    opacity:.9; filter: drop-shadow(0 6px 18px rgba(0,0,0,.28));
+  }
+  .hero-banner .banner-play:hover{ transform:translate(-50%,-50%) scale(1.04); opacity: 1; }
   .hero-right { display: flex; flex-direction: column; gap: 14px; }
   @media (max-width: 900px) {
     .hero-grid { grid-template-columns: 1fr; gap: 20px; }
@@ -1111,6 +1118,12 @@
 
 <!-- ═══════════════════ RENDERED MARKDOWN ═══════════════════ -->
 <div class="hero-banner">
+  <button class="banner-play" onclick="playHeroVideo()" aria-label="Play 15s product demo">
+    <svg width="96" height="96" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.62)" stroke="rgba(255,255,255,0.92)" stroke-width="2.2"/>
+      <polygon points="26,20 26,44 46,32" fill="#fff"/>
+    </svg>
+  </button>
   <div class="hero-grid">
     <div>
       <span class="hero-eyebrow"><span class="pulse"></span>Since 2011 · MCP-native</span>
@@ -2226,10 +2239,10 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         /* make the matrix fill the whole image */
         .readme{padding:8px 10px !important}
         .compare-matrix{margin:0 !important; overflow: visible !important}
-        .compare-matrix table{font-size:20px !important}
-        .compare-matrix th, .compare-matrix td{padding:18px 16px !important}
+        .compare-matrix table{font-size:22px !important}
+        .compare-matrix th, .compare-matrix td{padding:19px 16px !important}
         .compare-matrix thead th{
-          font-size:15px !important;
+          font-size:16px !important;
           letter-spacing:0.06em !important;
         }
         .compare-matrix th:first-child, .compare-matrix td:first-child{white-space:nowrap !important}
@@ -2242,10 +2255,10 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       s.textContent = `
         .readme{padding:8px 10px !important}
         .price-card{padding:20px !important}
-        .price-card .plan-name{font-size:13px !important}
-        .price-card .price{font-size:40px !important}
-        .price-card .sub{font-size:14px !important}
-        .price-card .rows{font-size:15px !important}
+        .price-card .plan-name{font-size:14px !important}
+        .price-card .price{font-size:44px !important}
+        .price-card .sub{font-size:15px !important}
+        .price-card .rows{font-size:16.5px !important}
       `;
       document.head.appendChild(s);
     }
@@ -2255,9 +2268,9 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       s.textContent = `
         .readme{padding:10px 12px !important}
         .loop-stage{padding:20px !important}
-        .loop-stage .title{font-size:17px !important}
-        .loop-stage .desc{font-size:15px !important}
-        .loop-stage pre{font-size:14px !important}
+        .loop-stage .title{font-size:19px !important}
+        .loop-stage .desc{font-size:16.5px !important}
+        .loop-stage pre{font-size:15.5px !important}
       `;
       document.head.appendChild(s);
     }
@@ -2266,12 +2279,12 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       const s = document.createElement('style');
       s.textContent = `
         .readme{padding:10px 12px !important}
-        .is-for-you h3{font-size:22px !important;margin:0 0 14px !important}
+        .is-for-you h3{font-size:24px !important;margin:0 0 14px !important}
         .fit-check{margin:0 !important}
         .fit-check .col{padding:18px 20px !important}
-        .fit-check h4{font-size:18px !important;margin:0 0 10px !important}
-        .fit-check li{font-size:17px !important;line-height:1.5 !important;margin:0 0 8px !important}
-        .is-for-you .micro{font-size:15px !important;margin-top:12px !important}
+        .fit-check h4{font-size:20px !important;margin:0 0 10px !important}
+        .fit-check li{font-size:18.5px !important;line-height:1.5 !important;margin:0 0 8px !important}
+        .is-for-you .micro{font-size:16px !important;margin-top:12px !important}
       `;
       document.head.appendChild(s);
     }
@@ -2282,9 +2295,9 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .readme{padding:8px 10px !important}
         .pillars{gap:14px !important}
         .pillar{padding:20px 20px 18px !important}
-        .pillar h4{font-size:16px !important}
-        .pillar p{font-size:13.5px !important; line-height:1.45 !important}
-        .pillar .badge{font-size:11px !important}
+        .pillar h4{font-size:17.5px !important}
+        .pillar p{font-size:14.5px !important; line-height:1.45 !important}
+        .pillar .badge{font-size:12px !important}
       `;
       document.head.appendChild(s);
     }
@@ -2294,9 +2307,9 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       s.textContent = `
         .readme{padding:10px 12px !important}
         .mandarin-spot, .english-spot{padding:30px !important}
-        .mandarin-spot h3, .english-spot h3{font-size:26px !important}
-        .mandarin-spot p, .english-spot p{font-size:15px !important; line-height:1.55 !important}
-        .mandarin-spot li, .english-spot li{font-size:15px !important; line-height:1.55 !important}
+        .mandarin-spot h3, .english-spot h3{font-size:28px !important}
+        .mandarin-spot p, .english-spot p{font-size:16.5px !important; line-height:1.55 !important}
+        .mandarin-spot li, .english-spot li{font-size:16.5px !important; line-height:1.55 !important}
       `;
       document.head.appendChild(s);
     }
@@ -2311,12 +2324,24 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .hero-banner .hero-sub{margin-bottom:18px !important}
         .hero-banner .hero-curl{margin-top:0 !important;width:100% !important;max-width:none !important}
         /* in bare mode curl moves into left col; give left col more room so curl fits */
-        .hero-banner .hero-grid{grid-template-columns:1.05fr 1fr !important;gap:32px !important}
+        .hero-banner .hero-grid{grid-template-columns:1.35fr .85fr !important;gap:28px !important}
+        /* make right illustration slightly shorter */
+        .hero-banner .hero-art{min-height:250px !important; padding:34px 18px 18px !important}
+        /* make the curl snippet readable in a static GitHub banner (≈3×) */
+        .hero-banner .hero-curl{border-radius:10px !important}
+        .hero-banner .hero-curl .bar{padding:10px 14px !important}
+        .hero-banner .hero-curl .label{font-size:16px !important}
+        .hero-banner .hero-curl .label .badge{font-size:14px !important; padding:1px 10px !important}
+        .hero-banner .hero-curl .copy{font-size:14px !important; padding:4px 10px !important}
+        .hero-banner .hero-curl .cmd{font-size:20px !important; padding:18px 16px !important; line-height:1.55 !important}
+        .hero-banner .hero-curl .resp{font-size:18px !important; padding:13px 16px !important; line-height:1.55 !important}
+        .hero-banner .hero-curl .resp .status{font-size:13px !important; padding:2px 8px !important}
         /* ensure eyebrow / wordmark stack vertically and in correct order */
         .hero-banner .hero-eyebrow{display:inline-flex !important;margin-bottom:14px !important}
         .hero-banner .hero-wordmark{display:block !important;margin:0 0 12px !important}
         /* make centered play icon visible in exported banner */
-        .hero-banner .hero-art .play-btn{opacity:.92 !important}
+        .hero-banner .hero-art .play-btn{display:none !important}
+        .hero-banner .banner-play{display:block !important}
         /* allow curl command to wrap onto a second line if needed */
         .hero-banner .hero-curl .cmd{white-space:pre-wrap !important;word-break:break-all !important}
         .hero-banner .hero-curl .resp{white-space:pre-wrap !important;word-break:break-all !important}
