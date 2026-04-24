@@ -1,5 +1,5 @@
-<a href="https://boyzhong123.github.io/mcp22/">
-  <img src="./assets/hero.png" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend." width="100%"/>
+<a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
+  <img src="./assets/hero.png" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo." width="100%"/>
 </a>
 
 <div align="center">

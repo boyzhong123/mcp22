@@ -2136,9 +2136,19 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       .card{border:none !important;box-shadow:none !important;margin:0 !important;border-radius:0 !important}
       .readme{padding:0 !important;max-width:none !important}
       .readme > *:not(.hero-banner){display:none !important}
-      .hero-banner{margin:0 !important;border-radius:0 !important;padding:48px 56px !important}
+      .hero-banner{margin:0 !important;border-radius:0 !important;padding:40px 56px !important}
+      /* bare mode: hide CTA buttons, move curl into left column */
+      .hero-cta{display:none !important}
+      .hero-banner .hero-sub{margin-bottom:18px !important}
+      .hero-banner .hero-curl{margin-top:0 !important}
     `;
     document.head.appendChild(css);
+    // relocate curl into left column below hero-sub
+    const curl = document.querySelector('.hero-banner .hero-curl');
+    const sub  = document.querySelector('.hero-banner .hero-sub');
+    if (curl && sub && sub.parentNode) {
+      sub.parentNode.appendChild(curl);
+    }
   })();
 </script>
 </body>
