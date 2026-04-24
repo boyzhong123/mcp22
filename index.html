@@ -472,11 +472,12 @@
   }
   .hero-art .play-btn {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    z-index: 3; background: transparent; border: 0; cursor: pointer; padding: 0;
-    opacity: .55;
+    z-index: 10; background: transparent; border: 0; cursor: pointer; padding: 0;
+    opacity: .85;
     transition: opacity .2s ease, transform .2s ease;
     filter: drop-shadow(0 4px 14px rgba(0,0,0,.25));
   }
+  .hero-art > svg { position: relative; z-index: 1; }
   .hero-art .play-btn:hover { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
   .hero-art .play-btn circle { transition: fill .2s ease; }
   .hero-art .play-btn:hover circle { fill: rgba(16,163,127,0.92); }
@@ -604,32 +605,6 @@
     overflow-x: auto; white-space: nowrap;
   }
 
-  /* centered play pill — sits above the curl card */
-  .hero-curl .curl-play {
-    position: absolute; left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 6;
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.55);
-    border: 1px solid rgba(255,255,255,0.22);
-    color: #fff;
-    font: 800 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
-    letter-spacing: -0.01em;
-    cursor: pointer;
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-    box-shadow: 0 12px 30px -18px rgba(0,0,0,0.55);
-    opacity: .92;
-    transition: transform .18s ease, opacity .18s ease, background .18s ease;
-  }
-  .hero-curl .curl-play:hover {
-    opacity: 1;
-    background: rgba(16,163,127,0.85);
-    transform: translate(-50%, -50%) scale(1.03);
-  }
-  .hero-curl .curl-play svg { filter: drop-shadow(0 4px 14px rgba(0,0,0,.25)); }
   .hero-curl .cmd::-webkit-scrollbar { height: 3px; }
   .hero-curl .cmd::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
   .hero-curl .prompt { color: #7ee787; user-select: none; margin-right: 6px; }
@@ -1186,12 +1161,6 @@
 
       <!-- instant-try curl — bigger, sits under the headline (left column) -->
       <div class="hero-curl" id="heroCurl">
-        <button class="curl-play" onclick="playHeroVideo()" aria-label="Play 15s product demo">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path d="M4 2.5v11l9-5.5-9-5.5Z"/>
-          </svg>
-          Play 15s product demo
-        </button>
         <div class="bar">
           <span class="dots"><i></i><i></i><i></i></span>
           <span class="label">try.sh <span class="badge">no signup</span></span>
@@ -1207,6 +1176,12 @@
     <div class="hero-right">
     <!-- ── Hero art: audio → MCP → structured fields → LLM ear ── -->
     <div class="hero-art">
+      <button class="play-btn" onclick="playHeroVideo()" aria-label="Play 15s product demo">
+        <svg width="88" height="88" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.62)" stroke="rgba(255,255,255,0.92)" stroke-width="2.2"/>
+          <polygon points="26,20 26,44 46,32" fill="#fff"/>
+        </svg>
+      </button>
       <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" role="img"
            aria-label="Audio waveform becomes structured JSON, feeding an LLM">
         <defs>
@@ -2315,6 +2290,8 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         /* ensure eyebrow / wordmark stack vertically and in correct order */
         .hero-banner .hero-eyebrow{display:inline-flex !important;margin-bottom:14px !important}
         .hero-banner .hero-wordmark{display:block !important;margin:0 0 12px !important}
+        /* make centered play icon visible in exported banner */
+        .hero-banner .hero-art .play-btn{opacity:.92 !important}
         /* allow curl command to wrap onto a second line if needed */
         .hero-banner .hero-curl .cmd{white-space:pre-wrap !important;word-break:break-all !important}
         .hero-banner .hero-curl .resp{white-space:pre-wrap !important;word-break:break-all !important}
