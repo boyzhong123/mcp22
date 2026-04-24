@@ -2194,6 +2194,47 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       });
     }
 
+    // mode-specific readability tweaks (bigger type so images read well on GitHub)
+    if (mode === 'compare') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:28px 40px !important}
+        .compare-matrix{margin:0 !important}
+        .compare-matrix table{font-size:15px !important}
+        .compare-matrix th, .compare-matrix td{padding:14px 14px !important}
+        .compare-matrix thead th{
+          font-size:13px !important;
+          letter-spacing:0.06em !important;
+        }
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'pricing') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:28px 40px !important}
+        .price-card{padding:18px !important}
+        .price-card .plan-name{font-size:12px !important}
+        .price-card .price{font-size:34px !important}
+        .price-card .sub{font-size:13px !important}
+        .price-card .rows{font-size:13px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'loop') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:28px 40px !important}
+        .loop-stage{padding:18px !important}
+        .loop-stage .title{font-size:15px !important}
+        .loop-stage .desc{font-size:13px !important}
+        .loop-stage pre{font-size:12.5px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
     // hero mode: additionally hide CTA + relocate curl into left col
     if (mode === 'hero') {
       const extra = document.createElement('style');
