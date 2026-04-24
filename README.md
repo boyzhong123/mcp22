@@ -1,5 +1,5 @@
 <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
-  <img src="./assets/hero.png" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo." width="100%"/>
+  <img src="./assets/hero-v2.png" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo." width="100%"/>
 </a>
 
 <div align="center">
