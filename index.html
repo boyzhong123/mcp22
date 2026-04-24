@@ -2226,10 +2226,10 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         /* make the matrix fill the whole image */
         .readme{padding:8px 10px !important}
         .compare-matrix{margin:0 !important; overflow: visible !important}
-        .compare-matrix table{font-size:18px !important}
-        .compare-matrix th, .compare-matrix td{padding:16px 16px !important}
+        .compare-matrix table{font-size:20px !important}
+        .compare-matrix th, .compare-matrix td{padding:18px 16px !important}
         .compare-matrix thead th{
-          font-size:14px !important;
+          font-size:15px !important;
           letter-spacing:0.06em !important;
         }
         .compare-matrix th:first-child, .compare-matrix td:first-child{white-space:nowrap !important}
@@ -2241,11 +2241,11 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       const s = document.createElement('style');
       s.textContent = `
         .readme{padding:8px 10px !important}
-        .price-card{padding:18px !important}
-        .price-card .plan-name{font-size:12px !important}
-        .price-card .price{font-size:34px !important}
-        .price-card .sub{font-size:13px !important}
-        .price-card .rows{font-size:13px !important}
+        .price-card{padding:20px !important}
+        .price-card .plan-name{font-size:13px !important}
+        .price-card .price{font-size:40px !important}
+        .price-card .sub{font-size:14px !important}
+        .price-card .rows{font-size:15px !important}
       `;
       document.head.appendChild(s);
     }
@@ -2254,10 +2254,10 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       const s = document.createElement('style');
       s.textContent = `
         .readme{padding:10px 12px !important}
-        .loop-stage{padding:18px !important}
-        .loop-stage .title{font-size:15px !important}
-        .loop-stage .desc{font-size:13px !important}
-        .loop-stage pre{font-size:12.5px !important}
+        .loop-stage{padding:20px !important}
+        .loop-stage .title{font-size:17px !important}
+        .loop-stage .desc{font-size:15px !important}
+        .loop-stage pre{font-size:14px !important}
       `;
       document.head.appendChild(s);
     }
@@ -2266,12 +2266,37 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       const s = document.createElement('style');
       s.textContent = `
         .readme{padding:10px 12px !important}
-        .is-for-you h3{font-size:20px !important;margin:0 0 14px !important}
+        .is-for-you h3{font-size:22px !important;margin:0 0 14px !important}
         .fit-check{margin:0 !important}
-        .fit-check .col{padding:16px 18px !important}
-        .fit-check h4{font-size:16px !important;margin:0 0 10px !important}
-        .fit-check li{font-size:15px !important;line-height:1.45 !important;margin:0 0 8px !important}
-        .is-for-you .micro{font-size:14px !important;margin-top:10px !important}
+        .fit-check .col{padding:18px 20px !important}
+        .fit-check h4{font-size:18px !important;margin:0 0 10px !important}
+        .fit-check li{font-size:17px !important;line-height:1.5 !important;margin:0 0 8px !important}
+        .is-for-you .micro{font-size:15px !important;margin-top:12px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'pillars') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:8px 10px !important}
+        .pillars{gap:14px !important}
+        .pillar{padding:20px 20px 18px !important}
+        .pillar h4{font-size:16px !important}
+        .pillar p{font-size:13.5px !important; line-height:1.45 !important}
+        .pillar .badge{font-size:11px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'mandarin' || mode === 'english') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:10px 12px !important}
+        .mandarin-spot, .english-spot{padding:30px !important}
+        .mandarin-spot h3, .english-spot h3{font-size:26px !important}
+        .mandarin-spot p, .english-spot p{font-size:15px !important; line-height:1.55 !important}
+        .mandarin-spot li, .english-spot li{font-size:15px !important; line-height:1.55 !important}
       `;
       document.head.appendChild(s);
     }
