@@ -1,7 +1,7 @@
 <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
   <img
-    src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8"
-    srcset="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8 2x"
+    src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v9-2x.png?v=9"
+    srcset="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v9-2x.png?v=9 2x"
     alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo."
     width="100%"
   />
@@ -24,7 +24,7 @@
 
 <br/>
 
-<img src="./assets/stats-v1-2x.png" alt="9.2B+ evals/year · 185 countries · 95%+ human agreement · <200ms P99 first token" width="100%"/>
+<img src="./assets/stats-v2-2x.png" alt="9.2B+ evals/year · 185 countries · 95%+ human agreement · <200ms P99 first token" width="100%"/>
 
 </div>
 

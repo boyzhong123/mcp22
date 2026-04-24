@@ -2334,16 +2334,44 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .stats-row .stat{
           border-radius:14px !important;
           border:1px solid rgba(27,31,36,0.10) !important;
-          background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(250,251,252,0.66)) !important;
-          box-shadow: 0 12px 26px -22px rgba(0,0,0,0.35) !important;
-          padding:18px 14px !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(250,251,252,0.70)) !important;
+          box-shadow:
+            0 1px 0 rgba(255,255,255,0.65) inset,
+            0 14px 30px -24px rgba(0,0,0,0.45) !important;
+          padding:18px 14px 16px !important;
+          position: relative !important;
+          overflow:hidden !important;
+        }
+        .stats-row .stat::before{
+          content:"";
+          position:absolute; left:-40px; top:-40px;
+          width:140px; height:140px; border-radius:999px;
+          background: radial-gradient(circle at 30% 30%, rgba(16,185,129,0.20), transparent 60%);
+          filter: blur(1px);
+          pointer-events:none;
+        }
+        .stats-row .stat:nth-child(2)::before{
+          background: radial-gradient(circle at 30% 30%, rgba(99,102,241,0.22), transparent 60%);
+        }
+        .stats-row .stat:nth-child(3)::before{
+          background: radial-gradient(circle at 30% 30%, rgba(14,165,233,0.22), transparent 60%);
+        }
+        .stats-row .stat:nth-child(4)::before{
+          background: radial-gradient(circle at 30% 30%, rgba(251,191,36,0.22), transparent 60%);
         }
         :root[data-theme="dark"] .stats-row .stat{
           border-color: rgba(240,246,252,0.10) !important;
           background: linear-gradient(180deg, rgba(22,27,34,0.75), rgba(13,17,23,0.55)) !important;
         }
-        .stats-row .v{font-size:34px !important; font-weight:900 !important; letter-spacing:-0.02em !important}
-        .stats-row .k{font-size:14px !important; opacity:.8 !important; margin-top:6px !important}
+        .stats-row .v{font-size:36px !important; font-weight:950 !important; letter-spacing:-0.03em !important}
+        .stats-row .k{
+          font-size:13px !important;
+          opacity:.8 !important;
+          margin-top:6px !important;
+          letter-spacing:0.10em !important;
+          text-transform:uppercase !important;
+          font-family:"JetBrains Mono", ui-monospace, monospace !important;
+        }
       `;
       document.head.appendChild(s);
     }
@@ -2353,14 +2381,19 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       const extra = document.createElement('style');
       extra.textContent = `
         .readme{padding:0 !important}
-        .hero-banner{margin:0 !important;border-radius:0 !important;padding:40px 56px !important}
+        /* tighter crop to remove bottom whitespace in exported banner */
+        .hero-banner{margin:0 !important;border-radius:0 !important;padding:28px 44px 22px !important}
         .hero-cta{display:none !important}
         .hero-banner .hero-sub{margin-bottom:18px !important}
         .hero-banner .hero-curl{margin-top:0 !important;width:100% !important;max-width:none !important}
         /* in bare mode curl moves into left col; give left col more room so curl fits */
-        .hero-banner .hero-grid{grid-template-columns:1.35fr .85fr !important;gap:28px !important}
+        .hero-banner .hero-grid{
+          grid-template-columns:1.35fr .85fr !important;
+          gap:26px !important;
+          align-items:center !important; /* right side vertically centered */
+        }
         /* make right illustration slightly shorter */
-        .hero-banner .hero-art{min-height:250px !important; padding:34px 18px 18px !important}
+        .hero-banner .hero-art{min-height:230px !important; padding:28px 18px 16px !important}
         /* make the curl snippet readable in a static GitHub banner (≈3×) */
         .hero-banner .hero-curl{border-radius:10px !important}
         .hero-banner .hero-curl .bar{padding:10px 14px !important}
