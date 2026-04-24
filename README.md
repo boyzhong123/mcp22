@@ -1,5 +1,10 @@
 <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
-  <img src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v4.png?v=4" alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo." width="100%"/>
+  <img
+    src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v5-2x.png?v=5"
+    srcset="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v5-2x.png?v=5 2x"
+    alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo."
+    width="100%"
+  />
 </a>
 
 <div align="center">
@@ -42,7 +47,11 @@
 
 ## 🎯 Is this for you?
 
-<img src="./assets/fit.png" alt="Is this for you? fit check" width="100%"/>
+<img
+  src="./assets/fit-2x.png"
+  alt="Is this for you? fit check"
+  width="100%"
+/>
 
 > Most production teams run **Whisper + Chivox together**: Whisper to transcribe what was said, Chivox to score how well. They don't compete.
 
@@ -210,7 +219,11 @@ console.log(result.details);   // per-word + phonemes
 
 Chivox MCP is **not** a transcription API. It's a speech-**assessment** API — it scores how well words were pronounced, at the phoneme level.
 
-<img src="./assets/compare.png" alt="Comparison matrix: Chivox MCP vs Whisper / Deepgram / ElevenLabs / Azure Pronunciation" width="100%"/>
+<img
+  src="./assets/compare-2x.png"
+  alt="Comparison matrix: Chivox MCP vs Whisper / Deepgram / ElevenLabs / Azure Pronunciation"
+  width="100%"
+/>
 
 > **Rule of thumb** — use **Whisper** to know *what* was said; use **Chivox** to know *how well*. They stack.
 
@@ -249,7 +262,11 @@ Every Chivox MCP call returns a typed JSON payload. Here's a real response for t
 
 🎤 **Input:** 1-minute learner recording → **Output:** warm feedback + targeted drill, end-to-end in &lt; 3 seconds.
 
-<img src="./assets/loop.png" alt="Three-stage loop: MCP assessment → LLM feedback → LLM practice" width="100%"/>
+<img
+  src="./assets/loop-2x.png"
+  alt="Three-stage loop: MCP assessment → LLM feedback → LLM practice"
+  width="100%"
+/>
 
 Compatible with **GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwen · GLM** — any model that speaks function calling.
 
@@ -259,7 +276,11 @@ Compatible with **GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwe
 
 There are **30M+** foreigners and 2nd-gen diaspora learning Mandarin worldwide — and **zero** English-speaking platforms that can actually hear the difference between `mā / má / mǎ / mà`. Chivox's Chinese engine is trained on the same data powering China's Putonghua proficiency exam (普通话水平测试).
 
-<img src="./assets/mandarin.png" alt="Mandarin tutor spotlight: tones, erhua, sandhi with tone confidence distributions" width="100%"/>
+<img
+  src="./assets/mandarin-2x.png"
+  alt="Mandarin tutor spotlight: tones, erhua, sandhi with tone confidence distributions"
+  width="100%"
+/>
 
 ---
 
@@ -267,7 +288,11 @@ There are **30M+** foreigners and 2nd-gen diaspora learning Mandarin worldwide �
 
 Same engine powering China's national Putonghua exam — aligned to **IELTS · TOEFL · K-12 gaokao · Cambridge YLE** for English. Same MCP endpoints, same 20+ fields. Just a different `ref_text` and `accent`.
 
-<img src="./assets/english.png" alt="English coach spotlight: phoneme IPA, stress, liaison, accent detection" width="100%"/>
+<img
+  src="./assets/english-2x.png"
+  alt="English coach spotlight: phoneme IPA, stress, liaison, accent detection"
+  width="100%"
+/>
 
 ---
 
@@ -322,7 +347,11 @@ Same engine powering China's national Putonghua exam — aligned to **IELTS · T
 
 ## 💎 Why developers ship with Chivox MCP
 
-<img src="./assets/pillars.png" alt="Four pillars: Beijing-accent 24/7 tutor · Drop-in integration · Data-rich payload for LLMs · Exam-grade English" width="100%"/>
+<img
+  src="./assets/pillars-2x.png"
+  alt="Four pillars: Beijing-accent 24/7 tutor · Drop-in integration · Data-rich payload for LLMs · Exam-grade English"
+  width="100%"
+/>
 
 Plus: **realtime + batch** modes · **TLS 1.2+ · ISO 27001** · on-prem SKUs · per-phoneme ms timestamps for jump-to-playback · ephemeral audio (destroyed post-scoring).
 
@@ -332,7 +361,11 @@ Plus: **realtime + batch** modes · **TLS 1.2+ · ISO 27001** · on-prem SKUs ·
 
 Straight-forward pricing. Start free, no credit card. Failed calls are **not** billed.
 
-<img src="./assets/pricing.png" alt="Pricing: Free ¥0 · Pro ¥99/mo · Enterprise Custom" width="100%"/>
+<img
+  src="./assets/pricing-2x.png"
+  alt="Pricing: Free ¥0 · Pro ¥99/mo · Enterprise Custom"
+  width="100%"
+/>
 
 > Single starter key includes **30 calls/day** (≈ 900 total) to test-drive without signup friction. Full breakdown on the [pricing page →](https://chivoxmcp2.netlify.app/global).
 
