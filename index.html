@@ -1791,6 +1791,8 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
 
 <hr/>
 
+<div class="tools-section">
+
 <h2>🛠️ Tools catalog</h2>
 
 <h3>English (10)</h3>
@@ -1826,6 +1828,8 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
 </table>
 
 <p class="micro">Input: <code>audio_url</code> · <code>audio_base64</code> · <code>audio_file_path</code>. Formats: mp3 · wav · ogg · m4a · aac · pcm.</p>
+
+</div>
 
 <hr/>
 
@@ -2122,32 +2126,88 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
   </div>
 </div>
 <script>
-  // ?bare=hero → render only the hero banner (for exporting a PNG for GitHub README)
+  // ?bare=<mode> → render only a specific section (for exporting PNG banners for GitHub README)
   (function(){
     const p = new URLSearchParams(location.search);
     const mode = p.get('bare');
     if (!mode) return;
-    const css = document.createElement('style');
-    css.textContent = `
+
+    // map mode -> selector(s) relative to .readme
+    const MODES = {
+      hero:     ['.hero-banner'],
+      compare:  ['.compare-matrix'],
+      loop:     ['.loop'],
+      mandarin: ['.mandarin-spot'],
+      english:  ['.english-spot'],
+      pricing:  ['.pricing'],
+      pillars:  ['.pillars'],
+      tools:    ['.tools-section'],
+    };
+    const sel = MODES[mode];
+    if (!sel) return;
+
+    const baseCSS = `
+      html,body{width:1280px !important}
       body{background:#fff !important;margin:0 !important;padding:0 !important}
-      .ghnav,.repohead,.sidebar,.file-toolbar,.file-row,.readme-toolbar,.card:not(:last-child){display:none !important}
-      main.body{display:block !important;padding:0 !important;max-width:none !important;margin:0 !important}
-      .col-main{width:100% !important;margin:0 !important;padding:0 !important}
-      .card{border:none !important;box-shadow:none !important;margin:0 !important;border-radius:0 !important}
-      .readme{padding:0 !important;max-width:none !important}
-      .readme > *:not(.hero-banner){display:none !important}
-      .hero-banner{margin:0 !important;border-radius:0 !important;padding:40px 56px !important}
-      /* bare mode: hide CTA buttons, move curl into left column */
-      .hero-cta{display:none !important}
-      .hero-banner .hero-sub{margin-bottom:18px !important}
-      .hero-banner .hero-curl{margin-top:0 !important}
+      .ghnav,.repohead,.sidebar,.side,aside.side,.file-toolbar,.file-row,.readme-toolbar,.col-side,footer,.footer-note,.card:not(:last-child){display:none !important}
+      main.body{display:block !important;padding:0 !important;max-width:none !important;margin:0 !important;width:1280px !important}
+      .col-main{width:1280px !important;margin:0 !important;padding:0 !important}
+      .card{border:none !important;box-shadow:none !important;margin:0 !important;border-radius:0 !important;width:1280px !important}
+      .readme{padding:40px 56px !important;max-width:none !important;background:#fff !important;width:1168px !important;box-sizing:content-box !important}
+      /* force horizontal layouts regardless of viewport-media-query quirks */
+      .pricing{grid-template-columns:repeat(3, 1fr) !important}
+      .loop{grid-template-columns:1fr 40px 1fr 40px 1fr !important}
+      .loop .loop-arrow{transform:none !important}
+      .pillars{grid-template-columns:repeat(4, 1fr) !important}
+      .mandarin-spot,.english-spot{grid-template-columns:1.15fr 1fr !important}
+    `;
+    // hide every top-level readme child first, then re-enable the targets
+    const showRules = sel.map(s => `.readme ${s}, .readme ${s} *`).join(', ');
+    const css = document.createElement('style');
+    css.textContent = baseCSS + `
+      .readme > *{display:none !important}
+      ${sel.map(s => `.readme ${s}`).join(', ')}{display:block !important}
     `;
     document.head.appendChild(css);
-    // relocate curl into left column below hero-sub
-    const curl = document.querySelector('.hero-banner .hero-curl');
-    const sub  = document.querySelector('.hero-banner .hero-sub');
-    if (curl && sub && sub.parentNode) {
-      sub.parentNode.appendChild(curl);
+
+    // force grid layout on the TARGET selector only (via inline style)
+    const GRIDS = {
+      '.pricing':      'repeat(3, 1fr)',
+      '.pillars':      'repeat(4, 1fr)',
+      '.loop':         '1fr 40px 1fr 40px 1fr',
+      '.mandarin-spot':'1.15fr 1fr',
+      '.english-spot': '1.15fr 1fr',
+    };
+    sel.forEach(s => {
+      const tpl = GRIDS[s];
+      if (!tpl) return;
+      document.querySelectorAll(s).forEach(el => {
+        el.style.setProperty('display', 'grid', 'important');
+        el.style.setProperty('grid-template-columns', tpl, 'important');
+        el.style.setProperty('gap', '12px', 'important');
+        el.style.setProperty('width', '100%', 'important');
+      });
+    });
+    if (mode === 'loop') {
+      document.querySelectorAll('.loop .loop-arrow').forEach(el => {
+        el.style.setProperty('transform', 'none', 'important');
+      });
+    }
+
+    // hero mode: additionally hide CTA + relocate curl into left col
+    if (mode === 'hero') {
+      const extra = document.createElement('style');
+      extra.textContent = `
+        .readme{padding:0 !important}
+        .hero-banner{margin:0 !important;border-radius:0 !important;padding:40px 56px !important}
+        .hero-cta{display:none !important}
+        .hero-banner .hero-sub{margin-bottom:18px !important}
+        .hero-banner .hero-curl{margin-top:0 !important}
+      `;
+      document.head.appendChild(extra);
+      const curl = document.querySelector('.hero-banner .hero-curl');
+      const sub  = document.querySelector('.hero-banner .hero-sub');
+      if (curl && sub && sub.parentNode) sub.parentNode.appendChild(curl);
     }
   })();
 </script>
