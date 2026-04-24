@@ -1,4 +1,4 @@
-<a href="https://chivoxmcp2.netlify.app/global/demo" title="Open live demo">
+<a href="https://chivoxmcp2.netlify.app/global/demo?from=github_readme_hero_v9" title="Open live demo">
   <img
     src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8"
     srcset="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8 2x"
