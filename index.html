@@ -1312,11 +1312,13 @@
   <img src="https://img.shields.io/badge/discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="discord"/>
 </p>
 
+<div class="stats-block">
 <div class="stats-row">
   <div class="stat"><div class="v">9.2B+</div><div class="k">Evals / year</div></div>
   <div class="stat"><div class="v">185</div><div class="k">Countries</div></div>
   <div class="stat"><div class="v">95%+</div><div class="k">Human agreement</div></div>
   <div class="stat"><div class="v">&lt;200ms</div><div class="k">P99 first token</div></div>
+</div>
 </div>
 
 <blockquote>
@@ -2153,6 +2155,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     // map mode -> selector(s) relative to .readme
     const MODES = {
       hero:     ['.hero-banner'],
+      stats:    ['.stats-block'],
       compare:  ['.compare-matrix'],
       fit:      ['.is-for-you'],
       loop:     ['.loop'],
@@ -2194,6 +2197,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     const PAD = {
       compare:  '8px 10px',
       fit:      '10px 12px',
+      stats:    '8px 10px',
       loop:     '10px 12px',
       pricing:  '8px 10px',
       mandarin: '10px 12px',
@@ -2312,6 +2316,34 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .mandarin-spot h3, .english-spot h3{font-size:28px !important}
         .mandarin-spot p, .english-spot p{font-size:16.5px !important; line-height:1.55 !important}
         .mandarin-spot li, .english-spot li{font-size:16.5px !important; line-height:1.55 !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'stats') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:8px 10px !important}
+        .stats-block{margin:0 !important}
+        .stats-row{
+          display:grid !important;
+          grid-template-columns:repeat(4, 1fr) !important;
+          gap:12px !important;
+          margin:0 !important;
+        }
+        .stats-row .stat{
+          border-radius:14px !important;
+          border:1px solid rgba(27,31,36,0.10) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(250,251,252,0.66)) !important;
+          box-shadow: 0 12px 26px -22px rgba(0,0,0,0.35) !important;
+          padding:18px 14px !important;
+        }
+        :root[data-theme="dark"] .stats-row .stat{
+          border-color: rgba(240,246,252,0.10) !important;
+          background: linear-gradient(180deg, rgba(22,27,34,0.75), rgba(13,17,23,0.55)) !important;
+        }
+        .stats-row .v{font-size:34px !important; font-weight:900 !important; letter-spacing:-0.02em !important}
+        .stats-row .k{font-size:14px !important; opacity:.8 !important; margin-top:6px !important}
       `;
       document.head.appendChild(s);
     }

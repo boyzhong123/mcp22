@@ -1,8 +1,8 @@
-<a href="https://chivoxmcp2.netlify.app/global/demo?from=github_readme_hero_v9" title="Open live demo">
+<a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
   <img
     src="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8"
     srcset="https://raw.githubusercontent.com/boyzhong123/mcp22/main/assets/hero-v8-2x.png?v=8 2x"
-    alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to open the live demo."
+    alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo."
     width="100%"
   />
 </a>
@@ -10,7 +10,7 @@
 <div align="center">
 
 <a href="#-quickstart"><img src="https://img.shields.io/badge/▶_Install_in_30_seconds-1a7f37?style=for-the-badge" alt="Install in 30 seconds"/></a>
-<a href="https://boyzhong123.github.io/mcp22/"><img src="https://img.shields.io/badge/🎬_Live_preview-grey?style=for-the-badge" alt="Live preview"/></a>
+<a href="https://chivoxmcp2.netlify.app/global/demo"><img src="https://img.shields.io/badge/🎬_Live_preview-grey?style=for-the-badge" alt="Live preview"/></a>
 <a href="https://chivoxmcp2.netlify.app/global"><img src="https://img.shields.io/badge/🌐_Website-0969da?style=for-the-badge" alt="Website"/></a>
 
 <br/><br/>
@@ -24,18 +24,9 @@
 
 <br/><br/>
 
-<table>
-  <tr>
-    <td align="center"><b>9.2B+</b><br/><sub>Evals / year</sub></td>
-    <td align="center"><b>185</b><br/><sub>Countries</sub></td>
-    <td align="center"><b>95%+</b><br/><sub>Human agreement</sub></td>
-    <td align="center"><b>&lt; 200ms</b><br/><sub>P99 first token</sub></td>
-  </tr>
-</table>
+<img src="./assets/stats-v1-2x.png" alt="9.2B+ evals/year · 185 countries · 95%+ human agreement · <200ms P99 first token" width="100%"/>
 
 <br/>
-
-🎬 **[Watch the 15s demo →](https://18ks.chivoxapp.com/doc/video20260424.mp4)**
 
 </div>
 
