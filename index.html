@@ -2258,7 +2258,9 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .price-card .plan-name{font-size:14px !important}
         .price-card .price{font-size:44px !important}
         .price-card .sub{font-size:15px !important}
-        .price-card .rows{font-size:16.5px !important}
+        .price-card .rows{font-size:18.5px !important; line-height:1.55 !important}
+        .price-card .rows .k{font-size:15px !important}
+        .price-card .rows .v{font-size:18.5px !important}
       `;
       document.head.appendChild(s);
     }
@@ -2268,9 +2270,9 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
       s.textContent = `
         .readme{padding:10px 12px !important}
         .loop-stage{padding:20px !important}
-        .loop-stage .title{font-size:19px !important}
-        .loop-stage .desc{font-size:16.5px !important}
-        .loop-stage pre{font-size:15.5px !important}
+        .loop-stage .title{font-size:22px !important}
+        .loop-stage .desc{font-size:18.5px !important; line-height:1.55 !important}
+        .loop-stage pre{font-size:17px !important; line-height:1.55 !important}
       `;
       document.head.appendChild(s);
     }
@@ -2295,9 +2297,9 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
         .readme{padding:8px 10px !important}
         .pillars{gap:14px !important}
         .pillar{padding:20px 20px 18px !important}
-        .pillar h4{font-size:17.5px !important}
-        .pillar p{font-size:14.5px !important; line-height:1.45 !important}
-        .pillar .badge{font-size:12px !important}
+        .pillar h4{font-size:20px !important; line-height:1.2 !important}
+        .pillar p{font-size:16px !important; line-height:1.55 !important}
+        .pillar .badge{font-size:13.5px !important}
       `;
       document.head.appendChild(s);
     }

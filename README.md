@@ -263,7 +263,7 @@ Every Chivox MCP call returns a typed JSON payload. Here's a real response for t
 🎤 **Input:** 1-minute learner recording → **Output:** warm feedback + targeted drill, end-to-end in &lt; 3 seconds.
 
 <img
-  src="./assets/loop-v3-2x.png"
+  src="./assets/loop-v4-2x.png"
   alt="Three-stage loop: MCP assessment → LLM feedback → LLM practice"
   width="100%"
 />
@@ -348,7 +348,7 @@ Same engine powering China's national Putonghua exam — aligned to **IELTS · T
 ## 💎 Why developers ship with Chivox MCP
 
 <img
-  src="./assets/pillars-v3-2x.png"
+  src="./assets/pillars-v4-2x.png"
   alt="Four pillars: Beijing-accent 24/7 tutor · Drop-in integration · Data-rich payload for LLMs · Exam-grade English"
   width="100%"
 />
@@ -362,7 +362,7 @@ Plus: **realtime + batch** modes · **TLS 1.2+ · ISO 27001** · on-prem SKUs ·
 Straight-forward pricing. Start free, no credit card. Failed calls are **not** billed.
 
 <img
-  src="./assets/pricing-v3-2x.png"
+  src="./assets/pricing-v4-2x.png"
   alt="Pricing: Free ¥0 · Pro ¥99/mo · Enterprise Custom"
   width="100%"
 />
