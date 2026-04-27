@@ -1,6 +1,7 @@
 'use server';
 
 import nodemailer from 'nodemailer';
+import crypto from 'node:crypto';
 
 /* ─────────────────────────────────────────────────────────────
  * English-only contact submission for /global landing page.
@@ -31,13 +32,25 @@ function getSmtpPass(): string {
 }
 
 function createTransporter() {
+  const host = process.env.SMTP_HOST || 'smtp.qiye.163.com';
+  const port = Number(process.env.SMTP_PORT) || 465;
+  const secure =
+    typeof process.env.SMTP_SECURE === 'string'
+      ? process.env.SMTP_SECURE.trim().toLowerCase() === 'true'
+      : port === 465;
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.qiye.163.com',
-    port: Number(process.env.SMTP_PORT) || 465,
-    secure: true,
+    host,
+    port,
+    secure,
     auth: {
       user: process.env.SMTP_USER || '',
       pass: getSmtpPass(),
+    },
+    connectionTimeout: Number(process.env.SMTP_TIMEOUT_MS) || 10_000,
+    greetingTimeout: Number(process.env.SMTP_TIMEOUT_MS) || 10_000,
+    socketTimeout: Number(process.env.SMTP_TIMEOUT_MS) || 20_000,
+    tls: {
+      servername: host,
     },
   });
 }
@@ -102,6 +115,59 @@ export async function sendGlobalContactEmail(
   }
 
   try {
+    const forwardUrl = (process.env.CONTACT_FORWARD_URL || '').trim();
+    if (forwardUrl) {
+      const secret = (process.env.CONTACT_FORWARD_SECRET || '').trim();
+      if (!secret) {
+        console.error('Global contact: CONTACT_FORWARD_URL is set but CONTACT_FORWARD_SECRET is missing.');
+        return {
+          success: false,
+          error: 'Email service is not configured. Please email sales@chivox.com directly.',
+        };
+      }
+
+      const payload = {
+        company,
+        name,
+        email,
+        useCase,
+        message,
+        source,
+        submittedAt: new Date().toISOString(),
+      };
+      const body = JSON.stringify(payload);
+      const ts = String(Date.now());
+      const sig = crypto.createHmac('sha256', secret).update(`${ts}.${body}`).digest('hex');
+
+      const ctrl = new AbortController();
+      const timeoutMs = Number(process.env.CONTACT_FORWARD_TIMEOUT_MS) || 10_000;
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch(forwardUrl, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-chivox-ts': ts,
+            'x-chivox-signature': sig,
+          },
+          body,
+          signal: ctrl.signal,
+        });
+
+        if (res.ok) {
+          return { success: true };
+        }
+        const text = await res.text().catch(() => '');
+        console.error('Global contact forwarder error:', { status: res.status, body: text.slice(0, 800) });
+        return {
+          success: false,
+          error: 'Couldn’t send right now. Please email sales@chivox.com directly.',
+        };
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
     const smtpUser = getSmtpUser();
     const smtpPass = getSmtpPass();
     if (!smtpUser || !smtpPass) {
@@ -146,7 +212,19 @@ export async function sendGlobalContactEmail(
 
     return { success: true };
   } catch (err) {
-    console.error('Global contact email error:', err);
+    const e = err as unknown as { code?: unknown; message?: unknown; name?: unknown; stack?: unknown };
+    console.error('Global contact email error:', {
+      name: e?.name,
+      code: e?.code,
+      message: e?.message,
+      stack: e?.stack,
+      host: process.env.SMTP_HOST || 'smtp.qiye.163.com',
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure:
+        typeof process.env.SMTP_SECURE === 'string'
+          ? process.env.SMTP_SECURE.trim().toLowerCase() === 'true'
+          : (Number(process.env.SMTP_PORT) || 465) === 465,
+    });
     return {
       success: false,
       error: 'Couldn’t send right now. Please email sales@chivox.com directly.',

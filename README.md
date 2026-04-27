@@ -15,7 +15,7 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/release-v1.0.2-111827?style=flat-square" alt="release"/>
+<img src="https://img.shields.io/badge/release-v1.0.3-111827?style=flat-square" alt="release"/>
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
 <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>
@@ -244,7 +244,62 @@ Every Chivox MCP call returns a typed JSON payload. Here's a real response for t
 }
 ```
 
-> **Why this matters** — your LLM doesn't need to know signal processing. The JSON *names* the problem (`dp_type: "mispron"`, `stress.score: 45`) so a vanilla `chat.completion` can explain *why* the learner got it wrong and generate a targeted drill.
+---
+
+## 💬 …and here's what your LLM does with it
+
+Pipe that JSON straight into any chat model with a one-line system prompt — *"You are a warm pronunciation coach. Diagnose, then drill."* — and you get a real lesson back. **No fine-tuning. No audio understanding. Just `chat.completion`.**
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**🎤 Learner says**
+
+> *"I want to record a record."*
+> &nbsp;
+> ⏱ 1.8 s · 🎚 SNR 22 dB
+
+**📊 Chivox MCP returns** *(1 call, ~180 ms)*
+
+```json
+{
+  "overall": 72,
+  "details": [{
+    "word": "record", "score": 58,
+    "dp_type": "mispron",
+    "stress": { "ref": 2, "score": 45 },
+    "phonemes": [
+      { "ipa": "ɹ", "score": 45,
+        "dp_type": "mispron" }
+    ]
+  }]
+}
+```
+
+</td>
+<td width="50%" valign="top">
+
+**🧠 GPT-4o / Claude / Qwen replies**
+
+> 🎯 **Score 72** — nice rhythm, but *record* tripped you up.
+>
+> **What happened**
+> - Your **`ɹ`** scored 45 — tongue touched the roof (sounds like an *L*). Keep it floating.
+> - You said **`RE-cord`** (the noun). The verb wants stress on syllable 2: **`re-CORD`**.
+>
+> **🔁 30-second drill** — say each 3×:
+> 1. *I want to re-CORD a RE-cord.*
+> 2. *I rarely read raw research.* (`ɹ` loaded)
+> 3. *Re-CORD, not RE-cord.* (stress flip)
+>
+> Want me to listen to your next take? 🎙
+
+</td>
+</tr>
+</table>
+
+> **Why this works** — the LLM never "heard" the audio. The JSON *names* the problem in fields it already understands (`dp_type: "mispron"`, `stress.score: 45`, `ipa: "ɹ"`), so a vanilla `chat.completion` can diagnose like a human teacher. **This is the unlock.**
 
 ---
 
