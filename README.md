@@ -15,7 +15,7 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/release-v1.0.6-111827?style=flat-square" alt="release"/>
+<img src="https://img.shields.io/badge/release-v1.0.7-111827?style=flat-square" alt="release"/>
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
 <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>
@@ -73,24 +73,6 @@ async def main():
             print(out)
 
 asyncio.run(main())
-```
-
-</details>
-
-<details>
-<summary><b>cURL</b> &nbsp;<sub>(instant try · no signup)</sub></summary>
-
-```bash
-# Hello world — get a score in one call, no API key
-curl https://mcp.cloud.chivox.com/try \
-  -H "Content-Type: application/json" \
-  -d '{"ref_text":"你好","audio_url":"https://demo.chivox.com/nihao.mp3"}'
-```
-
-Example response:
-
-```json
-{ "overall": 82, "tones": [3, 3], "verdict": "native-like" }
 ```
 
 </details>
