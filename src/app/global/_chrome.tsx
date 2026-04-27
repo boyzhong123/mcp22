@@ -25,9 +25,12 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  GaugeCircle,
   LayoutDashboard,
   Loader2,
   Mail,
+  MessagesSquare,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -80,21 +83,33 @@ export const RESOURCE_ITEMS: readonly {
   href: string;
   label: string;
   summary: string;
+  eyebrow: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  accent: string;
 }[] = [
   {
     href: '/reasoning',
     label: 'Reasoning engine',
     summary: 'What the JSON payload actually looks like — and how an LLM reasons over it.',
+    eyebrow: 'Day-1',
+    icon: Sparkles,
+    accent: 'from-emerald-500/15 to-emerald-500/0 text-emerald-700',
   },
   {
     href: '/runtime',
     label: 'Runtime',
     summary: 'Keys, budgets, alerts, observability, privacy, scale — the day-2 stuff.',
+    eyebrow: 'Day-2',
+    icon: GaugeCircle,
+    accent: 'from-amber-500/15 to-amber-500/0 text-amber-700',
   },
   {
     href: '/faq',
     label: 'FAQ',
     summary: 'Integration speed, languages, streaming, accuracy, pricing.',
+    eyebrow: 'Quick answers',
+    icon: MessagesSquare,
+    accent: 'from-sky-500/15 to-sky-500/0 text-sky-700',
   },
 ] as const;
 
@@ -433,39 +448,111 @@ export function TopNav() {
                 {resourcesOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 top-[calc(100%+10px)] w-[340px] rounded-2xl border border-zinc-900/[0.08] bg-white/90 backdrop-blur-xl p-2 shadow-[0_24px_60px_-20px_rgba(24,24,27,0.28),0_8px_20px_-12px_rgba(24,24,27,0.12)]"
+                    className="resources-pop absolute right-0 top-[calc(100%+12px)] w-[360px] origin-top-right overflow-hidden rounded-2xl border border-emerald-500/[0.16]"
+                    style={{
+                      background:
+                        'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(251,246,233,0.92) 100%)',
+                      backdropFilter: 'blur(28px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+                      boxShadow:
+                        'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 0 0 1px rgba(255,255,255,0.5), 0 28px 60px -22px rgba(16,52,33,0.32), 0 8px 22px -12px rgba(16,185,129,0.22)',
+                    }}
                   >
-                    {RESOURCE_ITEMS.map((r) => {
-                      const isOn = pathname.startsWith(r.href);
-                      return (
-                        <Link
-                          key={r.href}
-                          href={r.href}
-                          role="menuitem"
-                          onClick={() => setResourcesOpen(false)}
-                          className={cn(
-                            'block rounded-xl px-3 py-2.5 transition-colors',
-                            isOn
-                              ? 'bg-emerald-500/[0.08] ring-1 ring-emerald-500/25'
-                              : 'hover:bg-zinc-900/[0.04]',
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[13.5px] font-semibold text-zinc-900 tracking-[-0.005em]">
-                              {r.label}
-                            </span>
-                            {isOn ? (
-                              <span className="text-[10px] font-mono text-emerald-700">● current</span>
-                            ) : (
-                              <ArrowUpRight className="h-3.5 w-3.5 text-zinc-400" />
+                    {/* notch pointing to the trigger */}
+                    <span
+                      aria-hidden
+                      className="absolute -top-[6px] right-7 h-3 w-3 rotate-45 border-l border-t border-emerald-500/[0.18]"
+                      style={{
+                        background:
+                          'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(251,246,233,0.95))',
+                      }}
+                    />
+
+                    {/* header eyebrow */}
+                    <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+                      <span className="text-[10px] font-mono tracking-[0.22em] uppercase text-emerald-700/85">
+                        /resources
+                      </span>
+                      <span className="text-[10px] font-mono tracking-[0.14em] uppercase text-zinc-400">
+                        deep dives
+                      </span>
+                    </div>
+
+                    <div className="px-2 pb-2">
+                      {RESOURCE_ITEMS.map((r, i) => {
+                        const isOn = pathname.startsWith(r.href);
+                        const Icon = r.icon;
+                        return (
+                          <Link
+                            key={r.href}
+                            href={r.href}
+                            role="menuitem"
+                            onClick={() => setResourcesOpen(false)}
+                            style={{ animationDelay: `${60 + i * 55}ms` }}
+                            className={cn(
+                              'resources-row group relative flex items-start gap-3 rounded-xl px-2.5 py-2.5',
+                              'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+                              isOn
+                                ? 'bg-emerald-500/[0.09] ring-1 ring-emerald-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'
+                                : 'hover:bg-white/70 hover:ring-1 hover:ring-emerald-500/15 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_16px_-10px_rgba(16,185,129,0.30)] hover:-translate-y-[1px]',
                             )}
-                          </div>
-                          <p className="mt-0.5 text-[12px] text-muted-foreground leading-snug">
-                            {r.summary}
-                          </p>
-                        </Link>
-                      );
-                    })}
+                          >
+                            <span
+                              aria-hidden
+                              className={cn(
+                                'mt-[2px] inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                                'bg-gradient-to-br ring-1 ring-inset ring-zinc-900/[0.06]',
+                                'shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]',
+                                'transition-transform duration-300 group-hover:scale-[1.04]',
+                                r.accent,
+                              )}
+                            >
+                              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="text-[14px] font-semibold text-zinc-900 tracking-[-0.005em]">
+                                  {r.label}
+                                </span>
+                                {isOn ? (
+                                  <span className="text-[10px] font-mono text-emerald-700">● current</span>
+                                ) : (
+                                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 group-hover:text-emerald-700/80 transition-colors">
+                                    {r.eyebrow}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+                                {r.summary}
+                              </p>
+                            </div>
+
+                            <ArrowUpRight
+                              className={cn(
+                                'absolute right-2.5 bottom-2.5 h-3.5 w-3.5 text-zinc-400',
+                                'transition-all duration-300',
+                                'group-hover:text-emerald-700 group-hover:translate-x-[2px] group-hover:-translate-y-[2px]',
+                                isOn && 'opacity-0',
+                              )}
+                            />
+                          </Link>
+                        );
+                      })}
+                    </div>
+
+                    {/* footer */}
+                    <Link
+                      href="/docs"
+                      onClick={() => setResourcesOpen(false)}
+                      className="group flex items-center justify-between gap-2 border-t border-emerald-500/[0.12] px-4 py-2.5 text-[12px] font-medium text-zinc-700 hover:text-emerald-800 hover:bg-emerald-500/[0.05] transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <BookOpen className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100" />
+                        Browse the full developer docs
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 opacity-60 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:opacity-100" />
+                    </Link>
                   </div>
                 )}
               </div>

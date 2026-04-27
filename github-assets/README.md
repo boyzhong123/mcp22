@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/release-v1.0.5-111827?style=flat-square" />
+  <img src="https://img.shields.io/badge/release-v1.0.6-111827?style=flat-square" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-111827?style=flat-square" />
   <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" />
   <img src="https://img.shields.io/badge/tools-16_tools-7C3AED?style=flat-square" />
@@ -234,5 +234,5 @@ response = client.chat.completions.create(
 
 <p align="center">
   由 <b>驰声科技 Chivox</b> 出品 · Apache-2.0 License<br>
-  <a href="https://chivoxmcp2.netlify.app"><b>chivoxmcp2.netlify.app</b></a> · v1.0.5
+  <a href="https://chivoxmcp2.netlify.app"><b>chivoxmcp2.netlify.app</b></a> · v1.0.6
 </p>
