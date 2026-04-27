@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Video Cover Generator</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0a0a0f 0%, #09090b 100%);
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+}
+
+.screenshots {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.screenshot {
+  width: min(420px, 42vw);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.screenshot img {
+  width: 100%;
+  display: block;
+}
+
+.play-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 40px rgba(124, 58, 237, 0.5);
+}
+
+.play-btn::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 24px solid white;
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  margin-left: 6px;
+}
+
+.logo {
+  font-size: clamp(36px, 5vw, 48px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.logo .chivox {
+  color: #fff;
+}
+
+.logo .mcp {
+  background: linear-gradient(90deg, #6366f1, #0ea5e9, #10b981);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tagline {
+  font-size: clamp(14px, 1.8vw, 18px);
+  color: rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.tagline .zh {
+  color: rgba(255,255,255,0.5);
+}
+
+.tagline .dot {
+  color: rgba(255,255,255,0.3);
+}
+</style>
+</head>
+<body>
+  <div class="screenshots">
+    <div class="screenshot">
+      <img src="screenshots/home.png" alt="Home">
+    </div>
+    <div class="screenshot">
+      <img src="screenshots/docs.png" alt="Docs">
+    </div>
+    <div class="play-btn"></div>
+  </div>
+  
+  <div class="logo">
+    <span class="chivox">Chivox</span>
+    <span class="mcp">MCP</span>
+  </div>
+  
+  <div class="tagline">
+    <span class="zh">让语音评测被大模型读懂</span>
+    <span class="dot">·</span>
+    <span>Speech Assessment, Readable to LLMs</span>
+  </div>
+</body>
+</html>

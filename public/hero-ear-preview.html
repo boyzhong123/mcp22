@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HeroEarArt — animated two-act preview</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0; padding: 48px 32px 80px;
+      font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: #fafafa; color: #18181b;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; }
+    p.lead { color: #52525b; font-size: 14px; margin: 0 0 24px; line-height: 1.55; }
+    .card {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 18px;
+      padding: 14px 14px 18px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .meta { display: flex; gap: 10px; align-items: baseline; margin: 12px 2px 0; }
+    .meta .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font: 600 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 4px 9px; border-radius: 999px;
+      background: rgba(16,185,129,0.08); color: #047857;
+      border: 1px solid rgba(16,185,129,0.22);
+    }
+    .meta .hint { font-size: 12.5px; color: #71717a; }
+    .svg-frame {
+      background: radial-gradient(ellipse 80% 70% at 50% 45%, #ecfdf5 0%, #fff 70%);
+      border-radius: 14px; overflow: hidden;
+    }
+    svg { display: block; width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>HeroEarArt · animated two-act preview</h1>
+    <p class="lead">
+      Act&nbsp;1 (0&ndash;5.5&thinsp;s) &mdash; Mandarin pitch-contour tracing, <code>T3 + T3 → T2 + T3</code> sandhi rule.<br/>
+      Act&nbsp;2 (5.5&ndash;10.5&thinsp;s) &mdash; English <em>think</em> gets phoneme-scored with 4 distinct outcomes:
+      <strong style="color:#be123c;">/θ/ mispronounced</strong> (heard as <code>/s/</code>, rose bar 35%),
+      <strong style="color:#047857;">/ɪ/ good</strong> (emerald 88%, ✓),
+      <strong style="color:#b45309;">/ŋ/ weak</strong> (amber 58%),
+      <strong style="color:#be123c;">/k/ dropped</strong> (dashed empty slot). Score badge shows
+      <strong style="color:#be123c;">58</strong>, caption reads <strong>3 ISSUES · DETECTED</strong>.
+      Then three green correction arrows animate in, bars grow/recolor, badge morphs to
+      <strong style="color:#047857;">92</strong>, caption flips to <strong>ALL CORRECTED</strong>.
+    </p>
+
+    <div class="card">
+      <div class="svg-frame">
+
+<!-- ============================================================== -->
+<!-- Animated HeroEarArt — two-act composition                      -->
+<!-- ============================================================== -->
+<svg viewBox="0 0 420 500" role="img" aria-label="Mandarin pitch contour and English phoneme scoring">
+  <defs>
+    <radialGradient id="hh-halo" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#d1fae5" stop-opacity="0.9" />
+      <stop offset="55%" stop-color="#ecfdf5" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="hh-hanzi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#047857" stop-opacity="0.1" />
+    </linearGradient>
+    <linearGradient id="hh-think" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.14" />
+      <stop offset="100%" stop-color="#047857" stop-opacity="0.08" />
+    </linearGradient>
+    <linearGradient id="hh-curve" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="55%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="hh-bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="hh-bar-bad" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#fb7185" />
+      <stop offset="100%" stop-color="#e11d48" />
+    </linearGradient>
+    <filter id="hh-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.2" result="b" />
+      <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+
+    <style>
+      /* ── Two-act crossfade (11s master cycle) ── */
+      .cn-scene { animation: cnFade 11s ease-in-out infinite both; }
+      .en-scene { animation: enFade 11s ease-in-out infinite both; }
+      @keyframes cnFade {
+        0%        { opacity: 0; }
+        4%, 45%   { opacity: 1; }
+        52%, 95%  { opacity: 0; }
+        100%      { opacity: 0; }
+      }
+      @keyframes enFade {
+        0%, 48%   { opacity: 0; }
+        55%, 90%  { opacity: 1; }
+        97%, 100% { opacity: 0; }
+      }
+
+      /* ── CN tracers (stroke-dash draw) ── */
+      .cn-trace { stroke-dasharray: 100 100; stroke-dashoffset: 100; pathLength: 100; }
+      .cn-trace-1 { animation: cnTrace1 11s ease-in-out infinite both; }
+      .cn-trace-2 { animation: cnTrace2 11s ease-in-out infinite both; }
+      @keyframes cnTrace1 {
+        0%, 6%   { stroke-dashoffset: 100; }
+        25%      { stroke-dashoffset: 0; }
+        48%      { stroke-dashoffset: 0; }
+        /* Reset while the scene is invisible so next loop re-draws */
+        52%, 100%{ stroke-dashoffset: 100; }
+      }
+      @keyframes cnTrace2 {
+        0%, 26%  { stroke-dashoffset: 100; }
+        45%      { stroke-dashoffset: 0; }
+        48%      { stroke-dashoffset: 0; }
+        52%, 100%{ stroke-dashoffset: 100; }
+      }
+
+      /* CN dip markers pulse */
+      .cn-pulse { transform-origin: center; transform-box: fill-box; }
+      .cn-pulse-1 { animation: pulse 11s ease-in-out infinite; }
+      .cn-pulse-2 { animation: pulse 11s ease-in-out infinite; animation-delay: 0.6s; }
+      @keyframes pulse {
+        0%, 22% { r: 3.6px; }
+        25%     { r: 5.0px; }
+        32%     { r: 3.6px; }
+        38%     { r: 5.0px; }
+        45%, 100% { r: 3.6px; }
+      }
+
+      /* ── EN chips fade-in (staggered) ── */
+      .en-chip {
+        opacity: 0;
+        transform: translateY(6px);
+        transform-origin: center;
+        transform-box: fill-box;
+      }
+      .en-chip-0 { animation: chipIn 11s ease-in-out infinite both; animation-delay: 0s;   }
+      .en-chip-1 { animation: chipIn 11s ease-in-out infinite both; animation-delay: 0.1s; }
+      .en-chip-2 { animation: chipIn 11s ease-in-out infinite both; animation-delay: 0.2s; }
+      .en-chip-3 { animation: chipIn 11s ease-in-out infinite both; animation-delay: 0.3s; }
+      @keyframes chipIn {
+        0%, 53%   { opacity: 0; transform: translateY(6px); }
+        58%       { opacity: 1; transform: translateY(0); }
+        94%       { opacity: 1; transform: translateY(0); }
+        97%, 100% { opacity: 0; transform: translateY(-3px); }
+      }
+
+      /* ── Chip state crossfade (initial problem → corrected) ── */
+      .en-state-init { animation: stateInit 11s ease-in-out infinite both; }
+      .en-state-fix  { animation: stateFix  11s ease-in-out infinite both; }
+      @keyframes stateInit {
+        0%, 56%  { opacity: 0; }
+        60%, 77% { opacity: 1; }
+        82%,100% { opacity: 0; }
+      }
+      @keyframes stateFix {
+        0%, 80%  { opacity: 0; }
+        84%, 94% { opacity: 1; }
+        97%,100% { opacity: 0; }
+      }
+
+      /* ── Score bars: transform-origin bottom, grow upward ── */
+      .en-bar {
+        transform: scaleY(0);
+        transform-origin: 100% 100%;
+        transform-box: fill-box;
+      }
+      /* /θ/ — heard as /s/: short rose bar, then replaced by tall emerald bar */
+      .en-bar-theta-init { animation: barThetaInit 11s ease-in-out infinite both; }
+      .en-bar-theta-fix  { animation: barThetaFix  11s ease-in-out infinite both; }
+      @keyframes barThetaInit {
+        0%, 58%  { transform: scaleY(0);    opacity: 1; }
+        64%      { transform: scaleY(0.35); opacity: 1; }
+        77%      { transform: scaleY(0.35); opacity: 1; }
+        81%      { transform: scaleY(0.35); opacity: 0; }
+        100%     { transform: scaleY(0);    opacity: 0; }
+      }
+      @keyframes barThetaFix {
+        0%, 80%  { transform: scaleY(0);    opacity: 0; }
+        82%      { transform: scaleY(0);    opacity: 1; }
+        86%      { transform: scaleY(0.95); opacity: 1; }
+        94%      { transform: scaleY(0.95); opacity: 1; }
+        97%,100% { transform: scaleY(0);    opacity: 0; }
+      }
+      /* /ɪ/ — good from start, holds high */
+      .en-bar-i { animation: barI 11s ease-in-out infinite both; }
+      @keyframes barI {
+        0%, 60%  { transform: scaleY(0); }
+        67%      { transform: scaleY(0.88); }
+        94%      { transform: scaleY(0.88); }
+        97%,100% { transform: scaleY(0); }
+      }
+      /* /ŋ/ — weak amber, then upgraded to emerald */
+      .en-bar-ng-init { animation: barNgInit 11s ease-in-out infinite both; }
+      .en-bar-ng-fix  { animation: barNgFix  11s ease-in-out infinite both; }
+      @keyframes barNgInit {
+        0%, 59%  { transform: scaleY(0);    opacity: 1; }
+        66%      { transform: scaleY(0.58); opacity: 1; }
+        77%      { transform: scaleY(0.58); opacity: 1; }
+        81%      { transform: scaleY(0.58); opacity: 0; }
+        100%     { transform: scaleY(0);    opacity: 0; }
+      }
+      @keyframes barNgFix {
+        0%, 80%  { transform: scaleY(0);    opacity: 0; }
+        82%      { transform: scaleY(0);    opacity: 1; }
+        86%      { transform: scaleY(0.82); opacity: 1; }
+        94%      { transform: scaleY(0.82); opacity: 1; }
+        97%,100% { transform: scaleY(0);    opacity: 0; }
+      }
+      /* /k/ — dropped: tiny dashed ghost slot → then full emerald */
+      .en-bar-k-ghost { animation: barKGhost 11s ease-in-out infinite both; }
+      .en-bar-k-fix   { animation: barKFix   11s ease-in-out infinite both; }
+      @keyframes barKGhost {
+        0%, 60%  { opacity: 0; }
+        66%, 77% { opacity: 1; }
+        81%,100% { opacity: 0; }
+      }
+      @keyframes barKFix {
+        0%, 80%  { transform: scaleY(0);    opacity: 0; }
+        82%      { transform: scaleY(0);    opacity: 1; }
+        86%      { transform: scaleY(0.80); opacity: 1; }
+        94%      { transform: scaleY(0.80); opacity: 1; }
+        97%,100% { transform: scaleY(0);    opacity: 0; }
+      }
+
+      /* Per-phoneme diagnostic labels (HEARD /s/ · WEAK · DROPPED) */
+      .en-label-bad { animation: ghostLabel 11s ease-in-out infinite both; }
+      @keyframes ghostLabel {
+        0%, 62%  { opacity: 0; transform: translateY(3px); }
+        68%, 77% { opacity: 1; transform: translateY(0); }
+        81%,100% { opacity: 0; transform: translateY(-2px); }
+      }
+
+      /* Correction arrows — 3 arrows animating in sequence */
+      .en-arrow {
+        stroke-dasharray: 30 30;
+        stroke-dashoffset: 30;
+        animation: arrowDraw 11s ease-in-out infinite both;
+      }
+      .en-arrow-1 { animation-delay: 0s;    }
+      .en-arrow-2 { animation-delay: 0.12s; }
+      .en-arrow-3 { animation-delay: 0.24s; }
+      @keyframes arrowDraw {
+        0%, 78%  { opacity: 0; stroke-dashoffset: 30; }
+        82%      { opacity: 1; stroke-dashoffset: 0;  }
+        92%      { opacity: 1; stroke-dashoffset: 0;  }
+        96%,100% { opacity: 0; }
+      }
+
+      /* Score badge morph 58 → 92 */
+      .en-score-bad  { animation: sBad 11s linear infinite both; }
+      .en-score-good { animation: sGood 11s linear infinite both; }
+      @keyframes sBad  { 0%,62% {opacity:0;} 68%,77% {opacity:1;} 81%,100% {opacity:0;} }
+      @keyframes sGood { 0%,82% {opacity:0;} 86%,94% {opacity:1;} 97%,100% {opacity:0;} }
+
+      /* Bottom caption swap (3 issues detected → all corrected) */
+      .en-cap-bad  { animation: capBad  11s ease-in-out infinite both; }
+      .en-cap-good { animation: capGood 11s ease-in-out infinite both; }
+      @keyframes capBad  { 0%,60% {opacity:0;} 66%,78% {opacity:1;} 82%,100% {opacity:0;} }
+      @keyframes capGood { 0%,82% {opacity:0;} 86%,94% {opacity:1;} 97%,100% {opacity:0;} }
+
+      @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; }
+        .cn-scene { opacity: 1; }
+        .en-scene { opacity: 0; }
+        .cn-trace { stroke-dashoffset: 0 !important; }
+      }
+    </style>
+  </defs>
+
+  <!-- Shared backdrop -->
+  <ellipse cx="210" cy="240" rx="200" ry="210" fill="url(#hh-halo)"/>
+  <!-- 5-line pitch grid (shared between acts) -->
+  <g opacity="0.7">
+    <line x1="50" x2="370" y1="120" y2="120" stroke="#a7f3d0" stroke-width="0.6"/>
+    <line x1="50" x2="370" y1="160" y2="160" stroke="#a7f3d0" stroke-width="0.6"/>
+    <line x1="50" x2="370" y1="200" y2="200" stroke="#10b981" stroke-opacity="0.45" stroke-width="0.8" stroke-dasharray="3 3"/>
+    <line x1="50" x2="370" y1="240" y2="240" stroke="#a7f3d0" stroke-width="0.6"/>
+    <line x1="50" x2="370" y1="280" y2="280" stroke="#a7f3d0" stroke-width="0.6"/>
+  </g>
+  <g opacity="0.55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#047857">
+    <text x="38" y="123" text-anchor="end">5</text>
+    <text x="38" y="163" text-anchor="end">4</text>
+    <text x="38" y="203" text-anchor="end">3</text>
+    <text x="38" y="243" text-anchor="end">2</text>
+    <text x="38" y="283" text-anchor="end">1</text>
+  </g>
+
+  <!-- ░░░░░░░░░░░░░░░  CN SCENE  ░░░░░░░░░░░░░░░ -->
+  <g class="cn-scene">
+    <!-- hanzi watermark -->
+    <text x="210" y="345" text-anchor="middle" font-size="220" font-weight="700" fill="url(#hh-hanzi)"
+          style='font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",sans-serif; letter-spacing:0.02em;'>你好</text>
+
+    <!-- ghost dashed ideal curves -->
+    <path d="M 70 200 C 95 230, 120 278, 135 280 S 165 200, 180 160"
+          fill="none" stroke="#6ee7b7" stroke-width="2" stroke-dasharray="3 4"
+          stroke-linecap="round" opacity="0.55"/>
+    <path d="M 240 200 C 265 230, 290 278, 305 280 S 335 200, 350 160"
+          fill="none" stroke="#6ee7b7" stroke-width="2" stroke-dasharray="3 4"
+          stroke-linecap="round" opacity="0.55"/>
+
+    <!-- animated tracers -->
+    <g filter="url(#hh-glow)">
+      <path class="cn-trace cn-trace-1"
+            d="M 70 200 C 95 230, 120 278, 135 280 S 165 200, 180 160"
+            fill="none" stroke="url(#hh-curve)" stroke-width="3.4"
+            stroke-linecap="round" stroke-linejoin="round" pathLength="100"/>
+      <path class="cn-trace cn-trace-2"
+            d="M 240 200 C 265 230, 290 278, 305 280 S 335 200, 350 160"
+            fill="none" stroke="url(#hh-curve)" stroke-width="3.4"
+            stroke-linecap="round" stroke-linejoin="round" pathLength="100"/>
+    </g>
+
+    <!-- dip markers -->
+    <g>
+      <circle cx="70" cy="200" r="3.2" fill="#059669"/>
+      <circle class="cn-pulse cn-pulse-1" cx="135" cy="280" r="4" fill="#ffffff" stroke="#059669" stroke-width="2"/>
+      <circle cx="180" cy="160" r="3.2" fill="#059669"/>
+      <circle cx="240" cy="200" r="3.2" fill="#059669"/>
+      <circle class="cn-pulse cn-pulse-2" cx="305" cy="280" r="4" fill="#ffffff" stroke="#059669" stroke-width="2"/>
+      <circle cx="350" cy="160" r="3.2" fill="#059669"/>
+    </g>
+
+    <!-- tone tags -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10">
+      <g>
+        <rect x="105" y="92" width="54" height="20" rx="10" fill="#ffffff" stroke="#10b981" stroke-opacity="0.35"/>
+        <text x="132" y="106" text-anchor="middle" fill="#047857" font-weight="600">T3 ✓</text>
+      </g>
+      <g>
+        <rect x="275" y="92" width="54" height="20" rx="10" fill="#ffffff" stroke="#10b981" stroke-opacity="0.35"/>
+        <text x="302" y="106" text-anchor="middle" fill="#047857" font-weight="600">T3 ✓</text>
+      </g>
+    </g>
+
+    <!-- pinyin -->
+    <text x="125" y="315" text-anchor="middle" font-size="28" fill="#065f46"
+          style='font-family:Georgia,"Iowan Old Style",serif;font-style:italic;font-weight:500;letter-spacing:0.01em;'>nǐ</text>
+    <text x="295" y="315" text-anchor="middle" font-size="28" fill="#065f46"
+          style='font-family:Georgia,"Iowan Old Style",serif;font-style:italic;font-weight:500;letter-spacing:0.01em;'>hǎo</text>
+
+    <!-- bottom: tone-sandhi rule (Variant A) -->
+    <line x1="70" x2="350" y1="360" y2="360" stroke="#10b981" stroke-opacity="0.25" stroke-dasharray="2 3"/>
+    <text x="210" y="390" text-anchor="middle" font-size="15" font-weight="600" fill="#065f46"
+          font-family="ui-monospace, SFMono-Regular, Menlo, monospace" letter-spacing="0.06em">
+      T3 + T3 &#8594; T2 + T3
+    </text>
+    <text x="210" y="409" text-anchor="middle" font-size="10" fill="#047857" opacity="0.7"
+          font-family="ui-monospace, SFMono-Regular, Menlo, monospace" letter-spacing="0.14em">
+      TONE SANDHI · DETECTED
+    </text>
+
+    <!-- teacher red-pen score badge -->
+    <g transform="translate(352 70)">
+      <circle r="22" fill="#ffffff" stroke="#f43f5e" stroke-opacity="0.55" stroke-width="1.2"/>
+      <text text-anchor="middle" y="-3" font-size="9" fill="#be123c"
+            font-family="ui-monospace, SFMono-Regular, Menlo, monospace" letter-spacing="0.1em">SCORE</text>
+      <text text-anchor="middle" y="13" font-size="16" font-weight="700" fill="#be123c"
+            style='font-family:Georgia,"Iowan Old Style",serif;'>92</text>
+    </g>
+  </g>
+
+  <!-- ░░░░░░░░░░░░░░░  EN SCENE — diagnosis + correction  ░░░░░░░░░░░░░░░ -->
+  <g class="en-scene">
+    <!-- "think" watermark -->
+    <text x="210" y="330" text-anchor="middle" font-size="180" font-weight="500" fill="url(#hh-think)"
+          style='font-family:Georgia,"Iowan Old Style",serif;font-style:italic;letter-spacing:-0.015em;'>think</text>
+
+    <!-- top strip: PHONEME · ACCURACY tags -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10">
+      <rect x="70" y="56" width="62" height="20" rx="10" fill="#ffffff" stroke="#10b981" stroke-opacity="0.28"/>
+      <text x="101" y="70" text-anchor="middle" fill="#047857" font-weight="600">PHONEME</text>
+      <rect x="240" y="56" width="68" height="20" rx="10" fill="#ffffff" stroke="#10b981" stroke-opacity="0.28"/>
+      <text x="274" y="70" text-anchor="middle" fill="#047857" font-weight="600">ACCURACY</text>
+    </g>
+
+    <!-- ─────── Score bars (grow from baseline y=280) ─────── -->
+    <!-- /θ/ slot — initial rose (wrong) + fix emerald -->
+    <rect class="en-bar en-bar-theta-init" x="82"  y="120" width="24" height="160" rx="3" fill="url(#hh-bar-bad)"/>
+    <rect class="en-bar en-bar-theta-fix"  x="82"  y="120" width="24" height="160" rx="3" fill="url(#hh-bar)"/>
+    <!-- /ɪ/ slot — always emerald -->
+    <rect class="en-bar en-bar-i"          x="162" y="120" width="24" height="160" rx="3" fill="url(#hh-bar)"/>
+    <!-- /ŋ/ slot — initial amber + fix emerald -->
+    <rect class="en-bar en-bar-ng-init"    x="242" y="120" width="24" height="160" rx="3" fill="#f59e0b"/>
+    <rect class="en-bar en-bar-ng-fix"     x="242" y="120" width="24" height="160" rx="3" fill="url(#hh-bar)"/>
+    <!-- /k/ slot — DROPPED: dashed empty slot ghost + fix emerald -->
+    <g class="en-bar-k-ghost">
+      <rect x="322" y="120" width="24" height="160" rx="3"
+            fill="#fff1f2" fill-opacity="0.4" stroke="#f43f5e" stroke-opacity="0.55"
+            stroke-width="1.2" stroke-dasharray="3 3"/>
+      <!-- tiny "0" indicator at bottom -->
+      <line x1="322" x2="346" y1="278" y2="278" stroke="#f43f5e" stroke-width="2"/>
+    </g>
+    <rect class="en-bar en-bar-k-fix"      x="322" y="120" width="24" height="160" rx="3" fill="url(#hh-bar)"/>
+
+    <!-- Per-phoneme diagnostic labels (fade in during diagnosis, out at correction) -->
+    <g class="en-label-bad" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700">
+      <!-- /θ/: HEARD /s/ -->
+      <text x="94"  y="105" text-anchor="middle" font-size="9"  fill="#be123c" letter-spacing="0.14em">HEARD</text>
+      <text x="94"  y="120" text-anchor="middle" font-size="13" fill="#be123c"
+            style='font-family:Georgia,"Iowan Old Style",serif;'>/s/</text>
+      <!-- /ŋ/: WEAK -->
+      <text x="254" y="162" text-anchor="middle" font-size="9"  fill="#b45309" letter-spacing="0.18em">WEAK</text>
+      <!-- /k/: DROPPED -->
+      <text x="334" y="105" text-anchor="middle" font-size="9"  fill="#be123c" letter-spacing="0.16em">DROPPED</text>
+      <text x="334" y="120" text-anchor="middle" font-size="13" fill="#be123c"
+            style='font-family:Georgia,"Iowan Old Style",serif;'>—</text>
+    </g>
+
+    <!-- ─────── Phoneme chips (two overlapping states each) ─────── -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600">
+      <!-- /θ/ chip: rose (/s/ heard) → emerald (/θ/ fixed) -->
+      <g class="en-chip en-chip-0" transform="translate(94 298)">
+        <g class="en-state-init">
+          <rect x="-22" y="0" width="44" height="22" rx="11" fill="#fff1f2" stroke="#f43f5e" stroke-opacity="0.55"/>
+          <text x="0" y="15" text-anchor="middle" fill="#be123c">/s/</text>
+        </g>
+        <g class="en-state-fix">
+          <rect x="-22" y="0" width="44" height="22" rx="11" fill="#ecfdf5" stroke="#10b981" stroke-opacity="0.6"/>
+          <text x="0" y="15" text-anchor="middle" fill="#047857">/θ/</text>
+        </g>
+      </g>
+      <!-- /ɪ/ chip: always emerald with a tiny tick -->
+      <g class="en-chip en-chip-1" transform="translate(174 298)">
+        <rect x="-22" y="0" width="44" height="22" rx="11" fill="#ecfdf5" stroke="#10b981" stroke-opacity="0.55"/>
+        <text x="-3" y="15" text-anchor="middle" fill="#047857">/ɪ/</text>
+        <text x="14" y="15" text-anchor="middle" fill="#10b981" font-size="11">✓</text>
+      </g>
+      <!-- /ŋ/ chip: amber (weak) → emerald (fixed) -->
+      <g class="en-chip en-chip-2" transform="translate(254 298)">
+        <g class="en-state-init">
+          <rect x="-22" y="0" width="44" height="22" rx="11" fill="#fffbeb" stroke="#f59e0b" stroke-opacity="0.6"/>
+          <text x="0" y="15" text-anchor="middle" fill="#b45309">/ŋ/</text>
+        </g>
+        <g class="en-state-fix">
+          <rect x="-22" y="0" width="44" height="22" rx="11" fill="#ecfdf5" stroke="#10b981" stroke-opacity="0.6"/>
+          <text x="0" y="15" text-anchor="middle" fill="#047857">/ŋ/</text>
+        </g>
+      </g>
+      <!-- /k/ chip: dashed rose (dropped) → emerald (restored) -->
+      <g class="en-chip en-chip-3" transform="translate(334 298)">
+        <g class="en-state-init">
+          <rect x="-22" y="0" width="44" height="22" rx="11" fill="#fff1f2" fill-opacity="0.4"
+                stroke="#f43f5e" stroke-opacity="0.6" stroke-dasharray="3 3"/>
+          <text x="0" y="15" text-anchor="middle" fill="#be123c" opacity="0.8">/k/</text>
+        </g>
+        <g class="en-state-fix">
+          <rect x="-22" y="0" width="44" height="22" rx="11" fill="#ecfdf5" stroke="#10b981" stroke-opacity="0.6"/>
+          <text x="0" y="15" text-anchor="middle" fill="#047857">/k/</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- ─────── Correction arrows — 3 green arcs drawing toward bad chips ─────── -->
+    <g fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pathLength="30">
+      <!-- arrow into /θ/ -->
+      <g class="en-arrow en-arrow-1">
+        <path d="M 60 250 C 60 270, 85 282, 94 280"/>
+        <path d="M 90 277 L 94 280 L 91 283" stroke-dasharray="6 6" stroke-dashoffset="0"/>
+      </g>
+      <!-- arrow into /ŋ/ -->
+      <g class="en-arrow en-arrow-2">
+        <path d="M 220 250 C 230 274, 245 282, 254 280"/>
+        <path d="M 250 277 L 254 280 L 251 283" stroke-dasharray="6 6" stroke-dashoffset="0"/>
+      </g>
+      <!-- arrow into /k/ -->
+      <g class="en-arrow en-arrow-3">
+        <path d="M 380 250 C 370 272, 345 282, 334 280"/>
+        <path d="M 337 277 L 334 280 L 336 283" stroke-dasharray="6 6" stroke-dashoffset="0"/>
+      </g>
+    </g>
+
+    <!-- ─────── Bottom caption: diagnosis → corrected ─────── -->
+    <line x1="70" x2="350" y1="360" y2="360" stroke="#10b981" stroke-opacity="0.25" stroke-dasharray="2 3"/>
+    <g class="en-cap-bad" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+      <text x="210" y="390" text-anchor="middle" font-size="15" font-weight="700"
+            fill="#be123c" letter-spacing="0.06em">3 ISSUES · DETECTED</text>
+      <text x="210" y="409" text-anchor="middle" font-size="10" fill="#b91c1c" opacity="0.85"
+            letter-spacing="0.14em">MISSING · WEAK · MISPRONOUNCED</text>
+    </g>
+    <g class="en-cap-good" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+      <text x="210" y="390" text-anchor="middle" font-size="15" font-weight="700"
+            fill="#065f46" letter-spacing="0.06em">ALL CORRECTED</text>
+      <text x="210" y="409" text-anchor="middle" font-size="10" fill="#047857" opacity="0.85"
+            letter-spacing="0.14em">PHONEME DIAGNOSIS · SUPERVISED</text>
+    </g>
+
+    <!-- Score badge: 58 (rose) → 92 (emerald) -->
+    <g transform="translate(352 70)">
+      <circle r="22" fill="#ffffff" stroke="#10b981" stroke-opacity="0.5" stroke-width="1.2"/>
+      <text text-anchor="middle" y="-3" font-size="9" fill="#047857"
+            font-family="ui-monospace, SFMono-Regular, Menlo, monospace" letter-spacing="0.1em">SCORE</text>
+      <text class="en-score-bad"  text-anchor="middle" y="13" font-size="16" font-weight="700" fill="#be123c"
+            style='font-family:Georgia,"Iowan Old Style",serif;'>58</text>
+      <text class="en-score-good" text-anchor="middle" y="13" font-size="16" font-weight="700" fill="#047857"
+            style='font-family:Georgia,"Iowan Old Style",serif;'>92</text>
+    </g>
+  </g>
+
+  <!-- scattered particles (always on) -->
+  <g fill="#10b981" opacity="0.35">
+    <circle cx="46" cy="78" r="1.6"/>
+    <circle cx="388" cy="130" r="1.2"/>
+    <circle cx="30" cy="330" r="1.4"/>
+    <circle cx="400" cy="370" r="1.6"/>
+    <circle cx="60" cy="440" r="1.2"/>
+  </g>
+  <!-- outer dashed ring -->
+  <circle cx="210" cy="240" r="200" fill="none" stroke="#10b981" stroke-opacity="0.08" stroke-dasharray="2 6"/>
+</svg>
+<!-- ============================================================== -->
+
+      </div>
+      <div class="meta">
+        <span class="tag">CN sandhi + EN 4-state diagnosis · animated</span>
+        <span class="hint">Master cycle ≈ 11&thinsp;s. Watch one full loop &mdash; the EN act lands the full good/weak/wrong/missing story.</span>
+      </div>
+    </div>
+
+    <p class="lead" style="margin-top:28px;">
+      Good to ship? Reply 👍 (or describe tweaks &mdash; e.g. different word, different mistake, longer hold, faster loop),
+      and I&rsquo;ll replace the live <code>HeroEarArt</code> component in <code>src/app/global/page.tsx</code>.
+    </p>
+  </div>
+</body>
+</html>

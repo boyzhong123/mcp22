@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mandarin slide redesign — Chivox MCP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@500;700;900&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #fbf6e9;
+        --ink: #18181b;
+        --ink-2: #3f3f46;
+        --muted: #71717a;
+        --line: rgba(24, 24, 27, 0.08);
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+        --zh: 'Noto Sans SC', system-ui, sans-serif;
+        --pinyin: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+
+        --cream-1: #fdfaf0;
+        --cream-2: #fbf6e9;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, sans-serif;
+        background: #f0e9d6;
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+        padding: 40px 28px 100px;
+      }
+
+      .page { max-width: 1080px; margin: 0 auto; }
+
+      h1.title {
+        font-size: 22px; font-weight: 800; letter-spacing: -0.02em;
+        margin: 0 0 6px;
+      }
+      h1.title + p { color: #52525b; margin: 0 0 26px; font-size: 14px; }
+
+      .label {
+        font-family: var(--mono); font-size: 11px;
+        letter-spacing: .16em; text-transform: uppercase;
+        color: var(--muted);
+        margin: 36px 0 14px;
+      }
+      .label b { color: #18181b; }
+
+      /* ── shared outer shell — keep card chrome ──────── */
+      .slide {
+        border-radius: 18px;
+        border: 1px solid rgba(24,24,27,.10);
+        background: #fff;
+        overflow: hidden;
+        box-shadow: 0 24px 60px -30px rgba(24,24,27,.22);
+      }
+      .slide-head {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(24,24,27,.06);
+        background: linear-gradient(180deg, rgba(255,255,255,.86), rgba(255,255,255,.7));
+        backdrop-filter: blur(8px);
+      }
+      .dots { display: inline-flex; gap: 6px; }
+      .dots span {
+        width: 9px; height: 9px; border-radius: 50%;
+        background: #e5e7eb;
+      }
+      .dots span:nth-child(1) { background: #fca5a5; }
+      .dots span:nth-child(2) { background: #fcd34d; }
+      .dots span:nth-child(3) { background: #6ee7b7; }
+
+      .head-title {
+        flex: 1; text-align: center;
+        font-family: var(--mono); font-size: 11.5px; color: #71717a;
+        letter-spacing: .02em;
+      }
+      .chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-family: var(--mono); font-size: 10px;
+        letter-spacing: .14em; text-transform: uppercase;
+        padding: 3px 8px;
+        border: 1px solid rgba(16,185,129,.35);
+        background: rgba(16,185,129,.10);
+        color: #047857; border-radius: 6px;
+      }
+
+      .eyebrow {
+        font-family: var(--mono); font-size: 10.5px;
+        letter-spacing: .18em; text-transform: uppercase;
+        color: #71717a;
+        margin-bottom: 14px;
+      }
+
+      .zh { font-family: var(--zh); font-weight: 700; }
+      .pin { font-family: var(--pinyin); font-style: italic; }
+
+      /* ═════════════════════════════════════════════════
+         V1 · Calm compare — softer rose, zinc-900 words,
+         one tone-contour visual, no footnote paragraph.
+         ═════════════════════════════════════════════════ */
+      .v1 .body { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 12px; min-height: 360px; }
+      .v1 .row {
+        position: relative;
+        padding: 16px 18px;
+        border-radius: 14px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 14px;
+      }
+      .v1 .row.bad {
+        background: linear-gradient(180deg, #fff5f2, #ffeae4);
+        border: 1px solid rgba(244, 114, 114, 0.22);
+      }
+      .v1 .row.good {
+        background: linear-gradient(180deg, #f0fbf4, #dff7e9);
+        border: 1px solid rgba(16, 185, 129, 0.28);
+      }
+      .v1 .tag {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-family: var(--mono); font-size: 10.5px;
+        letter-spacing: .08em; text-transform: uppercase;
+        font-weight: 600;
+      }
+      .v1 .row.bad .tag { background: #ffe4dc; color: #b91c1c; border: 1px solid #fecdd3; }
+      .v1 .row.good .tag { background: #dcfce7; color: #047857; border: 1px solid #bbf7d0; }
+      .v1 .word {
+        display: flex; align-items: baseline; gap: 12px;
+      }
+      .v1 .word .pin { font-size: 15px; color: #3f3f46; }
+      .v1 .word .zh { font-size: 30px; color: #18181b; letter-spacing: -0.01em; }
+      .v1 .gloss {
+        font-family: var(--mono); font-size: 11px;
+        color: #71717a; letter-spacing: .02em;
+      }
+      .v1 .tone-strip {
+        margin-top: 2px;
+        display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      }
+      .v1 .tone-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 9px;
+        border: 1px solid rgba(16,185,129,.28);
+        background: #fff;
+        border-radius: 999px;
+        font-family: var(--mono); font-size: 11px;
+        color: #047857;
+      }
+      .v1 .tone-chip .pin { color: #18181b; font-style: italic; font-size: 12.5px; }
+      .v1 .tone-chip svg { opacity: .85; }
+
+      .v1 .bottom {
+        margin-top: auto;
+        padding-top: 10px;
+        font-size: 12.5px; color: #52525b;
+      }
+      .v1 .bottom .hl { color: #18181b; font-weight: 600; }
+
+      /* ═════════════════════════════════════════════════
+         V2 · Single-hero focus — big pitch-contour canvas
+         showing T3+T3 → T2+T3, subtle wrong-vs-right band.
+         ═════════════════════════════════════════════════ */
+      .v2 .body { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 14px; min-height: 360px; }
+
+      .v2 .words {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .v2 .w {
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #fafafa;
+        border: 1px solid rgba(24,24,27,.06);
+      }
+      .v2 .w.bad { background: linear-gradient(180deg, #fff5f2, #fff); border-color: rgba(244,114,114,.18); }
+      .v2 .w.good { background: linear-gradient(180deg, #f0fbf4, #fff); border-color: rgba(16,185,129,.28); }
+      .v2 .w .t {
+        display: flex; align-items: center; justify-content: space-between;
+        font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .v2 .w.bad .t { color: #b91c1c; }
+      .v2 .w.good .t { color: #047857; }
+      .v2 .w .line {
+        display: flex; align-items: baseline; gap: 10px;
+      }
+      .v2 .w .zh { font-size: 26px; color: #18181b; }
+      .v2 .w .pin { font-size: 14px; color: #3f3f46; }
+      .v2 .w .gloss { margin-top: 4px; font-family: var(--mono); font-size: 11px; color: #71717a; }
+
+      .v2 .pitch {
+        border-radius: 14px;
+        background:
+          linear-gradient(180deg, rgba(16,185,129,.04), rgba(16,185,129,0)) ,
+          #fff;
+        border: 1px solid rgba(24,24,27,.06);
+        padding: 14px 16px 10px;
+        position: relative;
+      }
+      .v2 .pitch-top {
+        display: flex; align-items: center; justify-content: space-between;
+        font-family: var(--mono); font-size: 10.5px; color: #71717a;
+        letter-spacing: .08em; text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .v2 .pitch-top b { color: #047857; }
+
+      .v2 svg.pitch-svg { display: block; width: 100%; height: 110px; }
+
+      .v2 .pitch-legend {
+        display: flex; gap: 14px; font-family: var(--mono); font-size: 10.5px;
+        color: #52525b; margin-top: 4px;
+      }
+      .v2 .pitch-legend .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+      .v2 .pitch-legend .dot.bad { background: #f87171; }
+      .v2 .pitch-legend .dot.good { background: #10b981; }
+
+      .v2 .bottom {
+        margin-top: auto;
+        font-size: 12.5px; color: #52525b;
+      }
+      .v2 .bottom .hl { color: #18181b; font-weight: 600; }
+
+      /* ═════════════════════════════════════════════════
+         V3 · Split card — left "what was said" (wrong
+         word meaning), right "what we caught" (correct
+         word + 4-tone minimal pair). Focus on the
+         selling point: "we tell ma 1234 apart".
+         ═════════════════════════════════════════════════ */
+      .v3 .body { padding: 18px 22px 22px; min-height: 360px; display: flex; flex-direction: column; gap: 14px; }
+      .v3 .compare {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      }
+      .v3 .pane {
+        padding: 16px;
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid rgba(24,24,27,.06);
+      }
+      .v3 .pane.bad { background: linear-gradient(180deg, #fff6f2, #fff); border-color: rgba(244,114,114,.18); }
+      .v3 .pane.good { background: linear-gradient(180deg, #f0fbf4, #fff); border-color: rgba(16,185,129,.3); }
+      .v3 .pane h3 {
+        margin: 0 0 8px;
+        font-family: var(--mono); font-size: 10.5px; color: #71717a;
+        letter-spacing: .16em; text-transform: uppercase;
+      }
+      .v3 .pane.bad h3 { color: #b91c1c; }
+      .v3 .pane.good h3 { color: #047857; }
+      .v3 .pane .big {
+        display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      }
+      .v3 .pane .zh { font-size: 30px; color: #18181b; }
+      .v3 .pane .pin { font-size: 15px; color: #3f3f46; }
+      .v3 .pane .gloss {
+        margin-top: 6px; font-family: var(--mono); font-size: 11px;
+        color: #71717a;
+      }
+
+      .v3 .ma-row {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid rgba(24,24,27,.07);
+        padding: 12px;
+      }
+      .v3 .ma-cell {
+        text-align: center;
+        padding: 6px 4px;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #fdfaf0, #fbf6e9);
+        border: 1px solid rgba(24,24,27,.05);
+      }
+      .v3 .ma-cell .ma {
+        font-family: var(--pinyin); font-style: italic;
+        font-size: 22px; color: #18181b;
+      }
+      .v3 .ma-cell .ma-zh {
+        font-family: var(--zh); font-size: 14px; color: #3f3f46;
+        margin-top: 2px;
+      }
+      .v3 .ma-cell .ma-en {
+        font-family: var(--mono); font-size: 9.5px;
+        letter-spacing: .1em; text-transform: uppercase;
+        color: #71717a; margin-top: 4px;
+      }
+
+      .v3 .bottom {
+        font-size: 12.5px; color: #52525b;
+        margin-top: auto;
+      }
+      .v3 .bottom .hl { color: #047857; font-weight: 600; }
+
+      /* ── selector ── */
+      .picker {
+        position: sticky; top: 8px; z-index: 10;
+        display: flex; gap: 6px; flex-wrap: wrap;
+        padding: 8px; background: rgba(255,255,255,.85); backdrop-filter: blur(10px);
+        border: 1px solid var(--line); border-radius: 999px;
+        margin: 0 0 22px;
+        width: fit-content;
+      }
+      .picker button {
+        appearance: none; border: 1px solid transparent; background: transparent;
+        padding: 6px 12px; border-radius: 999px; font-size: 12px; color: #3f3f46;
+        font-family: var(--mono); cursor: pointer;
+      }
+      .picker button.active { background: #18181b; color: #fff; }
+
+      .slide[data-v] { display: none; }
+      .slide[data-v].show { display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1 class="title">Mandarin carousel slide — redesign options</h1>
+      <p>Same outer card chrome (traffic lights · title · MOAT chip). Only the inner layout changes. Pick the one that reads best.</p>
+
+      <div class="picker" id="picker">
+        <button data-v="v1" class="active">V1 · Calm compare</button>
+        <button data-v="v2">V2 · Pitch contour focus</button>
+        <button data-v="v3">V3 · Compare + mā mǎ grid</button>
+      </div>
+
+      <!-- V1 ─────────────────────────── -->
+      <div class="slide v1 show" data-v="v1">
+        <div class="slide-head">
+          <span class="dots"><span></span><span></span><span></span></span>
+          <div class="head-title">chivox · assess.mandarin</div>
+          <span class="chip">Tonal moat</span>
+        </div>
+        <div class="body">
+          <div class="eyebrow">Tone detection · T3 + T3 sandhi</div>
+
+          <div class="row bad">
+            <span class="tag">✗ Generic STT</span>
+            <div class="word">
+              <span class="pin">shuì jiào</span>
+              <span class="zh">睡觉</span>
+            </div>
+            <span class="gloss">= sleep · heard wrong word</span>
+          </div>
+
+          <div class="row good">
+            <span class="tag">✓ Chivox MCP</span>
+            <div class="word">
+              <span class="pin">shuǐ jiǎo</span>
+              <span class="zh">水饺</span>
+            </div>
+            <span class="gloss">= dumplings · tone-level match</span>
+          </div>
+
+          <div class="tone-strip" style="padding-left: 4px">
+            <span class="tone-chip">
+              <svg width="20" height="10" viewBox="0 0 20 10"><path d="M2 8 L18 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              sandhi → rising · <span class="pin">shuǐ</span>
+            </span>
+            <span class="tone-chip">
+              <svg width="20" height="10" viewBox="0 0 20 10"><path d="M2 3 Q6 11 10 8 T18 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              3rd tone · <span class="pin">jiǎo</span>
+            </span>
+          </div>
+
+          <div class="bottom">
+            Catches tones, erhua, sandhi &amp; the difference between <span class="hl pin">mā</span> (mom) and <span class="hl pin">mǎ</span> (horse).
+          </div>
+        </div>
+      </div>
+
+      <!-- V2 ─────────────────────────── -->
+      <div class="slide v2" data-v="v2">
+        <div class="slide-head">
+          <span class="dots"><span></span><span></span><span></span></span>
+          <div class="head-title">chivox · assess.mandarin</div>
+          <span class="chip">Tonal moat</span>
+        </div>
+        <div class="body">
+          <div class="words">
+            <div class="w bad">
+              <div class="t"><span>✗ Generic STT</span><span>heard</span></div>
+              <div class="line"><span class="zh">睡觉</span><span class="pin">shuì jiào</span></div>
+              <div class="gloss">= sleep</div>
+            </div>
+            <div class="w good">
+              <div class="t"><span>✓ Chivox MCP</span><span>caught</span></div>
+              <div class="line"><span class="zh">水饺</span><span class="pin">shuǐ jiǎo</span></div>
+              <div class="gloss">= dumplings</div>
+            </div>
+          </div>
+
+          <div class="pitch">
+            <div class="pitch-top">
+              <span>Pitch contour · <b>shuǐ jiǎo</b></span>
+              <span>T3 + T3 → 2nd + 3rd (sandhi)</span>
+            </div>
+            <svg class="pitch-svg" viewBox="0 0 560 110" preserveAspectRatio="none" aria-hidden="true">
+              <!-- gridlines -->
+              <line x1="0" y1="20" x2="560" y2="20" stroke="rgba(24,24,27,.06)" />
+              <line x1="0" y1="55" x2="560" y2="55" stroke="rgba(24,24,27,.06)" />
+              <line x1="0" y1="90" x2="560" y2="90" stroke="rgba(24,24,27,.06)" />
+              <!-- bad (flat falling, generic STT heard T4+T4 → shuì jiào) -->
+              <path d="M10,30 L260,85" stroke="#f87171" stroke-width="2.4" stroke-linecap="round" fill="none" stroke-dasharray="5,4"/>
+              <path d="M300,30 L550,85" stroke="#f87171" stroke-width="2.4" stroke-linecap="round" fill="none" stroke-dasharray="5,4"/>
+              <!-- good (T2 rise + T3 dip-rise, Chivox caught) -->
+              <path d="M10,80 Q130,80 260,20" stroke="#10b981" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M300,30 Q340,95 380,80 T550,20" stroke="#10b981" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <!-- syllable labels -->
+              <text x="135" y="108" font-family="'JetBrains Mono', monospace" font-size="11" fill="#71717a" text-anchor="middle">shuǐ</text>
+              <text x="425" y="108" font-family="'JetBrains Mono', monospace" font-size="11" fill="#71717a" text-anchor="middle">jiǎo</text>
+            </svg>
+            <div class="pitch-legend">
+              <span><span class="dot bad"></span>Generic STT heard</span>
+              <span><span class="dot good"></span>Chivox MCP tracked</span>
+            </div>
+          </div>
+
+          <div class="bottom">
+            Catches tones, erhua, sandhi &amp; the difference between <span class="hl pin">mā</span> (mom) and <span class="hl pin">mǎ</span> (horse).
+          </div>
+        </div>
+      </div>
+
+      <!-- V3 ─────────────────────────── -->
+      <div class="slide v3" data-v="v3">
+        <div class="slide-head">
+          <span class="dots"><span></span><span></span><span></span></span>
+          <div class="head-title">chivox · assess.mandarin</div>
+          <span class="chip">Tonal moat</span>
+        </div>
+        <div class="body">
+          <div class="compare">
+            <div class="pane bad">
+              <h3>✗ Generic STT</h3>
+              <div class="big">
+                <span class="zh">睡觉</span>
+                <span class="pin">shuì jiào</span>
+              </div>
+              <div class="gloss">= sleep · wrong tone, wrong word</div>
+            </div>
+            <div class="pane good">
+              <h3>✓ Chivox MCP</h3>
+              <div class="big">
+                <span class="zh">水饺</span>
+                <span class="pin">shuǐ jiǎo</span>
+              </div>
+              <div class="gloss">= dumplings · T3+T3 sandhi tracked</div>
+            </div>
+          </div>
+
+          <div class="ma-row">
+            <div class="ma-cell"><div class="ma">mā</div><div class="ma-zh">妈</div><div class="ma-en">mom</div></div>
+            <div class="ma-cell"><div class="ma">má</div><div class="ma-zh">麻</div><div class="ma-en">hemp</div></div>
+            <div class="ma-cell"><div class="ma">mǎ</div><div class="ma-zh">马</div><div class="ma-en">horse</div></div>
+            <div class="ma-cell"><div class="ma">mà</div><div class="ma-zh">骂</div><div class="ma-en">scold</div></div>
+          </div>
+
+          <div class="bottom">
+            One syllable, <span class="hl">four different meanings</span> — Chivox MCP returns the tone you actually produced, not a best-guess transcription.
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <script>
+      const picker = document.getElementById('picker');
+      const slides = document.querySelectorAll('.slide[data-v]');
+      picker.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-v]'); if (!b) return;
+        picker.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+        slides.forEach(s => s.classList.toggle('show', s.dataset.v === b.dataset.v));
+      });
+    </script>
+  </body>
+</html>

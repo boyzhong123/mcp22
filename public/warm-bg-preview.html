@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Warm cream palette — Chivox MCP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #fbf6e9;
+        --ink: #18181b;
+        --ink-2: #3f3f46;
+        --muted: #71717a;
+        --line: rgba(24, 24, 27, 0.08);
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+        /* the palette from the screenshot ------------------- */
+        --warm-1: #fdfaf0; /* lightest cream */
+        --warm-2: #fbf6e9; /* base cream */
+        --warm-3: #f7eedb; /* peach warm */
+        --warm-tint-emerald: rgba(16, 185, 129, 0.10);
+        --warm-tint-peach: rgba(251, 146, 60, 0.09);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, sans-serif;
+        background: #f3ecd9; /* slightly darker wrapper so the cards "pop" */
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      .page { max-width: 1180px; margin: 0 auto; padding: 48px 28px 120px; }
+
+      .block-label {
+        font-family: var(--mono);
+        font-size: 11px; color: var(--muted);
+        letter-spacing: .18em; text-transform: uppercase;
+        margin: 32px 0 14px;
+      }
+      .block-label b { color: #18181b; }
+
+      /* ─────────────────────────────────────────────────────
+         A · pre-footer CTA — WARM CREAM CARD
+            matches the screenshot exactly: inset gradient,
+            soft border, emerald eyebrow, big headline,
+            primary + ghost buttons
+         ───────────────────────────────────────────────────── */
+      .warm-card {
+        border-radius: 22px;
+        padding: 72px 40px;
+        text-align: center;
+        border: 1px solid rgba(24, 24, 27, 0.07);
+        background:
+          radial-gradient(520px 180px at 8% 0%, var(--warm-tint-emerald), transparent 60%),
+          radial-gradient(560px 220px at 100% 100%, var(--warm-tint-peach), transparent 60%),
+          linear-gradient(180deg, var(--warm-1) 0%, var(--warm-2) 55%, var(--warm-3) 100%);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.8),
+          0 30px 80px -50px rgba(24,24,27,.18);
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+        color: #047857;
+        margin: 0 0 14px;
+      }
+      .warm-card h2 {
+        margin: 0 0 18px;
+        font-size: clamp(28px, 3.6vw, 44px);
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1.1;
+      }
+      .warm-card p {
+        max-width: 560px;
+        margin: 0 auto 28px;
+        color: #52525b;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      .warm-card p code {
+        font-family: var(--mono);
+        font-size: 13px;
+        background: rgba(24,24,27,.06);
+        padding: 1px 7px;
+        border-radius: 5px;
+      }
+      .btn-row {
+        display: inline-flex; gap: 12px; flex-wrap: wrap;
+        justify-content: center;
+      }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        height: 44px; padding: 0 18px;
+        border-radius: 999px;
+        font-size: 14px; font-weight: 600;
+        text-decoration: none;
+      }
+      .btn.primary {
+        background: #18181b; color: #fff;
+        box-shadow: 0 10px 24px -10px rgba(0,0,0,.38);
+      }
+      .btn.primary svg { opacity: .7; }
+      .btn.ghost {
+        background: rgba(255,255,255,.7);
+        color: #18181b;
+        border: 1px solid rgba(24,24,27,.1);
+      }
+      .btn svg { width: 14px; height: 14px; }
+
+      /* ─────────────────────────────────────────────────────
+         B · full-bleed warm section (no card)
+             replaces busy multi-hue gradients on mid-page
+             modules (USE CASES, QUICKSTART outer bg, etc.)
+         ───────────────────────────────────────────────────── */
+      .warm-fullbleed {
+        border-top: 1px solid rgba(24, 24, 27, 0.06);
+        border-bottom: 1px solid rgba(24, 24, 27, 0.06);
+        padding: 72px 40px;
+        background:
+          radial-gradient(640px 260px at 10% 0%, var(--warm-tint-emerald), transparent 65%),
+          radial-gradient(680px 300px at 100% 100%, var(--warm-tint-peach), transparent 65%),
+          linear-gradient(180deg, var(--warm-1) 0%, var(--warm-2) 100%);
+      }
+      .warm-fullbleed .sec-inner { max-width: 1100px; margin: 0 auto; }
+      .warm-fullbleed h3 {
+        font-size: 28px; font-weight: 800; letter-spacing: -0.025em;
+        margin: 0 0 8px;
+      }
+      .warm-fullbleed p.lead { color: #52525b; margin: 0 0 26px; font-size: 15.5px; }
+      .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+      @media (max-width: 860px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+      .card {
+        background: rgba(255, 255, 255, 0.62);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(24, 24, 27, 0.07);
+        border-radius: 14px;
+        padding: 18px;
+      }
+      .card .cat {
+        font-family: var(--mono);
+        font-size: 10.5px; color: #047857;
+        letter-spacing: .14em; text-transform: uppercase; margin-bottom: 8px;
+      }
+      .card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+      .card p { margin: 0; font-size: 13.5px; color: #52525b; line-height: 1.55; }
+
+      /* ─────────────────────────────────────────────────────
+         C · footer-bleed CTA — same palette, zero border/card.
+             Uses the exact gradient the current SiteFooter
+             uses, so CTA + footer read as one warm column.
+         ───────────────────────────────────────────────────── */
+      .warm-bleed {
+        padding: 88px 40px;
+        text-align: center;
+        background: linear-gradient(180deg, #fdfaf0 0%, #fbf6e9 45%, #f8f2e2 100%);
+        border-top: 1px solid rgba(24, 24, 27, 0.05);
+      }
+      .warm-bleed::before {
+        content: '';
+        display: block;
+        max-width: 240px;
+        height: 1px;
+        margin: 0 auto 28px;
+        background: linear-gradient(90deg, transparent, rgba(16,185,129,.45), transparent);
+      }
+      .warm-bleed h2 {
+        margin: 0 0 14px;
+        font-size: clamp(28px, 3.6vw, 44px);
+        font-weight: 800; letter-spacing: -0.035em; line-height: 1.1;
+      }
+      .warm-bleed p {
+        color: #52525b; max-width: 560px; margin: 0 auto 24px;
+        font-size: 16px; line-height: 1.6;
+      }
+      .warm-bleed .fine {
+        display: block;
+        margin-top: 22px;
+        font-size: 12px; color: #78716c; font-family: var(--mono);
+        letter-spacing: .06em;
+      }
+
+      .divider {
+        height: 72px;
+        background:
+          linear-gradient(180deg, #f8f2e2 0%, #f3ecd9 100%);
+      }
+
+      .footer-preview {
+        background: linear-gradient(180deg, #f8f2e2 0%, #fbf6e9 40%, #fbf6e9 100%);
+        padding: 48px 40px;
+        font-size: 13px; color: #78716c;
+        text-align: center;
+        border-top: 1px dashed rgba(24,24,27,.08);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+
+      <div class="block-label">Option <b>A</b> · pre-footer CTA card (replaces the current “Ship a speech-aware agent today.” section)</div>
+      <div class="warm-card">
+        <p class="eyebrow">Ready to wire it up?</p>
+        <h2>Same payload. Your agent. Your production loop.</h2>
+        <p>Drop Chivox MCP into Cursor, Claude Desktop, or any agent SDK. One <code>npx</code> and you’re reading the same JSON you just saw above.</p>
+        <div class="btn-row">
+          <a class="btn primary" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 17 L10 11 L4 5"/><path d="M12 19 H20"/>
+            </svg>
+            See quickstart
+          </a>
+          <a class="btn ghost" href="#">Get your API key
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 17 L17 7 M9 7 H17 V15"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <div class="block-label">Option <b>B</b> · replace a busy mid-page gradient (eg. <code>#use-cases</code>, <code>#reasoning</code>) with the calm warm field</div>
+      <div class="warm-fullbleed">
+        <div class="sec-inner">
+          <h3>Built into every agent surface</h3>
+          <p class="lead">Same MCP schema across every runtime — no custom adapters.</p>
+          <div class="cards">
+            <div class="card">
+              <div class="cat">Tutor apps</div>
+              <h4>AI language tutors</h4>
+              <p>Per-phoneme accuracy drives live coaching.</p>
+            </div>
+            <div class="card">
+              <div class="cat">Reading</div>
+              <h4>K-12 reading coaches</h4>
+              <p>Catch skipped words, stumbles, liaison.</p>
+            </div>
+            <div class="card">
+              <div class="cat">Voice agents</div>
+              <h4>Realtime voice agents</h4>
+              <p>Stream scores back into the LLM turn.</p>
+            </div>
+            <div class="card">
+              <div class="cat">Hiring</div>
+              <h4>AI interviewers</h4>
+              <p>Score fluency without human review.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block-label">Option <b>C</b> · <em>recommended</em> · full-bleed CTA that flows directly into the current footer</div>
+      <div class="warm-bleed">
+        <h2>Ship a speech-aware agent today.</h2>
+        <p>Free credits on signup. One config block. No credit card required. Scale into production when you’re ready.</p>
+        <div class="btn-row">
+          <a class="btn primary" href="#">Get your API key
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12 H19 M13 6 L19 12 L13 18"/></svg>
+          </a>
+          <a class="btn ghost" href="#">Star on GitHub
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 17 L17 7 M9 7 H17 V15"/></svg>
+          </a>
+        </div>
+        <span class="fine">Free trial credits · Cancel anytime · Used in 185 countries</span>
+      </div>
+      <div class="footer-preview">
+        ↓ current SiteFooter continues here with the same cream gradient, no visible seam ↓
+      </div>
+
+    </div>
+  </body>
+</html>

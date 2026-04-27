@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>README Preview</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link id="theme-css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-light.min.css">
+  <style>
+    * { transition: background-color 0.3s, border-color 0.3s, color 0.2s; }
+    body {
+      padding: 32px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    body[data-theme="dark"] { background: #0d1117; }
+    body[data-theme="light"] { background: #f6f8fa; }
+    .markdown-body {
+      box-sizing: border-box;
+      min-width: 200px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 45px;
+      border-radius: 6px;
+    }
+    body[data-theme="dark"] .markdown-body {
+      background: #161b22;
+      border: 1px solid #30363d;
+    }
+    body[data-theme="light"] .markdown-body {
+      background: #fff;
+      border: 1px solid #d0d7de;
+    }
+    .markdown-body img { max-width: 100%; }
+    .markdown-body table { display: table; width: 100%; }
+    
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    body[data-theme="light"] .header { background: rgba(246,248,250,0.85); border-bottom: 1px solid #d0d7de; }
+    body[data-theme="dark"] .header { background: rgba(13,17,23,0.85); border-bottom: 1px solid #30363d; }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+    body[data-theme="light"] .logo { color: #1f2937; }
+    body[data-theme="dark"] .logo { color: #f9fafb; }
+    .logo span {
+      background: linear-gradient(90deg, #6366f1, #0ea5e9, #10b981);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .theme-toggle {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body[data-theme="dark"] .theme-toggle {
+      background: #21262d;
+      border-color: #30363d;
+      color: #c9d1d9;
+    }
+    body[data-theme="dark"] .theme-toggle:hover { background: #30363d; }
+    body[data-theme="light"] .theme-toggle {
+      background: #fff;
+      border-color: #d0d7de;
+      color: #24292f;
+    }
+    body[data-theme="light"] .theme-toggle:hover { background: #f3f4f6; }
+  </style>
+</head>
+<body data-theme="light">
+  <header class="header">
+    <a href="https://chivoxmcp2.netlify.app" class="logo" target="_blank">Chivox <span>MCP</span></a>
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark</button>
+  </header>
+  <article class="markdown-body" id="content" style="margin-top: 72px;"></article>
+  <script>
+    function setTheme(theme) {
+      const body = document.body;
+      const btn = document.querySelector('.theme-toggle');
+      const css = document.getElementById('theme-css');
+      
+      body.dataset.theme = theme;
+      if (theme === 'light') {
+        css.href = 'https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-light.min.css';
+        btn.textContent = '🌙 Dark';
+      } else {
+        css.href = 'https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css';
+        btn.textContent = '☀️ Light';
+      }
+    }
+    
+    function toggleTheme() {
+      const newTheme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+      setTheme(newTheme);
+    }
+    
+    // Initialize from URL param
+    const urlTheme = new URLSearchParams(location.search).get('theme');
+    if (urlTheme === 'light' || urlTheme === 'dark') {
+      document.body.dataset.theme = urlTheme;
+      if (urlTheme === 'dark') {
+        document.getElementById('theme-css').href = 'https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css';
+        document.querySelector('.theme-toggle').textContent = '☀️ Light';
+      }
+    }
+    
+    fetch('../README.md?_=' + Date.now())
+      .then(r => r.text())
+      .then(md => {
+        document.getElementById('content').innerHTML = marked.parse(md);
+        document.querySelectorAll('img').forEach(img => {
+          const src = img.getAttribute('src');
+          if (src && src.startsWith('github-assets/')) {
+            img.setAttribute('src', src.replace(/^github-assets\//, ''));
+          }
+        });
+        document.querySelectorAll('a').forEach(a => {
+          const href = a.getAttribute('href');
+          if (href && href.startsWith('github-assets/')) {
+            a.setAttribute('href', href.replace(/^github-assets\//, ''));
+          }
+        });
+        updateLogoForTheme();
+      });
+    
+    function updateLogoForTheme() {
+      const theme = document.body.dataset.theme;
+      const pictures = document.querySelectorAll('picture');
+      pictures.forEach(pic => {
+        const img = pic.querySelector('img');
+        if (img) {
+          const darkSrc = pic.querySelector('source[media*="dark"]')?.srcset;
+          const lightSrc = pic.querySelector('source[media*="light"]')?.srcset || img.src;
+          img.src = theme === 'dark' ? (darkSrc || lightSrc) : lightSrc;
+        }
+      });
+    }
+    
+    // Override setTheme to also update logos
+    const originalSetTheme = setTheme;
+    setTheme = function(theme) {
+      originalSetTheme(theme);
+      setTimeout(updateLogoForTheme, 100);
+    };
+  </script>
+</body>
+</html>

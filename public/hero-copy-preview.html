@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hero copy preview — Chivox MCP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #fbf6e9;
+        --ink: #18181b;
+        --ink-2: #3f3f46;
+        --muted: #71717a;
+        --line: rgba(24, 24, 27, 0.08);
+        --card: #ffffff;
+        --serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+        --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      .page { max-width: 1360px; margin: 0 auto; padding: 56px 40px 80px; }
+
+      .toolbar {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; margin-bottom: 32px;
+        border: 1px solid var(--line);
+        background: #fffaef; border-radius: 999px;
+        font-size: 12px; color: var(--ink-2);
+        width: fit-content;
+      }
+      .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,.7);
+      }
+
+      .panel-label {
+        font-family: var(--mono);
+        font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+        color: var(--muted);
+        margin: 40px 0 14px;
+      }
+
+      /* ── two-column hero shell ───────────────────────────── */
+      .hero {
+        display: grid;
+        grid-template-columns: 7fr 5fr;
+        gap: 56px;
+        align-items: center;
+        padding: 20px 0 32px;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      @media (max-width: 960px) {
+        .hero { grid-template-columns: 1fr; gap: 36px; }
+      }
+
+      /* ── chip ────────────────────────────────────────────── */
+      .chip {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 5px 12px 5px 5px;
+        background: rgba(255,255,255,.72); backdrop-filter: blur(8px);
+        border: 1px solid rgba(24,24,27,.08);
+        border-radius: 999px;
+        font-size: 11px; color: rgba(24,24,27,.78);
+        margin-bottom: 28px;
+        box-shadow: 0 4px 16px -8px rgba(0,0,0,.10);
+      }
+      .chip .live {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 2px 8px;
+        background: rgba(16,185,129,.10);
+        border: 1px solid rgba(16,185,129,.25);
+        border-radius: 999px;
+        font-family: var(--mono);
+        font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+        color: #047857;
+      }
+      .chip .live .dot { width: 6px; height: 6px; }
+
+      /* ── NEW headline — the point of this preview ────────── */
+      .head {
+        font-weight: 800;
+        letter-spacing: -0.045em;
+        line-height: 1.05;
+        font-size: clamp(40px, 5.2vw, 68px);
+        color: var(--ink);
+        margin: 0 0 26px;
+        font-feature-settings: "ss01" 1, "cv11" 1;
+      }
+      .head .line { display: block; }
+      .head .line + .line { margin-top: 4px; }
+
+      /* emerald highlighter swipe on "grade" */
+      .hi {
+        position: relative;
+        display: inline-block;
+        color: #065f46;
+        font-weight: 900;
+      }
+      .hi::before {
+        content: "";
+        position: absolute;
+        left: -0.08em; right: -0.08em;
+        top: 54%; bottom: 8%;
+        background: linear-gradient(100deg, rgba(110,231,183,.55), rgba(52,211,153,.72));
+        border-radius: 6px;
+        transform: skewX(-6deg);
+        z-index: 0;
+      }
+      .hi > span { position: relative; z-index: 1; }
+
+      .sub {
+        font-size: 17px;
+        line-height: 1.6;
+        color: #52525b;
+        max-width: 620px;
+        margin: 0 0 30px;
+      }
+      .sub strong {
+        color: #18181b;
+        font-weight: 600;
+      }
+
+      .cta-row {
+        display: flex; flex-wrap: wrap; gap: 14px;
+        align-items: center;
+        margin-bottom: 36px;
+      }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 0 12px 0 20px;
+        height: 44px;
+        border-radius: 999px;
+        font-size: 14px; font-weight: 600;
+        text-decoration: none;
+        transition: all .2s;
+      }
+      .btn.primary {
+        background: #18181b; color: #fff;
+        box-shadow: 0 10px 24px -10px rgba(0,0,0,.38);
+      }
+      .btn.primary .pip {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: rgba(255,255,255,.15);
+        display: inline-flex; align-items: center; justify-content: center;
+        margin-left: 4px;
+      }
+      .btn.ghost {
+        background: rgba(255,255,255,.6);
+        color: #18181b;
+        border: 1px solid rgba(24,24,27,.12);
+        padding: 0 20px;
+      }
+
+      .install {
+        display: inline-flex; align-items: center; gap: 10px;
+        padding: 10px 16px;
+        background: #101014; color: #e4e4e7;
+        border-radius: 14px;
+        font-family: var(--mono); font-size: 13px;
+        border: 1px solid rgba(255,255,255,.08);
+        box-shadow: 0 16px 36px -20px rgba(0,0,0,.6);
+      }
+      .install .prompt { color: #a1a1aa; }
+      .install .pkg { color: #34d399; }
+
+      /* ── RIGHT column placeholder: represents the existing illustration ── */
+      .ear-placeholder {
+        position: relative;
+        aspect-ratio: 5 / 4;
+        border-radius: 18px;
+        background: transparent;
+        border: 1px dashed rgba(24,24,27,.22);
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+      }
+      .ear-placeholder .note {
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        color: #78716c;
+      }
+      .ear-placeholder .note b {
+        display: block;
+        font-family: var(--serif);
+        font-style: italic;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: -.01em;
+        font-size: 20px;
+        color: #44403c;
+        margin-top: 8px;
+      }
+
+      /* ── variant selector ─────────────────────────────── */
+      .variant-nav {
+        display: flex; gap: 6px; flex-wrap: wrap;
+        margin: 0 0 18px;
+      }
+      .variant-nav button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: #fff;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 12px; color: #3f3f46;
+        font-family: var(--mono);
+        cursor: pointer;
+      }
+      .variant-nav button.active {
+        background: #18181b; color: #fff; border-color: #18181b;
+      }
+
+      .meta {
+        font-family: var(--mono);
+        font-size: 11px; color: #71717a;
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px dashed var(--line);
+      }
+      .meta b { color: #18181b; }
+
+      /* V2 — keep "Now it can" on its own line */
+      .v2 .head .line { display: block; }
+
+      /* V3 — "grade" underlined with emerald squiggle instead of swipe */
+      .v3 .hi::before {
+        top: auto; bottom: -6px;
+        height: 10px;
+        background:
+          repeating-linear-gradient(135deg, #10b981 0 6px, transparent 6px 10px);
+        border-radius: 2px;
+        transform: none;
+        opacity: .65;
+      }
+      .v3 .hi { color: #18181b; }
+
+      /* V4 — "hear" in soft serif italic, "grade" is the pop */
+      .v4 .soft {
+        font-family: var(--serif);
+        font-style: italic;
+        font-weight: 400;
+        color: #52525b;
+        font-variation-settings: "opsz" 48, "SOFT" 50;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="toolbar">
+        <span class="dot"></span>
+        Hero copy preview · right-side illustration unchanged (placeholder below)
+      </div>
+
+      <div class="variant-nav" id="nav">
+        <button data-v="v1" class="active">V1 · Swipe on “grade” (recommended)</button>
+        <button data-v="v2">V2 · Two-line break</button>
+        <button data-v="v3">V3 · Squiggle underline</button>
+        <button data-v="v4">V4 · Serif “hear”, bold “grade”</button>
+      </div>
+
+      <!-- V1 ────────────────────────────────────────── -->
+      <section class="hero v1" data-variant="v1">
+        <div>
+          <span class="chip">
+            <span class="live"><span class="dot"></span>live</span>
+            The listening layer for voice-native agents
+          </span>
+          <h1 class="head">
+            <span class="line">Your agent can hear them.</span>
+            <span class="line">
+              Now it can
+              <span class="hi"><span>grade</span></span>
+              them.
+            </span>
+          </h1>
+          <p class="sub">
+            Chivox MCP returns a
+            <strong>phoneme-level score matrix</strong>
+            for English and Mandarin — one MCP call, any LLM. Built for language
+            tutors, reading coaches, and voice-native agents.
+          </p>
+          <div class="cta-row">
+            <a class="btn primary" href="#">Start free
+              <span class="pip">→</span></a>
+            <a class="btn ghost" href="#">See it run ↗</a>
+          </div>
+          <div class="install">
+            <span class="prompt">$</span>
+            <span>npx -y</span>
+            <span class="pkg">@chivox/mcp</span>
+          </div>
+          <div class="meta">
+            COPY · <b>Your agent can hear them. Now it can grade them.</b>
+            &nbsp;·&nbsp; SUB · phoneme-level score matrix / one MCP call, any LLM
+          </div>
+        </div>
+        <div class="ear-placeholder" aria-hidden="true">
+          <div class="note">
+            illustration unchanged
+            <b>(current HeroEarArt stays here)</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- V2 ────────────────────────────────────────── -->
+      <section class="hero v2" data-variant="v2" style="display:none">
+        <div>
+          <span class="chip">
+            <span class="live"><span class="dot"></span>live</span>
+            The listening layer for voice-native agents
+          </span>
+          <h1 class="head">
+            <span class="line">Your agent can hear them.</span>
+            <span class="line">Now it can</span>
+            <span class="line">
+              <span class="hi"><span>grade</span></span>
+              them.
+            </span>
+          </h1>
+          <p class="sub">
+            Chivox MCP returns a
+            <strong>phoneme-level score matrix</strong>
+            for English and Mandarin — one MCP call, any LLM. Built for language
+            tutors, reading coaches, and voice-native agents.
+          </p>
+          <div class="cta-row">
+            <a class="btn primary" href="#">Start free <span class="pip">→</span></a>
+            <a class="btn ghost" href="#">See it run ↗</a>
+          </div>
+          <div class="install">
+            <span class="prompt">$</span>
+            <span>npx -y</span>
+            <span class="pkg">@chivox/mcp</span>
+          </div>
+          <div class="meta">
+            Gives “grade” its own visual beat — the promise lands on its own line.
+          </div>
+        </div>
+        <div class="ear-placeholder" aria-hidden="true">
+          <div class="note">illustration unchanged<b>(current HeroEarArt stays here)</b></div>
+        </div>
+      </section>
+
+      <!-- V3 ────────────────────────────────────────── -->
+      <section class="hero v3" data-variant="v3" style="display:none">
+        <div>
+          <span class="chip">
+            <span class="live"><span class="dot"></span>live</span>
+            The listening layer for voice-native agents
+          </span>
+          <h1 class="head">
+            <span class="line">Your agent can hear them.</span>
+            <span class="line">
+              Now it can
+              <span class="hi"><span>grade</span></span>
+              them.
+            </span>
+          </h1>
+          <p class="sub">
+            Chivox MCP returns a
+            <strong>phoneme-level score matrix</strong>
+            for English and Mandarin — one MCP call, any LLM. Built for language
+            tutors, reading coaches, and voice-native agents.
+          </p>
+          <div class="cta-row">
+            <a class="btn primary" href="#">Start free <span class="pip">→</span></a>
+            <a class="btn ghost" href="#">See it run ↗</a>
+          </div>
+          <div class="install">
+            <span class="prompt">$</span>
+            <span>npx -y</span>
+            <span class="pkg">@chivox/mcp</span>
+          </div>
+          <div class="meta">
+            Quieter accent — squiggle underline instead of highlighter. Reads
+            more like an editor’s mark.
+          </div>
+        </div>
+        <div class="ear-placeholder" aria-hidden="true">
+          <div class="note">illustration unchanged<b>(current HeroEarArt stays here)</b></div>
+        </div>
+      </section>
+
+      <!-- V4 ────────────────────────────────────────── -->
+      <section class="hero v4" data-variant="v4" style="display:none">
+        <div>
+          <span class="chip">
+            <span class="live"><span class="dot"></span>live</span>
+            The listening layer for voice-native agents
+          </span>
+          <h1 class="head">
+            <span class="line">Your agent can <span class="soft">hear</span> them.</span>
+            <span class="line">
+              Now it can
+              <span class="hi"><span>grade</span></span>
+              them.
+            </span>
+          </h1>
+          <p class="sub">
+            Chivox MCP returns a
+            <strong>phoneme-level score matrix</strong>
+            for English and Mandarin — one MCP call, any LLM. Built for language
+            tutors, reading coaches, and voice-native agents.
+          </p>
+          <div class="cta-row">
+            <a class="btn primary" href="#">Start free <span class="pip">→</span></a>
+            <a class="btn ghost" href="#">See it run ↗</a>
+          </div>
+          <div class="install">
+            <span class="prompt">$</span>
+            <span>npx -y</span>
+            <span class="pkg">@chivox/mcp</span>
+          </div>
+          <div class="meta">
+            Adds a whisper of serif italic on “hear” to echo the old
+            <em>“ears of a linguistics professor”</em> flavor, without the length.
+          </div>
+        </div>
+        <div class="ear-placeholder" aria-hidden="true">
+          <div class="note">illustration unchanged<b>(current HeroEarArt stays here)</b></div>
+        </div>
+      </section>
+
+      <p class="panel-label" style="margin-top: 48px">
+        Notes · the right column is a dashed placeholder only. On /global, the existing
+        two-act Mandarin → English HeroEarArt animation stays exactly as it is today.
+      </p>
+    </div>
+
+    <script>
+      const nav = document.getElementById('nav');
+      const sections = document.querySelectorAll('section.hero');
+      nav.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-v]');
+        if (!btn) return;
+        const v = btn.dataset.v;
+        nav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+        sections.forEach((s) => {
+          s.style.display = s.dataset.variant === v ? '' : 'none';
+        });
+      });
+    </script>
+  </body>
+</html>

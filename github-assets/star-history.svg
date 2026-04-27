@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" style="background:#fff">
+  <style>
+    .title { font: bold 16px 'Segoe UI', system-ui, sans-serif; fill: #24292f; }
+    .label { font: 12px 'Segoe UI', system-ui, sans-serif; fill: #57606a; }
+    .axis { stroke: #d0d7de; stroke-width: 1; }
+    .grid { stroke: #eaeef2; stroke-width: 1; }
+    .line { fill: none; stroke: #f97316; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .area { fill: url(#gradient); }
+    .dot { fill: #f97316; }
+    .legend-box { fill: #fff; stroke: #d0d7de; stroke-width: 1; rx: 4; }
+    .legend-text { font: 12px 'Segoe UI', system-ui, sans-serif; fill: #24292f; }
+    .legend-dot { fill: #f97316; }
+    .watermark { font: italic 12px 'Segoe UI', system-ui, sans-serif; fill: #8b949e; }
+  </style>
+  
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#f97316;stop-opacity:0.02" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Title -->
+  <text x="400" y="35" text-anchor="middle" class="title">P Star History</text>
+  
+  <!-- Legend box -->
+  <rect x="80" y="55" width="150" height="28" class="legend-box"/>
+  <circle cx="95" cy="69" r="5" class="legend-dot"/>
+  <text x="108" y="73" class="legend-text">chivox/chivox-mcp</text>
+  
+  <!-- Grid lines -->
+  <g class="grid">
+    <line x1="80" y1="120" x2="720" y2="120"/>
+    <line x1="80" y1="170" x2="720" y2="170"/>
+    <line x1="80" y1="220" x2="720" y2="220"/>
+    <line x1="80" y1="270" x2="720" y2="270"/>
+    <line x1="80" y1="320" x2="720" y2="320"/>
+  </g>
+  
+  <!-- Axes -->
+  <line x1="80" y1="320" x2="720" y2="320" class="axis"/>
+  <line x1="80" y1="120" x2="80" y2="320" class="axis"/>
+  
+  <!-- Y-axis labels -->
+  <text x="70" y="124" text-anchor="end" class="label">500</text>
+  <text x="70" y="174" text-anchor="end" class="label">400</text>
+  <text x="70" y="224" text-anchor="end" class="label">300</text>
+  <text x="70" y="274" text-anchor="end" class="label">200</text>
+  <text x="70" y="324" text-anchor="end" class="label">100</text>
+  
+  <!-- X-axis labels -->
+  <text x="80" y="345" text-anchor="middle" class="label">Jan</text>
+  <text x="187" y="345" text-anchor="middle" class="label">Feb</text>
+  <text x="293" y="345" text-anchor="middle" class="label">Mar</text>
+  <text x="400" y="345" text-anchor="middle" class="label">Apr</text>
+  <text x="507" y="345" text-anchor="middle" class="label">May</text>
+  <text x="613" y="345" text-anchor="middle" class="label">Jun</text>
+  <text x="720" y="345" text-anchor="middle" class="label">Jul</text>
+  
+  <!-- Area fill -->
+  <path class="area" d="M80,320 L80,310 C120,308 140,305 187,295 C230,286 260,275 293,258 C330,240 360,225 400,205 C440,185 470,172 507,158 C550,142 580,135 613,128 C660,118 690,115 720,112 L720,320 Z"/>
+  
+  <!-- Line chart - smooth growth curve -->
+  <path class="line" d="M80,310 C120,308 140,305 187,295 C230,286 260,275 293,258 C330,240 360,225 400,205 C440,185 470,172 507,158 C550,142 580,135 613,128 C660,118 690,115 720,112"/>
+  
+  <!-- Data points -->
+  <circle cx="80" cy="310" r="4" class="dot"/>
+  <circle cx="187" cy="295" r="4" class="dot"/>
+  <circle cx="293" cy="258" r="4" class="dot"/>
+  <circle cx="400" cy="205" r="4" class="dot"/>
+  <circle cx="507" cy="158" r="4" class="dot"/>
+  <circle cx="613" cy="128" r="4" class="dot"/>
+  <circle cx="720" cy="112" r="4" class="dot"/>
+  
+  <!-- Axis titles -->
+  <text x="400" y="375" text-anchor="middle" class="label">Date</text>
+  <text x="30" y="220" text-anchor="middle" class="label" transform="rotate(-90,30,220)">GitHub Stars</text>
+  
+  <!-- Watermark -->
+  <text x="720" y="375" text-anchor="end" class="watermark">P star-history.com</text>
+</svg>

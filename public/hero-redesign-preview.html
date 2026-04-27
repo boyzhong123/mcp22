@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>首屏改版方案预览 · Chivox MCP /global</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background: #fbf6e9;
+        color: #0a0a0a;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      /* ── top briefing ─────────────────────────────── */
+      .briefing {
+        max-width: 1200px;
+        margin: 40px auto 0;
+        padding: 28px 32px;
+        background: #ffffff;
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 20px;
+        box-shadow: 0 18px 50px -30px rgba(0,0,0,0.25);
+      }
+      .briefing h1 {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin: 0 0 8px;
+      }
+      .briefing p {
+        font-size: 13.5px;
+        color: #52525b;
+        margin: 0 0 16px;
+        line-height: 1.6;
+      }
+      .briefing-list {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      .brief-item {
+        padding: 10px 12px;
+        border: 1px dashed rgba(0,0,0,0.14);
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.5;
+        background: #fafaf7;
+      }
+      .brief-item b { display: block; font-weight: 700; color: #18181b; margin-bottom: 2px; }
+      .brief-item span { color: #52525b; }
+
+      /* ── each variant frame ───────────────────────── */
+      .variant {
+        max-width: 1200px;
+        margin: 48px auto;
+        padding: 0 32px;
+      }
+      .variant-meta {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+      .variant-title {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #18181b;
+      }
+      .variant-title small {
+        display: inline-block;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 11px;
+        color: #059669;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-right: 10px;
+        vertical-align: 2px;
+      }
+      .variant-desc {
+        font-size: 13px;
+        color: #52525b;
+        line-height: 1.55;
+        max-width: 720px;
+        margin: 6px 0 0;
+      }
+      .addressed {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .addressed span {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px;
+        border: 1px solid rgba(16,185,129,0.35);
+        background: rgba(16,185,129,0.08);
+        color: #047857;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+      .frame {
+        position: relative;
+        border-radius: 22px;
+        overflow: hidden;
+        background:
+          radial-gradient(900px 520px at 85% -10%, #fde68a40 0%, transparent 55%),
+          radial-gradient(700px 480px at 8% 25%, #d1fae540 0%, transparent 55%),
+          #fbf6e9;
+        box-shadow: 0 20px 60px -30px rgba(0,0,0,0.25);
+        border: 1px solid rgba(0,0,0,0.08);
+      }
+      .frame-inner {
+        padding: 56px 56px 48px;
+        min-height: 520px;
+      }
+      .mini-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 56px;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(14px);
+      }
+      .brand {
+        display: inline-flex; align-items: center; gap: 10px;
+        font-weight: 700; letter-spacing: -0.02em; font-size: 15px;
+      }
+      .brand-dot {
+        height: 26px; width: 26px; border-radius: 8px;
+        background: linear-gradient(135deg, #18181b, #27272a);
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #fbf6e9; font-size: 14px; position: relative;
+      }
+      .brand-dot::after {
+        content: ''; position: absolute; bottom: -2px; right: -2px;
+        height: 6px; width: 6px; border-radius: 999px;
+        background: #10b981; box-shadow: 0 0 0 2px #fff;
+      }
+      .brand-gradient {
+        background: linear-gradient(90deg, #6366f1, #0ea5e9, #10b981);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent;
+      }
+
+      /* ── shared typographic building blocks ────────── */
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 5px 12px 5px 5px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.78);
+        border: 1px solid rgba(0,0,0,0.08);
+        font-size: 12px; font-weight: 500;
+        color: #3f3f46;
+        box-shadow: 0 4px 14px -8px rgba(0,0,0,0.15);
+        backdrop-filter: blur(8px);
+      }
+      .eyebrow .pip {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px; text-transform: uppercase;
+        padding: 2px 8px; border-radius: 999px;
+        background: rgba(16,185,129,0.12);
+        border: 1px solid rgba(16,185,129,0.3);
+        color: #047857;
+        letter-spacing: 0.12em;
+      }
+      .eyebrow .pip::before {
+        content: ''; display: inline-block;
+        height: 6px; width: 6px; border-radius: 999px; background: #10b981;
+        margin-right: 6px; vertical-align: 1px;
+        box-shadow: 0 0 6px rgba(16,185,129,0.8);
+      }
+      .sub {
+        font-size: 17px; color: #52525b; line-height: 1.55;
+        max-width: 560px; margin: 20px 0 24px;
+      }
+      .cta-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+      .cta-primary {
+        display: inline-flex; align-items: center; gap: 10px;
+        padding: 13px 22px; border-radius: 999px;
+        background: #18181b; color: white;
+        font-weight: 600; font-size: 14px;
+        text-decoration: none;
+        box-shadow: 0 10px 28px -10px rgba(0,0,0,0.4);
+      }
+      .cta-primary .chev {
+        height: 26px; width: 26px; border-radius: 999px;
+        background: rgba(255,255,255,0.15);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 11px;
+      }
+      .cta-ghost {
+        font-size: 14px; font-weight: 500; color: #3f3f46;
+        text-decoration: none;
+      }
+
+      .two-col {
+        display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center;
+      }
+      .card {
+        background: rgba(255,255,255,0.72);
+        border: 1px solid rgba(0,0,0,0.08);
+        backdrop-filter: blur(16px);
+        border-radius: 18px;
+        box-shadow:
+          0 1px 0 rgba(255,255,255,0.85) inset,
+          0 28px 60px -40px rgba(0,0,0,0.28);
+      }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+      .serif { font-family: 'Fraunces', Georgia, serif; }
+
+      /* ==================================================
+       *  V1 · Outcome-first scoreboard
+       *  kills the "ears of a linguistics professor" line,
+       *  replaces the complex sandhi SVG with ONE animated
+       *  score card as the visual anchor.
+       * ================================================ */
+      .v1-head {
+        font-size: 72px;
+        font-weight: 800;
+        letter-spacing: -0.045em;
+        line-height: 1.02;
+        color: #0a0a0a;
+        margin: 22px 0 0;
+      }
+      .v1-head .strike {
+        background: linear-gradient(100deg, rgba(244,63,94,0.22), rgba(251,113,133,0.32));
+        padding: 2px 10px 4px;
+        border-radius: 8px;
+        text-decoration: line-through;
+        text-decoration-color: rgba(190,18,60,0.75);
+        text-decoration-thickness: 3px;
+      }
+      .v1-head .hl {
+        position: relative; display: inline-block;
+        color: #065f46;
+      }
+      .v1-head .hl::before {
+        content: ''; position: absolute;
+        inset: 58% -6px 14% -6px;
+        background: linear-gradient(100deg, rgba(167,243,208,0.7), rgba(52,211,153,0.7));
+        border-radius: 6px; z-index: -1;
+        transform: skewX(-6deg);
+      }
+
+      .v1-score {
+        position: relative;
+        padding: 28px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #ffffff 0%, #fafaf7 100%);
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 30px 60px -30px rgba(0,0,0,0.2);
+      }
+      .v1-score-head {
+        display: flex; align-items: center; justify-content: space-between;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #71717a; margin-bottom: 14px;
+      }
+      .v1-score-head .dot-row { display: inline-flex; gap: 5px; }
+      .v1-score-head .dot-row span { height: 8px; width: 8px; border-radius: 50%; background: #e4e4e7; }
+      .v1-score-head .dot-row span:nth-child(1) { background: #f87171; }
+      .v1-score-head .dot-row span:nth-child(2) { background: #fbbf24; }
+      .v1-score-head .dot-row span:nth-child(3) { background: #34d399; }
+      .v1-score-hero {
+        display: flex; align-items: flex-end; gap: 18px; margin-bottom: 20px;
+      }
+      .v1-score-big {
+        font-family: 'Fraunces', serif;
+        font-size: 120px; font-weight: 700; line-height: 0.9;
+        letter-spacing: -0.04em; color: #047857;
+        font-variant-numeric: tabular-nums;
+      }
+      .v1-score-context {
+        padding-bottom: 14px;
+      }
+      .v1-score-context div { font-size: 14px; color: #27272a; font-weight: 600; margin-bottom: 2px; }
+      .v1-score-context small { font-size: 11.5px; color: #71717a; font-family: 'JetBrains Mono', monospace; }
+
+      .v1-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+      .v1-bars .b {
+        background: #f4f4f5; border-radius: 8px; padding: 10px 12px;
+      }
+      .v1-bars .b .k {
+        font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+        letter-spacing: 0.14em; text-transform: uppercase; color: #71717a;
+        margin-bottom: 4px;
+      }
+      .v1-bars .b .v {
+        font-size: 20px; font-weight: 700; color: #18181b; margin-bottom: 6px;
+        font-variant-numeric: tabular-nums;
+      }
+      .v1-bars .b .track {
+        height: 3px; background: #e4e4e7; border-radius: 2px; overflow: hidden;
+      }
+      .v1-bars .b .fill { height: 100%; background: linear-gradient(90deg, #34d399, #059669); border-radius: 2px; }
+
+      .v1-word {
+        border-top: 1px dashed rgba(0,0,0,0.1);
+        padding-top: 14px;
+        display: flex; align-items: center; gap: 14px;
+        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #52525b;
+      }
+      .v1-word .bad {
+        color: #be123c; background: rgba(244,63,94,0.08);
+        border: 1px solid rgba(244,63,94,0.25);
+        padding: 2px 6px; border-radius: 6px;
+      }
+      .v1-word .ok {
+        color: #047857; background: rgba(16,185,129,0.08);
+        border: 1px solid rgba(16,185,129,0.25);
+        padding: 2px 6px; border-radius: 6px;
+      }
+
+      /* ==================================================
+       *  V2 · One-line promise (keep metaphor, straighten hierarchy)
+       * ================================================ */
+      .v2-head {
+        font-size: 68px;
+        font-weight: 900;
+        letter-spacing: -0.045em;
+        line-height: 1.03;
+        color: #0a0a0a;
+        margin: 22px 0 0;
+      }
+      .v2-head span.q {
+        background: linear-gradient(100deg, rgba(251,191,36,0.35), rgba(245,158,11,0.55));
+        padding: 0 6px 2px;
+        border-radius: 6px;
+      }
+
+      .v2-bubble-stack { display: flex; flex-direction: column; gap: 14px; }
+      .bubble {
+        padding: 14px 18px; border-radius: 18px;
+        max-width: 92%; font-size: 14px; line-height: 1.45;
+      }
+      .bubble.me {
+        align-self: flex-end;
+        background: #18181b; color: #fafafa;
+        border-top-right-radius: 4px;
+      }
+      .bubble.agent {
+        align-self: flex-start;
+        background: #ffffff; border: 1px solid rgba(0,0,0,0.08);
+        border-top-left-radius: 4px;
+        box-shadow: 0 18px 40px -30px rgba(0,0,0,0.2);
+      }
+      .bubble .who {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase;
+        opacity: 0.6; margin-bottom: 6px;
+      }
+      .bubble em { font-style: italic; color: #a7f3d0; }
+      .bubble.agent em { color: #047857; font-style: normal; font-weight: 700; }
+      .bubble .tip {
+        margin-top: 8px; padding: 8px 10px;
+        background: rgba(16,185,129,0.07);
+        border: 1px solid rgba(16,185,129,0.22);
+        border-radius: 10px; font-size: 12.5px; color: #065f46;
+      }
+
+      /* ==================================================
+       *  V3 · Pain → gain split (Whisper vs Chivox)
+       * ================================================ */
+      .v3-eyebrow {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11.5px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: #b45309;
+      }
+      .v3-head {
+        font-size: 62px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+        margin: 14px 0 0;
+        color: #0a0a0a;
+      }
+      .v3-head em {
+        font-family: 'Fraunces', Georgia, serif;
+        font-style: italic; font-weight: 500;
+        color: #be123c;
+      }
+      .v3-split {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        background: rgba(0,0,0,0.04); padding: 10px; border-radius: 18px;
+      }
+      .v3-cell {
+        padding: 22px 20px; border-radius: 12px; background: white;
+        border: 1px solid rgba(0,0,0,0.08);
+      }
+      .v3-cell.dim {
+        background: #f4f4f5;
+        color: #52525b;
+      }
+      .v3-cell h4 {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+        margin: 0 0 10px;
+      }
+      .v3-cell.dim h4 { color: #71717a; }
+      .v3-cell.bright h4 { color: #047857; }
+      .v3-cell .trans {
+        font-size: 17px; font-weight: 600; color: #18181b; margin-bottom: 4px;
+      }
+      .v3-cell .trans.strike {
+        color: #a1a1aa;
+      }
+      .v3-cell .gloss {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px; color: #71717a; margin-bottom: 14px;
+      }
+      .v3-cell .row {
+        display: flex; justify-content: space-between; align-items: baseline;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11.5px; padding: 6px 0;
+        border-top: 1px dashed rgba(0,0,0,0.1);
+      }
+      .v3-cell .row:first-of-type { border-top: 0; }
+      .v3-cell .row b { color: #18181b; font-weight: 600; }
+      .v3-cell.dim .row b { color: #52525b; }
+      .v3-cell.bright .row b { color: #047857; }
+      .v3-cell.bright .fail { color: #be123c; font-weight: 700; }
+
+      /* ==================================================
+       *  V4 · Audience-first (builders)
+       * ================================================ */
+      .v4-eyebrow {
+        display: inline-flex; gap: 6px; align-items: center;
+        padding: 4px 12px; border-radius: 999px;
+        background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
+        color: #4338ca; font-family: 'JetBrains Mono', monospace;
+        font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+      }
+      .v4-head {
+        font-size: 64px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.04;
+        color: #0a0a0a;
+        margin: 14px 0 0;
+      }
+      .v4-head .u {
+        position: relative; display: inline-block;
+      }
+      .v4-head .u::after {
+        content: ''; position: absolute; inset: auto -2px -4px -2px;
+        height: 10px; background: #fde68a; border-radius: 999px; z-index: -1;
+      }
+      .v4-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+      .v4-chip {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 6px 12px; border-radius: 999px;
+        background: white; border: 1px solid rgba(0,0,0,0.08);
+        font-size: 12.5px; color: #27272a;
+        box-shadow: 0 6px 18px -12px rgba(0,0,0,0.2);
+      }
+      .v4-chip .emoji { font-size: 14px; }
+
+      .v4-visual {
+        position: relative;
+        border-radius: 20px;
+        padding: 28px;
+        background: linear-gradient(180deg, #ffffff, #fafaf7);
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 26px 50px -30px rgba(0,0,0,0.25);
+      }
+      .v4-tool {
+        display: grid; grid-template-columns: 36px 1fr auto; gap: 14px;
+        align-items: center; padding: 12px 14px;
+        border: 1px solid rgba(0,0,0,0.06); border-radius: 12px;
+        margin-bottom: 8px; background: white;
+      }
+      .v4-tool:last-child { margin-bottom: 0; }
+      .v4-tool .ico {
+        height: 36px; width: 36px; border-radius: 9px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 16px;
+      }
+      .v4-tool .name { font-weight: 700; font-size: 14px; color: #18181b; }
+      .v4-tool .desc { font-size: 12px; color: #71717a; margin-top: 1px; }
+      .v4-tool .tag {
+        font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+        padding: 3px 8px; border-radius: 6px;
+        background: rgba(16,185,129,0.08); color: #047857;
+        border: 1px solid rgba(16,185,129,0.25);
+      }
+      .v4-connect {
+        text-align: center; font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: #71717a; margin: 14px 0 10px;
+      }
+      .v4-targets { display: flex; gap: 10px; flex-wrap: wrap; }
+      .v4-target {
+        flex: 1 1 140px;
+        padding: 10px 12px; border-radius: 10px;
+        background: #f4f4f5; font-size: 12px;
+        display: flex; flex-direction: column; gap: 2px;
+      }
+      .v4-target b { font-weight: 700; color: #18181b; font-size: 13px; }
+      .v4-target span { color: #71717a; }
+
+      /* ── shared: designer's rationale callout per variant ── */
+      .why {
+        margin-top: 16px;
+        padding: 14px 18px;
+        background: #fffbeb;
+        border: 1px dashed rgba(180,83,9,0.3);
+        border-radius: 14px;
+        font-size: 12.5px; line-height: 1.55;
+        color: #7c2d12;
+      }
+      .why b { color: #431407; }
+    </style>
+  </head>
+  <body>
+    <div class="briefing">
+      <h1>首屏改版方向 · 4 个可比对方案</h1>
+      <p>
+        每个方案直接对应你那张图里的 4 类问题：
+        <b>① 信息层级</b> · <b>② 图表表达成本</b> · <b>③ 卖点聚焦</b> · <b>④ 视觉锚点</b>。
+        四个方向故意做大不做小，先确定「走哪条路」再微调。
+      </p>
+      <div class="briefing-list">
+        <div class="brief-item"><b>① 信息层级</b><span>"the ears of a" 视觉重 / 语义弱；主标题断成三行读不顺。</span></div>
+        <div class="brief-item"><b>② 右侧图表</b><span>Tone sandhi + T3→T2 对欧美开发者理解成本高。</span></div>
+        <div class="brief-item"><b>③ 卖点聚焦</b><span>Whisper vs MCP 太工程化，用户不知道"对我有什么用"。</span></div>
+        <div class="brief-item"><b>④ 视觉锚点</b><span>绿色强调分散在 professor / icon / 图表，没有单点。</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- V1 — Outcome-first scoreboard -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <div class="variant">
+      <div class="variant-meta">
+        <div>
+          <div class="variant-title">
+            <small>V1 · outcome</small>Kill the metaphor. Lead with the score.
+          </div>
+          <p class="variant-desc">
+            把 "ears of a linguistics professor" 的比喻拿掉，主标题改成结果导向的一句话。
+            右侧不做炫技 SVG，换成一块<b>真实可读</b>的打分卡片——这块卡片是唯一的视觉锚点，所有绿色都集中到那个 84 分。
+          </p>
+          <div class="addressed">
+            <span>问题 ①</span><span>问题 ②</span><span>问题 ③</span><span>问题 ④</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame">
+        <div class="mini-nav">
+          <span class="brand"><span class="brand-dot">♪</span>Chivox <span class="brand-gradient">MCP</span></span>
+          <span class="mono" style="font-size:11px;color:#71717a">/global</span>
+        </div>
+        <div class="frame-inner">
+          <span class="eyebrow"><span class="pip">live</span>Speech eval for AI agents</span>
+          <h1 class="v1-head">
+            Your agent can hear them.<br />
+            Now it can <span class="hl">grade</span> them.
+          </h1>
+          <p class="sub">
+            Chivox MCP returns a <b style="color:#18181b">phoneme-level score matrix</b> for English and Mandarin — one MCP call, any LLM. Built for language tutors, reading coaches, and voice-native agents.
+          </p>
+          <div class="cta-row">
+            <a class="cta-primary" href="#">Get an API key<span class="chev">→</span></a>
+            <a class="cta-ghost" href="#">See live demo →</a>
+          </div>
+
+          <div style="margin-top:36px" class="two-col">
+            <div></div>
+            <div class="v1-score">
+              <div class="v1-score-head">
+                <span>chivox · assess_speech</span>
+                <span class="dot-row"><span></span><span></span><span></span></span>
+              </div>
+              <div class="v1-score-hero">
+                <div class="v1-score-big">84</div>
+                <div class="v1-score-context">
+                  <div>overall · "the weather is gorgeous today"</div>
+                  <small>en-US · 2.94 s · SNR 23.4 dB</small>
+                </div>
+              </div>
+              <div class="v1-bars">
+                <div class="b"><div class="k">accuracy</div><div class="v">71</div><div class="track"><div class="fill" style="width:71%"></div></div></div>
+                <div class="b"><div class="k">fluency</div><div class="v">86</div><div class="track"><div class="fill" style="width:86%"></div></div></div>
+                <div class="b"><div class="k">rhythm</div><div class="v">74</div><div class="track"><div class="fill" style="width:74%"></div></div></div>
+                <div class="b"><div class="k">integrity</div><div class="v">95</div><div class="track"><div class="fill" style="width:95%"></div></div></div>
+              </div>
+              <div class="v1-word">
+                <span>word · <b style="color:#18181b;font-weight:600">gorgeous</b></span>
+                <span class="bad">/dʒ/ · 30</span>
+                <span class="bad">/əs/ dropped</span>
+                <span class="ok">/ɔː/ · 74</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <b>为什么这样改：</b>
+        标题 7 个词两行，朗读时没有任何停顿（"Your agent can hear them. Now it can grade them."）—— hear/grade 形成直觉对比，用户一秒知道"对我有什么用"。右边一块卡片替代复杂的 SVG 声调图，同一个例子（gorgeous）贯穿整屏。整页只剩一个"84"是最亮的绿色。
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- V2 — One-line promise + before/after bubble -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <div class="variant">
+      <div class="variant-meta">
+        <div>
+          <div class="variant-title">
+            <small>V2 · promise</small>One line, one anchor, one dialog.
+          </div>
+          <p class="variant-desc">
+            保留"professor 耳朵"的诗意，但把主标题压成一行读顺的短句。
+            右侧不画图表，画一段真实的对话——用户录了一句错的发音，AI 立刻指出错在哪里。
+            把信息从"技术参数"翻成"用户在 App 里会看到的样子"。
+          </p>
+          <div class="addressed">
+            <span>问题 ①</span><span>问题 ③</span><span>问题 ④</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame">
+        <div class="mini-nav">
+          <span class="brand"><span class="brand-dot">♪</span>Chivox <span class="brand-gradient">MCP</span></span>
+          <span class="mono" style="font-size:11px;color:#71717a">/global</span>
+        </div>
+        <div class="frame-inner two-col">
+          <div>
+            <span class="eyebrow"><span class="pip">for builders</span>The listening layer</span>
+            <h1 class="v2-head">
+              Give your agent <span class="q">ears</span> that actually teach.
+            </h1>
+            <p class="sub">
+              Phoneme-level pronunciation scoring for English and Mandarin — through one MCP call.
+              Drop it into Cursor, Claude Desktop, or any LLM agent and ship a tutor, not a transcriber.
+            </p>
+            <div class="cta-row">
+              <a class="cta-primary" href="#">Start free<span class="chev">→</span></a>
+              <a class="cta-ghost" href="#">npx -y @chivox/mcp</a>
+            </div>
+          </div>
+
+          <div class="v2-bubble-stack">
+            <div class="bubble me">
+              <div class="who">learner · 00:02</div>
+              🗣 <em>"I sink it's gorgeous today."</em>
+            </div>
+            <div class="bubble agent">
+              <div class="who">your AI tutor · chivox mcp</div>
+              I heard <em>sink</em>, but you meant <em>think</em> — place your tongue between your teeth for the <span class="mono" style="background:#f4f4f5;padding:1px 5px;border-radius:4px">/θ/</span> sound.
+              <div class="tip">Also <b>gorgeous</b> lost the /dʒ/ affricate. Drill: <i>judge · gem · gorgeous</i>.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <b>为什么这样改：</b>
+        主标题一行读完（"Give your agent ears that actually teach."）——"ears"做黄色荧光笔，professor 去掉，语义锚点从修饰语变成动词 <i>teach</i>。
+        右侧抛弃图表，用两条聊天气泡展示"你产品里的体验"，欧美开发者秒懂这是拿来给 AI Tutor 用的。整页只一个黄色高亮、一个绿色按钮。
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- V3 — Pain → gain split -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <div class="variant">
+      <div class="variant-meta">
+        <div>
+          <div class="variant-title">
+            <small>V3 · contrast</small>Pain on the left. Gain on the right.
+          </div>
+          <p class="variant-desc">
+            直接把"Whisper 能 vs Whisper 不能"做成首屏的主视觉。
+            左边灰的是现状（STT 只给文字），右边亮的是 Chivox（给你完整打分）。
+            把工程术语翻成"一眼看懂什么丢了什么补上了"。
+          </p>
+          <div class="addressed">
+            <span>问题 ②</span><span>问题 ③</span><span>问题 ④</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame">
+        <div class="mini-nav">
+          <span class="brand"><span class="brand-dot">♪</span>Chivox <span class="brand-gradient">MCP</span></span>
+          <span class="mono" style="font-size:11px;color:#71717a">/global</span>
+        </div>
+        <div class="frame-inner">
+          <span class="v3-eyebrow">The gap your LLM can't fill on its own</span>
+          <h1 class="v3-head">
+            STT tells your agent <em>what</em> was said.<br />
+            MCP tells it <b style="color:#047857">how well</b>.
+          </h1>
+          <p class="sub">
+            Drop Chivox MCP next to your model and get a full phonetic matrix — not one score, forty fields — for English and tonal Mandarin.
+          </p>
+
+          <div class="v3-split" style="margin-top:28px">
+            <div class="v3-cell dim">
+              <h4>01 · Whisper / generic STT</h4>
+              <div class="trans strike">the weather is gorgeous today</div>
+              <div class="gloss">transcript only · no feedback possible</div>
+              <div class="row"><span>pronunciation</span><b>—</b></div>
+              <div class="row"><span>per-word accuracy</span><b>—</b></div>
+              <div class="row"><span>phoneme errors</span><b>—</b></div>
+              <div class="row"><span>stress &amp; rhythm</span><b>—</b></div>
+              <div class="row"><span>tone (Mandarin)</span><b>—</b></div>
+            </div>
+            <div class="v3-cell bright">
+              <h4>02 · Chivox MCP</h4>
+              <div class="trans">the weather is gorgeous today</div>
+              <div class="gloss">overall 84 · 6 words · 22 phonemes scored</div>
+              <div class="row"><span>gorgeous · /dʒ/</span><span class="fail">30 · mispron</span></div>
+              <div class="row"><span>gorgeous · /əs/</span><span class="fail">dropped</span></div>
+              <div class="row"><span>absolutely · stress</span><b>63 · flat</b></div>
+              <div class="row"><span>rhythm</span><b>74 · ok</b></div>
+              <div class="row"><span>fluency · WPM</span><b>128</b></div>
+            </div>
+          </div>
+
+          <div class="cta-row" style="margin-top:28px">
+            <a class="cta-primary" href="#">See the full payload<span class="chev">→</span></a>
+            <a class="cta-ghost" href="#">Mandarin scoring →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <b>为什么这样改：</b>
+        首屏直接把用户最想问的问题（"我用 Whisper 不就够了吗？"）翻成视觉答案。
+        左右两列同一句话，一灰一亮，5 行字段一目了然。这条路不再需要声调图、SVG 动画——视觉锚点就是两列之间的落差。
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- V4 — Audience-first (target the builder) -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <div class="variant">
+      <div class="variant-meta">
+        <div>
+          <div class="variant-title">
+            <small>V4 · audience</small>Name the builder. Show the four tools.
+          </div>
+          <p class="variant-desc">
+            标题直接叫出目标受众（tutor 开发者），取消比喻。
+            右侧把"MCP 到底是什么"讲清楚——4 个具体工具 + 3 个典型落地场景。
+            欧美开发者一眼知道"我要不要用"。
+          </p>
+          <div class="addressed">
+            <span>问题 ①</span><span>问题 ③</span><span>问题 ④</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame">
+        <div class="mini-nav">
+          <span class="brand"><span class="brand-dot">♪</span>Chivox <span class="brand-gradient">MCP</span></span>
+          <span class="mono" style="font-size:11px;color:#71717a">/global</span>
+        </div>
+        <div class="frame-inner two-col">
+          <div>
+            <span class="v4-eyebrow">For teams building · AI tutors · voice agents · reading coaches</span>
+            <h1 class="v4-head">
+              The pronunciation engine for your <span class="u">language agent</span>.
+            </h1>
+            <p class="sub">
+              Four MCP tools, twenty years of phonetic R&amp;D, shipped as one <code class="mono" style="background:#f4f4f5;padding:1px 6px;border-radius:5px">npx</code> install.
+              Works with Cursor, Claude, Cline, or any agent SDK — English &amp; Mandarin, out of the box.
+            </p>
+
+            <div class="v4-chips">
+              <span class="v4-chip"><span class="emoji">🎓</span>AI Tutor</span>
+              <span class="v4-chip"><span class="emoji">📚</span>Reading Coach</span>
+              <span class="v4-chip"><span class="emoji">🗣</span>Conversation Partner</span>
+              <span class="v4-chip"><span class="emoji">🎙</span>Interview / HR Screen</span>
+            </div>
+
+            <div class="cta-row" style="margin-top:22px">
+              <a class="cta-primary" href="#">Get API key · 60 s<span class="chev">→</span></a>
+              <a class="cta-ghost" href="#">Read the docs →</a>
+            </div>
+          </div>
+
+          <div class="v4-visual">
+            <div class="v4-tool">
+              <span class="ico" style="background:#ecfdf5;color:#047857">1</span>
+              <div>
+                <div class="name">assess_speech</div>
+                <div class="desc">Score any English / Mandarin utterance, phoneme-level.</div>
+              </div>
+              <span class="tag">core</span>
+            </div>
+            <div class="v4-tool">
+              <span class="ico" style="background:#eff6ff;color:#1d4ed8">2</span>
+              <div>
+                <div class="name">assess_dialog</div>
+                <div class="desc">Rate fluency &amp; content on open-ended responses.</div>
+              </div>
+              <span class="tag">conversation</span>
+            </div>
+            <div class="v4-tool">
+              <span class="ico" style="background:#fdf4ff;color:#7e22ce">3</span>
+              <div>
+                <div class="name">get_corrective_feedback</div>
+                <div class="desc">Turn the matrix into a teacher-voice diagnosis.</div>
+              </div>
+              <span class="tag">llm-ready</span>
+            </div>
+            <div class="v4-tool">
+              <span class="ico" style="background:#fffbeb;color:#b45309">4</span>
+              <div>
+                <div class="name">generate_practice</div>
+                <div class="desc">Auto-produce a targeted drill from the weaknesses.</div>
+              </div>
+              <span class="tag">closed-loop</span>
+            </div>
+
+            <div class="v4-connect">→ claude · cursor · openai agents · langgraph</div>
+
+            <div class="v4-targets">
+              <div class="v4-target"><b>60 s</b><span>from install to first score</span></div>
+              <div class="v4-target"><b>40+</b><span>fields per response for LLM reasoning</span></div>
+              <div class="v4-target"><b>zh + en</b><span>tone, sandhi, stress, liaison</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <b>为什么这样改：</b>
+        取消 professor 比喻，主标题直接说"为谁做的"（language agent 开发者）。
+        右侧不是艺术插画，而是把这个 MCP 的 4 个工具摆出来——欧美开发者熟悉的 "MCP tool list" 模式（像 Anthropic 示例的 tool 表）。
+        绿色只剩一个按钮 + 一个 tool 图标，不再四处开花。
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- Decision matrix -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <div class="briefing" style="margin-bottom:60px">
+      <h1>怎么选？</h1>
+      <p>四个方向本质上是在回答不同问题：</p>
+      <div class="briefing-list">
+        <div class="brief-item"><b>V1 Outcome</b><span>让"分数"当锚点。适合目标是<b>结果可见</b>的路线。风险：偏 SaaS 味。</span></div>
+        <div class="brief-item"><b>V2 Promise</b><span>保诗意但落到<b>用户对话</b>。风险：像 Duolingo 不像开发者工具。</span></div>
+        <div class="brief-item"><b>V3 Contrast</b><span>用<b>Whisper 的空白</b>衬托自己。最能抓开发者，但信息密度高。</span></div>
+        <div class="brief-item"><b>V4 Audience</b><span>Anthropic 式 tool list。<b>对开发者最直接</b>，但失去故事感。</span></div>
+      </div>
+      <p style="margin-top:18px">
+        也可以混合：比如用 V2 的主标题 + V3 的右侧对比，或 V4 的右侧 + V1 的主标题。等你定好方向再组装。
+      </p>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+file '../../audio/slide0.mp3'
+file '../../audio/slide1.mp3'
+file '../../audio/slide2.mp3'
+file '../../audio/slide3.mp3'
+file '../../audio/slide4.mp3'
+file '../../audio/slide5.mp3'
+file '../../audio/slide6.mp3'
+file '../../audio/slide7.mp3'

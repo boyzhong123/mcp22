@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Chivox MCP — Product Introduction</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#09090b;color:#fff;
+  font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif;overflow:hidden}
+
+/* ─── Cover ──────────────────────────────────────── */
+#cover{
+  position:fixed;inset:0;z-index:200;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 140% 80% at 50% 0%, #1a1a2e 0%, #09090b 55%);
+  gap:0;
+  transition:opacity .6s ease;
+}
+#cover.hide{opacity:0;pointer-events:none}
+
+.cover-badge{
+  font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  opacity:.55;margin-bottom:28px;font-weight:500;
+}
+.cover-title{
+  font-size:clamp(52px,8vw,112px);font-weight:900;letter-spacing:-.03em;
+  line-height:1;text-align:center;
+  color:#fff;
+  margin-bottom:8px;
+}
+.cover-title span{
+  background:linear-gradient(90deg,#6366f1,#0ea5e9,#10b981);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.cover-sub{
+  font-size:clamp(16px,1.8vw,22px);opacity:.65;text-align:center;
+  max-width:560px;line-height:1.6;margin-bottom:52px;font-weight:400;
+}
+.cover-thumb{
+  width:min(780px,82vw);border-radius:16px;overflow:hidden;
+  box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.07);
+  margin-bottom:44px;position:relative;
+}
+.cover-thumb img{width:100%;display:block}
+.cover-thumb::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(9,9,11,.9) 0%,transparent 38%);
+}
+.play-btn{
+  position:relative;z-index:1;
+  display:flex;align-items:center;gap:14px;
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  color:#fff;border:none;border-radius:999px;
+  padding:18px 44px;font-size:19px;font-weight:700;cursor:pointer;
+  font-family:inherit;letter-spacing:.03em;
+  box-shadow:0 20px 60px rgba(124,58,237,.55);
+  transition:transform .2s,box-shadow .2s;
+}
+.play-btn:hover{transform:translateY(-3px);box-shadow:0 28px 72px rgba(124,58,237,.65)}
+.play-btn svg{width:22px;height:22px;fill:#fff}
+.cover-hint{margin-top:16px;font-size:13px;opacity:.4;letter-spacing:.06em}
+body.export-playback .play-btn,
+body.export-playback .cover-hint{display:none}
+
+/* ─── Slides ─────────────────────────────────────── */
+.stage{position:fixed;inset:0}
+.stage{
+  transform:scale(1.24);
+  transform-origin:center center;
+}
+.slide{
+  position:absolute;inset:0;opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:44px 40px 128px;
+  background:radial-gradient(ellipse 120% 80% at 50% 20%,#141418 0%,#09090b 65%);
+  /* Shorter crossfade + hide after fade ends → avoids two titles stacking (ghosting). */
+  transition:opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0.5s;
+  transform:scale(0.98);
+  z-index:0;
+}
+.slide.active{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transition:opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0s;
+  transform:scale(1);
+  z-index:1;
+}
+
+/* ─── Animations ─────────────────────────────────── */
+@keyframes enterScale {
+  from { transform: scale(0.85); opacity: 0; filter: blur(6px); }
+  to { transform: scale(1); opacity: 1; filter: blur(0); }
+}
+@keyframes enterUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes enterSoft {
+  from { transform: translateY(18px) scale(0.98); opacity: 0; filter: blur(4px); }
+  to { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+@keyframes float {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.014); }
+}
+@keyframes kenBurns {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.04) translate(0.3%, 0.3%); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 24px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07); }
+  50% { box-shadow: 0 40px 130px rgba(99,102,241,.4), 0 0 0 1px rgba(129,140,248,.2); }
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes liftIn {
+  from { transform: translateY(18px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes cardBreath {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes titleGlow {
+  0%,100% { text-shadow: 0 0 0 rgba(96,165,250,0); filter: drop-shadow(0 0 0 rgba(52,211,153,0)); }
+  50% { text-shadow: 0 0 26px rgba(96,165,250,.28); filter: drop-shadow(0 0 10px rgba(52,211,153,.18)); }
+}
+@keyframes contentPulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.012); }
+}
+
+.slide.active .screenshot-wrap {
+  animation: enterScale 1.2s ease-out, kenBurns 16s ease-in-out 1.2s infinite, pulseGlow 5s ease-in-out 1.2s infinite;
+}
+.slide.active .slide-title {
+  animation: enterUp 1s ease-out, float 8s ease-in-out 1.2s infinite, titleGlow 5.5s ease-in-out 1.2s infinite;
+}
+.slide.active .slide-title.grad {
+  background-size: 200% 200%;
+  animation: enterUp 1s ease-out, gradientShift 8s ease-in-out infinite, float 8s ease-in-out 1.2s infinite, titleGlow 5.5s ease-in-out 1.2s infinite;
+}
+
+/* ─── Text slides ─────────────────────────────────── */
+.text-slide{padding:40px}
+.slide-eyebrow{
+  font-size:15px;letter-spacing:.25em;text-transform:uppercase;
+  opacity:.5;margin-bottom:18px;font-weight:500;
+}
+.slide-title{
+  font-size:clamp(50px,7vw,96px);font-weight:900;
+  line-height:1.05;text-align:center;letter-spacing:-.03em;margin-bottom:22px;
+}
+.slide-title.grad{
+  background:linear-gradient(90deg,#fff 0%,#818cf8 30%,#60a5fa 60%,#34d399 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.slide-body{
+  font-size:clamp(18px,2.05vw,26px);line-height:1.65;opacity:.7;
+  text-align:center;max-width:820px;
+}
+.slide-body b{color:#fff;opacity:1}
+
+/* ─── Screenshot ─────────────────────────────────── */
+.screenshot-wrap{
+  width:min(1020px,92vw);border-radius:14px;overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.07);
+}
+.screenshot-wrap img{width:100%;display:block}
+.caption{text-align:center;margin-top:28px}
+.caption h2{font-size:clamp(26px,3.2vw,42px);font-weight:800;margin-bottom:8px}
+.caption p{font-size:clamp(14px,1.55vw,19px);opacity:.5}
+
+/* ─── Comparison cards ─────────────────────────────── */
+.compare{display:flex;gap:28px;margin-top:28px;max-width:1040px}
+.compare-card{
+  flex:1;padding:32px;border-radius:16px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+}
+.compare-card.bad{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05)}
+.compare-card.good{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.05)}
+.compare-card h3{font-size:22px;font-weight:700;margin-bottom:18px}
+.compare-card ul{padding-left:0}
+.compare-card li{
+  list-style:none;font-size:17px;opacity:.8;padding:9px 0;
+  display:flex;align-items:center;gap:10px;
+}
+.compare-card.bad li::before{content:"✗";color:#ef4444}
+.compare-card.good li::before{content:"✓";color:#22c55e}
+
+/* ─── Flow steps ─────────────────────────────────── */
+.flow-steps{
+  display:flex;align-items:center;justify-content:center;
+  gap:14px;flex-wrap:wrap;margin-top:28px;max-width:1200px;
+}
+.flow-step{
+  display:flex;flex-direction:column;align-items:center;
+  padding:20px 18px;border-radius:14px;min-width:118px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+}
+.flow-step .step-num{
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,#6366f1,#0ea5e9);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;margin-bottom:10px;
+}
+.flow-step .step-icon{font-size:32px;margin-bottom:8px}
+.flow-step .step-label{font-size:14px;font-weight:600}
+.flow-step .step-desc{font-size:12px;opacity:.5;margin-top:4px}
+.flow-arrow{font-size:22px;opacity:.3}
+
+/* ─── Value cards ─────────────────────────────────── */
+.value-cards{
+  display:flex;gap:22px;margin-top:28px;max-width:1120px;
+}
+.value-card{
+  flex:1;padding:24px 20px;border-radius:16px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+  text-align:center;
+}
+.value-cards,
+.dual-mode{
+  opacity:1;
+}
+.value-card,
+.mode-card{
+  opacity:1;
+  transform:none;
+}
+.slide.active .value-cards,
+.slide.active .dual-mode{
+  animation: contentPulse 9.5s ease-in-out 1.4s infinite;
+}
+.slide.active .value-card,
+.slide.active .mode-card{
+  animation: none;
+}
+.compare-card,
+.flow-step,
+.grid-card,
+.analysis-step{
+  opacity:0;
+  transform:translateY(12px) scale(0.985);
+}
+.slide.active .compare-card,
+.slide.active .flow-step,
+.slide.active .grid-card,
+.slide.active .analysis-step{
+  animation: liftIn 520ms ease-out forwards;
+}
+.slide.active .compare-card:nth-child(1),
+.slide.active .flow-step:nth-child(1),
+.slide.active .grid-card:nth-child(1),
+.slide.active .analysis-step:nth-child(1){ animation-delay: 120ms; }
+.slide.active .compare-card:nth-child(2),
+.slide.active .flow-step:nth-child(2),
+.slide.active .grid-card:nth-child(2),
+.slide.active .analysis-step:nth-child(2){ animation-delay: 210ms; }
+.slide.active .flow-step:nth-child(3),
+.slide.active .grid-card:nth-child(3),
+.slide.active .analysis-step:nth-child(3){ animation-delay: 300ms; }
+.slide.active .flow-step:nth-child(4),
+.slide.active .grid-card:nth-child(4){ animation-delay: 390ms; }
+.slide.active .flow-step:nth-child(5),
+.slide.active .grid-card:nth-child(5){ animation-delay: 480ms; }
+.slide.active .flow-step:nth-child(6),
+.slide.active .grid-card:nth-child(6){ animation-delay: 570ms; }
+.slide.active .flow-step:nth-child(7),
+.slide.active .grid-card:nth-child(7){ animation-delay: 660ms; }
+.slide.active .flow-step:nth-child(8),
+.slide.active .grid-card:nth-child(8){ animation-delay: 750ms; }
+.slide.active .flow-step:nth-child(9),
+.slide.active .grid-card:nth-child(9){ animation-delay: 840ms; }
+.slide.active .flow-step:nth-child(10){ animation-delay: 930ms; }
+.slide.active .flow-step:nth-child(11){ animation-delay: 1020ms; }
+.slide.active .compare,
+.slide.active .flow-steps,
+.slide.active .grid-wrap,
+.slide.active .analysis-demo,
+.slide.active .value-cards,
+.slide.active .dual-mode{
+  animation: contentPulse 9.5s ease-in-out 1.4s infinite;
+  transform-origin:center center;
+  will-change:transform;
+}
+.slide.active .compare-card,
+.slide.active .flow-step,
+.slide.active .grid-card,
+.slide.active .analysis-step,
+.slide.active .value-card,
+.slide.active .mode-card{
+  will-change:transform,opacity;
+  backface-visibility:hidden;
+  transform:translateZ(0);
+}
+.value-card .value-icon{font-size:40px;margin-bottom:12px}
+.value-card h3{font-size:19px;font-weight:700;margin-bottom:10px}
+.value-card p{font-size:14px;opacity:.6;line-height:1.6}
+.value-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:14px}
+.value-tags span{
+  font-size:11px;padding:4px 10px;border-radius:99px;
+  background:rgba(129,140,248,.15);color:#a5b4fc;
+}
+
+/* ─── Dual mode ─────────────────────────────────── */
+.dual-mode{display:flex;gap:26px;margin-top:28px;max-width:1000px}
+.mode-card{
+  flex:1;padding:28px;border-radius:16px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+}
+.mode-header{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.mode-icon{font-size:36px}
+.mode-card h3{font-size:19px;font-weight:700}
+.mode-card .mode-stat{font-size:13px;opacity:.5}
+.mode-card ul{margin:8px 0 0;padding-left:0}
+.mode-card li{
+  list-style:none;font-size:15px;opacity:.75;padding:7px 0;
+  display:flex;align-items:center;gap:8px;
+}
+.mode-card li::before{content:"→";color:#60a5fa;font-weight:700}
+
+/* ─── Grid ─────────────────────────────────────── */
+.grid-wrap{
+  display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:16px;
+  max-width:940px;margin-top:24px;
+}
+.grid-card{
+  padding:22px 18px;border-radius:14px;text-align:center;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  font-size:30px;line-height:1.35;
+}
+.grid-card span{display:block;font-size:12px;opacity:.5;margin-top:6px}
+
+/* ─── Analysis Demo ─────────────────────────────── */
+.analysis-demo{
+  display:flex;gap:18px;align-items:stretch;
+  max-width:1100px;width:96%;margin-top:24px;
+}
+.analysis-step{
+  flex:1;padding:22px 20px;border-radius:14px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+  display:flex;flex-direction:column;gap:10px;
+}
+.analysis-step .step-header{
+  display:flex;align-items:center;gap:10px;
+  padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);
+}
+.analysis-step .step-num{
+  width:24px;height:24px;border-radius:50%;
+  background:linear-gradient(135deg,#6366f1,#0ea5e9);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;
+}
+.analysis-step h4{font-size:16px;font-weight:600}
+.analysis-step .code-block{
+  font-family:ui-monospace,SFMono-Regular,monospace;
+  font-size:12.5px;line-height:1.6;
+  background:rgba(0,0,0,.4);padding:12px;border-radius:8px;
+  color:#a5b4fc;flex:1;overflow:hidden;
+}
+.analysis-step .code-block .dim{opacity:.5}
+.analysis-step .code-block .hi{color:#34d399}
+.analysis-step .code-block .warn{color:#fbbf24}
+
+/* ─── outro ─────────────────────────────────────── */
+.url-mono{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:clamp(15px,1.65vw,21px);opacity:.5;margin-top:20px;
+}
+
+/* ─── HUD ────────────────────────────────────────── */
+.hud-badge{
+  position:fixed;top:24px;left:28px;font-size:45px;font-weight:800;z-index:100;
+  text-shadow:0 2px 14px rgba(0,0,0,.55);
+}
+.hud-badge span{
+  background:linear-gradient(90deg,#6366f1,#0ea5e9,#10b981);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.controls{display:none}
+.controls button{
+  background:rgba(255,255,255,.07);color:#fff;
+  border:1px solid rgba(255,255,255,.13);border-radius:999px;
+  padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit;
+  transition:background .15s;
+}
+.controls button:hover{background:rgba(255,255,255,.14)}
+.progress{
+  position:fixed;bottom:0;left:0;height:3px;width:0%;z-index:100;
+  background:linear-gradient(90deg,#818cf8,#60a5fa,#34d399);
+  box-shadow:0 0 14px rgba(129,140,248,.7);
+  transition:width .18s linear;
+}
+.slide-counter{
+  position:fixed;bottom:18px;right:24px;font-size:12px;opacity:.4;
+  font-family:ui-monospace,monospace;z-index:100;letter-spacing:.08em;
+}
+
+/* ─── Subtitles (above slides + cover when playing; must show in headless record) ─ */
+.subtitles{
+  position:fixed;bottom:14px;left:18px;right:18px;
+  z-index:210;text-align:center;
+  pointer-events:none;
+  background:rgba(0,0,0,.9);
+  padding:18px 36px 20px;border-radius:12px;
+  backdrop-filter:blur(8px);
+  box-shadow:0 -6px 32px rgba(0,0,0,.5);
+  opacity:0;
+  transition:opacity .2s ease;
+  max-width:min(1400px,calc(100vw - 36px));
+  margin-left:auto;margin-right:auto;
+}
+.subtitles.is-on{opacity:1}
+.subtitle-en{
+  font-size:clamp(22px,2.55vw,32px);color:#fff;opacity:.97;
+  margin-bottom:8px;line-height:1.45;
+  font-weight:600;
+  letter-spacing:.01em;
+  text-shadow:0 1px 3px rgba(0,0,0,.95);
+}
+.subtitle-zh{
+  font-size:clamp(19px,2.2vw,27px);color:#c7d2fe;opacity:.95;
+  line-height:1.5;
+  font-weight:500;
+  text-shadow:0 1px 3px rgba(0,0,0,.95);
+}
+</style>
+</head>
+<body>
+
+<!-- ① COVER — shown first, click to start -->
+<div id="cover">
+  <div class="cover-badge">Chivox MCP · Speech Assessment for LLMs</div>
+  <div class="cover-title">Chivox <span>MCP</span></div>
+  <div class="cover-sub">让语音评测被大模型读懂<br>Phoneme-level speech assessment, delivered as MCP tools</div>
+  <div class="cover-thumb">
+    <img src="../video-cover.jpg" alt="Chivox MCP product screenshot">
+  </div>
+  <button class="play-btn" id="playbtn">
+    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    播放介绍 / Play Introduction
+  </button>
+  <div class="cover-hint">~2 minutes · English voiceover · 中英双语字幕</div>
+</div>
+
+<!-- HUD -->
+<div class="hud-badge">Chivox <span>MCP</span></div>
+<div class="subtitles" id="subtitles">
+  <div class="subtitle-en" id="sub-en"></div>
+  <div class="subtitle-zh" id="sub-zh"></div>
+</div>
+<div class="controls">
+  <button id="mute">🔊</button>
+  <button id="pause">⏸</button>
+  <button id="restart">↺</button>
+</div>
+<div class="progress" id="progress"></div>
+<div class="slide-counter" id="counter"></div>
+
+<!-- ② SLIDES (8 total, 6-act structure) -->
+<div class="stage" id="stage">
+
+  <!-- ═══════════════════════════════════════════════════
+       ACT 1: THE PROBLEM (1 slide)
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- S0: Pain point -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 1 · The Problem</div>
+    <div class="slide-title grad">LLMs Can't<br>Hear Audio</div>
+    <div class="slide-body">
+      Speech assessment APIs have existed for <b>20 years</b>.<br>
+      But they return raw numbers — <b>accuracy 78, fluency 82</b>.<br>
+      To turn them into learning feedback, engineers must write a<br>
+      <b>translation layer</b> — for every model, every time.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════
+       ACT 2: THE SOLUTION (2 slides)
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- S1: Before vs After -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 2 · The Solution</div>
+    <div class="slide-title grad">MCP:<br>One Call, Done</div>
+    <div class="compare">
+      <div class="compare-card bad">
+        <h3>❌ Without MCP</h3>
+        <ul>
+          <li>Study REST API documentation</li>
+          <li>Write auth / upload / polling code</li>
+          <li>Serialize results & craft prompts</li>
+          <li>Repeat for each new LLM</li>
+        </ul>
+      </div>
+      <div class="compare-card good">
+        <h3>✅ With Chivox MCP</h3>
+        <ul>
+          <li>Add one MCP server config line</li>
+          <li>LLM auto-discovers 16 tools</li>
+          <li>Phoneme results flow into context</li>
+          <li>Works with any MCP client</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- S2: Workflow -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 2 · How It Works</div>
+    <div class="slide-title grad" style="font-size:clamp(38px,5.2vw,76px)">One Audio → Smart Feedback</div>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-icon">⚙️</div>
+        <div class="step-label">Configure</div>
+        <div class="step-desc">One-time setup</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-icon">🎤</div>
+        <div class="step-label">User Speaks</div>
+        <div class="step-desc">Record / Upload</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-icon">🧠</div>
+        <div class="step-label">LLM Picks Tool</div>
+        <div class="step-desc">Auto-selects</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-icon">📊</div>
+        <div class="step-label">Chivox Scores</div>
+        <div class="step-desc">Phoneme-level</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num">5</div>
+        <div class="step-icon">💬</div>
+        <div class="step-label">LLM Feedback</div>
+        <div class="step-desc">Diagnosis + Drill</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════
+       ACT 3: CORE VALUES (1 slide) → ACT 4: DELIVERY MODES
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- S3: Core Values -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 3 · Core Values</div>
+    <div class="slide-title grad" style="font-size:clamp(38px,5.2vw,76px)">Three Core Values</div>
+    <div class="value-cards">
+      <div class="value-card">
+        <div class="value-icon">🎯</div>
+        <h3>Rich Data</h3>
+        <p>8 main dimensions + phoneme-level dp_type for every sound</p>
+        <div class="value-tags">
+          <span>Accuracy</span>
+          <span>Fluency</span>
+          <span>Rhythm</span>
+        </div>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">🧠</div>
+        <h3>LLM Diagnosis</h3>
+        <p>Second-pass analysis turns raw scores into actionable advice</p>
+        <div class="value-tags">
+          <span>GPT</span>
+          <span>Claude</span>
+          <span>Gemini</span>
+        </div>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">⚡</div>
+        <h3>Universal</h3>
+        <p>Standard MCP protocol, works with any AI framework</p>
+        <div class="value-tags">
+          <span>Cursor</span>
+          <span>Coze</span>
+          <span>Dify</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S4: Dual Mode (own act — avoids “two Act 3” confusion) -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 4 · Delivery Modes</div>
+    <div class="slide-title grad" style="font-size:clamp(38px,5.2vw,76px)">Two Evaluation Modes</div>
+    <div class="slide-body" style="max-width:920px;opacity:.62;margin-bottom:10px">
+      Same core engine, adapted for two delivery environments.
+    </div>
+    <div class="dual-mode">
+      <div class="mode-card">
+        <div class="mode-header">
+          <div class="mode-icon">🎤</div>
+          <div>
+            <h3>Real-time Streaming</h3>
+            <div class="mode-stat">Latency &lt; 300ms</div>
+          </div>
+        </div>
+        <ul>
+          <li>Evaluate while speaking</li>
+          <li>Instant phoneme feedback</li>
+          <li>Perfect for tutoring apps</li>
+        </ul>
+      </div>
+      <div class="mode-card">
+        <div class="mode-header">
+          <div class="mode-icon">📁</div>
+          <div>
+            <h3>File Upload</h3>
+            <div class="mode-stat">Batch processing</div>
+          </div>
+        </div>
+        <ul>
+          <li>WAV / MP3 / OGG / WebM</li>
+          <li>URL / Base64 / Binary</li>
+          <li>Perfect for content QC</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════
+       ACT 5: DEMO (1 slide)
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- S5: Demo + LLM Analysis -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 5 · See It Work</div>
+    <div class="slide-title grad" style="font-size:clamp(34px,4.6vw,66px)">Scores → Diagnosis → Practice</div>
+    <div class="analysis-demo">
+      <div class="analysis-step">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <h4>MCP Returns Data</h4>
+        </div>
+        <div class="code-block">
+          <span class="dim">{</span><br>
+          &nbsp;&nbsp;<span class="hi">"overall"</span>: 78,<br>
+          &nbsp;&nbsp;<span class="hi">"fluency"</span>: 82,<br>
+          &nbsp;&nbsp;<span class="warn">"phonemes"</span>: [<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;{ "θ": 45 },<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;{ "ð": 52 }<br>
+          &nbsp;&nbsp;]<br>
+          <span class="dim">}</span>
+        </div>
+      </div>
+      <div class="analysis-step">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <h4>LLM Diagnoses</h4>
+        </div>
+        <div class="code-block">
+          <span class="hi">Issue found:</span><br><br>
+          Your <span class="warn">/θ/</span> sounds like /s/.<br><br>
+          <span class="hi">Root cause:</span><br>
+          Tongue not between teeth.<br>
+          Common for Mandarin speakers.
+        </div>
+      </div>
+      <div class="analysis-step">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <h4>LLM Creates Drill</h4>
+        </div>
+        <div class="code-block">
+          <span class="hi">Practice these:</span><br><br>
+          1. <span class="warn">think</span> - through - three<br>
+          2. I <span class="warn">think</span> it's Thursday<br><br>
+          <span class="dim">Tip: Tongue tip between teeth,</span><br>
+          <span class="dim">blow air gently.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════
+       ACT 6: SCENARIOS (1 slide)
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- S6: Use Cases Grid -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 6 · Use Cases</div>
+    <div class="slide-title grad" style="font-size:clamp(42px,5.7vw,84px)">One MCP<br>Every Scenario</div>
+    <div class="grid-wrap">
+      <div class="grid-card">🎓<br>IELTS<span>Speaking prep</span></div>
+      <div class="grid-card">📚<br>K-12<span>Curriculum</span></div>
+      <div class="grid-card">🇨🇳<br>Mandarin<span>Proficiency</span></div>
+      <div class="grid-card">🧒<br>Kids<span>Phonics</span></div>
+      <div class="grid-card">👩‍🏫<br>Tutoring<span>Real-time</span></div>
+      <div class="grid-card">💬<br>IM Bots<span>Feishu · DingTalk</span></div>
+      <div class="grid-card">🎙️<br>Podcast<span>Quality check</span></div>
+      <div class="grid-card">🏆<br>Contests<span>Speech · Reading</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════
+       ACT 7: CALL TO ACTION (1 slide)
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- S7: CTA -->
+  <section class="slide text-slide">
+    <div class="slide-eyebrow">Act 7 · Get Started</div>
+    <div class="slide-title grad">One Config<br>Ship Today</div>
+    <div class="slide-body" style="font-family:ui-monospace,monospace;font-size:clamp(16px,1.75vw,21px);opacity:.6;margin-top:20px;line-height:2">
+      npx -y @chivox/mcp
+    </div>
+    <div class="slide-body" style="margin-top:24px;font-size:clamp(16px,1.65vw,20px)">
+      <b>20 years</b> of exam-grade engines · <b>185</b> countries<br>
+      <b>10 billion+</b> users served · <b>95%+</b> expert alignment
+    </div>
+    <div class="url-mono">https://chivoxmcp2.netlify.app</div>
+  </section>
+
+</div>
+
+<script src="audio/voice-manifest.js"></script>
+<script>
+const slides = document.querySelectorAll('.slide');
+const cover   = document.getElementById('cover');
+const progress= document.getElementById('progress');
+const counter = document.getElementById('counter');
+const pauseBtn= document.getElementById('pause');
+const muteBtn = document.getElementById('mute');
+const restBtn = document.getElementById('restart');
+const playBtn = document.getElementById('playbtn');
+let idx=0, paused=false, voiceOn=true;
+let completedDeckMs=0, segIndex=0;
+let muteSlideTimer=null;
+let muteSlideStart=0, muteSlideDur=0;
+/** Headless export: `Audio` `ended` / chained `play()` is unreliable; advance by manifest duration too. */
+let segmentEndTimer=null;
+let segmentChainToken=0;
+
+if(typeof window.__CHIVOX_VOICE_MANIFEST__ === 'undefined'){
+  console.error('Missing audio/voice-manifest.js — run: cd github-assets/video && python generate-audio.py');
+}
+const MAN = window.__CHIVOX_VOICE_MANIFEST__;
+const TOTAL = MAN ? MAN.totalMs : 1;
+/**
+ * Automated export: HTMLAudioElement `ended` / chained `play()` often breaks under headless `file:`.
+ * Drive segments by manifest duration when any of these is true (see render-live-video.mjs).
+ */
+const IS_EXPORT_PLAYBACK = window.__CHIVOX_EXPORT_CLOCK__ === true
+  || new URLSearchParams(location.search).get('play') === '1';
+const CLOCK_DRIVE_SEGMENTS = IS_EXPORT_PLAYBACK;
+const EXPORT_AUDIO_DELAY_MS = 520;
+let exportTimeline = null;
+let exportStartTs = 0;
+let exportElapsedPausedMs = 0;
+let exportVisibleSlide = -1;
+let exportVisibleSeg = -1;
+
+// ── Audio: ambient pad ──────────────────────────────
+let ctx, masterGain, oscs=[];
+function buildAudio(){
+  try{
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = ctx.createGain(); masterGain.gain.value=0.03;
+    masterGain.connect(ctx.destination);
+    [[220,'sine'],[330,'sine'],[440,'triangle'],[554,'sine']].forEach(([f,t],i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type=t; o.frequency.value=f;
+      g.gain.value = [.4,.3,.15,.1][i];
+      o.connect(g); g.connect(masterGain); o.start();
+      oscs.push(o);
+    });
+  }catch(e){}
+}
+function destroyAudio(){ 
+  oscs.forEach(o=>{try{o.stop()}catch(e){}}); oscs=[];
+  if(ctx){try{ctx.close()}catch(e){} ctx=null;} 
+}
+
+// ── Voice: one mp3 per sentence (manifest) ───────────
+let currentAudio = null;
+
+function stopVoice(){
+  if(muteSlideTimer){ clearTimeout(muteSlideTimer); muteSlideTimer=null; }
+  if(segmentEndTimer){ clearTimeout(segmentEndTimer); segmentEndTimer=null; }
+  segmentChainToken++;
+  if(currentAudio){
+    currentAudio.pause();
+    currentAudio.removeAttribute('src');
+    currentAudio = null;
+  }
+}
+
+function pauseVoice(){
+  if(currentAudio) currentAudio.pause();
+}
+
+function resumeVoice(){
+  if(currentAudio && voiceOn) currentAudio.play().catch(()=>{});
+}
+
+const subEn = document.getElementById('sub-en');
+const subZh = document.getElementById('sub-zh');
+
+function hideSubtitle(){
+  subEn.textContent = '';
+  subZh.textContent = '';
+  document.getElementById('subtitles').classList.remove('is-on');
+}
+
+function revealSubtitle(en, zh){
+  subEn.textContent = en;
+  subZh.textContent = zh;
+  document.getElementById('subtitles').classList.add('is-on');
+  if(CLOCK_DRIVE_SEGMENTS){
+    void subEn.offsetWidth;
+  }
+}
+
+function playSegment(slideIdx, sIdx){
+  if(!MAN || !MAN.slides[slideIdx]) return;
+  const slide = MAN.slides[slideIdx];
+  const seg = slide.segments[sIdx];
+  if(!seg) return;
+
+  stopVoice();
+  const chain = segmentChainToken;
+
+  currentAudio = new Audio(`audio/${seg.file}`);
+  currentAudio.preload = 'auto';
+  currentAudio.volume = 1;
+  // Show text immediately — do not wait for `playing` (headless record often skips / delays that event).
+  revealSubtitle(seg.en, seg.zh);
+  segIndex = sIdx;
+
+  let segmentFinished = false;
+  function finishThisSegment(){
+    if(segmentFinished || chain !== segmentChainToken) return;
+    segmentFinished = true;
+    if(segmentEndTimer){ clearTimeout(segmentEndTimer); segmentEndTimer=null; }
+    if(currentAudio){
+      currentAudio.removeEventListener('ended', onEnded);
+    }
+    onSegmentEnded(slideIdx, sIdx);
+  }
+  function onEnded(){ finishThisSegment(); }
+
+  currentAudio.addEventListener('ended', onEnded);
+  const slackMs = 380;
+  if(CLOCK_DRIVE_SEGMENTS){
+    segmentEndTimer = setTimeout(finishThisSegment, Math.max(0, seg.durationMs) + slackMs);
+  }
+
+  currentAudio.play().catch((err)=>{
+    console.warn('[voice] play() failed, timer will still advance slide', err);
+  });
+}
+
+function onSegmentEnded(slideIdx, sIdx){
+  const slide = MAN.slides[slideIdx];
+  if(sIdx + 1 < slide.segments.length){
+    playSegment(slideIdx, sIdx + 1);
+  } else {
+    finishSlide();
+  }
+}
+
+function finishSlide(){
+  hideSubtitle();
+  completedDeckMs += MAN.slides[idx].durationMs;
+  if(idx + 1 >= slides.length){
+    progress.style.width = '100%';
+    destroyAudio();
+    stopVoice();
+    return;
+  }
+  idx++;
+  activateSlide(idx);
+  segIndex = 0;
+  playSegment(idx, 0);
+}
+
+function activateSlide(i){
+  slides.forEach((s,j)=>s.classList.toggle('active',j===i));
+  counter.textContent = (i+1)+' / '+slides.length;
+  if(CLOCK_DRIVE_SEGMENTS && slides[i]){
+    void slides[i].offsetWidth;
+  }
+}
+
+function playSlideVoice(slideIdx){
+  segIndex = 0;
+  if(!MAN || !MAN.slides[slideIdx]) return;
+  const slide = MAN.slides[slideIdx];
+  if(!voiceOn){
+    muteSlideDur = slide.durationMs;
+    muteSlideStart = performance.now();
+    muteSlideTimer = setTimeout(()=>{
+      muteSlideTimer = null;
+      muteSlideDur = 0;
+      muteSlideStart = 0;
+      finishSlide();
+    }, slide.durationMs);
+    return;
+  }
+  muteSlideDur = 0;
+  muteSlideStart = 0;
+  playSegment(slideIdx, 0);
+}
+
+function showSlide(i){
+  idx = i;
+  activateSlide(i);
+  playSlideVoice(i);
+}
+
+function buildExportTimeline(){
+  if(!MAN) return null;
+  const slideStarts = [];
+  const segments = [];
+  let t = EXPORT_AUDIO_DELAY_MS;
+  MAN.slides.forEach((slide, slideIdx)=>{
+    slideStarts.push(t);
+    slide.segments.forEach((seg, segIdx)=>{
+      const startMs = t;
+      const endMs = startMs + seg.durationMs;
+      segments.push({ slideIdx, segIdx, startMs, endMs, en: seg.en, zh: seg.zh });
+      t = endMs;
+    });
+  });
+  return { slideStarts, segments, totalMs: t };
+}
+
+function currentExportElapsedMs(){
+  return exportElapsedPausedMs + (performance.now() - exportStartTs);
+}
+
+function renderExportFrame(elapsedMs){
+  if(!exportTimeline) return;
+
+  let slideIdx = 0;
+  while(slideIdx + 1 < exportTimeline.slideStarts.length && elapsedMs >= exportTimeline.slideStarts[slideIdx + 1]){
+    slideIdx++;
+  }
+  if(slideIdx !== exportVisibleSlide){
+    exportVisibleSlide = slideIdx;
+    idx = slideIdx;
+    activateSlide(slideIdx);
+  }
+
+  let activeSeg = -1;
+  for(let i=0; i<exportTimeline.segments.length; i++){
+    const seg = exportTimeline.segments[i];
+    if(elapsedMs >= seg.startMs && elapsedMs < seg.endMs){
+      activeSeg = i;
+      break;
+    }
+  }
+  if(activeSeg !== exportVisibleSeg){
+    exportVisibleSeg = activeSeg;
+    if(activeSeg === -1){
+      hideSubtitle();
+    }else{
+      const seg = exportTimeline.segments[activeSeg];
+      segIndex = seg.segIdx;
+      revealSubtitle(seg.en, seg.zh);
+    }
+  }
+
+  if(elapsedMs >= exportTimeline.totalMs){
+    progress.style.width = '100%';
+    hideSubtitle();
+    return;
+  }
+  const pct = Math.min(100, elapsedMs / exportTimeline.totalMs * 100);
+  progress.style.width = pct + '%';
+}
+
+function voiceElapsedMs(){
+  if(!MAN) return 0;
+  if(!voiceOn && muteSlideDur > 0 && muteSlideStart > 0){
+    return completedDeckMs + Math.min(muteSlideDur, performance.now() - muteSlideStart);
+  }
+  let ms = completedDeckMs;
+  const segs = MAN.slides[idx].segments;
+  for(let i=0; i<segIndex; i++){
+    if(segs[i]) ms += segs[i].durationMs;
+  }
+  if(currentAudio && voiceOn && !isNaN(currentAudio.currentTime)){
+    ms += currentAudio.currentTime * 1000;
+  }
+  return ms;
+}
+
+function tick(){
+  if(paused) return;
+  if(IS_EXPORT_PLAYBACK){
+    renderExportFrame(currentExportElapsedMs());
+  }else{
+    const pct = Math.min(100, voiceElapsedMs() / TOTAL * 100);
+    progress.style.width = pct + '%';
+  }
+  requestAnimationFrame(tick);
+}
+
+function start(){
+  if(!MAN){ return; }
+  idx = 0;
+  completedDeckMs = 0;
+  segIndex = 0;
+  exportVisibleSlide = -1;
+  exportVisibleSeg = -1;
+  exportElapsedPausedMs = 0;
+  exportStartTs = performance.now();
+  muteSlideDur = 0;
+  muteSlideStart = 0;
+  progress.style.width = '0%';
+  hideSubtitle();
+  activateSlide(0);
+  if(IS_EXPORT_PLAYBACK){
+    exportTimeline = buildExportTimeline();
+    renderExportFrame(0);
+  }else{
+    playSlideVoice(0);
+  }
+  requestAnimationFrame(tick);
+}
+
+// ── Controls ────────────────────────────────────────
+playBtn.onclick = ()=>{
+  if(!MAN){
+    alert('请先在 github-assets/video 目录运行：python generate-audio.py\n（生成逐句 mp3 与 voice-manifest.js）');
+    return;
+  }
+  cover.classList.add('hide');
+  buildAudio(); start();
+};
+
+if (IS_EXPORT_PLAYBACK) {
+  document.body.classList.add('export-playback');
+  setTimeout(()=>{ playBtn.click(); }, 80);
+}
+pauseBtn.onclick = ()=>{
+  paused=!paused; pauseBtn.textContent=paused?'▶':'⏸';
+  if(paused){
+    if(IS_EXPORT_PLAYBACK){
+      exportElapsedPausedMs = currentExportElapsedMs();
+    }else{
+      pauseVoice();
+    }
+  } else {
+    if(IS_EXPORT_PLAYBACK){
+      exportStartTs = performance.now();
+    }else{
+      resumeVoice();
+    }
+    requestAnimationFrame(tick);
+  }
+};
+muteBtn.onclick = ()=>{
+  voiceOn=!voiceOn; muteBtn.textContent=voiceOn?'🔊':'🔇';
+  if(!voiceOn) stopVoice();
+  if(masterGain) masterGain.gain.value=voiceOn?0.03:0;
+};
+restBtn.onclick = ()=>{
+  paused=false; pauseBtn.textContent='⏸';
+  destroyAudio(); stopVoice(); hideSubtitle();
+  muteSlideDur = 0; muteSlideStart = 0;
+  exportElapsedPausedMs = 0;
+  exportVisibleSlide = -1;
+  exportVisibleSeg = -1;
+  exportTimeline = null;
+  idx=0; completedDeckMs=0; segIndex=0;
+  cover.classList.remove('hide');
+  slides.forEach(s=>s.classList.remove('active'));
+  progress.style.width='0%'; counter.textContent='';
+};
+</script>
+</body>
+</html>

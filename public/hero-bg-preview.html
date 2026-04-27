@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>Chivox MCP · Hero background — painterly landscape variants</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Noto+Sans+SC:wght@700&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  :root {
+    --cream: #fbf6e9;
+    --ink: #18181b;
+    --muted: #52525b;
+    --emerald: #10b981;
+    --emerald-2: #059669;
+    --emerald-3: #065f46;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#efe9d8; color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1280px; margin:0 auto; padding:40px 20px 96px; }
+  .topnote h1 { margin:0 0 4px; font-size:22px; font-weight:800; letter-spacing:-0.02em; }
+  .topnote p  { margin:0 0 24px; font-size:13.5px; color:var(--muted); max-width:900px; line-height:1.65; }
+
+  .demo { margin:0 0 40px; border-radius:26px; overflow:hidden; background:var(--cream);
+    border:1px solid rgba(24,24,27,0.06); box-shadow:0 18px 50px -30px rgba(24,24,27,0.2); }
+  .demo-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 24px; border-bottom:1px solid rgba(24,24,27,0.06);
+    background:rgba(255,255,255,0.55); backdrop-filter:blur(10px);
+  }
+  .demo-header .tag { font-family:'JetBrains Mono',ui-monospace,monospace;
+    font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:var(--emerald-2); }
+  .demo-header .title { font-size:15px; font-weight:700; letter-spacing:-0.01em; }
+  .demo-header .desc  { font-size:12.5px; color:var(--muted); }
+
+  /* hero */
+  .hero { position:relative; min-height:640px; overflow:hidden; isolation:isolate; }
+  .hero-inner {
+    position:relative; z-index:5;
+    display:grid; grid-template-columns:7fr 5fr; gap:40px; align-items:center;
+    max-width:1180px; margin:0 auto; padding:68px 44px;
+  }
+  @media (max-width:900px){ .hero-inner{ grid-template-columns:1fr; } }
+
+  .eyebrow { display:inline-flex; align-items:center; gap:10px;
+    font-family:'JetBrains Mono',ui-monospace,monospace;
+    font-size:10.5px; letter-spacing:0.22em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; }
+  .eyebrow .rule { width:18px; height:1px; background:rgba(24,24,27,0.25); }
+  .eyebrow .dot  { width:6px; height:6px; border-radius:999px; background:var(--emerald);
+    box-shadow:0 0 0 3px rgba(16,185,129,0.22); }
+
+  h1.hero-h { font-family:'Inter',sans-serif; font-weight:900;
+    font-size:clamp(36px,4.2vw,60px); line-height:1.03; letter-spacing:-0.035em;
+    margin:0 0 18px; color:var(--ink); }
+  .hl { position:relative; white-space:nowrap; padding:0 2px; }
+  .hl::after { content:''; position:absolute; left:-4px; right:-4px; bottom:6px; height:38%;
+    background:linear-gradient(95deg, rgba(16,185,129,0.42) 0%, rgba(52,211,153,0.45) 60%, rgba(251,191,36,0.3) 100%);
+    border-radius:4px; z-index:-1; }
+
+  .sub { font-size:16.5px; color:var(--muted); line-height:1.55; max-width:560px; margin:0 0 28px; }
+  .sub b { color:rgba(24,24,27,0.9); font-weight:600; }
+
+  .btns { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-bottom:36px; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:0 8px 0 18px; height:44px;
+    border-radius:999px; font-size:14px; font-weight:600; text-decoration:none; border:1px solid transparent;
+    transition:transform 150ms ease; }
+  .btn:hover { transform:translateY(-1px); }
+  .btn-primary { background:var(--ink); color:#fafafa; padding-right:6px; }
+  .btn-primary .chev { display:inline-flex; width:28px; height:28px; border-radius:999px;
+    background:rgba(255,255,255,0.18); align-items:center; justify-content:center; margin-left:4px; }
+  .btn-play { color:var(--emerald-3); background:rgba(255,255,255,0.72);
+    border-color:rgba(16,185,129,0.35); backdrop-filter:blur(10px);
+    box-shadow:0 8px 22px -12px rgba(16,185,129,0.55); padding-right:6px; }
+  .btn-play .ring { position:relative; display:inline-flex; width:22px; height:22px;
+    align-items:center; justify-content:center; border-radius:999px; background:rgba(16,185,129,0.18); }
+  .btn-play .ring::after { content:''; position:absolute; inset:0; border-radius:999px;
+    background:rgba(16,185,129,0.28); animation:ping 1.6s ease-out infinite; }
+  .btn-play .chev { display:inline-flex; width:28px; height:28px; border-radius:999px;
+    background:rgba(16,185,129,0.15); align-items:center; justify-content:center; }
+  @keyframes ping { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(1.7);opacity:0} }
+
+  .benefits { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; max-width:620px; }
+  @media (max-width:540px){ .benefits{ grid-template-columns:1fr; } }
+  .benefit { display:flex; align-items:flex-start; gap:10px; }
+  .benefit .ico { flex:none; width:32px; height:32px; border-radius:999px;
+    display:inline-flex; align-items:center; justify-content:center; }
+  .benefit .title { font-size:13px; font-weight:600; letter-spacing:-0.005em; color:var(--ink); line-height:1.25; }
+  .benefit .desc  { font-size:12px; color:var(--muted); margin-top:2px; }
+  .ico.em { background:rgba(16,185,129,0.12); color:#059669; }
+  .ico.sk { background:rgba(14,165,233,0.12); color:#0369a1; }
+  .ico.am { background:rgba(245,158,11,0.14); color:#b45309; }
+
+  .ear { width:100%; aspect-ratio:420/500; max-width:560px; margin-left:auto;
+    user-select:none; pointer-events:none; filter: drop-shadow(0 10px 30px rgba(16,185,129,0.12)); }
+
+  /* ══════════════════════════════════════════════════════════════ */
+  /*  SHARED painterly-landscape backdrop                           */
+  /*  Think "油画远景被高斯模糊" — all built with SVG, heavy blur   */
+  /* ══════════════════════════════════════════════════════════════ */
+  .bg { position:absolute; inset:0; z-index:1; overflow:hidden; }
+  .bg svg.scene { width:100%; height:100%; display:block; }
+  .bg .grain {
+    position:absolute; inset:0; pointer-events:none;
+    opacity:0.22; mix-blend-mode:multiply;
+    background-image: radial-gradient(rgba(24,24,27,0.08) 1px, transparent 1px);
+    background-size: 3px 3px;
+  }
+  .bg .fade-top {
+    position:absolute; left:0; right:0; top:0; height:45%;
+    background: linear-gradient(180deg, #fdfaef 0%, rgba(253,250,239,0.6) 40%, transparent 100%);
+    pointer-events:none;
+  }
+  .bg .vignette {
+    position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(75% 85% at 50% 45%, transparent 50%, rgba(234,222,197,0.4) 100%);
+  }
+
+  /* option label */
+  .badge { position:absolute; left:16px; top:16px; z-index:6;
+    font-family:'JetBrains Mono',ui-monospace,monospace;
+    font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(24,24,27,0.55);
+    background:rgba(255,255,255,0.55); backdrop-filter:blur(8px);
+    border:1px solid rgba(24,24,27,0.08); border-radius:999px; padding:4px 10px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topnote">
+    <h1>Hero background — painterly landscape 方向（3 个浓度变种）</h1>
+    <p>
+      这次只围绕你说的 Tavily 那种方向：<strong>一张油画远景被狠狠高斯模糊成底</strong>。
+      不做任何"波形/等高线/大色块"那种设计感花活，就是天 + 远山 + 一条亮色河谷 + 几丛树影。
+      只调浓度和色调，给你 3 个对比：
+      A 偏清淡（最接近 Tavily 原图），B 偏饱和（我们自己的翡翠绿），C 偏日落（暖琥珀）。
+      文案 / SVG / CTA / 价值条带 完全就是现在 <code>/global</code> 首屏的结构。
+    </p>
+  </div>
+
+  <!-- ═══ ear-art symbol ═══ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="ear-art" viewBox="0 0 420 500">
+        <defs>
+          <radialGradient id="hh-halo" cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stop-color="#d1fae5" stop-opacity="0.9"/>
+            <stop offset="55%" stop-color="#ecfdf5" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="hh-hanzi" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#10b981" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#047857" stop-opacity="0.1"/>
+          </linearGradient>
+          <linearGradient id="hh-curve" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#34d399"/>
+            <stop offset="55%" stop-color="#10b981"/>
+            <stop offset="100%" stop-color="#059669"/>
+          </linearGradient>
+        </defs>
+        <ellipse cx="210" cy="240" rx="200" ry="210" fill="url(#hh-halo)"/>
+        <g opacity="0.7">
+          <line x1="50" x2="370" y1="120" y2="120" stroke="#a7f3d0" stroke-width="0.6"/>
+          <line x1="50" x2="370" y1="160" y2="160" stroke="#a7f3d0" stroke-width="0.6"/>
+          <line x1="50" x2="370" y1="200" y2="200" stroke="#10b981" stroke-opacity="0.45" stroke-width="0.8" stroke-dasharray="3 3"/>
+          <line x1="50" x2="370" y1="240" y2="240" stroke="#a7f3d0" stroke-width="0.6"/>
+          <line x1="50" x2="370" y1="280" y2="280" stroke="#a7f3d0" stroke-width="0.6"/>
+        </g>
+        <g opacity="0.55" font-family="ui-monospace,monospace" font-size="9" fill="#047857">
+          <text x="38" y="123" text-anchor="end">5</text>
+          <text x="38" y="163" text-anchor="end">4</text>
+          <text x="38" y="203" text-anchor="end">3</text>
+          <text x="38" y="243" text-anchor="end">2</text>
+          <text x="38" y="283" text-anchor="end">1</text>
+        </g>
+        <text x="210" y="345" text-anchor="middle" font-size="220" font-weight="700" fill="url(#hh-hanzi)"
+              style='font-family:"Noto Sans SC","PingFang SC",sans-serif; letter-spacing:0.02em;'>你好</text>
+        <path d="M 70 200 C 95 230, 120 278, 135 280 S 165 200, 180 160"
+              fill="none" stroke="#6ee7b7" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round" opacity="0.55"/>
+        <path d="M 240 200 C 265 230, 290 278, 305 280 S 335 200, 350 160"
+              fill="none" stroke="#6ee7b7" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round" opacity="0.55"/>
+        <path d="M 70 200 C 95 230, 120 278, 135 280 S 165 200, 180 160"
+              fill="none" stroke="url(#hh-curve)" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M 240 200 C 265 230, 290 278, 305 280 S 335 200, 350 160"
+              fill="none" stroke="url(#hh-curve)" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="70"  cy="200" r="3.2" fill="#059669"/>
+        <circle cx="135" cy="280" r="4"   fill="#ffffff" stroke="#059669" stroke-width="2"/>
+        <circle cx="180" cy="160" r="3.2" fill="#059669"/>
+        <circle cx="240" cy="200" r="3.2" fill="#059669"/>
+        <circle cx="305" cy="280" r="4"   fill="#ffffff" stroke="#059669" stroke-width="2"/>
+        <circle cx="350" cy="160" r="3.2" fill="#059669"/>
+        <g font-family="ui-monospace,monospace" font-size="10">
+          <rect x="105" y="92" width="54" height="20" rx="10" fill="#ffffff" stroke="#10b981" stroke-opacity="0.35"/>
+          <text x="132" y="106" text-anchor="middle" fill="#047857" font-weight="600">T3 ✓</text>
+          <rect x="275" y="92" width="54" height="20" rx="10" fill="#ffffff" stroke="#10b981" stroke-opacity="0.35"/>
+          <text x="302" y="106" text-anchor="middle" fill="#047857" font-weight="600">T3 ✓</text>
+        </g>
+        <text x="125" y="315" text-anchor="middle" font-size="28" fill="#065f46"
+              style='font-family:"Fraunces",Georgia,serif; font-style:italic; font-weight:500;'>nǐ</text>
+        <text x="295" y="315" text-anchor="middle" font-size="28" fill="#065f46"
+              style='font-family:"Fraunces",Georgia,serif; font-style:italic; font-weight:500;'>hǎo</text>
+        <line x1="70" x2="350" y1="360" y2="360" stroke="#10b981" stroke-opacity="0.25" stroke-dasharray="2 3"/>
+        <text x="210" y="390" text-anchor="middle" font-size="15" font-weight="600" fill="#065f46"
+              font-family="ui-monospace,monospace" letter-spacing="0.06em">T3 + T3 → T2 + T3</text>
+        <text x="210" y="409" text-anchor="middle" font-size="10" fill="#047857" opacity="0.7"
+              font-family="ui-monospace,monospace" letter-spacing="0.14em">TONE SANDHI · DETECTED</text>
+        <g transform="translate(352 70)">
+          <circle r="22" fill="#ffffff" stroke="#f43f5e" stroke-opacity="0.55" stroke-width="1.2"/>
+          <text text-anchor="middle" y="-3" font-size="9" fill="#be123c"
+                font-family="ui-monospace,monospace" letter-spacing="0.1em">SCORE</text>
+          <text text-anchor="middle" y="13" font-size="16" font-weight="700" fill="#be123c"
+                style='font-family:"Fraunces",Georgia,serif;'>92</text>
+        </g>
+      </symbol>
+
+      <!-- ═══ painterly landscape template ═══ -->
+      <!-- Three variants use three different palette+intensity filter combos -->
+      <symbol id="landscape" viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice">
+        <!-- sky -->
+        <rect x="0" y="0" width="1600" height="360" fill="url(#sky)"/>
+        <!-- far mountains -->
+        <path d="M0 380 Q200 320 380 360 T780 340 T1200 360 T1600 330 L1600 520 L0 520 Z" fill="url(#mtnFar)"/>
+        <!-- mid hills -->
+        <path d="M0 440 Q180 400 360 430 T720 420 T1100 440 T1600 410 L1600 560 L0 560 Z" fill="url(#mtnMid)"/>
+        <!-- river / valley ribbon -->
+        <path d="M-60 560 C 300 480, 520 560, 780 500 S 1240 580, 1700 520 L1700 600 L-60 600 Z"
+              fill="url(#river)"/>
+        <!-- foreground meadow -->
+        <path d="M0 540 Q200 520 420 540 T820 560 T1200 540 T1600 560 L1600 700 L0 700 Z" fill="url(#ground)"/>
+        <!-- trees / shrubs dotted -->
+        <g fill="url(#tree)" opacity="0.95">
+          <ellipse cx="130"  cy="610" rx="80" ry="40"/>
+          <ellipse cx="210"  cy="600" rx="55" ry="32"/>
+          <ellipse cx="360"  cy="640" rx="70" ry="36"/>
+          <ellipse cx="520"  cy="600" rx="45" ry="26"/>
+          <ellipse cx="720"  cy="640" rx="95" ry="44"/>
+          <ellipse cx="980"  cy="610" rx="65" ry="34"/>
+          <ellipse cx="1200" cy="640" rx="110" ry="50"/>
+          <ellipse cx="1380" cy="610" rx="70" ry="34"/>
+          <ellipse cx="1500" cy="640" rx="90" ry="42"/>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ░░░ A · SOFT (Tavily-close) ░░░ -->
+  <section class="demo">
+    <div class="demo-header">
+      <div><div class="tag">Option A</div><div class="title">Soft painterly — Tavily 风</div></div>
+      <div class="desc">奶油天空 + 浅翡翠山 + 亮河谷，28px blur，最接近参考图</div>
+    </div>
+    <div class="hero">
+      <span class="badge">A · soft</span>
+      <div class="bg">
+        <svg class="scene" viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#fdf9ec"/>
+              <stop offset="100%" stop-color="#eadec0"/>
+            </linearGradient>
+            <linearGradient id="mtnFar" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#9dc9a3" stop-opacity="0.75"/>
+              <stop offset="100%" stop-color="#7bb189" stop-opacity="0.85"/>
+            </linearGradient>
+            <linearGradient id="mtnMid" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#7fb089" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#5f9a7a" stop-opacity="0.95"/>
+            </linearGradient>
+            <linearGradient id="river" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#f4ecd1"/>
+              <stop offset="100%" stop-color="#d9d1b6"/>
+            </linearGradient>
+            <linearGradient id="ground" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#6e9e76"/>
+              <stop offset="100%" stop-color="#527f5e"/>
+            </linearGradient>
+            <linearGradient id="tree" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#3f6a49"/>
+              <stop offset="100%" stop-color="#2a4f34"/>
+            </linearGradient>
+            <filter id="blurA" x="-5%" y="-5%" width="110%" height="110%">
+              <feGaussianBlur stdDeviation="26"/>
+            </filter>
+          </defs>
+          <g filter="url(#blurA)"><use href="#landscape"/></g>
+        </svg>
+        <div class="fade-top"></div>
+        <div class="vignette"></div>
+        <div class="grain"></div>
+      </div>
+      <div class="hero-inner">
+        <div>
+          <div class="eyebrow"><span class="rule"></span><span>Chivox MCP · speech scoring</span><span class="dot"></span></div>
+          <h1 class="hero-h">Your agent can hear them. Now it can <span class="hl">grade</span> them.</h1>
+          <p class="sub">Chivox MCP returns a <b>phoneme-level score matrix</b> for English and Mandarin — one MCP call, any LLM. Built for language tutors, reading coaches, and voice-native agents.</p>
+          <div class="btns">
+            <a class="btn btn-primary" href="#">Start free <span class="chev">→</span></a>
+            <a class="btn btn-play" href="#"><span class="ring">▶</span>See it run <span class="chev">→</span></a>
+          </div>
+          <div class="benefits">
+            <div class="benefit"><span class="ico em">⌇</span><div><div class="title">Deep linguistic understanding</div><div class="desc">Go beyond transcripts.</div></div></div>
+            <div class="benefit"><span class="ico sk">✓</span><div><div class="title">Enterprise-ready</div><div class="desc">Secure. Scalable. Reliable.</div></div></div>
+            <div class="benefit"><span class="ico am">⚡</span><div><div class="title">Real-time intelligence</div><div class="desc">React in the moment.</div></div></div>
+          </div>
+        </div>
+        <div><svg class="ear"><use href="#ear-art"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░ B · BOLD EMERALD ░░░ -->
+  <section class="demo">
+    <div class="demo-header">
+      <div><div class="tag">Option B</div><div class="title">Bold emerald — 我们自己的翡翠</div></div>
+      <div class="desc">更饱和一点，山色更深，我们品牌绿占主导</div>
+    </div>
+    <div class="hero">
+      <span class="badge">B · bold emerald</span>
+      <div class="bg">
+        <svg class="scene" viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="sky"    x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fefaee"/><stop offset="100%" stop-color="#e6dcc0"/></linearGradient>
+            <linearGradient id="mtnFar" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#6ec08a"/><stop offset="100%" stop-color="#3e9267"/></linearGradient>
+            <linearGradient id="mtnMid" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#44a37b"/><stop offset="100%" stop-color="#1b7a53"/></linearGradient>
+            <linearGradient id="river"  x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#ecefc8"/><stop offset="100%" stop-color="#b9c8a0"/></linearGradient>
+            <linearGradient id="ground" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#2e8958"/><stop offset="100%" stop-color="#18633c"/></linearGradient>
+            <linearGradient id="tree"   x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0f5033"/><stop offset="100%" stop-color="#083524"/></linearGradient>
+            <filter id="blurB" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="32"/></filter>
+          </defs>
+          <g filter="url(#blurB)"><use href="#landscape"/></g>
+        </svg>
+        <div class="fade-top"></div>
+        <div class="vignette"></div>
+        <div class="grain"></div>
+      </div>
+      <div class="hero-inner">
+        <div>
+          <div class="eyebrow"><span class="rule"></span><span>Chivox MCP · speech scoring</span><span class="dot"></span></div>
+          <h1 class="hero-h">Your agent can hear them. Now it can <span class="hl">grade</span> them.</h1>
+          <p class="sub">Chivox MCP returns a <b>phoneme-level score matrix</b> for English and Mandarin — one MCP call, any LLM. Built for language tutors, reading coaches, and voice-native agents.</p>
+          <div class="btns">
+            <a class="btn btn-primary" href="#">Start free <span class="chev">→</span></a>
+            <a class="btn btn-play" href="#"><span class="ring">▶</span>See it run <span class="chev">→</span></a>
+          </div>
+          <div class="benefits">
+            <div class="benefit"><span class="ico em">⌇</span><div><div class="title">Deep linguistic understanding</div><div class="desc">Go beyond transcripts.</div></div></div>
+            <div class="benefit"><span class="ico sk">✓</span><div><div class="title">Enterprise-ready</div><div class="desc">Secure. Scalable. Reliable.</div></div></div>
+            <div class="benefit"><span class="ico am">⚡</span><div><div class="title">Real-time intelligence</div><div class="desc">React in the moment.</div></div></div>
+          </div>
+        </div>
+        <div><svg class="ear"><use href="#ear-art"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░ C · AMBER DUSK ░░░ -->
+  <section class="demo">
+    <div class="demo-header">
+      <div><div class="tag">Option C</div><div class="title">Amber dusk — 日落暖色</div></div>
+      <div class="desc">琥珀天空 + 绿山，像黄昏前的远景，偏温暖</div>
+    </div>
+    <div class="hero">
+      <span class="badge">C · amber dusk</span>
+      <div class="bg">
+        <svg class="scene" viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="sky"    x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fff4de"/><stop offset="70%" stop-color="#fadba0"/><stop offset="100%" stop-color="#e9c583"/></linearGradient>
+            <linearGradient id="mtnFar" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#a8c69a"/><stop offset="100%" stop-color="#7ba57a"/></linearGradient>
+            <linearGradient id="mtnMid" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#6e9e78"/><stop offset="100%" stop-color="#4a7a5c"/></linearGradient>
+            <linearGradient id="river"  x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fce6b5"/><stop offset="100%" stop-color="#d8b77a"/></linearGradient>
+            <linearGradient id="ground" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#5a8c60"/><stop offset="100%" stop-color="#3a6644"/></linearGradient>
+            <linearGradient id="tree"   x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#2f5138"/><stop offset="100%" stop-color="#1c3624"/></linearGradient>
+            <filter id="blurC" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="30"/></filter>
+          </defs>
+          <g filter="url(#blurC)"><use href="#landscape"/></g>
+          <!-- low sun halo -->
+          <circle cx="1120" cy="300" r="220" fill="#fbbf24" opacity="0.22" filter="url(#blurC)"/>
+        </svg>
+        <div class="fade-top"></div>
+        <div class="vignette"></div>
+        <div class="grain"></div>
+      </div>
+      <div class="hero-inner">
+        <div>
+          <div class="eyebrow"><span class="rule"></span><span>Chivox MCP · speech scoring</span><span class="dot"></span></div>
+          <h1 class="hero-h">Your agent can hear them. Now it can <span class="hl">grade</span> them.</h1>
+          <p class="sub">Chivox MCP returns a <b>phoneme-level score matrix</b> for English and Mandarin — one MCP call, any LLM. Built for language tutors, reading coaches, and voice-native agents.</p>
+          <div class="btns">
+            <a class="btn btn-primary" href="#">Start free <span class="chev">→</span></a>
+            <a class="btn btn-play" href="#"><span class="ring">▶</span>See it run <span class="chev">→</span></a>
+          </div>
+          <div class="benefits">
+            <div class="benefit"><span class="ico em">⌇</span><div><div class="title">Deep linguistic understanding</div><div class="desc">Go beyond transcripts.</div></div></div>
+            <div class="benefit"><span class="ico sk">✓</span><div><div class="title">Enterprise-ready</div><div class="desc">Secure. Scalable. Reliable.</div></div></div>
+            <div class="benefit"><span class="ico am">⚡</span><div><div class="title">Real-time intelligence</div><div class="desc">React in the moment.</div></div></div>
+          </div>
+        </div>
+        <div><svg class="ear"><use href="#ear-art"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>
