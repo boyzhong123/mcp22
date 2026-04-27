@@ -56,7 +56,7 @@ function createTransporter() {
 }
 
 function getSmtpUser() {
-  return process.env.SMTP_USER || 'sales@chivox.com';
+  return process.env.SMTP_USER || 'BD@chivox.com';
 }
 
 export type GlobalContactUseCase =
@@ -122,7 +122,7 @@ export async function sendGlobalContactEmail(
         console.error('Global contact: CONTACT_FORWARD_URL is set but CONTACT_FORWARD_SECRET is missing.');
         return {
           success: false,
-          error: 'Email service is not configured. Please email sales@chivox.com directly.',
+          error: 'Email service is not configured. Please email BD@chivox.com directly.',
         };
       }
 
@@ -161,7 +161,7 @@ export async function sendGlobalContactEmail(
         console.error('Global contact forwarder error:', { status: res.status, body: text.slice(0, 800) });
         return {
           success: false,
-          error: 'Couldn’t send right now. Please email sales@chivox.com directly.',
+          error: 'Couldn’t send right now. Please email BD@chivox.com directly.',
         };
       } finally {
         clearTimeout(t);
@@ -174,7 +174,7 @@ export async function sendGlobalContactEmail(
       console.error('Global contact: missing SMTP_USER or SMTP pass (set SMTP_PASS_B64 or SMTP_PASS).');
       return {
         success: false,
-        error: 'Email service is not configured. Please email sales@chivox.com directly.',
+        error: 'Email service is not configured. Please email BD@chivox.com directly.',
       };
     }
     const transporter = createTransporter();
@@ -203,7 +203,7 @@ export async function sendGlobalContactEmail(
 
     await transporter.sendMail({
       from: `"Chivox MCP Global" <${smtpUser}>`,
-      to: 'sales@chivox.com',
+      to: 'BD@chivox.com',
       replyTo: email,
       subject: `[Chivox MCP · Global] ${company} — ${name}`,
       text: textContent,
@@ -227,7 +227,7 @@ export async function sendGlobalContactEmail(
     });
     return {
       success: false,
-      error: 'Couldn’t send right now. Please email sales@chivox.com directly.',
+      error: 'Couldn’t send right now. Please email BD@chivox.com directly.',
     };
   }
 }

@@ -301,7 +301,7 @@ function buildInvoiceHtml(
     <div class="brand">
       Chivox, Inc.
       <small>383 Madison Avenue · New York, NY 10017 · United States</small>
-      <small>EIN 88-0000000 · support@chivox.com</small>
+      <small>EIN 88-0000000 · BD@chivox.com</small>
     </div>
     <div class="title">
       <h1>Invoice</h1>
@@ -355,7 +355,7 @@ function buildInvoiceHtml(
 
   <footer>
     Thank you for your business. Payment has been received in full.<br/>
-    Questions? Email <a href="mailto:billing@chivox.com">billing@chivox.com</a> and reference invoice ${escapeHtml(txn.invoiceNumber)}.
+    Questions? Email <a href="mailto:BD@chivox.com">BD@chivox.com</a> and reference invoice ${escapeHtml(txn.invoiceNumber)}.
   </footer>
 </body>
 </html>`;

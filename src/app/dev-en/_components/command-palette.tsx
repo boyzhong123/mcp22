@@ -262,7 +262,7 @@ export function DevEnCommandPalette() {
         keywords: 'help support contact',
         run: () => {
           closePalette();
-          window.open('mailto:support@chivox.com', '_blank');
+          window.open('mailto:BD@chivox.com', '_blank');
         },
       },
       {

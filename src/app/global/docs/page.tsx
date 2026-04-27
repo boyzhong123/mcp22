@@ -638,10 +638,10 @@ function OnThisPage({
           Drop a line — engineers read every message.
         </p>
         <a
-          href="mailto:sales@chivox.com"
+          href="mailto:BD@chivox.com"
           className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-emerald-800 hover:text-emerald-900"
         >
-          sales@chivox.com
+          BD@chivox.com
           <ArrowUpRight className="h-3 w-3" />
         </a>
       </div>
@@ -1449,7 +1449,7 @@ Keep responses under 90 words. Do not repeat the raw scores verbatim.`}
           <li>TLS 1.3 on every hop. Keys are hashed at rest.</li>
           <li>
             GDPR &amp; CCPA DSRs honoured within 10 business days — email{' '}
-            <a href="mailto:privacy@chivox.com">privacy@chivox.com</a>.
+            <a href="mailto:BD@chivox.com">BD@chivox.com</a>.
           </li>
         </ul>
 
@@ -1971,10 +1971,10 @@ function DocsFooter() {
             Live demo
           </Link>
           <a
-            href="mailto:sales@chivox.com"
+            href="mailto:BD@chivox.com"
             className="hover:text-zinc-900 transition-colors"
           >
-            sales@chivox.com
+            BD@chivox.com
           </a>
           <a
             href="https://github.com/"

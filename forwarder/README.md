@@ -20,10 +20,10 @@ curl http://localhost:8787/health
 - `CONTACT_FORWARD_SECRET`: shared secret used to verify requests from Netlify
 - `SMTP_HOST`: default `smtp.qiye.163.com`
 - `SMTP_PORT`: default `465`
-- `SMTP_USER`: e.g. `sales@chivox.com`
+- `SMTP_USER`: e.g. `BD@chivox.com`
 - `SMTP_PASS_B64`: base64 of the SMTP auth code (recommended)
   - or `SMTP_PASS` (avoid if it contains `$`)
-- `SALES_TO`: default `sales@chivox.com`
+- `SALES_TO`: default `BD@chivox.com`
 
 Optional:
 

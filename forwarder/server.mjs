@@ -95,7 +95,7 @@ function escapeHtml(str) {
 
 const secret = getEnv('CONTACT_FORWARD_SECRET');
 const port = Number(getEnv('PORT', '8787')) || 8787;
-const salesTo = getEnv('SALES_TO', 'sales@chivox.com');
+const salesTo = getEnv('SALES_TO', 'BD@chivox.com');
 
 const server = http.createServer(async (req, res) => {
   try {

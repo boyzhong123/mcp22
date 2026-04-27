@@ -15,7 +15,7 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/release-v1.0.3-111827?style=flat-square" alt="release"/>
+<img src="https://img.shields.io/badge/release-v1.0.4-111827?style=flat-square" alt="release"/>
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
 <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>
@@ -305,15 +305,15 @@ Pipe that JSON straight into any chat model with a one-line system prompt — *"
 
 ## 🔁 The three-stage loop
 
-🎤 **Input:** 1-minute learner recording → **Output:** warm feedback + targeted drill, end-to-end in &lt; 3 seconds.
+🎤 **Input:** 1-minute learner recording → **Output:** warm feedback + targeted drill, end-to-end in &lt; 1.6 seconds.
 
 <img
-  src="./assets/loop-v4-2x.png"
-  alt="Three-stage loop: MCP assessment → LLM feedback → LLM practice"
+  src="./assets/loop-v5-2x.png"
+  alt="Three-stage loop: 01 MCP · assess (structured JSON) → 02 LLM · diagnose (natural language) → 03 LLM · drill"
   width="100%"
 />
 
-Compatible with **GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwen · GLM** — any model that speaks function calling.
+<div align="center"><sub>Compatible with <b>GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwen · GLM</b> — any model that speaks function calling.</sub></div>
 
 ---
 

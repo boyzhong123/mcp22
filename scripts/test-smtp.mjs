@@ -62,11 +62,11 @@ try {
 try {
   const info = await transporter.sendMail({
     from: `"Chivox MCP smoke test" <${user}>`,
-    to: 'sales@chivox.com',
+    to: 'BD@chivox.com',
     subject: '[smoke-test] Chivox MCP contact-form SMTP check',
     text:
       'This is an automated SMTP smoke test from scripts/test-smtp.mjs.\n' +
-      'If you see this in sales@chivox.com, the contact form will work.\n\n' +
+      'If you see this in BD@chivox.com, the contact form will work.\n\n' +
       `Sent at: ${new Date().toISOString()}`,
   });
   console.log('✓ Test email sent. messageId =', info.messageId);
