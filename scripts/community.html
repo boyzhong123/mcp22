@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; }
+  #card {
+    margin: 14px;
+    border-radius: 18px;
+    padding: 28px 36px;
+    background:
+      radial-gradient(900px 240px at 90% -20%, rgba(124,58,237,0.10), transparent 60%),
+      radial-gradient(700px 220px at 0% 120%, rgba(37,99,235,0.10), transparent 60%),
+      linear-gradient(180deg, #fafbff 0%, #f5f7ff 100%);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+  .left { flex: 1; min-width: 0; }
+  .title {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.4px;
+    display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
+  }
+  .title .wave { font-size: 26px; }
+  .sub { font-size: 15px; color: #475569; line-height: 1.55; max-width: 640px; margin: 0; }
+  .sub b { color: #0f172a; }
+  .right { display: flex; gap: 12px; flex-shrink: 0; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 18px; border-radius: 12px;
+    font-size: 14.5px; font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .btn-star {
+    background: #facc15; color: #422006;
+    border-color: #eab308;
+    box-shadow: 0 1px 0 rgba(234,179,8,0.35), inset 0 -2px 0 rgba(0,0,0,0.05);
+  }
+  .btn-issue {
+    background: #ffffff; color: #0f172a;
+    border-color: #cbd5e1;
+  }
+  .btn svg { display: block; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 14px;
+    padding: 5px 10px; border-radius: 999px;
+    background: #ecfdf5; color: #047857;
+    font-size: 12.5px; font-weight: 700;
+    border: 1px solid #a7f3d0;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.18); }
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="left">
+    <h2 class="title"><span class="wave">👋</span> Friendly hello from the Chivox team</h2>
+    <p class="sub">
+      Loving it? <b>Drop a ⭐ on GitHub</b> — it genuinely helps us keep shipping.
+      Hit a snag, found a bug, or want a feature? <b>Open an issue</b> — we read every one and usually reply the same day.
+    </p>
+    <span class="badge"><span class="dot"></span>Avg. first response &lt; 24h · Maintained by humans, not bots</span>
+  </div>
+  <div class="right">
+    <span class="btn btn-star">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#422006" stroke="#422006" stroke-width="1.5" stroke-linejoin="round">
+        <path d="M12 2.5l2.95 6.36 6.8.78-5.05 4.66 1.45 6.7L12 17.6l-6.15 3.4 1.45-6.7L2.25 9.64l6.8-.78L12 2.5z"/>
+      </svg>
+      Star us on GitHub
+    </span>
+    <span class="btn btn-issue">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7v6M12 16.5v.5"/>
+      </svg>
+      Open an issue
+    </span>
+  </div>
+</div>
+</body>
+</html>

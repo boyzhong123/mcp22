@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #475569;
+    --line: #e2e8f0;
+    --emerald: #16a34a;
+    --emerald-soft: #dcfce7;
+    --emerald-border: #86efac;
+    --blue: #2563eb;
+    --blue-soft: #dbeafe;
+    --violet: #7c3aed;
+    --violet-soft: #ede9fe;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); }
+  #wrap { padding: 18px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr 1fr;
+    gap: 16px;
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 22px 20px;
+    background: #fff;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .card.popular {
+    border: 2px solid var(--emerald);
+    background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 35%);
+    box-shadow: 0 12px 32px -16px rgba(22,163,74,0.35);
+  }
+  .ribbon {
+    position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+    background: var(--emerald); color: #fff;
+    font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 999px;
+    box-shadow: 0 4px 10px -4px rgba(22,163,74,0.6);
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase;
+    text-align: center; margin-bottom: 10px;
+  }
+  .e-free  { color: #64748b; }
+  .e-payg  { color: var(--emerald); }
+  .e-ent   { color: var(--violet); }
+  .price {
+    text-align: center; min-height: 76px;
+    display: flex; align-items: baseline; justify-content: center;
+    gap: 4px; flex-wrap: wrap;
+  }
+  .price .num { font-size: 44px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }
+  .price .unit { font-size: 14px; color: var(--muted); font-weight: 600; }
+  .price .from { font-size: 13px; color: var(--muted); font-weight: 600; margin-right: 2px; }
+  .tag {
+    text-align: center; margin: 6px 0 16px;
+    font-size: 13px; color: var(--muted); line-height: 1.45;
+  }
+  ul.feat { list-style: none; padding: 0; margin: 0 0 16px; border-top: 1px dashed var(--line); }
+  ul.feat li {
+    padding: 10px 0; border-bottom: 1px dashed var(--line);
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 13.5px; line-height: 1.45;
+  }
+  ul.feat li b { color: var(--ink); font-weight: 700; }
+  .check { color: var(--emerald); font-weight: 900; flex: 0 0 14px; }
+  .btn {
+    margin-top: auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 42px; border-radius: 10px;
+    font-size: 14px; font-weight: 800; letter-spacing: 0.2px;
+    border: 1px solid transparent;
+  }
+  .btn-free { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  .btn-payg { background: var(--emerald); color: #fff; box-shadow: 0 6px 14px -6px rgba(22,163,74,0.55); }
+  .btn-ent  { background: #fff; color: var(--violet); border-color: #c4b5fd; }
+
+  .tier {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; border-radius: 8px;
+    background: rgba(22,163,74,0.06);
+    font-size: 12.5px; margin-top: 4px;
+  }
+  .tier + .tier { margin-top: 6px; }
+  .tier .vol { color: var(--muted); font-weight: 600; }
+  .tier .save { color: var(--emerald); font-weight: 800; }
+  .tier .save.zero { color: #94a3b8; font-weight: 700; }
+
+  .footnote {
+    margin-top: 14px; padding: 10px 14px;
+    background: #f8fafc; border-left: 3px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px; color: var(--muted); line-height: 1.55;
+  }
+  .footnote b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="grid">
+
+    <!-- FREE -->
+    <div class="card">
+      <div class="eyebrow e-free">Free · forever</div>
+      <div class="price">
+        <span class="num">$0</span>
+        <span class="unit">no card</span>
+      </div>
+      <div class="tag">Build, demo, weekend hacks</div>
+      <ul class="feat">
+        <li><span class="check">✓</span><div><b>30 calls / day</b> · 900 calls lifetime</div></li>
+        <li><span class="check">✓</span><div><b>All 16 tools</b> — English &amp; Mandarin, full set</div></li>
+        <li><span class="check">✓</span><div>Same engine, same JSON, same SLA</div></li>
+        <li><span class="check">✓</span><div>GitHub Issues · &lt; 24h reply</div></li>
+      </ul>
+      <span class="btn btn-free">Get free key →</span>
+    </div>
+
+    <!-- PAY AS YOU GO -->
+    <div class="card popular">
+      <span class="ribbon">Most popular</span>
+      <div class="eyebrow e-payg">Pay as you go</div>
+      <div class="price">
+        <span class="from">from</span>
+        <span class="num">$1</span>
+        <span class="unit">/ 1K calls</span>
+      </div>
+      <div class="tag">Top up only what you use · failed calls aren&rsquo;t billed</div>
+      <ul class="feat">
+        <li><span class="check">✓</span><div><b>All 16 tools</b> · 99.5% SLA · 7×24 email</div></li>
+        <li><span class="check">✓</span><div>Auto volume discounts — <b>more = cheaper</b></div></li>
+      </ul>
+      <div class="tier"><span class="vol">First 100K&nbsp;calls / mo</span><span class="save zero">$1.00 / 1K</span></div>
+      <div class="tier"><span class="vol">100K – 1M / mo</span><span class="save">−15% · $0.85 / 1K</span></div>
+      <div class="tier"><span class="vol">1M – 10M / mo</span><span class="save">−30% · $0.70 / 1K</span></div>
+      <span class="btn btn-payg" style="margin-top:14px;">Top up credits →</span>
+    </div>
+
+    <!-- ENTERPRISE -->
+    <div class="card">
+      <div class="eyebrow e-ent">Enterprise</div>
+      <div class="price">
+        <span class="num" style="font-size:38px;">Custom</span>
+      </div>
+      <div class="tag">10M+ calls/mo · on-prem · data residency</div>
+      <ul class="feat">
+        <li><span class="check">✓</span><div><b>Unlimited</b> calls · concurrency 50+</div></li>
+        <li><span class="check">✓</span><div><b>99.9%+ SLA</b> · dedicated 7×24 support</div></li>
+        <li><span class="check">✓</span><div>On-prem Docker · VPC · region lock</div></li>
+        <li><span class="check">✓</span><div>Volume contracts · invoicing · custom tools</div></li>
+      </ul>
+      <span class="btn btn-ent">Talk to sales →</span>
+    </div>
+
+  </div>
+
+  <div class="footnote">
+    <b>Honest defaults:</b> Free covers prototyping at <b>30 calls / day · 900 lifetime</b> with the full 16-tool catalog — no feature gates, no model swaps. When you need more, you pay only per <b>successful</b> call; volume discounts apply automatically. The more you ship, the cheaper each call gets.
+  </div>
+</div>
+</body>
+</html>

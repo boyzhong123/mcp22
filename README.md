@@ -15,7 +15,7 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/release-v1.0.7-111827?style=flat-square" alt="release"/>
+<img src="https://img.shields.io/badge/release-v1.0.8-111827?style=flat-square" alt="release"/>
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
 <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>
@@ -25,7 +25,7 @@
 
 <br/>
 
-<img src="./assets/stats-v5-2x.png" alt="9.2B+ evals/year · 185 countries · 95%+ human agreement · <200ms P99 first token" width="100%"/>
+<img src="./assets/stats-v6-2x.png" alt="9.2B+ evals/year · 185 countries · 95%+ human agreement · <200ms P99 first token" width="100%"/>
 
 </div>
 
@@ -132,17 +132,29 @@ async with MCPServerStreamableHttp(
 <summary><b>Node.js / TypeScript</b></summary>
 
 ```ts
-import { Client } from '@modelcontextprotocol/sdk/client';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
-const chivox = await Client.connect({ name: 'chivox' });
+const transport = new StreamableHTTPClientTransport(
+  new URL('https://mcp.cloud.chivox.com'),
+  { requestInit: { headers: { Authorization: `Bearer ${process.env.CHIVOX_API_KEY}` } } },
+);
 
-const result = await chivox.callTool('en_sentence_eval', {
-  ref_text:  'The weather is gorgeous today.',
-  audio_url: 'https://demo.com/take-01.mp3',
+const chivox = new Client({ name: 'chivox-client', version: '1.0.0' });
+await chivox.connect(transport);
+
+const res = await chivox.callTool({
+  name: 'en_sentence_eval',
+  arguments: {
+    ref_text:  'The weather is gorgeous today.',
+    audio_url: 'https://demo.com/take-01.mp3',
+  },
 });
 
-console.log(result.overall);   // 72
-console.log(result.details);   // per-word + phonemes
+// MCP wraps tool output in a content block — parse the first text item:
+const score = JSON.parse((res.content[0] as { text: string }).text);
+console.log(score.overall);   // 72
+console.log(score.details);   // per-word + phonemes
 ```
 
 </details>
@@ -363,12 +375,11 @@ Same engine powering China's national Putonghua exam — aligned to **IELTS · T
 
 ## 🔌 Dual transport
 
-|           | 🎙️ Streaming                                 | 📁 Batch file                                 |
-| --------- | --------------------------------------------- | --------------------------------------------- |
-| Best for  | Live coaching, classroom shadowing, real-time | UGC QA, recorded lessons, bulk jobs           |
-| Transport | WebSocket — 30-50% lower latency              | HTTP upload (URL / base64 / file path)        |
-| Input     | PCM 16k/16-bit/mono chunks (200 ms)           | mp3 · wav · ogg · m4a · aac · pcm             |
-| Reconnect | 60 s `resume_token`                           | n/a                                           |
+<img
+  src="./assets/transport-v1-2x.png"
+  alt="Dual transport: Streaming (WebSocket, 30-50% lower latency, PCM 200ms chunks, 60s resume_token) vs Batch file (HTTP upload, mp3/wav/ogg/m4a/aac/pcm)"
+  width="100%"
+/>
 
 ---
 
@@ -384,17 +395,17 @@ Plus: **realtime + batch** modes · **TLS 1.2+ · ISO 27001** · on-prem SKUs ·
 
 ---
 
-## 💳 Pricing & limits
+## 💳 Pricing
 
-Straight-forward pricing. Start free, no credit card. Failed calls are **not** billed.
+Honest defaults. Start free with **all 16 tools unlocked** — no feature gates, no card. When you need more, pay per successful call; **volume discounts kick in automatically — the more you ship, the cheaper each call gets.**
 
 <img
-  src="./assets/pricing-v5-2x.png"
-  alt="Pricing: Free ¥0 · Pro ¥99/mo · Enterprise Custom"
+  src="./assets/pricing-v6-2x.png"
+  alt="Pricing: Free $0 (30 calls/day · 900 lifetime · all 16 tools) · Pay-as-you-go from $1/1K calls with auto volume discounts (−15% at 100K, −30% at 1M) · Enterprise custom for 10M+/mo, on-prem and SLA"
   width="100%"
 />
 
-> Single starter key includes **30 calls/day** (≈ 900 total) to test-drive without signup friction. Full breakdown on the [pricing page →](https://chivoxmcp2.netlify.app/global).
+> **Free tier ≠ crippled tier.** Every starter key gets **30 calls/day · 900 calls lifetime** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. When you outgrow it, top up credits and let the volume tiers do the rest. Failed calls are never billed. Full breakdown on the [pricing page →](https://chivoxmcp2.netlify.app/global).
 
 ---
 
@@ -437,16 +448,21 @@ Yes. Set `X-Chivox-Engine` to a pinned tag (e.g. `en-2024.11`); otherwise you au
 
 ---
 
-## 🤝 Contributing
+## 🤝 Star us · say hi
 
-Issues and PRs welcome. For substantive features, open a design issue first. Small doc / example fixes can go straight to PR.
+<a href="https://github.com/boyzhong123/mcp22">
+  <img
+    src="./assets/community-v1-2x.png"
+    alt="Friendly hello from the Chivox team — drop a star on GitHub, open an issue and we usually reply the same day."
+    width="100%"
+  />
+</a>
 
-```bash
-git clone https://github.com/boyzhong123/mcp22.git
-cd mcp22
-pnpm install
-pnpm test
-```
+<div align="center">
+  <a href="https://github.com/boyzhong123/mcp22"><b>⭐ Star on GitHub</b></a> &nbsp;·&nbsp;
+  <a href="https://github.com/boyzhong123/mcp22/issues/new"><b>🐞 Open an issue</b></a> &nbsp;·&nbsp;
+  <a href="mailto:BD@chivox.com"><b>✉️ BD@chivox.com</b></a>
+</div>
 
 ---
 
