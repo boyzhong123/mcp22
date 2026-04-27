@@ -51,7 +51,7 @@
 
 Pick your stack. All paths speak the same MCP protocol.
 
-<details>
+<details open>
 <summary><b>🐍 Python</b> &nbsp;<sub>(recommended)</sub></summary>
 
 ```python
@@ -61,14 +61,14 @@ from mcp import ClientSession
 
 async def main():
     async with streamablehttp_client(
-        "https://speech-eval.site/mcp",
+        "https://mcp.cloud.chivox.com",
         headers={"Authorization": "Bearer $CHIVOX_API_KEY"},
     ) as (r, w, _):
         async with ClientSession(r, w) as s:
             await s.initialize()
             out = await s.call_tool("en_sentence_eval", {
-                "reference_text": "The weather is gorgeous today.",
-                "audio_url":      "https://demo.com/take-01.mp3",
+                "ref_text":  "The weather is gorgeous today.",
+                "audio_url": "https://demo.com/take-01.mp3",
             })
             print(out)
 
@@ -82,7 +82,7 @@ asyncio.run(main())
 
 ```bash
 # Hello world — get a score in one call, no API key
-curl https://speech-eval.site/mcp/try \
+curl https://mcp.cloud.chivox.com/try \
   -H "Content-Type: application/json" \
   -d '{"ref_text":"你好","audio_url":"https://demo.chivox.com/nihao.mp3"}'
 ```
@@ -106,7 +106,7 @@ from langchain_openai import ChatOpenAI
 client = MultiServerMCPClient({
     "chivox": {
         "transport": "streamable_http",
-        "url": "https://speech-eval.site/mcp",
+        "url": "https://mcp.cloud.chivox.com",
         "headers": {"Authorization": "Bearer $CHIVOX_API_KEY"},
     }
 })
@@ -129,7 +129,7 @@ from agents import Agent, Runner
 from agents.mcp import MCPServerStreamableHttp
 
 async with MCPServerStreamableHttp(
-    params={"url": "https://speech-eval.site/mcp",
+    params={"url": "https://mcp.cloud.chivox.com",
             "headers": {"Authorization": "Bearer $KEY"}},
 ) as chivox:
     coach = Agent(
@@ -155,8 +155,8 @@ import { Client } from '@modelcontextprotocol/sdk/client';
 const chivox = await Client.connect({ name: 'chivox' });
 
 const result = await chivox.callTool('en_sentence_eval', {
-  reference_text: 'The weather is gorgeous today.',
-  audio_url:      'https://demo.com/take-01.mp3',
+  ref_text:  'The weather is gorgeous today.',
+  audio_url: 'https://demo.com/take-01.mp3',
 });
 
 console.log(result.overall);   // 72
@@ -174,7 +174,7 @@ console.log(result.details);   // per-word + phonemes
   "mcpServers": {
     "chivox": {
       "type": "streamable-http",
-      "url":  "https://speech-eval.site/mcp",
+      "url":  "https://mcp.cloud.chivox.com",
       "env":  { "CHIVOX_API_KEY": "sk_live_…" }
     }
   }
