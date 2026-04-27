@@ -8,7 +8,7 @@ export default function GlobalReasoningPage() {
     <div className="relative">
       <AmbientBackdrop />
       <TopNav />
-      <BackToOverview />
+      <BackToOverview containerClassName="container mx-auto px-6 max-w-7xl pt-5" />
       <ReasoningSection />
       <ContactSection />
       <SiteFooter />

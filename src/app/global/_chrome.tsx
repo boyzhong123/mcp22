@@ -535,9 +535,15 @@ export function TopNav() {
 
 /* ══ Back-to-overview breadcrumb — shown on sub-pages ═══════ */
 
-export function BackToOverview() {
+export function BackToOverview({
+  containerClassName = 'container mx-auto px-6 max-w-6xl pt-5',
+  label = 'Back to overview',
+}: {
+  containerClassName?: string;
+  label?: string;
+} = {}) {
   return (
-    <div className="container mx-auto px-6 max-w-6xl pt-5">
+    <div className={containerClassName}>
       <Link
         href="/"
         className={cn(
@@ -560,7 +566,7 @@ export function BackToOverview() {
           /
         </span>
         <span className="text-zinc-300/80">·</span>
-        <span>Back to overview</span>
+        <span>{label}</span>
       </Link>
     </div>
   );

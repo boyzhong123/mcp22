@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { BackToOverview } from '../_chrome';
 import {
   ArrowLeft,
   ArrowRight,
@@ -422,12 +423,7 @@ function DocsHeader() {
 function DocsHero() {
   return (
     <div className="max-w-3xl">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1.5 text-[13px] text-zinc-600 hover:text-zinc-900 transition-colors mb-6"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to Chivox MCP
-      </Link>
+      <BackToOverview containerClassName="mb-6" />
 
       <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-white/60 backdrop-blur-sm px-3 py-1 text-[11px] font-mono tracking-[0.18em] uppercase text-emerald-700 mb-4">
         <BookOpen className="h-3 w-3" />

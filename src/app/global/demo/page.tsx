@@ -28,6 +28,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { BackToOverview } from '../_chrome';
 import {
   ArrowLeft,
   ArrowRight,
@@ -312,15 +313,10 @@ export default function GlobalDemoPage() {
       <AmbientBackdrop />
       <DemoHeader />
 
-      <section className="container mx-auto px-5 sm:px-7 lg:px-10 pt-10 pb-6 max-w-7xl">
+      <BackToOverview containerClassName="container mx-auto px-5 sm:px-7 lg:px-10 max-w-7xl pt-6" />
+
+      <section className="container mx-auto px-5 sm:px-7 lg:px-10 pt-5 pb-6 max-w-7xl">
         <div className="max-w-3xl">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-[12px] text-zinc-600 hover:text-zinc-900 transition-colors mb-5"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Chivox MCP
-          </Link>
           <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-emerald-700 mb-3">
             /demo · live walkthrough
           </p>
