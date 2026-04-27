@@ -1,0 +1,2431 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<title>chivox / chivox-mcp · README</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  /* ─────────────────────────────────────────────────────────────
+   * GitHub-flavoured README preview for Western developers.
+   * Self-contained, no external CSS frameworks.
+   * Default = GitHub Light. Toggle to GitHub Dark.
+   * ────────────────────────────────────────────────────────── */
+
+  :root[data-theme="light"] {
+    --bg:            #ffffff;
+    --bg-canvas:     #f6f8fa;
+    --bg-muted:      #f6f8fa;
+    --bg-inset:      #eff2f5;
+    --fg:            #1f2328;
+    --fg-muted:      #59636e;
+    --fg-subtle:     #6e7781;
+    --border:        #d1d9e0;
+    --border-muted:  #d1d9e0b3;
+    --accent:        #0969da;
+    --accent-emphasis:#0969da;
+    --success:       #1a7f37;
+    --attention:     #9a6700;
+    --danger:        #d1242f;
+    --done:          #8250df;
+    --btn-bg:        #f6f8fa;
+    --btn-hover-bg:  #eff2f5;
+    --code-bg:       #f6f8fa;
+    --code-fg:       #1f2328;
+    --syntax-keyword:#cf222e;
+    --syntax-string: #0a3069;
+    --syntax-number: #0550ae;
+    --syntax-comment:#6e7781;
+    --syntax-prop:   #953800;
+    --syntax-fn:     #8250df;
+    --shadow-card:   0 1px 0 rgba(31,35,40,0.04);
+  }
+  :root[data-theme="dark"] {
+    --bg:            #0d1117;
+    --bg-canvas:     #010409;
+    --bg-muted:      #151b23;
+    --bg-inset:      #0d1117;
+    --fg:            #f0f6fc;
+    --fg-muted:      #9198a1;
+    --fg-subtle:     #8d96a0;
+    --border:        #3d444d;
+    --border-muted:  #3d444d99;
+    --accent:        #4493f8;
+    --accent-emphasis:#1f6feb;
+    --success:       #3fb950;
+    --attention:     #d29922;
+    --danger:        #f85149;
+    --done:          #ab7df8;
+    --btn-bg:        #212830;
+    --btn-hover-bg:  #2a313c;
+    --code-bg:       #151b23;
+    --code-fg:       #f0f6fc;
+    --syntax-keyword:#ff7b72;
+    --syntax-string: #a5d6ff;
+    --syntax-number: #79c0ff;
+    --syntax-comment:#8d96a0;
+    --syntax-prop:   #ffa657;
+    --syntax-fn:     #d2a8ff;
+    --shadow-card:   0 0 0 1px #161b22;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial,
+      "Inter", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, kbd, .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+      Menlo, Consolas, "Liberation Mono", monospace; }
+
+  /* ── GitHub global nav ─────────────────────────────────── */
+  .ghnav {
+    background: #1f2328;
+    color: #f0f6fc;
+    padding: 0 24px;
+    display: flex; align-items: center; gap: 16px;
+    height: 56px;
+    border-bottom: 1px solid #3d444d;
+  }
+  :root[data-theme="dark"] .ghnav { background: #010409; }
+  .ghnav .logo { display: flex; align-items: center; }
+  .ghnav .logo svg { fill: #f0f6fc; }
+  .ghnav .search {
+    flex: 1; max-width: 440px; height: 28px; padding: 0 12px;
+    background: transparent; border: 1px solid #3d444d; color: #9198a1;
+    border-radius: 6px; font-size: 13px; display: flex; align-items: center;
+  }
+  .ghnav .search .kbd {
+    margin-left: auto; border: 1px solid #3d444d; border-radius: 4px;
+    padding: 1px 6px; font-size: 11px; color: #9198a1;
+  }
+  .ghnav .menu { display: flex; gap: 16px; font-size: 14px; color: #f0f6fc; font-weight: 500; }
+  .ghnav .menu a { color: #f0f6fc; }
+  .ghnav .avatar {
+    width: 32px; height: 32px; border-radius: 999px;
+    background: linear-gradient(135deg, #10b981 0%, #0969da 100%);
+    display: inline-block;
+  }
+  .theme-toggle {
+    margin-left: auto;
+    background: transparent; border: 1px solid #3d444d;
+    color: #f0f6fc; padding: 4px 10px; border-radius: 6px;
+    cursor: pointer; font-size: 12px;
+  }
+  .theme-toggle:hover { background: #2a313c; }
+
+  /* ── Repo header ───────────────────────────────────────── */
+  .repohead {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px 0;
+  }
+  .repohead .title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 20px; font-weight: 400;
+  }
+  .repohead .title .org,
+  .repohead .title .repo {
+    color: var(--accent); font-weight: 600; text-decoration: none;
+  }
+  .repohead .title .slash { color: var(--fg-muted); font-weight: 300; }
+  .repohead .title .public {
+    margin-left: 6px; font-size: 12px; border: 1px solid var(--border);
+    padding: 1px 7px; border-radius: 999px; color: var(--fg-muted); font-weight: 500;
+  }
+  .repohead .actions {
+    margin-left: auto; display: flex; gap: 8px;
+  }
+  .repohead .row-top { display: flex; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 28px; padding: 0 12px;
+    background: var(--btn-bg); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12px; font-weight: 500;
+    color: var(--fg); cursor: pointer;
+  }
+  .btn:hover { background: var(--btn-hover-bg); text-decoration: none; }
+  .btn .count {
+    margin-left: 6px; padding: 0 6px; border-radius: 999px;
+    background: var(--bg-inset); color: var(--fg); font-size: 12px;
+  }
+  .btn-primary {
+    background: #1f883d; color: #fff; border-color: rgba(31,35,40,0.15);
+  }
+  .btn-primary:hover { background: #1a7f37; }
+
+  /* tabs */
+  .tabs {
+    display: flex; gap: 4px; margin-top: 16px; padding-bottom: 0;
+    font-size: 14px; overflow-x: auto;
+  }
+  .tabs .tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 10px; color: var(--fg); border-radius: 6px 6px 0 0;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .tabs .tab:hover { background: var(--btn-hover-bg); text-decoration: none; }
+  .tabs .tab.active {
+    border-bottom-color: #fd8c73;
+    font-weight: 600;
+  }
+  .tabs .tab .cnt {
+    font-size: 12px; padding: 0 6px; border-radius: 999px;
+    background: var(--bg-inset); color: var(--fg);
+  }
+
+  /* ── Repo body layout ──────────────────────────────────── */
+  .body {
+    max-width: 1280px; margin: 24px auto; padding: 0 32px;
+    display: grid; grid-template-columns: 1fr 296px; gap: 24px;
+  }
+  @media (max-width: 960px) { .body { grid-template-columns: 1fr; padding: 0 16px; } }
+
+  /* file list card */
+  .card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden;
+  }
+  .file-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .branch-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--btn-bg); font-size: 12px;
+  }
+  .branch-btn b { font-weight: 600; }
+  .file-stats { margin-left: auto; font-size: 12px; color: var(--fg-muted); }
+  .file-row {
+    display: grid; grid-template-columns: 20px 1fr 1fr auto;
+    gap: 12px; padding: 6px 16px; font-size: 14px;
+    border-bottom: 1px solid var(--border-muted); align-items: center;
+  }
+  .file-row:last-child { border-bottom: none; }
+  .file-row.header {
+    background: var(--bg-muted); color: var(--fg-muted); font-size: 12px;
+    padding: 8px 16px;
+  }
+  .file-row .name a { color: var(--fg); font-weight: 500; }
+  .file-row .name a:hover { color: var(--accent); }
+  .file-row .msg { color: var(--fg-muted); font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-row .age { color: var(--fg-muted); font-size: 12px; text-align: right; }
+  .icon { flex-shrink: 0; display: inline-block; vertical-align: middle; }
+  .icon-dir { color: #54aeff; }
+  .icon-file { color: var(--fg-muted); }
+
+  /* ── README card ───────────────────────────────────────── */
+  .readme-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-bottom: 1px solid var(--border);
+  }
+  .readme-toolbar .label {
+    font-size: 14px; font-weight: 600; color: var(--fg);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .readme {
+    padding: 32px 48px; font-size: 16px; line-height: 1.6;
+    color: var(--fg);
+  }
+  @media (max-width: 720px) { .readme { padding: 20px; font-size: 15px; } }
+
+  .readme h1, .readme h2, .readme h3 {
+    margin: 24px 0 16px; padding-bottom: 6px;
+    font-weight: 600; line-height: 1.25;
+  }
+  .readme h1 { font-size: 2em; border-bottom: 1px solid var(--border-muted); }
+  .readme h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-muted); }
+  .readme h3 { font-size: 1.25em; }
+  .readme h1:first-child { margin-top: 0; }
+  .readme p { margin: 0 0 16px; }
+  .readme hr { border: 0; height: 1px; background: var(--border); margin: 24px 0; }
+  .readme ul, .readme ol { padding-left: 2em; margin: 0 0 16px; }
+  .readme li { margin: 4px 0; }
+  .readme blockquote {
+    margin: 0 0 16px; padding: 0 16px;
+    color: var(--fg-muted); border-left: 0.25em solid var(--border);
+  }
+  .readme code {
+    padding: 0.2em 0.4em; background: rgba(129,139,152,0.15);
+    border-radius: 6px; font-size: 85%; white-space: break-spaces;
+  }
+  .readme pre {
+    background: var(--code-bg); color: var(--code-fg);
+    padding: 16px; border-radius: 6px; overflow: auto;
+    font-size: 85%; line-height: 1.45; margin: 0 0 16px;
+    border: 1px solid var(--border-muted);
+  }
+  .readme pre code {
+    background: transparent; padding: 0; border-radius: 0; font-size: inherit;
+  }
+  .readme table {
+    width: 100%; border-collapse: collapse; margin: 0 0 16px;
+    display: block; overflow-x: auto;
+  }
+  .readme table th, .readme table td {
+    padding: 6px 13px; border: 1px solid var(--border-muted);
+  }
+  .readme table th { background: var(--bg-muted); font-weight: 600; }
+  .readme table tr { background: var(--bg); }
+  .readme table tr:nth-child(2n) { background: var(--bg-muted); }
+
+  .readme details {
+    border: 1px solid var(--border-muted); border-radius: 6px;
+    padding: 8px 16px; margin: 0 0 12px; background: var(--bg);
+  }
+  .readme details summary {
+    cursor: pointer; font-weight: 600; color: var(--fg);
+    list-style: none; outline: none;
+  }
+  .readme details[open] summary { margin-bottom: 8px; }
+
+  /* badges */
+  .badges img { height: 20px; margin: 0 4px 6px 0; vertical-align: middle; }
+  .centered { text-align: center; }
+  .logo-h1 {
+    font-size: 40px; font-weight: 800; letter-spacing: -0.02em;
+    margin: 24px 0 8px; padding: 0 !important; border: 0 !important;
+  }
+  .tagline {
+    font-size: 18px; color: var(--fg-muted); font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .micro { font-size: 13px; color: var(--fg-muted); }
+
+  /* syntax highlighting */
+  .tok-k { color: var(--syntax-keyword); }
+  .tok-s { color: var(--syntax-string); }
+  .tok-n { color: var(--syntax-number); }
+  .tok-c { color: var(--syntax-comment); font-style: italic; }
+  .tok-p { color: var(--syntax-prop); }
+  .tok-f { color: var(--syntax-fn); }
+
+  /* sidebar */
+  .side h3 {
+    font-size: 16px; font-weight: 600; margin: 0 0 8px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border-muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .side h3 .edit { font-size: 12px; color: var(--fg-muted); font-weight: 400; }
+  .side .about { font-size: 14px; margin: 0 0 12px; color: var(--fg); }
+  .side .topics { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; }
+  .side .topic {
+    display: inline-block; padding: 0 10px; height: 24px; line-height: 22px;
+    font-size: 12px; border-radius: 999px; background: rgba(9,105,218,0.08);
+    color: var(--accent); font-weight: 500;
+  }
+  :root[data-theme="dark"] .side .topic { background: rgba(56,139,253,0.15); }
+  .side ul.links { list-style: none; padding: 0; margin: 0 0 16px;
+    font-size: 13px; color: var(--fg-muted); }
+  .side ul.links li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .side ul.links a { color: var(--fg); font-weight: 600; }
+  .side .section { margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-muted); }
+  .side .section:last-child { border: 0; }
+  .lang-bar { height: 8px; border-radius: 6px; overflow: hidden; display: flex;
+    margin-bottom: 12px; }
+  .lang-bar span { display: block; height: 100%; }
+  .lang-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; }
+  .lang-legend span.dot { width: 10px; height: 10px; border-radius: 999px;
+    display: inline-block; margin-right: 6px; vertical-align: middle; }
+  .release-card {
+    border: 1px solid var(--border-muted); border-radius: 6px;
+    padding: 12px; font-size: 13px;
+  }
+  .release-card .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--success); color: #fff;
+    padding: 0 8px; height: 22px; border-radius: 999px; font-size: 11px;
+    font-weight: 600; text-transform: uppercase;
+  }
+
+  /* ═══ Hero banner — rich SVG header ══════════════════════ */
+  .hero-banner {
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(1200px 340px at 15% 0%, rgba(16,185,129,0.14), transparent 60%),
+      radial-gradient(900px 360px at 95% 100%, rgba(99,102,241,0.14), transparent 65%),
+      radial-gradient(700px 320px at 60% 50%, rgba(251,191,36,0.10), transparent 65%),
+      linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+    border: 1px solid var(--border-muted);
+    border-radius: 12px; padding: 44px 44px 40px; margin-bottom: 24px;
+  }
+  :root[data-theme="dark"] .hero-banner {
+    background:
+      radial-gradient(1200px 340px at 15% 0%, rgba(16,185,129,0.16), transparent 60%),
+      radial-gradient(900px 360px at 95% 100%, rgba(139,92,246,0.18), transparent 65%),
+      radial-gradient(700px 320px at 60% 50%, rgba(251,191,36,0.08), transparent 65%),
+      linear-gradient(180deg, #0d1117 0%, #0a0d13 100%);
+  }
+  .hero-grid {
+    position: relative; z-index: 2;
+    display: grid; grid-template-columns: minmax(340px, 1.25fr) 1fr; gap: 36px; align-items: start;
+  }
+  .hero-banner { position: relative; }
+  .hero-banner .banner-play{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    z-index: 50; border:0; background:transparent; padding:0; cursor:pointer;
+    opacity:.9; filter: drop-shadow(0 6px 18px rgba(0,0,0,.28));
+  }
+  .hero-banner .banner-play:hover{ transform:translate(-50%,-50%) scale(1.04); opacity: 1; }
+  .hero-right { display: flex; flex-direction: column; gap: 14px; }
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 20px; }
+    .hero-art { min-height: 240px !important; padding: 40px 18px 20px !important; }
+    .hero-wordmark { max-width: 260px !important; }
+    .hero-tag { font-size: 22px !important; }
+    .hero-sub { font-size: 14px !important; }
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 11px 4px 9px;
+    background: rgba(26,127,55,0.10); color: var(--success);
+    border: 1px solid rgba(26,127,55,0.22);
+    border-radius: 999px; font-size: 11px; font-weight: 600;
+    font-family: "JetBrains Mono", monospace; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  :root[data-theme="dark"] .hero-eyebrow {
+    background: rgba(63,185,80,0.10); border-color: rgba(63,185,80,0.30);
+  }
+  .hero-eyebrow .pulse {
+    width: 7px; height: 7px; border-radius: 999px; background: var(--success);
+    box-shadow: 0 0 0 0 rgba(26,127,55,0.6);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(26,127,55,0.6); }
+    70%  { box-shadow: 0 0 0 10px rgba(26,127,55,0); }
+    100% { box-shadow: 0 0 0 0 rgba(26,127,55,0); }
+  }
+  .hero-wordmark { max-width: 320px; height: auto; margin: 0 0 12px; }
+  .hero-tag {
+    font-size: 19px; font-weight: 600; line-height: 1.35; letter-spacing: -0.01em;
+    color: var(--fg); margin: 0 0 8px;
+  }
+  .hero-tag .hl {
+    background: linear-gradient(180deg, transparent 62%, rgba(16,185,129,0.35) 62%);
+    padding: 0 2px;
+  }
+  .hero-sub { font-size: 14px; color: var(--fg-muted); margin: 0 0 18px; max-width: 500px; line-height: 1.55; }
+  .hero-cta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .hero-cta .btn { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 600; }
+  /* SVG hero illustration — framed as a "media card" */
+  .hero-art {
+    position: relative;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 300px;
+    padding: 44px 24px 24px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background:
+      radial-gradient(600px 220px at 30% 0%, rgba(99,102,241,0.10), transparent 60%),
+      radial-gradient(500px 200px at 100% 100%, rgba(16,185,129,0.10), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3));
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.6) inset,
+      0 10px 30px -12px rgba(15,23,42,0.18),
+      0 2px 8px -2px rgba(15,23,42,0.08);
+    overflow: hidden;
+  }
+  :root[data-theme="dark"] .hero-art {
+    background:
+      radial-gradient(600px 220px at 30% 0%, rgba(99,102,241,0.18), transparent 60%),
+      radial-gradient(500px 200px at 100% 100%, rgba(16,185,129,0.14), transparent 60%),
+      linear-gradient(180deg, rgba(22,27,34,0.7), rgba(13,17,23,0.6));
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 10px 30px -12px rgba(0,0,0,0.6);
+  }
+  /* corner badge */
+  .hero-art::before {
+    content: "▶ LIVE · MCP demo";
+    position: absolute; top: 12px; left: 14px;
+    font: 700 10px/1 "JetBrains Mono", monospace; letter-spacing: .08em;
+    color: var(--success);
+    background: rgba(26,127,55,0.10);
+    border: 1px solid rgba(26,127,55,0.25);
+    padding: 5px 9px; border-radius: 999px;
+    z-index: 2;
+  }
+  :root[data-theme="dark"] .hero-art::before {
+    color: #3fb950; background: rgba(63,185,80,0.12); border-color: rgba(63,185,80,0.35);
+  }
+  /* window dots */
+  .hero-art::after {
+    content: ""; position: absolute; top: 16px; right: 16px;
+    width: 44px; height: 10px; z-index: 2;
+    background:
+      radial-gradient(circle at 6px 5px, #ff5f57 3.5px, transparent 4px),
+      radial-gradient(circle at 22px 5px, #febc2e 3.5px, transparent 4px),
+      radial-gradient(circle at 38px 5px, #28c840 3.5px, transparent 4px);
+    opacity: .85;
+  }
+  .hero-art .play-btn {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 10; background: transparent; border: 0; cursor: pointer; padding: 0;
+    opacity: .85;
+    transition: opacity .2s ease, transform .2s ease;
+    filter: drop-shadow(0 4px 14px rgba(0,0,0,.25));
+  }
+  .hero-art > svg { position: relative; z-index: 1; }
+  .hero-art .play-btn:hover { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  .hero-art .play-btn circle { transition: fill .2s ease; }
+  .hero-art .play-btn:hover circle { fill: rgba(16,163,127,0.92); }
+  .hero-art .play-hint { display: none; }
+  .video-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.82);
+    z-index: 9999; align-items: center; justify-content: center; padding: 24px;
+  }
+  .video-modal.open { display: flex; }
+  .video-modal .vwrap {
+    position: relative; width: 100%; max-width: 900px; aspect-ratio: 16/9;
+    background: #000; border-radius: 10px; overflow: hidden;
+  }
+  .video-modal video, .video-modal iframe { width: 100%; height: 100%; border: 0; }
+  .video-modal .close {
+    position: absolute; top: -40px; right: 0; color: #fff; background: transparent;
+    border: 0; font-size: 22px; cursor: pointer;
+  }
+  .hero-art > svg { width: 100%; max-width: 480px; height: auto; display: block; margin-top: 4px; }
+  .hero-art .wave-path { stroke: url(#waveGrad); stroke-width: 2.5; fill: none;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .hero-art .wave-bars rect { animation: wavepulse 1.5s ease-in-out infinite; }
+  @keyframes wavepulse {
+    0%, 100% { transform: scaleY(1); }
+    50%      { transform: scaleY(0.35); }
+  }
+  .hero-art .chip {
+    fill: var(--bg); stroke: var(--border); stroke-width: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
+  }
+  :root[data-theme="dark"] .hero-art .chip {
+    fill: #161b22; stroke: #3d444d;
+  }
+  .hero-art .chip-text { fill: var(--fg); font-family: "JetBrains Mono", monospace;
+    font-size: 11px; font-weight: 600; }
+  .hero-art .chip-num  { fill: var(--success); font-family: "JetBrains Mono", monospace;
+    font-size: 11px; font-weight: 700; }
+  .hero-art .dashed { stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 4 4;
+    fill: none; animation: dashmove 1.4s linear infinite; }
+  @keyframes dashmove { to { stroke-dashoffset: -16; } }
+  .hero-art .hanzi { font-family: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+    font-weight: 700; }
+
+  /* ═══ 4 Pillars feature strip ═══════════════════════════ */
+  .pillars {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin: 0 0 24px;
+  }
+  @media (max-width: 960px) { .pillars { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .pillars { grid-template-columns: 1fr; } }
+  .pillar {
+    background: var(--bg); border: 1px solid var(--border-muted);
+    border-radius: 10px; padding: 18px 18px 16px;
+    position: relative; overflow: hidden;
+  }
+  .pillar::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+    background: var(--accent-grad);
+  }
+  .pillar.p1 { --accent-grad: linear-gradient(90deg, #0969da, #6366f1); }
+  .pillar.p2 { --accent-grad: linear-gradient(90deg, #dc2626, #f59e0b); }
+  .pillar.p3 { --accent-grad: linear-gradient(90deg, #8250df, #ec4899); }
+  .pillar.p4 { --accent-grad: linear-gradient(90deg, #1a7f37, #10b981); }
+  .pillar .pico {
+    width: 36px; height: 36px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center;
+    margin-bottom: 10px; font-size: 20px;
+  }
+  .pillar.p1 .pico { background: rgba(9,105,218,0.10);  color: #0969da; }
+  .pillar.p2 .pico { background: rgba(220,38,38,0.10);  color: #dc2626; }
+  .pillar.p3 .pico { background: rgba(130,80,223,0.10); color: #8250df; }
+  .pillar.p4 .pico { background: rgba(26,127,55,0.10);  color: #1a7f37; }
+  .pillar h4 { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: var(--fg);
+    border: 0 !important; padding: 0 !important; }
+  .pillar p  { margin: 0; font-size: 13px; color: var(--fg-muted); line-height: 1.5; }
+  .pillar .badge {
+    display: inline-block; font-family: "JetBrains Mono", monospace;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px; margin-top: 8px;
+    background: var(--bg-muted); color: var(--fg-muted);
+  }
+
+  /* ═══ Hero curl snippet — compact terminal ══════════════ */
+  .hero-curl {
+    margin-top: 0; position: relative;
+    background: #0d1117;
+    border: 1px solid #30363d; border-radius: 8px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    color: #e6edf3; font-size: 12.5px;
+    box-shadow: 0 4px 14px -8px rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  .hero-curl .bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-bottom: 1px solid #21262d;
+    background: #161b22;
+  }
+  .hero-curl .dots { display: flex; gap: 5px; }
+  .hero-curl .dots i { width: 7px; height: 7px; border-radius: 999px; display: block; }
+  .hero-curl .dots i:nth-child(1) { background: #ff5f57; }
+  .hero-curl .dots i:nth-child(2) { background: #febc2e; }
+  .hero-curl .dots i:nth-child(3) { background: #28c840; }
+  .hero-curl .label {
+    font-size: 10.5px; color: #8d96a0; font-weight: 500;
+  }
+  .hero-curl .label .badge {
+    display: inline-block; margin-left: 6px;
+    padding: 0 6px; border-radius: 999px;
+    background: rgba(63,185,80,0.12); color: #3fb950;
+    border: 1px solid rgba(63,185,80,0.25);
+    font-size: 9.5px; font-weight: 600;
+  }
+  .hero-curl .copy {
+    margin-left: auto;
+    background: transparent; border: 1px solid #30363d; color: #9198a1;
+    padding: 1px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;
+    font-family: inherit;
+    transition: all .15s ease;
+  }
+  .hero-curl .copy:hover { background: #21262d; color: #fff; }
+  .hero-curl .copy.copied { color: #3fb950; border-color: rgba(63,185,80,0.4); }
+  /* Body — single scroll line */
+  .hero-curl .cmd {
+    padding: 10px 12px; line-height: 1.55;
+    overflow-x: auto; white-space: nowrap;
+  }
+
+  .hero-curl .cmd::-webkit-scrollbar { height: 3px; }
+  .hero-curl .cmd::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+  .hero-curl .prompt { color: #7ee787; user-select: none; margin-right: 6px; }
+  .hero-curl .k { color: #ff7b72; font-weight: 600; }
+  .hero-curl .s { color: #a5d6ff; }
+  .hero-curl .c { color: #6e7681; }
+  /* Response strip */
+  .hero-curl .resp {
+    border-top: 1px solid #21262d;
+    padding: 6px 12px; font-size: 10.5px; line-height: 1.5;
+    background: rgba(63,185,80,0.04);
+    white-space: nowrap; overflow-x: auto;
+  }
+  .hero-curl .resp::-webkit-scrollbar { height: 3px; }
+  .hero-curl .resp .arrow { color: #3fb950; margin-right: 6px; }
+  .hero-curl .resp .status {
+    display: inline-block; padding: 0 5px; border-radius: 3px;
+    background: rgba(63,185,80,0.14); color: #3fb950;
+    font-size: 9px; font-weight: 700; letter-spacing: .03em; margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .hero-curl .resp .j-key { color: #79c0ff; }
+  .hero-curl .resp .j-num { color: #ffa657; }
+  .hero-curl .resp .j-str { color: #a5d6ff; }
+  .hero-curl .resp .j-punct { color: #6e7681; }
+
+  /* ═══ Fit-check / self-routing card ═════════════════════ */
+  .fit-check {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--border-muted); border-radius: 10px;
+    overflow: hidden; margin: 0 0 16px;
+  }
+  @media (max-width: 640px) { .fit-check { grid-template-columns: 1fr; } }
+  .fit-check .col { padding: 18px 20px; }
+  .fit-check .col.yes {
+    background: linear-gradient(180deg, rgba(26,127,55,0.06), rgba(26,127,55,0.02));
+    border-right: 1px solid var(--border-muted);
+  }
+  .fit-check .col.no {
+    background: linear-gradient(180deg, rgba(209,36,47,0.05), rgba(209,36,47,0.02));
+  }
+  .fit-check h4 {
+    margin: 0 0 10px !important; font-size: 13px !important; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    border: 0 !important; padding: 0 !important;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .fit-check .yes h4 { color: var(--success); }
+  .fit-check .no  h4 { color: var(--danger); }
+  .fit-check ul { list-style: none; padding: 0; margin: 0; font-size: 13.5px; }
+  .fit-check ul li { padding: 4px 0; display: flex; gap: 8px; align-items: flex-start; }
+  .fit-check .yes li::before { content: "✓"; color: var(--success); font-weight: 700; }
+  .fit-check .no  li::before { content: "✗"; color: var(--danger); font-weight: 700; }
+
+  /* ═══ Comparison matrix ══════════════════════════════════ */
+  .compare-matrix {
+    overflow-x: auto; margin: 0 0 16px;
+  }
+  .compare-matrix table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  .compare-matrix th, .compare-matrix td {
+    padding: 10px 12px; border-bottom: 1px solid var(--border-muted);
+    text-align: center; vertical-align: middle;
+  }
+  .compare-matrix th:first-child, .compare-matrix td:first-child {
+    text-align: left; font-weight: 500; color: var(--fg);
+  }
+  .compare-matrix thead th {
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--fg-muted); background: var(--bg-muted);
+    border-bottom: 2px solid var(--border);
+  }
+  .compare-matrix .ours {
+    background: rgba(16,185,129,0.06);
+    color: var(--success) !important; font-weight: 700;
+    border-left: 1px solid rgba(16,185,129,0.3);
+    border-right: 1px solid rgba(16,185,129,0.3);
+  }
+  .compare-matrix thead .ours {
+    background: rgba(16,185,129,0.14); color: var(--success) !important;
+  }
+  .compare-matrix .yes  { color: var(--success); font-weight: 700; }
+  .compare-matrix .no   { color: var(--danger); font-weight: 700; }
+  .compare-matrix .mid  { color: var(--attention); font-weight: 600; font-size: 11.5px; }
+
+  /* ═══ Pricing grid ══════════════════════════════════════ */
+  .pricing {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin: 0 0 16px;
+  }
+  @media (max-width: 820px) { .pricing { grid-template-columns: 1fr; } }
+  .price-card {
+    border: 1px solid var(--border-muted); border-radius: 10px;
+    padding: 16px; background: var(--bg);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .price-card.featured {
+    border-color: rgba(16,185,129,0.4);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.08);
+  }
+  .price-card .plan-name {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--fg-muted);
+    font-family: "JetBrains Mono", monospace;
+  }
+  .price-card.featured .plan-name { color: var(--success); }
+  .price-card .plan-price {
+    font-size: 28px; font-weight: 800; color: var(--fg); letter-spacing: -0.02em;
+  }
+  .price-card .plan-price .per {
+    font-size: 13px; color: var(--fg-muted); font-weight: 500;
+  }
+  .price-card .plan-specs {
+    list-style: none; padding: 0; margin: 0;
+    font-size: 12px; color: var(--fg-muted); line-height: 1.7;
+    font-family: "JetBrains Mono", monospace;
+    border-top: 1px solid var(--border-muted); padding-top: 10px;
+  }
+  .price-card .plan-specs li { display: flex; justify-content: space-between; gap: 8px; }
+  .price-card .plan-specs b { color: var(--fg); font-weight: 700; }
+
+  /* ═══ 3-stage loop diagram ══════════════════════════════ */
+  .loop {
+    display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr;
+    gap: 0; align-items: stretch; margin: 0 0 20px;
+  }
+  @media (max-width: 820px) {
+    .loop { grid-template-columns: 1fr; gap: 12px; }
+    .loop .loop-arrow { transform: rotate(90deg); margin: -8px auto; }
+  }
+  .loop-stage {
+    position: relative; background: var(--bg);
+    border: 1px solid var(--border-muted); border-radius: 12px;
+    padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 8px;
+    overflow: hidden;
+  }
+  .loop-stage::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: var(--stage-accent, var(--accent));
+  }
+  .loop-stage.s1 { --stage-accent: linear-gradient(180deg, #6366f1, #0ea5e9); }
+  .loop-stage.s2 { --stage-accent: linear-gradient(180deg, #0ea5e9, #10b981); }
+  .loop-stage.s3 { --stage-accent: linear-gradient(180deg, #10b981, #fbbf24); }
+  .loop-stage.s1::before { background: linear-gradient(180deg, #6366f1, #0ea5e9); }
+  .loop-stage.s2::before { background: linear-gradient(180deg, #0ea5e9, #10b981); }
+  .loop-stage.s3::before { background: linear-gradient(180deg, #10b981, #fbbf24); }
+  .loop-stage .head { display: flex; align-items: center; gap: 10px; }
+  .loop-stage .num {
+    width: 28px; height: 28px; border-radius: 999px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px; font-family: "JetBrains Mono", monospace;
+    color: #fff; letter-spacing: -0.02em;
+  }
+  .loop-stage.s1 .num { background: linear-gradient(135deg, #6366f1, #0ea5e9); }
+  .loop-stage.s2 .num { background: linear-gradient(135deg, #0ea5e9, #10b981); }
+  .loop-stage.s3 .num { background: linear-gradient(135deg, #10b981, #fbbf24); color: #1f2328; }
+  .loop-stage .title { font-weight: 700; font-size: 14.5px; color: var(--fg);
+    letter-spacing: -0.01em; }
+  .loop-stage .who {
+    display: inline-block; font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 8px; border-radius: 999px;
+    background: var(--bg-muted); color: var(--fg-muted);
+  }
+  .loop-stage .payload {
+    background: var(--code-bg); border: 1px solid var(--border-muted);
+    border-radius: 8px; padding: 10px 12px; font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px; line-height: 1.55; color: var(--fg);
+    overflow: hidden; white-space: pre-wrap; word-break: break-word;
+  }
+  .loop-stage .desc { font-size: 12.5px; color: var(--fg-muted); line-height: 1.5; margin: 0; }
+  .loop-arrow { display: flex; align-items: center; justify-content: center; }
+  .loop-arrow svg { width: 40px; height: 24px; }
+  .loop-arrow .flow {
+    stroke-dasharray: 3 3; animation: dashflow 1.2s linear infinite;
+  }
+  @keyframes dashflow { to { stroke-dashoffset: -12; } }
+
+  /* ═══ Mandarin tutor spotlight ══════════════════════════ */
+  .mandarin-spot {
+    border: 1px solid var(--border-muted); border-radius: 12px;
+    padding: 28px; margin: 0 0 16px;
+    background:
+      radial-gradient(800px 200px at 0% 0%, rgba(220,38,38,0.08), transparent 60%),
+      radial-gradient(600px 200px at 100% 100%, rgba(245,158,11,0.10), transparent 60%),
+      var(--bg);
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; align-items: center;
+  }
+  @media (max-width: 760px) { .mandarin-spot { grid-template-columns: 1fr; } }
+  .mandarin-spot h3 { margin: 0 0 8px !important; border: 0 !important; padding: 0 !important;
+    font-size: 22px !important; }
+  .mandarin-spot .kicker {
+    display: inline-block; font-family: "JetBrains Mono", monospace;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #dc2626; background: rgba(220,38,38,0.10);
+    padding: 3px 10px; border-radius: 999px; margin-bottom: 12px;
+  }
+  .tone-demo {
+    background: var(--bg); border: 1px solid var(--border-muted);
+    border-radius: 10px; padding: 18px; font-family: "JetBrains Mono", monospace;
+  }
+  .tone-demo .char {
+    font-family: "Noto Sans SC", "PingFang SC", sans-serif;
+    font-size: 56px; font-weight: 800; line-height: 1;
+    color: var(--fg); text-align: center; margin-bottom: 4px;
+  }
+  .tone-demo .pinyin {
+    font-size: 16px; font-weight: 700; text-align: center; color: var(--fg-muted);
+    margin-bottom: 14px; letter-spacing: 0.06em;
+  }
+  .tone-demo .tone-row { display: grid; grid-template-columns: 40px 1fr 48px; gap: 8px;
+    align-items: center; margin: 6px 0; font-size: 11.5px; }
+  .tone-demo .tone-row .label { color: var(--fg-muted); font-weight: 600; }
+  .tone-demo .tone-bar { height: 14px; border-radius: 4px; background: var(--bg-muted);
+    overflow: hidden; position: relative; }
+  .tone-demo .tone-bar span { display: block; height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #dc2626); }
+  .tone-demo .tone-row .pct { text-align: right; color: var(--fg); font-weight: 700; }
+  .tone-demo .tone-verdict {
+    margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+    font-size: 12px; color: var(--danger); font-weight: 600;
+  }
+  .tone-demo .tone-verdict .tag {
+    background: rgba(209,36,47,0.12); padding: 1px 6px; border-radius: 4px;
+    margin-right: 4px;
+  }
+
+  /* ═══ English spotlight — mirrors mandarin-spot, blue palette ═══ */
+  .english-spot {
+    border: 1px solid var(--border-muted); border-radius: 12px;
+    padding: 28px; margin: 0 0 16px;
+    background:
+      radial-gradient(800px 200px at 0% 0%, rgba(9,105,218,0.08), transparent 60%),
+      radial-gradient(600px 200px at 100% 100%, rgba(99,102,241,0.10), transparent 60%),
+      var(--bg);
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; align-items: center;
+  }
+  @media (max-width: 760px) { .english-spot { grid-template-columns: 1fr; } }
+  .english-spot h3 { margin: 0 0 8px !important; border: 0 !important; padding: 0 !important;
+    font-size: 22px !important; }
+  .english-spot .kicker {
+    display: inline-block; font-family: "JetBrains Mono", monospace;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #0969da; background: rgba(9,105,218,0.10);
+    padding: 3px 10px; border-radius: 999px; margin-bottom: 12px;
+  }
+  .ipa-demo {
+    background: var(--bg); border: 1px solid var(--border-muted);
+    border-radius: 10px; padding: 18px; font-family: "JetBrains Mono", monospace;
+  }
+  .ipa-demo .word {
+    font-family: "Inter", sans-serif;
+    font-size: 38px; font-weight: 800; line-height: 1;
+    color: var(--fg); text-align: center; margin-bottom: 2px;
+    letter-spacing: -0.02em;
+  }
+  .ipa-demo .word .stress { color: #0969da; position: relative; }
+  .ipa-demo .word .stress::before {
+    content: "ˈ"; position: absolute; left: -10px; top: -2px;
+    font-size: 28px; color: var(--fg-muted); font-weight: 400;
+  }
+  .ipa-demo .word-sub {
+    font-size: 12px; text-align: center; color: var(--fg-muted);
+    margin-bottom: 4px; letter-spacing: 0.04em;
+  }
+  .ipa-demo .word-sub .ipa {
+    color: var(--fg); font-weight: 600; margin: 0 4px;
+  }
+  .ipa-demo .word-meta {
+    font-size: 11px; text-align: center; color: var(--fg-muted);
+    margin-bottom: 14px;
+  }
+  .ipa-demo .ipa-row { display: grid; grid-template-columns: 46px 1fr 48px; gap: 8px;
+    align-items: center; margin: 6px 0; font-size: 11.5px; }
+  .ipa-demo .ipa-row .label {
+    color: var(--fg); font-weight: 700; font-size: 13px;
+  }
+  .ipa-demo .ipa-row .label small {
+    font-family: "Inter", sans-serif; color: var(--fg-muted);
+    font-size: 9.5px; font-weight: 500; margin-left: 4px;
+  }
+  .ipa-demo .ipa-bar { height: 14px; border-radius: 4px; background: var(--bg-muted);
+    overflow: hidden; position: relative; }
+  .ipa-demo .ipa-bar span { display: block; height: 100%;
+    background: linear-gradient(90deg, #22c55e, #059669); }
+  .ipa-demo .ipa-bar.bad span {
+    background: linear-gradient(90deg, #f87171, #dc2626);
+  }
+  .ipa-demo .ipa-bar.mid span {
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  }
+  .ipa-demo .ipa-row .pct { text-align: right; color: var(--fg); font-weight: 700; }
+  .ipa-demo .ipa-row .pct.bad { color: var(--danger); }
+  .ipa-demo .verdict {
+    margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+    font-size: 12px; color: var(--accent); font-weight: 600;
+  }
+  .ipa-demo .verdict .tag {
+    background: rgba(209,36,47,0.12); color: var(--danger);
+    padding: 1px 6px; border-radius: 4px; margin-right: 4px;
+  }
+  .ipa-demo .verdict .tag.ok {
+    background: rgba(26,127,55,0.12); color: var(--success);
+  }
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin: 20px 0 24px;
+  }
+  .stats-row .stat {
+    background: var(--bg); border: 1px solid var(--border-muted);
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .stats-row .stat .v {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--fg);
+  }
+  .stats-row .stat .k {
+    font-size: 12px; color: var(--fg-muted); font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  @media (max-width: 720px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+
+  .callout {
+    padding: 14px 16px; border-left: 4px solid var(--accent);
+    background: rgba(9,105,218,0.06); border-radius: 0 6px 6px 0;
+    margin: 0 0 16px;
+  }
+  .callout.success { border-color: var(--success); background: rgba(26,127,55,0.06); }
+  .callout.warn    { border-color: var(--attention); background: rgba(154,103,0,0.06); }
+
+  /* Tabbed code */
+  .codetabs { border: 1px solid var(--border-muted); border-radius: 8px;
+    background: var(--bg); margin-bottom: 16px; overflow: hidden; }
+  .codetabs .tabstrip { display: flex; border-bottom: 1px solid var(--border-muted);
+    background: var(--bg-muted); padding: 0 8px; gap: 2px; overflow-x: auto; }
+  .codetabs .tabstrip button {
+    background: transparent; border: 0; padding: 8px 14px; font-size: 13px;
+    font-family: inherit; font-weight: 500; color: var(--fg-muted);
+    cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .codetabs .tabstrip button:hover { color: var(--fg); }
+  .codetabs .tabstrip button.active {
+    color: var(--fg); border-bottom-color: var(--accent);
+  }
+  .codetabs .panel { display: none; }
+  .codetabs .panel.active { display: block; }
+  .codetabs .panel pre { margin: 0; border: 0; border-radius: 0; }
+  .codetabs .filename {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--fg-muted); padding: 8px 16px;
+    background: var(--bg-muted); border-bottom: 1px solid var(--border-muted);
+  }
+
+  /* footer */
+  .footer {
+    max-width: 1280px; margin: 32px auto 0; padding: 24px 32px;
+    font-size: 12px; color: var(--fg-muted);
+    border-top: 1px solid var(--border-muted);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .footer a { color: var(--accent); }
+
+  /* small icons */
+  .octicon { display: inline-block; vertical-align: text-bottom; }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════ GitHub global nav ══════════════════════════════════════ -->
+<nav class="ghnav">
+  <span class="logo" title="GitHub">
+    <svg height="28" viewBox="0 0 16 16" width="28" aria-hidden="true">
+      <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+  </span>
+  <span class="search">Type <kbd class="kbd" style="margin-left:6px">/</kbd> to search<span class="kbd">⌘K</span></span>
+  <span class="menu">
+    <a href="#">Pull requests</a>
+    <a href="#">Issues</a>
+    <a href="#">Marketplace</a>
+    <a href="#">Explore</a>
+  </span>
+  <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
+  <span class="avatar" title="you"></span>
+</nav>
+
+<!-- ═══════ Repo header ═════════════════════════════════════════════ -->
+<header class="repohead">
+  <div class="row-top">
+    <div class="title">
+      <svg class="octicon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M0 2.75A1.75 1.75 0 0 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Z"/>
+      </svg>
+      <a class="org" href="#">chivox</a>
+      <span class="slash">/</span>
+      <a class="repo" href="#">chivox-mcp</a>
+      <span class="public">Public</span>
+    </div>
+    <div class="actions">
+      <button class="btn">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/></svg>
+        Watch <span class="count">84</span>
+      </button>
+      <button class="btn">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg>
+        Fork <span class="count">312</span>
+      </button>
+      <button class="btn btn-primary">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+        Star <span class="count" style="background:#fff;color:#1f2328">4.8k</span>
+      </button>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <a class="tab active" href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="m11.28 3.22 4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L13.94 8l-3.72-3.72a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215Zm-6.56 0a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L2.06 8l3.72 3.72a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L.47 8.53a.75.75 0 0 1 0-1.06Z"/></svg> Code</a>
+    <a class="tab" href="#">Issues <span class="cnt">23</span></a>
+    <a class="tab" href="#">Pull requests <span class="cnt">7</span></a>
+    <a class="tab" href="#">Discussions</a>
+    <a class="tab" href="#">Actions</a>
+    <a class="tab" href="#">Projects</a>
+    <a class="tab" href="#">Security</a>
+    <a class="tab" href="#">Insights</a>
+  </nav>
+</header>
+
+<!-- ═══════ Body grid ══════════════════════════════════════════════ -->
+<main class="body">
+  <div>
+    <!-- ── File list card ─────────────────────────────── -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="file-toolbar">
+        <button class="branch-btn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Z"/></svg>
+          <b>main</b>
+        </button>
+        <span class="branch-btn"><b>8</b> Branches</span>
+        <span class="branch-btn"><b>42</b> Tags</span>
+        <span class="file-stats">Latest commit <b>4d2ea8c</b> · 3 hours ago · <a href="#">387 commits</a></span>
+      </div>
+      <div class="file-row header">
+        <span></span><span>Name</span><span>Last commit message</span><span>Last commit date</span>
+      </div>
+      <div class="file-row">
+        <svg class="icon icon-dir" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 1h5c.55 0 1.07.26 1.4.7l.9 1.2c.04.06.11.1.2.1h5c.97 0 1.75.78 1.75 1.75v8.5c0 .97-.78 1.75-1.75 1.75H1.75A1.75 1.75 0 0 1 0 13.25V2.75C0 1.78.78 1 1.75 1Z"/></svg>
+        <span class="name"><a href="#">.github</a></span>
+        <span class="msg">ci: add release workflow</span>
+        <span class="age">2 days ago</span>
+      </div>
+      <div class="file-row">
+        <svg class="icon icon-dir" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 1h5c.55 0 1.07.26 1.4.7l.9 1.2c.04.06.11.1.2.1h5c.97 0 1.75.78 1.75 1.75v8.5c0 .97-.78 1.75-1.75 1.75H1.75A1.75 1.75 0 0 1 0 13.25V2.75C0 1.78.78 1 1.75 1Z"/></svg>
+        <span class="name"><a href="#">examples</a></span>
+        <span class="msg">feat(examples): add openai-agents demo</span>
+        <span class="age">3 hours ago</span>
+      </div>
+      <div class="file-row">
+        <svg class="icon icon-dir" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 1h5c.55 0 1.07.26 1.4.7l.9 1.2c.04.06.11.1.2.1h5c.97 0 1.75.78 1.75 1.75v8.5c0 .97-.78 1.75-1.75 1.75H1.75A1.75 1.75 0 0 1 0 13.25V2.75C0 1.78.78 1 1.75 1Z"/></svg>
+        <span class="name"><a href="#">packages</a></span>
+        <span class="msg">refactor: split @chivox/mcp-core</span>
+        <span class="age">yesterday</span>
+      </div>
+      <div class="file-row">
+        <svg class="icon icon-file" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Z"/></svg>
+        <span class="name"><a href="#">.gitignore</a></span>
+        <span class="msg">chore: ignore .env.local</span>
+        <span class="age">last week</span>
+      </div>
+      <div class="file-row">
+        <svg class="icon icon-file" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Z"/></svg>
+        <span class="name"><a href="#">LICENSE</a></span>
+        <span class="msg">Initial commit</span>
+        <span class="age">2 years ago</span>
+      </div>
+      <div class="file-row">
+        <svg class="icon icon-file" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Z"/></svg>
+        <span class="name"><a href="#">README.md</a></span>
+        <span class="msg">docs: add Western dev quickstart</span>
+        <span class="age">3 hours ago</span>
+      </div>
+      <div class="file-row">
+        <svg class="icon icon-file" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Z"/></svg>
+        <span class="name"><a href="#">package.json</a></span>
+        <span class="msg">chore: bump to 1.2.0</span>
+        <span class="age">yesterday</span>
+      </div>
+    </div>
+
+    <!-- ── README card ────────────────────────────────── -->
+    <div class="card">
+      <div class="readme-toolbar">
+        <span class="label">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.744 3.744 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Z"/></svg>
+          README
+        </span>
+        <span style="margin-left:auto; display:flex; gap:4px">
+          <button class="btn" title="Edit"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758Z"/></svg></button>
+          <button class="btn" title="Raw">Raw</button>
+        </span>
+      </div>
+      <article class="readme">
+
+<!-- ═══════════════════ RENDERED MARKDOWN ═══════════════════ -->
+<div class="hero-banner">
+  <button class="banner-play" onclick="playHeroVideo()" aria-label="Play 15s product demo">
+    <svg width="96" height="96" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.62)" stroke="rgba(255,255,255,0.92)" stroke-width="2.2"/>
+      <polygon points="26,20 26,44 46,32" fill="#fff"/>
+    </svg>
+  </button>
+  <div class="hero-grid">
+    <div>
+      <span class="hero-eyebrow"><span class="pulse"></span>Since 2011 · MCP-native</span>
+
+      <!-- Real Chivox MCP wordmark (inline SVG, identical to github-assets/logo.svg) -->
+      <svg class="hero-wordmark" viewBox="0 0 320 56" xmlns="http://www.w3.org/2000/svg" aria-label="Chivox MCP">
+        <defs>
+          <linearGradient id="mcpGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#6366f1"/>
+            <stop offset="50%"  stop-color="#0ea5e9"/>
+            <stop offset="100%" stop-color="#10b981"/>
+          </linearGradient>
+        </defs>
+        <text x="0" y="42" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif"
+              font-size="40" font-weight="800" letter-spacing="-1">
+          <tspan class="wm-ink">Chivox</tspan>
+          <tspan dx="8" fill="url(#mcpGradient)">MCP</tspan>
+        </text>
+      </svg>
+      <style>
+        .wm-ink { fill: #1f2328; }
+        :root[data-theme="dark"] .wm-ink { fill: #f0f6fc; }
+      </style>
+
+      <h2 class="hero-tag" style="border:0; padding:0">
+        Give your LLM <span class="hl">ears</span>.<br/>
+        Ship a <span class="hl">Mandarin tutor</span> or IELTS coach in a weekend.
+      </h2>
+      <p class="hero-sub">
+        Phoneme-level speech assessment, delivered as <b>MCP tools</b>.
+      </p>
+
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#quickstart">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a1 1 0 0 1 1.517-.857l8 5a1 1 0 0 1 0 1.714l-8 5A1 1 0 0 1 4 12V2Z"/></svg>
+          Install in 30 seconds
+        </a>
+        <a class="btn" href="https://chivoxmcp2.netlify.app/global">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 0 0-6.445 5.75h2.47a14.2 14.2 0 0 1 1.02-4.36A6.52 6.52 0 0 0 1.555 7.25Zm4.98 0A6.52 6.52 0 0 0 10.955 2.89a14.2 14.2 0 0 1 1.02 4.36h2.47A6.5 6.5 0 0 0 8 1.5ZM5.04 7.25h5.92A12.6 12.6 0 0 0 8 2.13 12.6 12.6 0 0 0 5.04 7.25Zm0 1.5A12.6 12.6 0 0 0 8 13.87a12.6 12.6 0 0 0 2.96-5.12H5.04Zm-3.485 0a6.5 6.5 0 0 0 4.49 5.36 14.2 14.2 0 0 1-1.02-4.36H1.555Zm10.89 0a14.2 14.2 0 0 1-1.02 4.36 6.5 6.5 0 0 0 4.49-5.36h-2.47Z"/></svg>
+          Website
+        </a>
+        <a class="btn" href="https://chivoxmcp2.netlify.app/global/demo">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 3.75C0 2.784.784 2 1.75 2h12.5c.966 0 1.75.784 1.75 1.75v6.5A1.75 1.75 0 0 1 14.25 12h-3.727l.475 2.376a.25.25 0 0 1-.245.299h-5.506a.25.25 0 0 1-.245-.299L5.477 12H1.75A1.75 1.75 0 0 1 0 10.25Z"/></svg>
+          Live demo
+        </a>
+        <a class="btn" href="https://chivoxmcp2.netlify.app/global/docs">📖 Docs</a>
+      </div>
+
+      <!-- instant-try curl — bigger, sits under the headline (left column) -->
+      <div class="hero-curl" id="heroCurl">
+        <div class="bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="label">try.sh <span class="badge">no signup</span></span>
+          <button class="copy" onclick="copyCurl(this)" aria-label="Copy">Copy</button>
+        </div>
+        <div class="cmd" id="heroCurlBody"><span class="prompt">$</span><span class="k">curl</span> speech-eval.site/mcp/try -d <span class="s">'{"ref":"你好","url":"…"}'</span></div>
+        <div class="resp"><span class="status">200</span><span class="arrow">←</span><span class="j-punct">{</span><span class="j-key">"overall"</span><span class="j-punct">:</span><span class="j-num">82</span><span class="j-punct">,</span> <span class="j-key">"tones"</span><span class="j-punct">:</span><span class="j-punct">[</span><span class="j-num">3</span><span class="j-punct">,</span><span class="j-num">3</span><span class="j-punct">]</span><span class="j-punct">,</span> <span class="j-key">"verdict"</span><span class="j-punct">:</span><span class="j-str">"native-like"</span><span class="j-punct">}</span></div>
+      </div>
+
+    </div>
+
+    <!-- ── Right column: video card + curl demo stacked ── -->
+    <div class="hero-right">
+    <!-- ── Hero art: audio → MCP → structured fields → LLM ear ── -->
+    <div class="hero-art">
+      <button class="play-btn" onclick="playHeroVideo()" aria-label="Play 15s product demo">
+        <svg width="88" height="88" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.62)" stroke="rgba(255,255,255,0.92)" stroke-width="2.2"/>
+          <polygon points="26,20 26,44 46,32" fill="#fff"/>
+        </svg>
+      </button>
+      <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="Audio waveform becomes structured JSON, feeding an LLM">
+        <defs>
+          <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0"   stop-color="#6366f1"/>
+            <stop offset="0.5" stop-color="#0ea5e9"/>
+            <stop offset="1"   stop-color="#10b981"/>
+          </linearGradient>
+          <linearGradient id="earGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0"  stop-color="#fbbf24"/>
+            <stop offset="1"  stop-color="#dc2626"/>
+          </linearGradient>
+          <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4"/>
+          </filter>
+        </defs>
+
+        <!-- ① audio waveform bars (animated) -->
+        <g class="wave-bars" transform="translate(20,150)">
+          <rect x="0"   y="-30" width="5" height="60" rx="2" fill="url(#waveGrad)" style="transform-origin:2.5px 30px; animation-delay:-.1s"/>
+          <rect x="10"  y="-20" width="5" height="40" rx="2" fill="url(#waveGrad)" style="transform-origin:12.5px 20px; animation-delay:-.3s"/>
+          <rect x="20"  y="-42" width="5" height="84" rx="2" fill="url(#waveGrad)" style="transform-origin:22.5px 42px; animation-delay:-.5s"/>
+          <rect x="30"  y="-16" width="5" height="32" rx="2" fill="url(#waveGrad)" style="transform-origin:32.5px 16px; animation-delay:-.2s"/>
+          <rect x="40"  y="-50" width="5" height="100" rx="2" fill="url(#waveGrad)" style="transform-origin:42.5px 50px; animation-delay:-.6s"/>
+          <rect x="50"  y="-24" width="5" height="48" rx="2" fill="url(#waveGrad)" style="transform-origin:52.5px 24px; animation-delay:-.4s"/>
+          <rect x="60"  y="-38" width="5" height="76" rx="2" fill="url(#waveGrad)" style="transform-origin:62.5px 38px; animation-delay:-.7s"/>
+          <rect x="70"  y="-18" width="5" height="36" rx="2" fill="url(#waveGrad)" style="transform-origin:72.5px 18px; animation-delay:0s"/>
+        </g>
+
+        <!-- dashed connector 1 · waveform → cards (primary path brighter) -->
+        <path class="dashed" d="M 110 150 C 140 150, 140 110, 170 110"
+              style="stroke:#dc2626; stroke-opacity:0.55; stroke-width:1.5"/>
+        <path class="dashed" d="M 110 150 C 140 150, 140 192, 180 192"
+              style="stroke-opacity:0.45"/>
+
+        <!-- ② PRIMARY · Mandarin chip (hero example) -->
+        <rect class="chip" x="170" y="70" width="150" height="80" rx="12"
+              stroke="#dc2626" stroke-opacity="0.45" stroke-width="1.5"/>
+        <!-- subtle 中 watermark -->
+        <text class="hanzi" x="312" y="90" font-size="12" text-anchor="end"
+              fill="#dc2626" opacity="0.55">🇨🇳 中文</text>
+        <text class="hanzi" x="198" y="120" font-size="34" fill="#dc2626">好</text>
+        <text class="chip-text" x="238" y="102" text-anchor="start">pinyin: hǎo</text>
+        <text class="chip-num"  x="238" y="120" text-anchor="start" fill="#dc2626">tone 3 ✓</text>
+        <text class="chip-text" x="238" y="138" text-anchor="start"
+              style="font-size:9.5px" opacity="0.7">erhua · sandhi · 北京</text>
+
+        <!-- SECONDARY · English chip (supporting) -->
+        <rect class="chip" x="180" y="168" width="130" height="48" rx="10"
+              stroke-opacity="0.6"/>
+        <text class="chip-text" x="302" y="184" text-anchor="end"
+              opacity="0.55" style="font-size:9.5px">🇬🇧 EN</text>
+        <text class="chip-text" x="192" y="184" text-anchor="start">MCP · tools/call</text>
+        <text class="chip-num"  x="192" y="204" text-anchor="start"
+              style="fill:#0ea5e9">en_sentence_eval</text>
+
+        <!-- connector 2 · cards → ear (primary path brighter) -->
+        <path class="dashed" d="M 320 110 C 345 110, 345 170, 370 170"
+              style="stroke:#dc2626; stroke-opacity:0.55; stroke-width:1.5"/>
+        <path class="dashed" d="M 310 192 C 340 192, 340 190, 370 190"
+              style="stroke-opacity:0.45"/>
+
+        <!-- ③ LLM ear -->
+        <g transform="translate(370,110)">
+          <circle cx="45" cy="70" r="58" fill="url(#earGrad)" opacity="0.18" filter="url(#softGlow)"/>
+          <path d="M 45 18
+                   C 70 18, 85 38, 85 62
+                   C 85 80, 75 90, 65 96
+                   C 58 100, 55 104, 55 112
+                   C 55 122, 45 130, 35 130
+                   C 22 130, 12 120, 12 108
+                   C 12 88, 16 80, 20 72
+                   C 22 60, 22 18, 45 18 Z"
+                fill="none" stroke="url(#earGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M 38 52 C 50 52, 58 60, 58 72 C 58 82, 52 88, 46 92"
+                fill="none" stroke="url(#earGrad)" stroke-width="2" stroke-linecap="round"/>
+          <path d="M 38 72 C 44 72, 48 76, 48 80"
+                fill="none" stroke="url(#earGrad)" stroke-width="2" stroke-linecap="round"/>
+          <text x="45" y="158" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                font-size="11" font-weight="700" fill="#dc2626">LLM · hears</text>
+        </g>
+
+        <!-- Floating JSON tokens around the scene -->
+        <g transform="translate(26,48)" opacity="0.9">
+          <rect class="chip" width="100" height="22" rx="6"/>
+          <text class="chip-text" x="50" y="15" text-anchor="middle">"overall": 82</text>
+        </g>
+        <g transform="translate(140,300)" opacity="0.9">
+          <rect class="chip" width="108" height="22" rx="6"/>
+          <text class="chip-text" x="54" y="15" text-anchor="middle">"dp_type": "ok"</text>
+        </g>
+        <g transform="translate(320,42)" opacity="0.9">
+          <rect class="chip" width="118" height="22" rx="6"/>
+          <text class="chip-text" x="59" y="15" text-anchor="middle">"phonemes": [ … ]</text>
+        </g>
+        <g transform="translate(310,296)" opacity="0.9">
+          <rect class="chip" width="130" height="22" rx="6"/>
+          <text class="chip-text" x="65" y="15" text-anchor="middle">"tone": { ref: 3 ✓ }</text>
+        </g>
+      </svg>
+    </div>
+
+    </div><!-- /.hero-right -->
+  </div>
+</div>
+
+<p class="centered badges">
+  <img src="https://img.shields.io/badge/npm-v1.2.0-cb3837?style=flat-square&logo=npm&logoColor=white" alt="npm"/>
+  <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
+  <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>
+  <img src="https://img.shields.io/badge/tools-16-7C3AED?style=flat-square" alt="tools"/>
+  <img src="https://img.shields.io/badge/ISO%2027001-certified-2563EB?style=flat-square" alt="iso"/>
+  <img src="https://img.shields.io/badge/build-passing-22c55e?style=flat-square&logo=githubactions&logoColor=white" alt="build"/>
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="prs"/>
+  <img src="https://img.shields.io/badge/discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="discord"/>
+</p>
+
+<div class="stats-block">
+<div class="stats-row">
+  <div class="stat"><div class="v">9.2B+</div><div class="k">Evals / year</div></div>
+  <div class="stat"><div class="v">185</div><div class="k">Countries</div></div>
+  <div class="stat"><div class="v">95%+</div><div class="k">Human agreement</div></div>
+  <div class="stat"><div class="v">&lt;200ms</div><div class="k">P99 first token</div></div>
+</div>
+</div>
+
+<blockquote>
+  <b>TL;DR</b> — LLMs can't hear audio. Chivox MCP gives them ears: one tool call returns <code>overall / accuracy / fluency / phonemes[]</code> — a structured JSON your model can reason over directly. No SDK wrapping, no feature extraction, no glue code.
+</blockquote>
+
+<div class="is-for-you">
+  <h3 style="border:0; padding:0; margin: 24px 0 12px; font-size: 16px; font-weight: 700;">
+    Is this for you?
+  </h3>
+
+  <div class="fit-check">
+    <div class="col yes">
+      <h4>✓ Use Chivox if you…</h4>
+      <ul>
+        <li>Are building an AI tutor, language app, or reading-aloud product</li>
+        <li>Need to know <b>how well</b> someone spoke — not <b>what</b> they said</li>
+        <li>Want <b>Mandarin</b> assessment that actually hears tones, erhua, sandhi</li>
+        <li>Ship through <b>MCP clients</b> (Cursor / Claude / Agents SDK / LangChain)</li>
+      </ul>
+    </div>
+    <div class="col no">
+      <h4>✗ You probably want…</h4>
+      <ul>
+        <li>…<b>Whisper / Deepgram / AssemblyAI</b> for plain transcription</li>
+        <li>…<b>ElevenLabs / OpenAI TTS</b> for generating speech</li>
+        <li>…<b>Azure / AWS</b> for compliance / content moderation</li>
+        <li>…<b>Picovoice / Rhino</b> for keyword spotting on-device</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="micro" style="margin-top:-8px">
+    Most production teams run <b>Whisper + Chivox together</b>: Whisper to transcribe what was said, Chivox to score how well. They don't compete.
+  </p>
+</div>
+
+<hr/>
+
+<h2 id="quickstart">🚀 Quickstart</h2>
+
+<p>Pick your stack. All paths speak the same MCP protocol.</p>
+
+<div class="codetabs" id="qs-tabs">
+  <div class="tabstrip">
+    <button class="active" data-qs="python">🐍 Python</button>
+    <button data-qs="curl">cURL</button>
+    <button data-qs="langchain">LangChain</button>
+    <button data-qs="agents">OpenAI Agents</button>
+    <button data-qs="node">Node · TS</button>
+    <button data-qs="cursor">Cursor</button>
+    <button data-qs="claude">Claude Desktop</button>
+  </div>
+
+  <div class="panel" data-qs="cursor">
+    <div class="filename">~/.cursor/mcp.json</div>
+<pre><code><span class="tok-p">{</span>
+  <span class="tok-s">"mcpServers"</span>: {
+    <span class="tok-s">"chivox"</span>: {
+      <span class="tok-s">"type"</span>: <span class="tok-s">"streamable-http"</span>,
+      <span class="tok-s">"url"</span>:  <span class="tok-s">"https://speech-eval.site/mcp"</span>,
+      <span class="tok-s">"env"</span>:  { <span class="tok-s">"CHIVOX_API_KEY"</span>: <span class="tok-s">"sk_live_…"</span> }
+    }
+  }
+}</code></pre>
+  </div>
+
+  <div class="panel" data-qs="claude">
+    <div class="filename">~/Library/Application Support/Claude/claude_desktop_config.json</div>
+<pre><code>{
+  <span class="tok-s">"mcpServers"</span>: {
+    <span class="tok-s">"chivox"</span>: {
+      <span class="tok-s">"command"</span>: <span class="tok-s">"npx"</span>,
+      <span class="tok-s">"args"</span>: [<span class="tok-s">"-y"</span>, <span class="tok-s">"@chivox/mcp"</span>],
+      <span class="tok-s">"env"</span>: { <span class="tok-s">"CHIVOX_API_KEY"</span>: <span class="tok-s">"sk_live_…"</span> }
+    }
+  }
+}</code></pre>
+  </div>
+
+  <div class="panel" data-qs="node">
+    <div class="filename">agent.ts</div>
+<pre><code><span class="tok-k">import</span> { Client } <span class="tok-k">from</span> <span class="tok-s">'@modelcontextprotocol/sdk/client'</span>;
+
+<span class="tok-k">const</span> chivox = <span class="tok-k">await</span> Client.<span class="tok-f">connect</span>({ name: <span class="tok-s">'chivox'</span> });
+
+<span class="tok-k">const</span> result = <span class="tok-k">await</span> chivox.<span class="tok-f">callTool</span>(<span class="tok-s">'en_sentence_eval'</span>, {
+  reference_text: <span class="tok-s">'The weather is gorgeous today.'</span>,
+  audio_url:      <span class="tok-s">'https://demo.com/take-01.mp3'</span>,
+});
+
+console.<span class="tok-f">log</span>(result.overall);   <span class="tok-c">// 72</span>
+console.<span class="tok-f">log</span>(result.details);   <span class="tok-c">// per-word + phonemes</span></code></pre>
+  </div>
+
+  <div class="panel active" data-qs="python">
+    <div class="filename">agent.py</div>
+<pre><code><span class="tok-k">import</span> asyncio
+<span class="tok-k">from</span> mcp.client.streamable_http <span class="tok-k">import</span> streamablehttp_client
+<span class="tok-k">from</span> mcp <span class="tok-k">import</span> ClientSession
+
+<span class="tok-k">async def</span> <span class="tok-f">main</span>():
+    <span class="tok-k">async with</span> streamablehttp_client(
+        <span class="tok-s">"https://speech-eval.site/mcp"</span>,
+        headers={<span class="tok-s">"Authorization"</span>: <span class="tok-s">"Bearer $CHIVOX_API_KEY"</span>},
+    ) <span class="tok-k">as</span> (r, w, _):
+        <span class="tok-k">async with</span> ClientSession(r, w) <span class="tok-k">as</span> s:
+            <span class="tok-k">await</span> s.initialize()
+            out = <span class="tok-k">await</span> s.call_tool(<span class="tok-s">"en_sentence_eval"</span>, {
+                <span class="tok-s">"reference_text"</span>: <span class="tok-s">"The weather is gorgeous today."</span>,
+                <span class="tok-s">"audio_url"</span>:      <span class="tok-s">"https://demo.com/take-01.mp3"</span>,
+            })
+            <span class="tok-f">print</span>(out)
+
+asyncio.<span class="tok-f">run</span>(main())</code></pre>
+  </div>
+
+  <div class="panel" data-qs="curl">
+    <div class="filename">bash · instant try (no signup)</div>
+<pre><code><span class="tok-c"># 1. Hello world — get a score in one call</span>
+<span class="tok-f">curl</span> https://speech-eval.site/mcp/try \
+  -H <span class="tok-s">"Content-Type: application/json"</span> \
+  -d <span class="tok-s">'{"ref_text":"你好","audio_url":"https://demo.chivox.com/nihao.mp3"}'</span>
+
+<span class="tok-c"># 2. Production REST (cvx_fc) — for stacks that can't host an MCP SDK</span>
+<span class="tok-f">curl</span> -X POST https://speech-eval.site/v1/call \
+  -H <span class="tok-s">"Authorization: Bearer $CHIVOX_API_KEY"</span> \
+  -d <span class="tok-s">'{
+    "name": "cn_sentence_eval",
+    "arguments": { "ref_text": "你好", "audio_url": "…/nihao.mp3" }
+  }'</span></code></pre>
+  </div>
+
+  <div class="panel" data-qs="langchain">
+    <div class="filename">agent.py · LangChain 0.3+</div>
+<pre><code><span class="tok-k">from</span> langchain_mcp_adapters.client <span class="tok-k">import</span> MultiServerMCPClient
+<span class="tok-k">from</span> langgraph.prebuilt <span class="tok-k">import</span> create_react_agent
+<span class="tok-k">from</span> langchain_openai <span class="tok-k">import</span> ChatOpenAI
+
+client = MultiServerMCPClient({
+    <span class="tok-s">"chivox"</span>: {
+        <span class="tok-s">"transport"</span>: <span class="tok-s">"streamable_http"</span>,
+        <span class="tok-s">"url"</span>: <span class="tok-s">"https://speech-eval.site/mcp"</span>,
+        <span class="tok-s">"headers"</span>: {<span class="tok-s">"Authorization"</span>: <span class="tok-s">"Bearer $CHIVOX_API_KEY"</span>},
+    }
+})
+tools = <span class="tok-k">await</span> client.get_tools()   <span class="tok-c"># auto-discovers all 16 tools</span>
+
+agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>), tools)
+
+<span class="tok-k">await</span> agent.ainvoke({<span class="tok-s">"messages"</span>: [
+    (<span class="tok-s">"user"</span>, <span class="tok-s">"Score my Mandarin: https://demo.com/nihao.mp3. Ref: 你好"</span>)
+]})</code></pre>
+  </div>
+
+  <div class="panel" data-qs="agents">
+    <div class="filename">agent.py · OpenAI Agents SDK</div>
+<pre><code><span class="tok-k">from</span> agents <span class="tok-k">import</span> Agent, Runner
+<span class="tok-k">from</span> agents.mcp <span class="tok-k">import</span> MCPServerStreamableHttp
+
+<span class="tok-k">async with</span> MCPServerStreamableHttp(
+    params={<span class="tok-s">"url"</span>: <span class="tok-s">"https://speech-eval.site/mcp"</span>,
+            <span class="tok-s">"headers"</span>: {<span class="tok-s">"Authorization"</span>: <span class="tok-s">"Bearer $KEY"</span>}},
+) <span class="tok-k">as</span> chivox:
+    coach = Agent(
+        name=<span class="tok-s">"Mandarin Coach"</span>,
+        model=<span class="tok-s">"gpt-4o"</span>,
+        instructions=<span class="tok-s">"You are a warm, patient Beijing-accent tutor. "</span>
+                     <span class="tok-s">"Score learner audio via Chivox, then give feedback "</span>
+                     <span class="tok-s">"+ a targeted drill."</span>,
+        mcp_servers=[chivox],
+    )
+    result = <span class="tok-k">await</span> Runner.run(coach, input=<span class="tok-s">"Grade this: ..."</span>)
+    <span class="tok-f">print</span>(result.final_output)</code></pre>
+  </div>
+</div>
+
+<p class="micro">
+  Prefer zero config? Run <code>npx @chivox/mcp init</code> — it writes the right config file for whichever MCP client it detects on your machine.
+</p>
+
+<hr/>
+
+<h2>⚖️ How Chivox compares to what you already know</h2>
+
+<p>Chivox MCP is <b>not</b> a transcription API. It's a speech-<i>assessment</i> API — it scores how well words were pronounced, at the phoneme level. Here's where it sits in the stack:</p>
+
+<div class="compare-matrix">
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>Whisper / Deepgram</th>
+      <th>ElevenLabs</th>
+      <th>Azure Pronunciation</th>
+      <th class="ours">Chivox MCP</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>What it <i>does</i></td>
+      <td>audio → text</td>
+      <td>text → audio</td>
+      <td>scores EN only</td>
+      <td class="ours">scores EN + 中文</td>
+    </tr>
+    <tr>
+      <td>Per-phoneme IPA scores</td>
+      <td class="no">—</td>
+      <td class="no">—</td>
+      <td class="yes">✓</td>
+      <td class="ours">✓</td>
+    </tr>
+    <tr>
+      <td>Mandarin tones (T1-T4 + neutral)</td>
+      <td class="no">—</td>
+      <td class="no">—</td>
+      <td class="mid">basic</td>
+      <td class="ours">✓ native</td>
+    </tr>
+    <tr>
+      <td>Erhua / sandhi / Beijing accent</td>
+      <td class="no">—</td>
+      <td class="no">—</td>
+      <td class="no">—</td>
+      <td class="ours">✓</td>
+    </tr>
+    <tr>
+      <td>Stress position (noun vs verb)</td>
+      <td class="no">—</td>
+      <td class="no">—</td>
+      <td class="yes">✓</td>
+      <td class="ours">✓</td>
+    </tr>
+    <tr>
+      <td>MCP-native (LLM function calling)</td>
+      <td class="no">—</td>
+      <td class="no">—</td>
+      <td class="no">—</td>
+      <td class="ours">✓</td>
+    </tr>
+    <tr>
+      <td>Built for agents &amp; tutors</td>
+      <td class="mid">transcription layer</td>
+      <td class="mid">voice layer</td>
+      <td class="mid">Microsoft-only stack</td>
+      <td class="ours">✓ purpose-built</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout success">
+  <b>Rule of thumb</b> — use <b>Whisper</b> to know what was said; use <b>Chivox</b> to know <i>how well</i>. They stack.
+</div>
+
+<hr/>
+
+<h2>🧠 What the LLM actually sees</h2>
+
+<p>Every Chivox MCP call returns a typed JSON payload. Here's a real response for the sentence "I want to record a record", sampled by a US accent model:</p>
+
+<pre><code><span class="tok-p">{</span>
+  <span class="tok-s">"overall"</span>: <span class="tok-n">72</span>,
+  <span class="tok-s">"pron"</span>: { <span class="tok-s">"accuracy"</span>: <span class="tok-n">65</span>, <span class="tok-s">"integrity"</span>: <span class="tok-n">95</span>, <span class="tok-s">"fluency"</span>: <span class="tok-n">85</span>, <span class="tok-s">"rhythm"</span>: <span class="tok-n">70</span> },
+  <span class="tok-s">"fluency"</span>: { <span class="tok-s">"overall"</span>: <span class="tok-n">85</span>, <span class="tok-s">"pause"</span>: <span class="tok-n">12</span>, <span class="tok-s">"speed"</span>: <span class="tok-n">132</span> },  <span class="tok-c">// WPM</span>
+  <span class="tok-s">"audio_quality"</span>: { <span class="tok-s">"snr"</span>: <span class="tok-n">22.0</span>, <span class="tok-s">"clip"</span>: <span class="tok-n">0</span>, <span class="tok-s">"volume"</span>: <span class="tok-n">2514</span> },
+  <span class="tok-s">"details"</span>: [
+    {
+      <span class="tok-s">"word"</span>: <span class="tok-s">"record"</span>, <span class="tok-s">"score"</span>: <span class="tok-n">58</span>, <span class="tok-s">"dp_type"</span>: <span class="tok-s">"mispron"</span>,
+      <span class="tok-s">"start"</span>: <span class="tok-n">1100</span>, <span class="tok-s">"end"</span>: <span class="tok-n">1680</span>,             <span class="tok-c">// ms — jump-to-playback</span>
+      <span class="tok-s">"stress"</span>: { <span class="tok-s">"ref"</span>: <span class="tok-n">2</span>, <span class="tok-s">"score"</span>: <span class="tok-n">45</span> },      <span class="tok-c">// wrong stress (noun vs. verb)</span>
+      <span class="tok-s">"accent"</span>: <span class="tok-s">"us"</span>,
+      <span class="tok-s">"phonemes"</span>: [
+        { <span class="tok-s">"ipa"</span>: <span class="tok-s">"ɹ"</span>, <span class="tok-s">"score"</span>: <span class="tok-n">45</span>, <span class="tok-s">"dp_type"</span>: <span class="tok-s">"mispron"</span> },
+        { <span class="tok-s">"ipa"</span>: <span class="tok-s">"ɪ"</span>, <span class="tok-s">"score"</span>: <span class="tok-n">78</span>, <span class="tok-s">"dp_type"</span>: <span class="tok-s">"normal"</span>  }
+      ]
+    }
+  ]
+}</code></pre>
+
+<div class="callout success">
+  <b>Why this matters</b> — your LLM doesn't need to know signal processing. The JSON <i>names</i> the problem (<code>dp_type: "mispron"</code>, <code>stress.score: 45</code>) so a vanilla <code>chat.completion</code> can explain <i>why</i> the learner got it wrong and generate a targeted drill.
+</div>
+
+<hr/>
+
+<h2>🔁 The three-stage loop</h2>
+
+<p style="font-size:13px; color:var(--fg-muted); margin-bottom:12px">
+  🎤 <b>Input:</b> 1-minute learner recording →&nbsp;
+  <b>Output:</b> warm feedback + targeted drill, end-to-end in &lt; 3 seconds.
+</p>
+
+<div class="loop">
+  <div class="loop-stage s1">
+    <div class="head">
+      <span class="num">01</span>
+      <span class="title">MCP assessment</span>
+    </div>
+    <span class="who">Chivox engine</span>
+    <div class="payload"><span class="tok-c">// structured_json</span>
+<span class="tok-p">{</span> <span class="tok-s">"overall"</span>: <span class="tok-n">72</span>,
+  <span class="tok-s">"dp_type"</span>: <span class="tok-s">"mispron"</span>,
+  <span class="tok-s">"phonemes"</span>: [ <span class="tok-s">"ɹ"</span>, <span class="tok-s">"ɪ"</span>, … ] <span class="tok-p">}</span></div>
+    <p class="desc">Scores word-by-word &amp; phoneme-by-phoneme. 20+ fields: accuracy · fluency · rhythm · stress · tone · timestamps.</p>
+  </div>
+
+  <div class="loop-arrow">
+    <svg viewBox="0 0 40 24" fill="none" aria-hidden="true">
+      <path class="flow" d="M2 12 L34 12" stroke="url(#flowGrad1)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M30 7 L38 12 L30 17" stroke="url(#flowGrad1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <defs>
+        <linearGradient id="flowGrad1" x1="0" x2="1">
+          <stop offset="0" stop-color="#6366f1"/>
+          <stop offset="1" stop-color="#0ea5e9"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="loop-stage s2">
+    <div class="head">
+      <span class="num">02</span>
+      <span class="title">LLM · feedback</span>
+    </div>
+    <span class="who">chat.completion #1</span>
+    <div class="payload"><span class="tok-c">// natural_language</span>
+<span class="tok-s">"Fluency is great (85)! But</span>
+<span class="tok-s"> /θ/ and /r/ keep getting</span>
+<span class="tok-s"> mixed up — try this…"</span></div>
+    <p class="desc">LLM groups errors by <code>dp_type</code>, explains <i>why</i> they happen, prioritizes by severity &amp; frequency.</p>
+  </div>
+
+  <div class="loop-arrow">
+    <svg viewBox="0 0 40 24" fill="none" aria-hidden="true">
+      <path class="flow" d="M2 12 L34 12" stroke="url(#flowGrad2)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M30 7 L38 12 L30 17" stroke="url(#flowGrad2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <defs>
+        <linearGradient id="flowGrad2" x1="0" x2="1">
+          <stop offset="0" stop-color="#0ea5e9"/>
+          <stop offset="1" stop-color="#10b981"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="loop-stage s3">
+    <div class="head">
+      <span class="num">03</span>
+      <span class="title">LLM · practice</span>
+    </div>
+    <span class="who">chat.completion #2</span>
+    <div class="payload"><span class="tok-c">// practice_loop</span>
+<span class="tok-s">"Read 3×: 'Thirty-three</span>
+<span class="tok-s"> thieves thought they thrilled</span>
+<span class="tok-s"> the throne throughout…'"</span>
+🎯 /θ/×6 · /r/×3 · ⏱ 1.5 min</div>
+    <p class="desc">Auto-generates tongue twisters, minimal-pair drills, and a personalized 7-day plan — the "coach" half of the loop.</p>
+  </div>
+</div>
+
+<p>Compatible with <b>GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwen · GLM</b> — any model that speaks function calling.</p>
+
+<hr/>
+
+<h2>🏮 The moat: a tireless Beijing-accent tutor</h2>
+
+<p>There are <b>30M+</b> foreigners and 2nd-gen diaspora learning Mandarin worldwide — and <b>zero</b> English-speaking platforms that can actually hear the difference between <code>mā / má / mǎ / mà</code>. Chivox's Chinese engine is trained on the same data powering China's Putonghua proficiency exam (普通话水平测试).</p>
+
+<div class="mandarin-spot">
+  <div>
+    <span class="kicker">Use case · Overseas Mandarin tutor</span>
+    <h3>Build "Duolingo-with-ears" for 中文 in a weekend.</h3>
+    <p style="margin:0 0 12px; color: var(--fg-muted); font-size: 14px">
+      Your learner says <code>"wǒ hěn hǎo"</code>. Chivox returns per-character IPA,
+      <b>tone confidence distributions</b>, and millisecond timestamps. Your LLM
+      writes back, in-character: <i>"Close! Your third tone on 好 dipped, but you
+      ended at tone 4 — here's the dipping glide, try again."</i>
+    </p>
+    <ul style="margin:0 0 0 16px; padding:0; font-size: 13.5px; color: var(--fg);">
+      <li><b>Tones + neutral tone</b> — not a retrofit; trained natively.</li>
+      <li><b>Erhua (儿化) &amp; sandhi</b> — the stuff Google STT flattens.</li>
+      <li><b>Hanzi + Pinyin dual paths</b> — HSK-aligned vocabulary level.</li>
+      <li><b>Beijing / Taiwan / neutral</b> reference accents available.</li>
+    </ul>
+  </div>
+  <div class="tone-demo">
+    <div class="char">好</div>
+    <div class="pinyin">hǎo &nbsp;·&nbsp; reference: tone 3</div>
+
+    <div class="tone-row">
+      <span class="label">T1 ā</span>
+      <div class="tone-bar"><span style="width:5%"></span></div>
+      <span class="pct">5%</span>
+    </div>
+    <div class="tone-row">
+      <span class="label">T2 á</span>
+      <div class="tone-bar"><span style="width:10%"></span></div>
+      <span class="pct">10%</span>
+    </div>
+    <div class="tone-row">
+      <span class="label">T3 ǎ</span>
+      <div class="tone-bar"><span style="width:28%"></span></div>
+      <span class="pct">28%</span>
+    </div>
+    <div class="tone-row">
+      <span class="label">T4 à</span>
+      <div class="tone-bar"><span style="width:55%; background:linear-gradient(90deg,#dc2626,#991b1b)"></span></div>
+      <span class="pct" style="color:#dc2626">55%</span>
+    </div>
+    <div class="tone-row">
+      <span class="label">Neutral</span>
+      <div class="tone-bar"><span style="width:2%"></span></div>
+      <span class="pct">2%</span>
+    </div>
+    <div class="tone-verdict">
+      <span class="tag">wrong_tone</span> detected T4 instead of T3 — classic dipping-tone drop.
+    </div>
+  </div>
+</div>
+
+<p class="micro" style="margin-top:8px">
+  &rarr; Try the <a href="https://chivoxmcp2.netlify.app/global/demo">live Mandarin demo</a> (no signup) · see the <a href="https://chivoxmcp2.netlify.app/global/docs#cn">Chinese-specific assessment fields</a>
+</p>
+
+<h2 style="margin-top:36px">🇬🇧 And yes — exam-grade English too</h2>
+
+<p>Most teams ship both paths in the same product: Mandarin for the moat, English for scale. The same MCP endpoints, the same 20+ structured fields — just a different <code>ref_text</code> and <code>accent</code>. Aligned to <b>IELTS · TOEFL · K-12 gaokao · Cambridge YLE</b>.</p>
+
+<div class="english-spot">
+  <div>
+    <span class="kicker">Use case · AI speaking coach</span>
+    <h3>"Grade this like an IELTS examiner" — in one tool call.</h3>
+    <p style="margin:0 0 12px; color: var(--fg-muted); font-size: 14px">
+      Your learner reads <code>"I'd like to record a record."</code>
+      Chivox returns <b>per-phoneme IPA scores</b>, stress position, detected accent,
+      liaison typing, and word-level <code>dp_type</code>. Your LLM writes back:
+      <i>"Your <code>/θ/</code> keeps collapsing into <code>/f/</code>, and you stressed
+      'record' on the first syllable — but the verb form stresses the second. Minimal-pair drill coming up."</i>
+    </p>
+    <ul style="margin:0 0 0 16px; padding:0; font-size: 13.5px; color: var(--fg);">
+      <li><b>Phoneme-level IPA</b> — every <code>/θ/ /ɹ/ /æ/ /ʃ/</code> individually scored.</li>
+      <li><b>Stress &amp; rhythm</b> — catches noun-vs-verb stress errors (<i>record, present, import</i>).</li>
+      <li><b>Liaison &amp; connected speech</b> — typed as <code>ok / none / wrong</code>.</li>
+      <li><b>US / UK / AU / neutral</b> accent references — pick per tool call.</li>
+    </ul>
+  </div>
+  <div class="ipa-demo">
+    <div class="word">re<span class="stress">cord</span></div>
+    <div class="word-sub"><span class="ipa">/rɪˈkɔːd/</span> · <b>verb</b></div>
+    <div class="word-meta">stress on syllable 2 · start 1100ms · end 1680ms</div>
+
+    <div class="ipa-row">
+      <span class="label">ɹ <small>onset</small></span>
+      <div class="ipa-bar bad"><span style="width:45%"></span></div>
+      <span class="pct bad">45</span>
+    </div>
+    <div class="ipa-row">
+      <span class="label">ɪ</span>
+      <div class="ipa-bar"><span style="width:78%"></span></div>
+      <span class="pct">78</span>
+    </div>
+    <div class="ipa-row">
+      <span class="label">k</span>
+      <div class="ipa-bar"><span style="width:88%"></span></div>
+      <span class="pct">88</span>
+    </div>
+    <div class="ipa-row">
+      <span class="label">ɔː <small>ˈstress</small></span>
+      <div class="ipa-bar mid"><span style="width:62%"></span></div>
+      <span class="pct">62</span>
+    </div>
+    <div class="ipa-row">
+      <span class="label">d</span>
+      <div class="ipa-bar"><span style="width:85%"></span></div>
+      <span class="pct">85</span>
+    </div>
+
+    <div class="verdict">
+      <span class="tag">mispron</span> /ɹ/ weak &nbsp;·&nbsp;
+      <span class="tag">stress: 1→2</span> detected noun-form instead of verb
+    </div>
+  </div>
+</div>
+
+<p class="micro" style="margin-top:8px">
+  &rarr; Try the <a href="https://chivoxmcp2.netlify.app/global/demo">English IELTS demo</a> · compare <a href="https://chivoxmcp2.netlify.app/global/docs#accents">accent reference models</a> (🇺🇸 US · 🇬🇧 UK · 🇦🇺 AU)
+</p>
+
+<hr/>
+
+<div class="tools-section">
+
+<h2>🛠️ Tools catalog</h2>
+
+<h3>English (10)</h3>
+
+<table>
+  <thead><tr><th>Tool</th><th>Purpose</th><th>Modes</th></tr></thead>
+  <tbody>
+    <tr><td><code>en_word_eval</code></td><td>Word pronunciation + phonemes</td><td>file · stream</td></tr>
+    <tr><td><code>en_word_correction</code></td><td>Missing / extra / mispron detection</td><td>file</td></tr>
+    <tr><td><code>en_vocab_eval</code></td><td>Vocabulary list (batch)</td><td>file</td></tr>
+    <tr><td><code>en_sentence_eval</code></td><td>Sentence accuracy + fluency</td><td>file · stream</td></tr>
+    <tr><td><code>en_sentence_correction</code></td><td>Per-word error detection + tips</td><td>file</td></tr>
+    <tr><td><code>en_paragraph_eval</code></td><td>Paragraph reading</td><td>file · stream</td></tr>
+    <tr><td><code>en_phonics_eval</code></td><td>Phonics rules mastery</td><td>file</td></tr>
+    <tr><td><code>en_choice_eval</code></td><td>Spoken multiple-choice</td><td>file</td></tr>
+    <tr><td><code>en_semi_open_eval</code></td><td>Semi-open dialog</td><td>file · stream</td></tr>
+    <tr><td><code>en_realtime_eval</code></td><td>Real-time sentence-by-sentence</td><td>stream</td></tr>
+  </tbody>
+</table>
+
+<h3>Mandarin Chinese (6)</h3>
+
+<table>
+  <thead><tr><th>Tool</th><th>Purpose</th><th>Modes</th></tr></thead>
+  <tbody>
+    <tr><td><code>cn_word_raw_eval</code></td><td>Hanzi pronunciation</td><td>file · stream</td></tr>
+    <tr><td><code>cn_word_pinyin_eval</code></td><td>Pinyin accuracy + tones</td><td>file</td></tr>
+    <tr><td><code>cn_sentence_eval</code></td><td>Word / sentence reading</td><td>file · stream</td></tr>
+    <tr><td><code>cn_paragraph_eval</code></td><td>Paragraph reading</td><td>file</td></tr>
+    <tr><td><code>cn_rec_eval</code></td><td>Bounded-branch recognition</td><td>file</td></tr>
+    <tr><td><code>cn_aitalk_eval</code></td><td>Open Mandarin conversation</td><td>stream</td></tr>
+  </tbody>
+</table>
+
+<p class="micro">Input: <code>audio_url</code> · <code>audio_base64</code> · <code>audio_file_path</code>. Formats: mp3 · wav · ogg · m4a · aac · pcm.</p>
+
+</div>
+
+<hr/>
+
+<h2>🔌 Dual transport</h2>
+
+<table>
+  <thead>
+    <tr><th></th><th>🎙️ Streaming</th><th>📁 Batch file</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Best for</b></td>
+      <td>Live coaching, classroom shadowing, real-time UX</td>
+      <td>UGC QA, recorded lesson grading, bulk jobs</td>
+    </tr>
+    <tr>
+      <td><b>Transport</b></td>
+      <td>WebSocket — 30-50% lower latency</td>
+      <td>HTTP upload (URL / base64 / file path)</td>
+    </tr>
+    <tr>
+      <td><b>Input</b></td>
+      <td>PCM 16k/16-bit/mono chunks (200 ms)</td>
+      <td>mp3 · wav · ogg · m4a · aac · pcm</td>
+    </tr>
+    <tr>
+      <td><b>Reconnect</b></td>
+      <td>60 s <code>resume_token</code></td>
+      <td>n/a</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h2>🏗️ Integration paths</h2>
+
+<ul>
+  <li><b>IDE / desktop clients</b> — Cursor · Claude Desktop · Windsurf · Zed · Continue · Cline — paste the mcp.json snippet above.</li>
+  <li><b>Agent frameworks</b> — LangChain · LlamaIndex · Mastra · AutoGen · CrewAI · openai-agents · Spring AI — all auto-discover the 16 tools.</li>
+  <li><b>Workflow canvases</b> — Dify · n8n · Flowise · LangFlow — drop in the MCP tool node.</li>
+  <li><b>Raw LLM APIs</b> — OpenAI · Anthropic · Gemini · DeepSeek · Qwen · GLM — use any MCP client lib to bridge <code>tools/list</code> → function calling.</li>
+  <li><b>Non-MCP stacks</b> — native iOS / Android · mini-programs · legacy Java / PHP — fall back to the REST endpoint <code>cvx_fc</code> (<code>/v1/call</code>).</li>
+</ul>
+
+<hr/>
+
+<h2>💎 Why developers ship with Chivox MCP</h2>
+
+<p>Four things you get out of the box — in priority order:</p>
+
+<div class="pillars">
+  <div class="pillar p2">
+    <div class="pico">👂</div>
+    <h4>Beijing-accent 私教, 24/7</h4>
+    <p>A tireless native-accent Mandarin tutor for <b>30M+</b> overseas Chinese learners &amp; heritage speakers. Tones, erhua, sandhi — natively handled.</p>
+    <span class="badge">中文 · 北京口音</span>
+  </div>
+  <div class="pillar p1">
+    <div class="pico">⚡</div>
+    <h4>Drop-in integration</h4>
+    <p>One block of JSON, 30 seconds. Every MCP-aware client — Cursor, Claude, LangChain — auto-discovers all 16 tools.</p>
+    <span class="badge">1 line of config</span>
+  </div>
+  <div class="pillar p3">
+    <div class="pico">📊</div>
+    <h4>Data-rich payload for LLMs</h4>
+    <p>20+ structured fields per call — accuracy · fluency · rhythm · IPA · stress · tone confidence. An LLM can diagnose <i>why</i>, not just <i>what</i>.</p>
+    <span class="badge">LLM-native JSON</span>
+  </div>
+  <div class="pillar p4">
+    <div class="pico">🇬🇧</div>
+    <h4>Exam-grade English too</h4>
+    <p>Certified by China's Ministry of Education for the national Putonghua exam; same engine aligned to IELTS · TOEFL · K-12. Phoneme-level English works out of the box.</p>
+    <span class="badge">IELTS / TOEFL / K-12</span>
+  </div>
+</div>
+
+<p class="micro" style="margin-top:16px">
+  Plus: <b>realtime + batch</b> modes · <b>TLS 1.2+ · ISO 27001</b> · on-prem SKUs · per-phoneme ms timestamps for jump-to-playback · ephemeral audio (destroyed post-scoring).
+</p>
+
+<hr/>
+
+<h2>💳 Pricing &amp; limits</h2>
+
+<p>Straight-forward pricing. Start free, no credit card. Overage billed per-call — failed calls are <b>not</b> billed.</p>
+
+<div class="pricing">
+  <div class="price-card">
+    <span class="plan-name">Free</span>
+    <div class="plan-price">¥0<span class="per"> forever</span></div>
+    <p class="micro" style="margin:0">Prototyping &amp; weekend hacks · no card</p>
+    <ul class="plan-specs">
+      <li>Quota <b>1,000 / mo</b></li>
+      <li>Concurrency <b>2</b></li>
+      <li>Tools <b>3 core</b></li>
+      <li>Support <b>GitHub Issues</b></li>
+    </ul>
+  </div>
+  <div class="price-card featured">
+    <span class="plan-name">Pro · Most popular</span>
+    <div class="plan-price">¥99<span class="per"> /mo (~$14)</span></div>
+    <p class="micro" style="margin:0">Commercial apps &amp; solo devs · 14-day trial</p>
+    <ul class="plan-specs">
+      <li>Quota <b>50,000 / mo</b></li>
+      <li>Concurrency <b>10</b></li>
+      <li>Tools <b>All 7 + LLM 100/mo</b></li>
+      <li>Overage <b>¥0.003 / call</b></li>
+      <li>SLA <b>99.5%</b></li>
+      <li>Support <b>Email · 48h</b></li>
+    </ul>
+  </div>
+  <div class="price-card">
+    <span class="plan-name">Enterprise</span>
+    <div class="plan-price">Custom</div>
+    <p class="micro" style="margin:0">On-prem · data residency · SLA</p>
+    <ul class="plan-specs">
+      <li>Quota <b>Unlimited</b></li>
+      <li>Concurrency <b>50+</b></li>
+      <li>Tools <b>All + custom</b></li>
+      <li>SLA <b>99.9%+</b></li>
+      <li>Support <b>7×24 dedicated</b></li>
+    </ul>
+  </div>
+</div>
+
+<p class="micro">
+  Full breakdown &amp; per-tool cost on the <a href="https://chivoxmcp2.netlify.app/global">pricing page →</a>. Single starter key includes 30 calls/day (≈ 900 total) to test drive without signup friction.
+</p>
+
+<hr/>
+
+<h2>❓ FAQ</h2>
+
+<details>
+  <summary>How is this different from Whisper / Deepgram / AssemblyAI?</summary>
+  <p>Those are transcription APIs — they tell you <i>what</i> was said. Chivox tells you <i>how well</i> it was said, at the phoneme level, with the exact field names an LLM needs to diagnose and correct. Most users run both in the same pipeline.</p>
+</details>
+
+<details>
+  <summary>Does it work offline / on-prem?</summary>
+  <p>Yes. The Enterprise plan ships the same engine as a signed Docker image (x86_64 / ARM64) with an offline license. No data leaves your VPC.</p>
+</details>
+
+<details>
+  <summary>How are failed requests billed?</summary>
+  <p>They aren't. Billing is per successful assessment. Concurrency packs are sold separately to smooth traffic peaks.</p>
+</details>
+
+<details>
+  <summary>Which languages are planned?</summary>
+  <p>EN and Mandarin ship today. Spanish, Japanese, and Korean are on the 2026 roadmap — track <a href="#">#roadmap</a>.</p>
+</details>
+
+<details>
+  <summary>Can I pin to a specific engine version?</summary>
+  <p>Yes. Set <code>X-Chivox-Engine</code> to a pinned tag (e.g. <code>en-2024.11</code>); otherwise you auto-follow the stable channel.</p>
+</details>
+
+<hr/>
+
+<h2>🤝 Contributing</h2>
+
+<p>Issues and PRs welcome. For substantive features, open a design issue first. Small doc / example fixes can go straight to PR.</p>
+
+<pre><code><span class="tok-f">git</span> clone https://github.com/chivox/chivox-mcp.git
+<span class="tok-f">cd</span> chivox-mcp
+<span class="tok-f">pnpm</span> install
+<span class="tok-f">pnpm</span> test</code></pre>
+
+<p>See <a href="#">CONTRIBUTING.md</a> for coding style, release flow, and the commit-message convention (conventional commits).</p>
+
+<hr/>
+
+<h2>📜 License</h2>
+
+<p>Apache-2.0 © 2026 <a href="#">Suzhou Chivox Information Technology Co., Ltd.</a></p>
+
+<p class="centered micro" style="margin-top:32px">
+  Made by <b>Chivox</b> · Since 2011 in speech AI<br/>
+  <a href="https://chivoxmcp2.netlify.app/global">chivoxmcp2.netlify.app/global</a>
+</p>
+
+<!-- ═══════════════════ END MARKDOWN ════════════════════════ -->
+      </article>
+    </div>
+  </div>
+
+  <!-- ═══════ Sidebar ═════════════════════════════════════ -->
+  <aside class="side">
+    <div class="section">
+      <h3>About</h3>
+      <p class="about">Phoneme-level, exam-grade speech assessment as <b>Model Context Protocol</b> tools. One config, 16 tools — every MCP-aware client gets ears.</p>
+      <ul class="links">
+        <li>🌐 <a href="https://chivoxmcp2.netlify.app/global">Website</a></li>
+        <li>🎬 <a href="https://chivoxmcp2.netlify.app/global/demo">Live demo</a></li>
+        <li>📖 <a href="https://chivoxmcp2.netlify.app/global/docs">Documentation</a></li>
+        <li>⚖ Apache-2.0 license</li>
+      </ul>
+      <div class="topics">
+        <span class="topic">mcp</span>
+        <span class="topic">llm</span>
+        <span class="topic">speech-assessment</span>
+        <span class="topic">pronunciation</span>
+        <span class="topic">phonemes</span>
+        <span class="topic">ipa</span>
+        <span class="topic">mandarin</span>
+        <span class="topic">chinese</span>
+        <span class="topic">ielts</span>
+        <span class="topic">agents</span>
+        <span class="topic">openai</span>
+        <span class="topic">claude</span>
+        <span class="topic">cursor</span>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span>© 2026 GitHub (look-alike preview) · This page is a design mock for <b>chivox / chivox-mcp</b></span>
+  <span>
+    <a href="https://chivoxmcp2.netlify.app/global">Website</a> ·
+    <a href="https://chivoxmcp2.netlify.app/global/demo">Demo</a> ·
+    <a href="https://chivoxmcp2.netlify.app/global/docs">Docs</a>
+  </span>
+</footer>
+
+<script>
+  function toggleTheme() {
+    const root = document.documentElement;
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('gh-readme-theme', root.dataset.theme); } catch (e) {}
+  }
+  try {
+    const saved = localStorage.getItem('gh-readme-theme');
+    if (saved) document.documentElement.dataset.theme = saved;
+  } catch (e) {}
+
+  // Copy button for the hero curl snippet
+  function copyCurl(btn) {
+    const el = document.getElementById('heroCurlBody');
+    if (!el) return;
+    const text = el.innerText.replace(/^\$\s*/, '').trim();
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1600);
+    });
+  }
+  window.copyCurl = copyCurl;
+
+  // Hero video modal — set VIDEO_URL to an MP4 / YouTube embed / Bilibili embed URL when ready.
+  const VIDEO_URL = 'https://18ks.chivoxapp.com/doc/video20260424.mp4';
+  function playHeroVideo() {
+    const modal = document.getElementById('videoModal');
+    const slot  = document.getElementById('videoSlot');
+    if (!VIDEO_URL) {
+      slot.innerHTML = '<div style="color:#fff;padding:48px;text-align:center;font:14px/1.6 system-ui;">'
+        + '🎬 Video URL not set yet.<br><br>Edit <code style="color:#7ee787">VIDEO_URL</code> in this file once your 15s demo is uploaded.</div>';
+    } else if (/\.(mp4|webm|mov)$/i.test(VIDEO_URL)) {
+      slot.innerHTML = '<video src="' + VIDEO_URL + '" controls autoplay playsinline></video>';
+    } else {
+      slot.innerHTML = '<iframe src="' + VIDEO_URL + '" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+    }
+    modal.classList.add('open');
+  }
+  function closeVideo() {
+    const modal = document.getElementById('videoModal');
+    modal.classList.remove('open');
+    document.getElementById('videoSlot').innerHTML = '';
+  }
+  window.playHeroVideo = playHeroVideo;
+  window.closeVideo = closeVideo;
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeVideo(); });
+
+  // Quickstart tabs
+  const strip = document.querySelector('#qs-tabs .tabstrip');
+  strip.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const id = b.dataset.qs;
+    strip.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    document.querySelectorAll('#qs-tabs .panel').forEach(p => {
+      p.classList.toggle('active', p.dataset.qs === id);
+    });
+  });
+</script>
+
+<div class="video-modal" id="videoModal" onclick="if(event.target===this)closeVideo()">
+  <div class="vwrap">
+    <button class="close" onclick="closeVideo()" aria-label="Close">✕ Close</button>
+    <div id="videoSlot" style="width:100%;height:100%"></div>
+  </div>
+</div>
+<script>
+  // ?bare=<mode> → render only a specific section (for exporting PNG banners for GitHub README)
+  (function(){
+    const p = new URLSearchParams(location.search);
+    const mode = p.get('bare');
+    if (!mode) return;
+
+    // map mode -> selector(s) relative to .readme
+    const MODES = {
+      hero:     ['.hero-banner'],
+      stats:    ['.stats-block'],
+      compare:  ['.compare-matrix'],
+      fit:      ['.is-for-you'],
+      loop:     ['.loop'],
+      mandarin: ['.mandarin-spot'],
+      english:  ['.english-spot'],
+      pricing:  ['.pricing'],
+      pillars:  ['.pillars'],
+      tools:    ['.tools-section'],
+    };
+    const sel = MODES[mode];
+    if (!sel) return;
+
+    const baseCSS = `
+      html,body{width:1280px !important}
+      body{background:#fff !important;margin:0 !important;padding:0 !important}
+      .ghnav,.repohead,.sidebar,.side,aside.side,.file-toolbar,.file-row,.readme-toolbar,.col-side,footer,.footer-note,.card:not(:last-child){display:none !important}
+      main.body{display:block !important;padding:0 !important;max-width:none !important;margin:0 !important;width:1280px !important}
+      .col-main{width:1280px !important;margin:0 !important;padding:0 !important}
+      .card{border:none !important;box-shadow:none !important;margin:0 !important;border-radius:0 !important;width:1280px !important}
+      /* start with zero padding; each mode sets its own tight crop */
+      .readme{padding:0 !important;max-width:none !important;background:#fff !important;width:1280px !important;box-sizing:border-box !important}
+      /* force horizontal layouts regardless of viewport-media-query quirks */
+      .pricing{grid-template-columns:repeat(3, 1fr) !important}
+      .loop{grid-template-columns:1fr 40px 1fr 40px 1fr !important}
+      .loop .loop-arrow{transform:none !important}
+      .pillars{grid-template-columns:repeat(4, 1fr) !important}
+      .mandarin-spot,.english-spot{grid-template-columns:1.15fr 1fr !important}
+    `;
+    // hide every top-level readme child first, then re-enable the targets
+    const showRules = sel.map(s => `.readme ${s}, .readme ${s} *`).join(', ');
+    const css = document.createElement('style');
+    css.textContent = baseCSS + `
+      .readme > *{display:none !important}
+      ${sel.map(s => `.readme ${s}`).join(', ')}{display:block !important}
+    `;
+    document.head.appendChild(css);
+
+    // tighten crop per mode so the image visually fills GitHub width
+    const PAD = {
+      compare:  '8px 10px',
+      fit:      '10px 12px',
+      stats:    '8px 10px',
+      loop:     '10px 12px',
+      pricing:  '8px 10px',
+      mandarin: '10px 12px',
+      english:  '10px 12px',
+      pillars:  '8px 10px',
+      tools:    '10px 12px',
+    };
+    if (mode !== 'hero') {
+      const pad = PAD[mode] || '10px 12px';
+      document.querySelectorAll('.readme').forEach(el => {
+        el.style.setProperty('padding', pad, 'important');
+      });
+    }
+
+    // force grid layout on the TARGET selector only (via inline style)
+    const GRIDS = {
+      '.pricing':      'repeat(3, 1fr)',
+      '.pillars':      'repeat(4, 1fr)',
+      '.loop':         '1fr 40px 1fr 40px 1fr',
+      '.mandarin-spot':'1.15fr 1fr',
+      '.english-spot': '1.15fr 1fr',
+    };
+    sel.forEach(s => {
+      const tpl = GRIDS[s];
+      if (!tpl) return;
+      document.querySelectorAll(s).forEach(el => {
+        el.style.setProperty('display', 'grid', 'important');
+        el.style.setProperty('grid-template-columns', tpl, 'important');
+        el.style.setProperty('gap', '12px', 'important');
+        el.style.setProperty('width', '100%', 'important');
+      });
+    });
+    if (mode === 'loop') {
+      document.querySelectorAll('.loop .loop-arrow').forEach(el => {
+        el.style.setProperty('transform', 'none', 'important');
+      });
+    }
+
+    // mode-specific readability tweaks (bigger type so images read well on GitHub)
+    if (mode === 'compare') {
+      const s = document.createElement('style');
+      s.textContent = `
+        /* make the matrix fill the whole image */
+        .readme{padding:8px 10px !important}
+        .compare-matrix{margin:0 !important; overflow: visible !important}
+        .compare-matrix table{font-size:22px !important}
+        .compare-matrix th, .compare-matrix td{padding:19px 16px !important}
+        .compare-matrix thead th{
+          font-size:16px !important;
+          letter-spacing:0.06em !important;
+        }
+        .compare-matrix th:first-child, .compare-matrix td:first-child{white-space:nowrap !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'pricing') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:8px 10px !important}
+        .price-card{padding:20px !important}
+        .price-card .plan-name{font-size:14px !important}
+        .price-card .price{font-size:44px !important}
+        .price-card .sub{font-size:15px !important}
+        .price-card .rows{font-size:18.5px !important; line-height:1.55 !important}
+        .price-card .rows .k{font-size:15px !important}
+        .price-card .rows .v{font-size:18.5px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'loop') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:10px 12px !important}
+        .loop-stage{padding:20px !important}
+        .loop-stage .title{font-size:22px !important}
+        .loop-stage .desc{font-size:18.5px !important; line-height:1.55 !important}
+        .loop-stage pre{font-size:17px !important; line-height:1.55 !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'fit') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:10px 12px !important}
+        .is-for-you h3{font-size:24px !important;margin:0 0 14px !important}
+        .fit-check{margin:0 !important}
+        .fit-check .col{padding:18px 20px !important}
+        .fit-check h4{font-size:20px !important;margin:0 0 10px !important}
+        .fit-check li{font-size:18.5px !important;line-height:1.5 !important;margin:0 0 8px !important}
+        .is-for-you .micro{font-size:16px !important;margin-top:12px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'pillars') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:8px 10px !important}
+        .pillars{gap:14px !important}
+        .pillar{padding:20px 20px 18px !important}
+        .pillar h4{font-size:20px !important; line-height:1.2 !important}
+        .pillar p{font-size:16px !important; line-height:1.55 !important}
+        .pillar .badge{font-size:13.5px !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'mandarin' || mode === 'english') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:10px 12px !important}
+        .mandarin-spot, .english-spot{padding:30px !important}
+        .mandarin-spot h3, .english-spot h3{font-size:28px !important}
+        .mandarin-spot p, .english-spot p{font-size:16.5px !important; line-height:1.55 !important}
+        .mandarin-spot li, .english-spot li{font-size:16.5px !important; line-height:1.55 !important}
+      `;
+      document.head.appendChild(s);
+    }
+
+    if (mode === 'stats') {
+      const s = document.createElement('style');
+      s.textContent = `
+        .readme{padding:8px 10px !important}
+        .stats-block{margin:0 !important}
+        .stats-row{
+          display:grid !important;
+          grid-template-columns:repeat(4, 1fr) !important;
+          gap:12px !important;
+          margin:0 !important;
+        }
+        .stats-row .stat{
+          border-radius:14px !important;
+          border:1px solid rgba(27,31,36,0.10) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(250,251,252,0.70)) !important;
+          box-shadow:
+            0 1px 0 rgba(255,255,255,0.65) inset,
+            0 14px 30px -24px rgba(0,0,0,0.45) !important;
+          padding:18px 14px 16px !important;
+          position: relative !important;
+          overflow:hidden !important;
+        }
+        .stats-row .stat::before{
+          content:"";
+          position:absolute; left:-40px; top:-40px;
+          width:140px; height:140px; border-radius:999px;
+          background: radial-gradient(circle at 30% 30%, rgba(16,185,129,0.20), transparent 60%);
+          filter: blur(1px);
+          pointer-events:none;
+        }
+        .stats-row .stat:nth-child(2)::before{
+          background: radial-gradient(circle at 30% 30%, rgba(99,102,241,0.22), transparent 60%);
+        }
+        .stats-row .stat:nth-child(3)::before{
+          background: radial-gradient(circle at 30% 30%, rgba(14,165,233,0.22), transparent 60%);
+        }
+        .stats-row .stat:nth-child(4)::before{
+          background: radial-gradient(circle at 30% 30%, rgba(251,191,36,0.22), transparent 60%);
+        }
+        :root[data-theme="dark"] .stats-row .stat{
+          border-color: rgba(240,246,252,0.10) !important;
+          background: linear-gradient(180deg, rgba(22,27,34,0.75), rgba(13,17,23,0.55)) !important;
+        }
+        .stats-row .v{font-size:36px !important; font-weight:950 !important; letter-spacing:-0.03em !important}
+        .stats-row .k{
+          font-size:13px !important;
+          opacity:.8 !important;
+          margin-top:6px !important;
+          letter-spacing:0.10em !important;
+          text-transform:uppercase !important;
+          font-family:"JetBrains Mono", ui-monospace, monospace !important;
+        }
+      `;
+      document.head.appendChild(s);
+    }
+
+    // hero mode: additionally hide CTA + relocate curl into left col
+    if (mode === 'hero') {
+      const extra = document.createElement('style');
+      extra.textContent = `
+        .readme{padding:0 !important}
+        /* tighter crop to remove bottom whitespace in exported banner */
+        .hero-banner{margin:0 !important;border-radius:0 !important;padding:28px 44px 22px !important}
+        .hero-cta{display:none !important}
+        .hero-banner .hero-sub{margin-bottom:18px !important}
+        .hero-banner .hero-curl{margin-top:0 !important;width:100% !important;max-width:none !important}
+        /* in bare mode curl moves into left col; give left col more room so curl fits */
+        .hero-banner .hero-grid{
+          grid-template-columns:1.35fr .85fr !important;
+          gap:26px !important;
+          align-items:center !important; /* right side vertically centered */
+        }
+        /* make right illustration slightly shorter */
+        .hero-banner .hero-art{min-height:230px !important; padding:28px 18px 16px !important}
+        /* make the curl snippet readable in a static GitHub banner (≈3×) */
+        .hero-banner .hero-curl{border-radius:10px !important}
+        .hero-banner .hero-curl .bar{padding:10px 14px !important}
+        .hero-banner .hero-curl .label{font-size:16px !important}
+        .hero-banner .hero-curl .label .badge{font-size:14px !important; padding:1px 10px !important}
+        .hero-banner .hero-curl .copy{font-size:14px !important; padding:4px 10px !important}
+        .hero-banner .hero-curl .cmd{font-size:20px !important; padding:18px 16px !important; line-height:1.55 !important}
+        .hero-banner .hero-curl .resp{font-size:18px !important; padding:13px 16px !important; line-height:1.55 !important}
+        .hero-banner .hero-curl .resp .status{font-size:13px !important; padding:2px 8px !important}
+        /* ensure eyebrow / wordmark stack vertically and in correct order */
+        .hero-banner .hero-eyebrow{
+          display:inline-flex !important;
+          margin-bottom:14px !important;
+          font-size:13px !important;
+          padding:6px 14px 6px 11px !important;
+        }
+        .hero-banner .hero-wordmark{display:block !important;margin:0 0 12px !important; max-width:360px !important}
+        .hero-banner .hero-tag{font-size:28px !important; line-height:1.25 !important}
+        .hero-banner .hero-sub{font-size:16.5px !important; line-height:1.55 !important; max-width:560px !important}
+        /* make centered play icon visible in exported banner */
+        .hero-banner .hero-art .play-btn{display:none !important}
+        .hero-banner .banner-play{display:block !important}
+        /* allow curl command to wrap onto a second line if needed */
+        .hero-banner .hero-curl .cmd{white-space:pre-wrap !important;word-break:break-all !important}
+        .hero-banner .hero-curl .resp{white-space:pre-wrap !important;word-break:break-all !important}
+      `;
+      document.head.appendChild(extra);
+      const curl = document.querySelector('.hero-banner .hero-curl');
+      const sub  = document.querySelector('.hero-banner .hero-sub');
+      if (curl && sub && sub.parentNode) sub.parentNode.appendChild(curl);
+    }
+  })();
+</script>
+</body>
+</html>

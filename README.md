@@ -61,18 +61,36 @@ from mcp import ClientSession
 
 async def main():
     async with streamablehttp_client(
-        "https://mcp.cloud.chivox.com",
+        "https://speech-eval.site/mcp",
         headers={"Authorization": "Bearer $CHIVOX_API_KEY"},
     ) as (r, w, _):
         async with ClientSession(r, w) as s:
             await s.initialize()
             out = await s.call_tool("en_sentence_eval", {
-                "ref_text":  "The weather is gorgeous today.",
-                "audio_url": "https://demo.com/take-01.mp3",
+                "reference_text": "The weather is gorgeous today.",
+                "audio_url":      "https://demo.com/take-01.mp3",
             })
             print(out)
 
 asyncio.run(main())
+```
+
+</details>
+
+<details>
+<summary><b>cURL</b> &nbsp;<sub>(instant try · no signup)</sub></summary>
+
+```bash
+# Hello world — get a score in one call, no API key
+curl https://speech-eval.site/mcp/try \
+  -H "Content-Type: application/json" \
+  -d '{"ref_text":"你好","audio_url":"https://demo.chivox.com/nihao.mp3"}'
+```
+
+Example response:
+
+```json
+{ "overall": 82, "tones": [3, 3], "verdict": "native-like" }
 ```
 
 </details>
@@ -88,7 +106,7 @@ from langchain_openai import ChatOpenAI
 client = MultiServerMCPClient({
     "chivox": {
         "transport": "streamable_http",
-        "url": "https://mcp.cloud.chivox.com",
+        "url": "https://speech-eval.site/mcp",
         "headers": {"Authorization": "Bearer $CHIVOX_API_KEY"},
     }
 })
@@ -111,7 +129,7 @@ from agents import Agent, Runner
 from agents.mcp import MCPServerStreamableHttp
 
 async with MCPServerStreamableHttp(
-    params={"url": "https://mcp.cloud.chivox.com",
+    params={"url": "https://speech-eval.site/mcp",
             "headers": {"Authorization": "Bearer $KEY"}},
 ) as chivox:
     coach = Agent(
@@ -132,29 +150,17 @@ async with MCPServerStreamableHttp(
 <summary><b>Node.js / TypeScript</b></summary>
 
 ```ts
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client } from '@modelcontextprotocol/sdk/client';
 
-const transport = new StreamableHTTPClientTransport(
-  new URL('https://mcp.cloud.chivox.com'),
-  { requestInit: { headers: { Authorization: `Bearer ${process.env.CHIVOX_API_KEY}` } } },
-);
+const chivox = await Client.connect({ name: 'chivox' });
 
-const chivox = new Client({ name: 'chivox-client', version: '1.0.0' });
-await chivox.connect(transport);
-
-const res = await chivox.callTool({
-  name: 'en_sentence_eval',
-  arguments: {
-    ref_text:  'The weather is gorgeous today.',
-    audio_url: 'https://demo.com/take-01.mp3',
-  },
+const result = await chivox.callTool('en_sentence_eval', {
+  reference_text: 'The weather is gorgeous today.',
+  audio_url:      'https://demo.com/take-01.mp3',
 });
 
-// MCP wraps tool output in a content block — parse the first text item:
-const score = JSON.parse((res.content[0] as { text: string }).text);
-console.log(score.overall);   // 72
-console.log(score.details);   // per-word + phonemes
+console.log(result.overall);   // 72
+console.log(result.details);   // per-word + phonemes
 ```
 
 </details>
@@ -168,7 +174,7 @@ console.log(score.details);   // per-word + phonemes
   "mcpServers": {
     "chivox": {
       "type": "streamable-http",
-      "url":  "https://mcp.cloud.chivox.com",
+      "url":  "https://speech-eval.site/mcp",
       "env":  { "CHIVOX_API_KEY": "sk_live_…" }
     }
   }
@@ -463,6 +469,16 @@ Yes. Set `X-Chivox-Engine` to a pinned tag (e.g. `en-2024.11`); otherwise you au
   <a href="https://github.com/boyzhong123/mcp22/issues/new"><b>🐞 Open an issue</b></a> &nbsp;·&nbsp;
   <a href="mailto:BD@chivox.com"><b>✉️ BD@chivox.com</b></a>
 </div>
+## 🤝 Contributing
+
+Issues and PRs welcome. For substantive features, open a design issue first. Small doc / example fixes can go straight to PR.
+
+```bash
+git clone https://github.com/boyzhong123/mcp22.git
+cd mcp22
+pnpm install
+pnpm test
+```
 
 ---
 
