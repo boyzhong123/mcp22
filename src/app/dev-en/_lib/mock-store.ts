@@ -323,6 +323,67 @@ function notify() {
   listeners.forEach((cb) => cb());
 }
 
+// ─── Bridge: real-backend mutation hook. mock-store-bridge.ts registers a
+// proxy here so legacy mutators (createKey/renameKey/...) fire to the real
+// API in addition to updating the local cache optimistically. If unset,
+// mutators stay local-only (used when the user is signed out or the bridge
+// hasn't loaded yet).
+type MutationProxy = {
+  createKey?: (name: string) => void;
+  renameKey?: (mockId: string, name: string) => void;
+  rotateKeySecret?: (mockId: string) => void;
+  setKeyPaused?: (mockId: string, paused: boolean) => void;
+  revokeKey?: (mockId: string) => void;
+  deleteKey?: (mockId: string) => void;
+  updateKeySettings?: (
+    mockId: string,
+    patch: { spendCapCents?: number | null; lowBalanceAlert?: LowBalanceAlert | null },
+  ) => void;
+  addKeyCreditsCents?: (mockId: string, amountCents: number) => void;
+  inviteTeamMember?: (input: { email: string; role: TeamRole; name?: string }) => void;
+  updateTeamMemberRole?: (mockId: string, role: TeamRole) => void;
+  removeTeamMember?: (mockId: string) => void;
+  resendTeamInvite?: (mockId: string) => void;
+  updateNotificationSettings?: (patch: Partial<NotificationSettings>) => void;
+  setSpendLimitCents?: (cents: number, warnAtPercents?: number[]) => void;
+};
+
+let mutationProxy: MutationProxy = {};
+export function __setMutationProxy(p: MutationProxy): void {
+  mutationProxy = p;
+}
+
+// ─── Bridge: external cache replacement (used by mock-store-bridge.ts to
+// hydrate from real backend API). Marks cache as seeded so seedIfNeeded()
+// doesn't overwrite real data with seed data on next call.
+export function __replaceCache(partial: {
+  projects?: Project[];
+  keys?: ApiKey[];
+  usage?: UsagePoint[];
+  transactions?: Transaction[];
+  spendLimit?: SpendLimit;
+  paymentMethods?: PaymentMethod[];
+  teamMembers?: TeamMember[];
+  notifications?: NotificationSettings;
+}): void {
+  if (partial.projects !== undefined) cache.projects = partial.projects;
+  if (partial.keys !== undefined) cache.keys = partial.keys;
+  if (partial.usage !== undefined) cache.usage = partial.usage;
+  if (partial.transactions !== undefined) cache.transactions = partial.transactions;
+  if (partial.spendLimit !== undefined) cache.spendLimit = partial.spendLimit;
+  if (partial.paymentMethods !== undefined) cache.paymentMethods = partial.paymentMethods;
+  if (partial.teamMembers !== undefined) cache.teamMembers = partial.teamMembers;
+  if (partial.notifications !== undefined) cache.notifications = partial.notifications;
+  cache.seeded = true;
+  notify();
+}
+
+// Mark cache as "do not seed" — call before first read if you want the
+// hydrator to populate it instead of falling back to mock seed data.
+export function __markSeeded(): void {
+  cache.seeded = true;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function uuid(prefix = ''): string {
   const rand = Math.random().toString(36).slice(2, 10);
@@ -925,6 +986,7 @@ export function inviteTeamMember(input: {
   cache.teamMembers = [...(cache.teamMembers ?? []), member];
   write(STORAGE.teamMembers, cache.teamMembers);
   notify();
+  mutationProxy.inviteTeamMember?.(input);
   return member;
 }
 
@@ -935,6 +997,7 @@ export function updateTeamMemberRole(id: string, role: TeamRole): void {
   );
   write(STORAGE.teamMembers, cache.teamMembers);
   notify();
+  mutationProxy.updateTeamMemberRole?.(id, role);
 }
 
 export function removeTeamMember(id: string): void {
@@ -944,6 +1007,7 @@ export function removeTeamMember(id: string): void {
   );
   write(STORAGE.teamMembers, cache.teamMembers);
   notify();
+  mutationProxy.removeTeamMember?.(id);
 }
 
 export function resendTeamInvite(id: string): void {
@@ -954,6 +1018,7 @@ export function resendTeamInvite(id: string): void {
   );
   write(STORAGE.teamMembers, cache.teamMembers);
   notify();
+  mutationProxy.resendTeamInvite?.(id);
 }
 
 export function getNotificationSettings(): NotificationSettings {
@@ -969,6 +1034,7 @@ export function updateNotificationSettings(
   cache.notifications = next;
   write(STORAGE.notifications, next);
   notify();
+  mutationProxy.updateNotificationSettings?.(patch);
   return next;
 }
 
@@ -1008,8 +1074,15 @@ export function getKeyBalanceCents(k: ApiKey): number {
 /** True if the Starter key has been topped up with credits, which lifts
  *  its daily trial cap and makes it behave like a paid key on top of the
  *  original lifetime free allowance. */
+// Starter key 的初始免费配额
+const STARTER_INITIAL_TOTAL_LIMIT = 900;
+
 export function isStarterUpgraded(k: ApiKey): boolean {
-  return k.isStarter === true && k.paidCreditsCents > 0;
+  if (!k.isStarter) return false;
+  // 两种判断方式：
+  // 1. 有美元余额（原余额模式）
+  // 2. 配额被增加过（后端的配额模式：充值 = 增加 total_limit）
+  return k.paidCreditsCents > 0 || k.freeTotalLimit > STARTER_INITIAL_TOTAL_LIMIT;
 }
 
 /**
@@ -1262,6 +1335,7 @@ export function createKey(name: string, env: Environment, projectId: string): Ap
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.createKey?.(newKey.name);
   return newKey;
 }
 
@@ -1273,6 +1347,7 @@ export function renameKey(id: string, name: string): void {
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.renameKey?.(id, name);
 }
 
 /**
@@ -1292,6 +1367,7 @@ export function rotateKeySecret(id: string): ApiKey | undefined {
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.rotateKeySecret?.(id);
   return updated;
 }
 
@@ -1324,6 +1400,7 @@ export function updateKeySettings(
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.updateKeySettings?.(id, patch);
 }
 
 /**
@@ -1338,6 +1415,7 @@ export function revokeKey(id: string): void {
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.revokeKey?.(id);
 }
 
 /**
@@ -1356,6 +1434,7 @@ export function setKeyPaused(id: string, paused: boolean): void {
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.setKeyPaused?.(id, paused);
 }
 
 /**
@@ -1368,6 +1447,7 @@ export function deleteKey(id: string): void {
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.deleteKey?.(id);
 }
 
 /**
@@ -1390,6 +1470,7 @@ export function addKeyCreditsCents(id: string, amountCents: number): ApiKey | un
   cache.keys = next;
   write(STORAGE.keys, next);
   notify();
+  mutationProxy.addKeyCreditsCents?.(id, amountCents);
   return updated;
 }
 
@@ -1404,6 +1485,7 @@ export function setSpendLimitCents(monthlyCapCents: number, warnAtPercents?: num
   cache.spendLimit = next;
   write(STORAGE.spendLimit, next);
   notify();
+  mutationProxy.setSpendLimitCents?.(monthlyCapCents, warnAtPercents);
 }
 
 export function addPaymentMethod(input: {

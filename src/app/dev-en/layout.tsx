@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { MockAuthProvider } from './_lib/mock-auth';
+import { AuthProvider } from './_lib/auth-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HtmlLangSync } from '@/components/html-lang-sync';
 import { DevEnLangToggle } from './_components/lang-toggle';
@@ -18,7 +18,7 @@ export default function DevEnLayout({ children }: { children: ReactNode }) {
   // out of the DOM and render as literal text on the page.
   return (
     <TooltipProvider delay={300}>
-      <MockAuthProvider>
+      <AuthProvider>
         <HtmlLangSync lang="en" />
         <div translate="no" lang="en">
           {children}
@@ -27,7 +27,7 @@ export default function DevEnLayout({ children }: { children: ReactNode }) {
               content in Chinese without mentally translating. */}
           <DevEnLangToggle />
         </div>
-      </MockAuthProvider>
+      </AuthProvider>
     </TooltipProvider>
   );
 }

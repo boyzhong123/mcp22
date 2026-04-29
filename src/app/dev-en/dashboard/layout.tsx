@@ -3,14 +3,15 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useMockAuth } from '../_lib/mock-auth';
+import { useAuth } from '../_lib/auth-context';
 import { DevEnSidebar } from '../_components/sidebar';
 import { DevEnTopBar } from '../_components/topbar';
 import { DevEnCommandPalette } from '../_components/command-palette';
+import { DataHydrator } from '../_components/data-hydrator';
 import { useUi } from '../_lib/use-ui-store';
 
 export default function DevEnDashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useMockAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const collapsed = useUi((s) => s.sidebarCollapsed);
 
@@ -54,6 +55,7 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
         </div>
       </main>
       <DevEnCommandPalette />
+      <DataHydrator />
     </div>
   );
 }

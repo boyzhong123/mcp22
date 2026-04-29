@@ -5,11 +5,11 @@ import { HtmlLangSync } from '@/components/html-lang-sync';
 import { DevEnLangToggle } from '../dev-en/_components/lang-toggle';
 
 export const metadata = {
-  title: 'Chivox MCP · Developer (English preview)',
-  description: 'Static preview of the English developer console for Chivox MCP.',
+  title: 'Chivox MCP · Create your account',
+  description: 'Sign up for Chivox MCP — speech-grade evaluation tools for any LLM.',
 };
 
-export default function LoginLayout({ children }: { children: ReactNode }) {
+export default function RegisterLayout({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider delay={300}>
       <AuthProvider>

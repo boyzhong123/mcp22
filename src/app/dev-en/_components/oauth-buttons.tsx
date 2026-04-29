@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useMockAuth } from '../_lib/mock-auth';
+import { useAuth } from '../_lib/auth-context';
+import type { OAuthProvider } from '../_lib/api';
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -35,8 +35,6 @@ function GithubIcon({ className }: { className?: string }) {
   );
 }
 
-// Microsoft's brand mark — four equal squares (orange/green/blue/yellow).
-// Same visual used across the Microsoft identity platform sign-in buttons.
 function MicrosoftIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden>
@@ -48,22 +46,15 @@ function MicrosoftIcon({ className }: { className?: string }) {
   );
 }
 
-type OAuthProvider = 'google' | 'github' | 'microsoft';
-
 export function OAuthButtons() {
-  const router = useRouter();
-  const { login } = useMockAuth();
+  const { startOAuth } = useAuth();
   const [pending, setPending] = useState<OAuthProvider | null>(null);
 
-  const handle = async (method: OAuthProvider) => {
+  const handle = (provider: OAuthProvider) => {
     if (pending) return;
-    setPending(method);
-    try {
-      await login({ method });
-      router.push('/dashboard/overview');
-    } catch {
-      setPending(null);
-    }
+    setPending(provider);
+    // Backend should 302 to /auth/callback?token=... after the OAuth dance.
+    window.location.assign(startOAuth(provider, '/dashboard/overview'));
   };
 
   return (

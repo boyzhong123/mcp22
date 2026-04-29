@@ -39,6 +39,8 @@ import {
 import { useMockStore } from '../_lib/use-mock-store';
 import { useMockAuth } from '../_lib/mock-auth';
 import { useLang } from '../_lib/use-lang';
+import { billing, describeError } from '../_lib/api';
+import { realKeyId } from '../_lib/mock-store-bridge';
 
 type CheckoutMode = 'add-credits' | 'add-payment-method';
 
@@ -399,7 +401,24 @@ function OpenedCheckoutModal({
 
     // Pending top-ups (e.g. wire transfer awaiting bank receipt) don't add
     // credits to the key until they settle. Succeeded methods credit instantly.
+    // Call real backend API to actually add credits to the key.
     if (mode === 'add-credits' && effectiveKeyId && !pending) {
+      const numericKeyId = realKeyId(effectiveKeyId);
+      if (Number.isFinite(numericKeyId)) {
+        try {
+          const intentRes = await billing.createTopupIntent({
+            key_id: numericKeyId,
+            amount_cents: totalCents,
+            method: 'card',
+          });
+          await billing.confirmTopup(intentRes.transaction_id);
+        } catch (err) {
+          console.warn('[stripe-checkout] topup failed:', describeError(err));
+          // Continue anyway — local mock will show the change; hydration will
+          // correct if backend actually failed.
+        }
+      }
+      // Also update local mock for immediate UI feedback
       addKeyCreditsCents(effectiveKeyId, totalCents);
     }
 

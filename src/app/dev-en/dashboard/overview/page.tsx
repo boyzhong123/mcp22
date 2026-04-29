@@ -78,7 +78,10 @@ export default function OverviewPage() {
   );
   // We keep the raw percent (uncapped) so the KPI card reads correct when
   // the user has genuinely blown past the limit, but clamp the UI bar.
-  const limitUsedPctRaw = (spend / Math.max(1, spendLimit.monthlyCapCents)) * 100;
+  const hasSpendLimit = (spendLimit.monthlyCapCents ?? 0) > 0;
+  const limitUsedPctRaw = hasSpendLimit
+    ? (spend / spendLimit.monthlyCapCents) * 100
+    : 0;
   const limitUsedPct = Math.min(100, limitUsedPctRaw);
 
   // Rank paid keys by lifetime call volume for the "most active" section.
@@ -161,17 +164,23 @@ export default function OverviewPage() {
         <StatCard
           icon={Gauge}
           label={t('Spend limit used', '支出上限已用')}
-          value={`${limitUsedPct.toFixed(1)}%`}
-          sub={`${formatCents(spend)} / ${formatCents(spendLimit.monthlyCapCents)}`}
+          value={hasSpendLimit ? `${limitUsedPct.toFixed(1)}%` : t('Not set', '未设置')}
+          sub={
+            hasSpendLimit
+              ? `${formatCents(spend)} / ${formatCents(spendLimit.monthlyCapCents)}`
+              : t('Set a monthly cap to control spend', '设置月度上限以控制支出')
+          }
           href="/dashboard/billing?edit=spend-limit#spend-limit"
-          cta={t('Adjust limit', '调整上限')}
-          progressPct={limitUsedPct}
+          cta={hasSpendLimit ? t('Adjust limit', '调整上限') : t('Set limit', '设置上限')}
+          progressPct={hasSpendLimit ? limitUsedPct : 0}
           progressColor={
-            limitUsedPct >= 90
-              ? 'bg-red-500'
-              : limitUsedPct >= 75
-                ? 'bg-amber-500'
-                : 'bg-foreground'
+            !hasSpendLimit
+              ? 'bg-muted-foreground/20'
+              : limitUsedPct >= 90
+                ? 'bg-red-500'
+                : limitUsedPct >= 75
+                  ? 'bg-amber-500'
+                  : 'bg-foreground'
           }
         />
       </div>

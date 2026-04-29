@@ -780,8 +780,22 @@ function StarterKeyCard({
   const usedPct = loadedCents > 0 ? Math.min(100, (usedCents / loadedCents) * 100) : 0;
 
   return (
-    <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.03] to-background">
-      <div className="p-5">
+    <div
+      className={cn(
+        'relative rounded-xl border overflow-hidden transition-all',
+        upgraded
+          ? 'border-violet-500/30 bg-gradient-to-br from-violet-500/[0.06] via-indigo-500/[0.04] to-background shadow-[0_1px_0_rgba(139,92,246,0.15)_inset]'
+          : 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.03] to-background',
+      )}
+    >
+      {/* Decorative top accent — only when upgraded, hints "premium" status. */}
+      {upgraded && (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/60 to-transparent" />
+          <div className="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-gradient-to-br from-violet-500/15 to-indigo-500/5 blur-2xl" />
+        </>
+      )}
+      <div className="relative p-5">
         {/* Header row: identity + badges on the left, "View usage" shortcut
             on the right. Keeping only the header in this flex row so the
             credential block below can take the full card width. */}
@@ -792,7 +806,7 @@ function StarterKeyCard({
               {t('Free · complimentary', '免费 · 赠送')}
             </span>
             {upgraded && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/20">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm shadow-violet-500/30 ring-1 ring-violet-300/40">
                 <Sparkles className="h-3 w-3" />
                 {t('Upgraded · daily cap lifted', '已升级 · 解除日限')}
               </span>
@@ -881,7 +895,7 @@ function StarterKeyCard({
             pct={dailyPct}
             suffix={
               upgraded
-                ? t('cap lifted — credits apply', '日限已解除 — 使用余额计费')
+                ? t('daily cap lifted — use your quota freely', '每日限制已解除 — 自由使用配额')
                 : t('calls · resets 00:00 UTC', '次 · 每日 00:00 UTC 重置')
             }
             struck={upgraded}
@@ -894,8 +908,8 @@ function StarterKeyCard({
             suffix={
               upgraded
                 ? t(
-                    'free calls remaining — credits pick up after',
-                    '剩余免费调用 — 用完后按余额计费',
+                    'calls total — quota increased via top-up',
+                    '次总计 — 配额已通过充值增加',
                   )
                 : t(
                     'calls total — once exhausted, top up to keep going',
@@ -905,41 +919,71 @@ function StarterKeyCard({
           />
         </div>
 
-        {/* Balance row — only visible once the Starter has been topped up. */}
-        {upgraded && (
-          <div className="mt-4 rounded-lg border border-violet-500/25 bg-violet-500/[0.04] dark:bg-violet-950/20 px-3 py-2.5">
-            <div className="flex items-baseline justify-between gap-2 mb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-800 dark:text-violet-300">
-                {t('Credit balance', '余额')}
-              </span>
-              <span className="text-sm tabular-nums">
-                <span className="font-semibold">{formatCents(balanceCents)}</span>
-                <span className="text-muted-foreground">
-                  {' '}
-                  · {formatCents(usedCents)}
-                  {t(' used of ', ' 已用 / ')}
-                  {formatCents(loadedCents)}
+        {/* Balance row — only visible if the key has actual dollar credits.
+            If the key was upgraded via quota increase (backend adds total_limit),
+            we skip this card since the quota bar above already shows the increase.
+            Visually distinct "premium" treatment: gradient border, prominent
+            balance number with glow, segmented progress bar. */}
+        {upgraded && loadedCents > 0 && (
+          <div className="mt-4 relative rounded-xl overflow-hidden">
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/30 via-indigo-500/20 to-transparent p-px">
+              <div className="h-full w-full rounded-[11px] bg-background/95 dark:bg-background/80" />
+            </div>
+            <div className="relative px-4 py-3.5">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-md shadow-violet-500/30 shrink-0">
+                    <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300 leading-none">
+                      {t('Credit balance', '账户余额')}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                      {t('Pay-as-you-go after free quota', '免费额度用完后按余额计费')}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right tabular-nums shrink-0">
+                  <div className="text-[22px] font-bold tracking-[-0.02em] leading-none bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                    {formatCents(balanceCents)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1">
+                    {formatCents(usedCents)}
+                    {t(' used of ', ' 已用 / ')}
+                    {formatCents(loadedCents)}
+                  </div>
+                </div>
+              </div>
+              {(() => {
+                const remainingPct = Math.max(0, Math.min(100, 100 - usedPct));
+                const low = remainingPct <= 10;
+                const medium = remainingPct <= 30 && remainingPct > 10;
+                return (
+                  <div className="relative h-2 rounded-full bg-muted/60 overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full transition-all duration-500 ease-out',
+                        low
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                          : medium
+                            ? 'bg-gradient-to-r from-violet-500/70 to-indigo-500/70'
+                            : 'bg-gradient-to-r from-violet-500 via-violet-500 to-indigo-500',
+                      )}
+                      style={{ width: `${remainingPct}%` }}
+                    />
+                  </div>
+                );
+              })()}
+              <div className="mt-2.5 flex items-start gap-1.5 text-[10px] text-muted-foreground leading-snug">
+                <ShieldCheck className="h-3 w-3 mt-px shrink-0 text-violet-500/70" />
+                <span>
+                  {tx(
+                    'Daily cap is lifted while this key has credits. Usage draws from the free lifetime allowance first, then from your balance.',
+                  )}
                 </span>
-              </span>
+              </div>
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={cn(
-                  'h-full transition-all',
-                  usedPct >= 90
-                    ? 'bg-amber-500'
-                    : usedPct >= 70
-                      ? 'bg-foreground/60'
-                      : 'bg-violet-500/80',
-                )}
-                style={{ width: `${usedPct}%` }}
-              />
-            </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground leading-snug">
-              {tx(
-                'Daily cap is lifted while this key has credits. Usage draws from the free lifetime allowance first, then from your balance.',
-              )}
-            </p>
           </div>
         )}
 
@@ -1008,7 +1052,11 @@ function QuotaBar({
    *  to communicate that the cap has been lifted (e.g. Starter upgraded). */
   struck?: boolean;
 }) {
-  const warn = !struck && pct >= 90;
+  // Battery-style: bar shows REMAINING, not used. Fully charged → fully filled.
+  // pct is `used / limit * 100`; remaining is the inverse.
+  const remainingPct = Math.max(0, Math.min(100, 100 - pct));
+  const low = !struck && remainingPct <= 10;
+  const medium = !struck && remainingPct <= 30 && remainingPct > 10;
   return (
     <div className={cn(struck && 'opacity-60')}>
       <div className="flex items-baseline justify-between gap-2">
@@ -1025,14 +1073,16 @@ function QuotaBar({
       <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
         <div
           className={cn(
-            'h-full transition-all',
+            'h-full transition-all duration-500 ease-out',
             struck
               ? 'bg-muted-foreground/30'
-              : warn
+              : low
                 ? 'bg-amber-500'
-                : 'bg-emerald-500/80',
+                : medium
+                  ? 'bg-emerald-500/60'
+                  : 'bg-emerald-500/85',
           )}
-          style={{ width: `${pct}%` }}
+          style={{ width: `${remainingPct}%` }}
         />
       </div>
       <div className="mt-1 text-[11px] text-muted-foreground leading-tight">
