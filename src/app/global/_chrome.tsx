@@ -14,7 +14,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
+import { Suspense, useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -629,6 +629,28 @@ export function BackToOverview({
   containerClassName?: string;
   label?: string;
 } = {}) {
+  return (
+    <Suspense
+      fallback={
+        <BackToOverviewLink
+          containerClassName={containerClassName}
+          label={label}
+          fallbackHref="/"
+        />
+      }
+    >
+      <BackToOverviewInner containerClassName={containerClassName} label={label} />
+    </Suspense>
+  );
+}
+
+function BackToOverviewInner({
+  containerClassName,
+  label,
+}: {
+  containerClassName: string;
+  label: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
@@ -655,10 +677,31 @@ export function BackToOverview({
   };
 
   return (
+    <BackToOverviewLink
+      containerClassName={containerClassName}
+      label={label}
+      fallbackHref={fallbackHref}
+      onClick={handleBack}
+    />
+  );
+}
+
+function BackToOverviewLink({
+  containerClassName,
+  label,
+  fallbackHref,
+  onClick,
+}: {
+  containerClassName: string;
+  label: string;
+  fallbackHref: string;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  return (
     <div className={containerClassName}>
       <Link
         href={fallbackHref}
-        onClick={handleBack}
+        onClick={onClick}
         className={cn(
           'group inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-3.5 py-1.5',
           'text-[12.5px] font-medium text-zinc-700',
