@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, DollarSign, Info, X } from 'lucide-react';
+import { Bell, Info, X, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { updateKeySettings, type ApiKey } from '../_lib/mock-store';
 import { useLang } from '../_lib/use-lang';
@@ -31,14 +31,18 @@ export function KeySettingsModal({ open, apiKey, onClose }: KeySettingsModalProp
   return <OpenedKeySettingsModal apiKey={apiKey} onClose={onClose} />;
 }
 
-function centsToInputDollars(cents: number): string {
-  return (cents / 100).toFixed(2);
+// Calls billing model: spend cap & low-balance threshold are now expressed
+// as call counts. We keep the legacy `*_cents` field name (1:1 mapping) so
+// the API surface keeps working without renames.
+// TODO: rename `spend_cap_cents` / `threshold_cents` → `*_calls` in backend.
+function intToInput(n: number): string {
+  return String(Math.max(0, Math.round(n)));
 }
 
-function parseDollarsToCents(raw: string): number {
-  const n = Number(raw);
+function parseInputToInt(raw: string): number {
+  const n = parseInt(raw.replace(/[^0-9]/g, ''), 10);
   if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.round(n * 100);
+  return n;
 }
 
 function OpenedKeySettingsModal({
@@ -51,23 +55,23 @@ function OpenedKeySettingsModal({
   const { tx, t } = useLang();
   // Spend cap
   const [capEnabled, setCapEnabled] = useState(apiKey.spendCapCents !== null);
-  const [capDollars, setCapDollars] = useState(
-    apiKey.spendCapCents !== null ? centsToInputDollars(apiKey.spendCapCents) : '50.00',
+  const [capCalls, setCapCalls] = useState(
+    apiKey.spendCapCents !== null ? intToInput(apiKey.spendCapCents) : '5000',
   );
 
   // Low-balance alert
   const [alertEnabled, setAlertEnabled] = useState(
     apiKey.lowBalanceAlert?.enabled ?? false,
   );
-  const [alertDollars, setAlertDollars] = useState(
+  const [alertCalls, setAlertCalls] = useState(
     apiKey.lowBalanceAlert?.thresholdCents !== undefined
-      ? centsToInputDollars(apiKey.lowBalanceAlert.thresholdCents)
-      : '5.00',
+      ? intToInput(apiKey.lowBalanceAlert.thresholdCents)
+      : '500',
   );
 
   const save = () => {
-    const capCents = capEnabled ? parseDollarsToCents(capDollars) : null;
-    const alertThreshold = alertEnabled ? parseDollarsToCents(alertDollars) : 0;
+    const capCents = capEnabled ? parseInputToInt(capCalls) : null;
+    const alertThreshold = alertEnabled ? parseInputToInt(alertCalls) : 0;
     updateKeySettings(apiKey.id, {
       spendCapCents: capCents,
       lowBalanceAlert: alertEnabled
@@ -110,12 +114,13 @@ function OpenedKeySettingsModal({
           {/* ─── Spend cap ────────────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-sm font-semibold">{tx('Monthly spend cap')}</h4>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-semibold">{t('Monthly call cap', '月度调用上限')}</h4>
             </div>
             <p className="mt-1 text-[12px] text-muted-foreground leading-snug">
-              {tx(
-                "Hard stop once this key's spend in a month hits the cap. The cap resets on your billing cycle day.",
+              {t(
+                "Hard stop once this key's call count in a month hits the cap. The cap resets on your billing cycle day.",
+                '此 Key 当月调用次数到达上限后立刻停止服务，下个计费日重置。',
               )}
             </p>
 
@@ -149,19 +154,17 @@ function OpenedKeySettingsModal({
                 <span className="text-sm flex items-center gap-2">
                   {tx('Cap at')}
                   <span className="inline-flex items-center h-8 rounded-md border border-border bg-background focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
-                    <span className="pl-2.5 pr-1 text-[12px] text-muted-foreground">
-                      $
-                    </span>
                     <input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0"
-                      value={capDollars}
-                      onChange={(e) => setCapDollars(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={capCalls}
+                      onChange={(e) => setCapCalls(e.target.value.replace(/[^0-9]/g, ''))}
                       onFocus={() => setCapEnabled(true)}
-                      className="w-20 h-full pr-2 text-sm bg-transparent tabular-nums outline-none"
+                      className="w-24 h-full px-2.5 text-sm bg-transparent tabular-nums outline-none"
                     />
+                    <span className="pr-2.5 text-[11px] text-muted-foreground">
+                      {t('calls', '次')}
+                    </span>
                   </span>
                   <span className="text-[11px] text-muted-foreground">{tx('per month')}</span>
                 </span>
@@ -173,11 +176,12 @@ function OpenedKeySettingsModal({
           <section>
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-sm font-semibold">{tx('Low-balance email alert')}</h4>
+              <h4 className="text-sm font-semibold">{t('Low-calls email alert', '剩余次数告警')}</h4>
             </div>
             <p className="mt-1 text-[12px] text-muted-foreground leading-snug">
-              {tx(
-                "Send a one-time email when this key's remaining balance drops to (or below) the threshold. Resets once you top up above it.",
+              {t(
+                "Send a one-time email when this key's remaining calls drop to (or below) the threshold. Resets once you top up above it.",
+                '当此 Key 剩余次数低于阈值时，发送一封提醒邮件；充值至阈值之上后自动重置。',
               )}
             </p>
 
@@ -189,22 +193,20 @@ function OpenedKeySettingsModal({
                 className="h-3.5 w-3.5 accent-foreground"
               />
               <span className="text-sm flex items-center gap-2">
-                {tx('Email me when balance drops below')}
+                {t('Email me when calls left drop below', '剩余次数低于以下值时发送邮件')}
                 <span className="inline-flex items-center h-8 rounded-md border border-border bg-background focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
-                  <span className="pl-2.5 pr-1 text-[12px] text-muted-foreground">
-                    $
-                  </span>
                   <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    value={alertDollars}
-                    onChange={(e) => setAlertDollars(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={alertCalls}
+                    onChange={(e) => setAlertCalls(e.target.value.replace(/[^0-9]/g, ''))}
                     onFocus={() => setAlertEnabled(true)}
                     disabled={!alertEnabled}
-                    className="w-20 h-full pr-2 text-sm bg-transparent tabular-nums outline-none disabled:text-muted-foreground"
+                    className="w-24 h-full px-2.5 text-sm bg-transparent tabular-nums outline-none disabled:text-muted-foreground"
                   />
+                  <span className="pr-2.5 text-[11px] text-muted-foreground">
+                    {t('calls', '次')}
+                  </span>
                 </span>
               </span>
             </label>

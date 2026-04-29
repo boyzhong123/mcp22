@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Camera, Check, Mail, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Loader2, Mail, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLang } from '../../_lib/use-lang';
 import { useMockAuth } from '../../_lib/mock-auth';
@@ -18,6 +18,7 @@ export default function ProfilePage() {
   const [profileName, setProfileName] = useState(user?.name ?? '');
   const [profileAvatar, setProfileAvatar] = useState(user?.avatarUrl ?? '');
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -29,7 +30,7 @@ export default function ProfilePage() {
     setProfileAvatar(user?.avatarUrl ?? '');
   }, [user?.name, user?.avatarUrl]);
 
-  const handleAvatarFile = (file: File | null) => {
+  const handleAvatarFile = async (file: File | null) => {
     setAvatarError(null);
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -42,12 +43,21 @@ export default function ProfilePage() {
       setAvatarError(t('Image is too large (max 2 MB).', '图片过大（最大 2 MB）。'));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setProfileAvatar(reader.result);
-    };
-    reader.onerror = () => setAvatarError(t('Could not read file.', '读取文件失败。'));
-    reader.readAsDataURL(file);
+    try {
+      setAvatarUploading(true);
+      const body = new FormData();
+      body.set('file', file);
+      const res = await fetch('/api/upload/avatar', { method: 'POST', body });
+      const json = (await res.json()) as { url?: string; message?: string };
+      if (!res.ok || !json.url) {
+        throw new Error(json.message || t('Upload failed.', '上传失败。'));
+      }
+      setProfileAvatar(json.url);
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : t('Upload failed.', '上传失败。'));
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const profileDirty = useMemo(
@@ -63,8 +73,15 @@ export default function ProfilePage() {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
   }, [profileName, user?.name]);
 
-  const saveProfile = () => {
-    updateProfile({ name: profileName.trim() || user?.name || '', avatarUrl: profileAvatar });
+  const saveProfile = async () => {
+    const res = await updateProfile({
+      name: profileName.trim() || user?.name || '',
+      avatarUrl: profileAvatar,
+    });
+    if (!res.ok) {
+      setAvatarError(res.error ?? t('Failed to save profile.', '保存资料失败。'));
+      return;
+    }
     setAvatarError(null);
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 1800);
@@ -128,7 +145,7 @@ export default function ProfilePage() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0] ?? null;
-                handleAvatarFile(file);
+                void handleAvatarFile(file);
                 e.target.value = '';
               }}
             />
@@ -144,10 +161,15 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-8 px-3 rounded-md border border-border bg-background hover:bg-muted/50 text-xs font-medium inline-flex items-center gap-1.5"
+                  disabled={avatarUploading}
+                  className="h-8 px-3 rounded-md border border-border bg-background hover:bg-muted/50 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Camera className="h-3.5 w-3.5" />
-                  {t('Upload', '上传')}
+                  {avatarUploading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="h-3.5 w-3.5" />
+                  )}
+                  {avatarUploading ? t('Uploading…', '上传中…') : t('Upload', '上传')}
                 </button>
                 {profileAvatar && (
                   <button
@@ -256,8 +278,10 @@ export default function ProfilePage() {
             </button>
             <button
               type="button"
-              disabled={!profileDirty}
-              onClick={saveProfile}
+              disabled={!profileDirty || avatarUploading}
+              onClick={() => {
+                void saveProfile();
+              }}
               className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t('Save changes', '保存更改')}
@@ -270,8 +294,8 @@ export default function ProfilePage() {
         <EmailChangeModal
           currentEmail={user?.email ?? ''}
           onClose={() => setEmailModalOpen(false)}
-          onConfirmed={(newEmail) => {
-            updateProfile({ email: newEmail });
+          onConfirmed={async (newEmail) => {
+            await updateProfile({ email: newEmail });
             setEmailModalOpen(false);
           }}
         />
@@ -299,7 +323,7 @@ function EmailChangeModal({
 }: {
   currentEmail: string;
   onClose: () => void;
-  onConfirmed: (newEmail: string) => void;
+  onConfirmed: (newEmail: string) => Promise<void>;
 }) {
   const { t } = useLang();
   const [step, setStep] = useState<'email' | 'code'>('email');
@@ -332,9 +356,9 @@ function EmailChangeModal({
     setResendIn(RESEND_SECONDS);
   };
 
-  const verify = () => {
+  const verify = async () => {
     if (code.trim() === MOCK_CODE) {
-      onConfirmed(newEmail.trim());
+      await onConfirmed(newEmail.trim());
     } else {
       setCodeError(t('Incorrect code. Please try again.', '验证码不正确，请重试。'));
     }
@@ -478,7 +502,9 @@ function EmailChangeModal({
             <button
               type="button"
               disabled={code.length !== 6}
-              onClick={verify}
+            onClick={() => {
+              void verify();
+            }}
               className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t('Verify & update', '验证并更换')}

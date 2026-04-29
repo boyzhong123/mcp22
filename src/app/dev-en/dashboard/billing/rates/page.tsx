@@ -1,20 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, Shield, Sparkles, TrendingDown, Users } from 'lucide-react';
+import { Check, Shield, Sparkles, TrendingDown, Users, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  formatCallRate,
+  formatCalls,
   formatCents,
   getAccountCallsThisMonth,
   getAccountSavingsThisMonthCents,
   getAccountSpendThisMonthCents,
-  getCurrentVolumeTier,
-  MCP_CALL_RATE_PER_K,
-  VOLUME_TIERS,
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
+import {
+  CALL_TIERS,
+  formatUnitPrice,
+  priceForCalls,
+  tierRangeLabel,
+} from '../../../_lib/pricing';
 
 const ALL_PLANS_INCLUDE = [
   { icon: Shield, text: 'Global edge delivery · TLS 1.3 encryption at rest & in flight' },
@@ -27,8 +30,16 @@ export default function PricingPage() {
   const calls = useMockStore(getAccountCallsThisMonth, 0);
   const spend = useMockStore(getAccountSpendThisMonthCents, 0);
   const savings = useMockStore(getAccountSavingsThisMonthCents, 0);
-  const currentTier = useMockStore(getCurrentVolumeTier, VOLUME_TIERS[0]);
   const { t, tx } = useLang();
+
+  // Rate that this month's call volume would land at if it were a single
+  // top-up — used for the "Current rate" mini card so the user sees what
+  // discount tier their usage corresponds to.
+  const currentQuote = priceForCalls(Math.max(1, calls));
+  const currentTierLabel =
+    currentQuote.tierIndex === 0
+      ? tierRangeLabel(0)
+      : `${tierRangeLabel(currentQuote.tierIndex)}`;
 
   return (
     <div className="space-y-6">
@@ -50,8 +61,8 @@ export default function PricingPage() {
             )}
             <strong className="text-foreground">{tx('paid keys')}</strong>
             {t(
-              ' you fund with credits at the per-1K rates below. No daily caps, no subscriptions — volume discounts apply automatically.',
-              ' 上，按下方每千次调用费率以预付余额计费。无每日上限，无订阅 — 批量折扣自动应用。',
+              ' you top up by purchasing calls at the flat per-call rates below. No daily caps, no subscriptions — bigger top-ups land you on a cheaper tier automatically.',
+              ' 上，通过下方阶梯单价购买调用次数。无每日上限，无订阅 — 一次性购买的次数越多，单价越低。',
             )}
           </p>
         </div>
@@ -64,92 +75,95 @@ export default function PricingPage() {
             value={formatCents(savings)}
             tone="emerald"
           />
-          <Mini label={tx('Current tier')} value={currentTier.label} />
+          <Mini
+            label={t('Current rate', '当前单价')}
+            value={formatUnitPrice(currentQuote.unitCents)}
+          />
         </div>
       </div>
 
-      {/* MCP call pricing — single flat rate */}
+      {/* Per-call tiered pricing — the new flat-tier model. */}
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60">
-          <div className="text-sm font-semibold">{tx('MCP call rate')}</div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {tx('Charged per 1,000 successful MCP calls. Errors (4xx/5xx) are not billed.')}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5">
-          <div className="min-w-0">
-            <div className="text-sm font-medium">{tx('Per successful call')}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {t(
-                'A single flat rate for every MCP tool invocation — no model tiers, no surprises.',
-                '每次 MCP 工具调用统一计费 — 无模型分层，透明简单。',
-              )}
-            </div>
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500" />
+            {t('Per-call pricing', '按次定价')}
           </div>
-          <div className="text-right">
-            <div className="text-lg font-semibold tabular-nums">
-              {formatCallRate(MCP_CALL_RATE_PER_K)}
-            </div>
-            <div className="text-[11px] text-muted-foreground">{tx('Base rate · USD')}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Volume tiers */}
-      <div className="rounded-2xl border border-border bg-background overflow-hidden">
-        <div className="px-5 py-4 border-b border-border/60">
-          <div className="text-sm font-semibold">{tx('Automatic volume discounts')}</div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {tx('Applied in real-time as your monthly call volume crosses each threshold.')}
+            {t(
+              'Pick how many calls to buy when you top up — the entire purchase is billed at the single tier your call count lands in. No marginal math, no monthly minimums.',
+              '充值时选择购买次数 — 整笔订单按你所选次数所在的档位单价计费。不分段计算，无月度最低消费。',
+            )}
           </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left px-5 py-2.5">{tx('Calls per month')}</th>
-                <th className="text-left px-5 py-2.5">{tx('Effective savings')}</th>
-                <th className="text-right px-5 py-2.5">{tx('Status')}</th>
+                <th className="text-left px-5 py-2.5">{t('Tier', '档位')}</th>
+                <th className="text-left px-5 py-2.5">{t('Calls per top-up', '单次充值次数')}</th>
+                <th className="text-left px-5 py-2.5">{t('Per call', '单价')}</th>
+                <th className="text-right px-5 py-2.5">{t('Example', '示例')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {VOLUME_TIERS.map((t) => {
-                const isCurrent = t === currentTier;
+              {CALL_TIERS.map((tier, i) => {
+                const exampleCalls =
+                  i === 0 ? 500 : i === 1 ? 5000 : 25000;
+                const exampleQuote = priceForCalls(exampleCalls);
+                const isCurrent = i === currentQuote.tierIndex;
+                const baseUnit = CALL_TIERS[0].unitCents;
+                const savedPct = Math.round(((baseUnit - tier.unitCents) / baseUnit) * 100);
                 return (
-                  <tr key={t.label} className={cn(isCurrent && 'bg-foreground/[0.03]')}>
-                    <td className="px-5 py-3 text-sm font-medium">{t.label}</td>
+                  <tr key={i} className={cn(isCurrent && 'bg-foreground/[0.03]')}>
+                    <td className="px-5 py-3 text-sm font-medium tabular-nums">
+                      <span
+                        className={cn(
+                          'inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold mr-2',
+                          isCurrent
+                            ? 'bg-foreground text-background'
+                            : 'bg-muted text-muted-foreground',
+                        )}
+                      >
+                        {i + 1}
+                      </span>
+                      {i === 0
+                        ? t('Standard', '标准价')
+                        : i === 1
+                          ? t('Volume', '批量价')
+                          : t('Bulk', '大批量价')}
+                    </td>
+                    <td className="px-5 py-3 text-sm tabular-nums">{tierRangeLabel(i)}</td>
                     <td className="px-5 py-3 text-sm">
-                      {t.discount === null ? (
-                        <span className="text-muted-foreground">{tx('Custom — contact sales')}</span>
-                      ) : t.discount === 0 ? (
-                        <span className="text-muted-foreground">{tx('Base rates')}</span>
-                      ) : (
-                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                          {(t.discount * 100).toFixed(0)}% {tx('off base rate')}
+                      <span className="font-mono font-semibold tabular-nums">
+                        {formatUnitPrice(tier.unitCents)}
+                      </span>
+                      {savedPct > 0 && (
+                        <span className="ml-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          −{savedPct}%
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right">
-                      {isCurrent ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-foreground text-background text-[10px] font-semibold uppercase tracking-wider">
-                          {tx('Current tier')}
-                        </span>
-                      ) : t.discount === null ? (
-                        <Link
-                          href="#contact-sales"
-                          className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                        >
-                          {tx('Contact sales →')}
-                        </Link>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
-                      )}
+                    <td className="px-5 py-3 text-right text-xs text-muted-foreground tabular-nums">
+                      {formatCalls(exampleCalls)} × {formatUnitPrice(tier.unitCents)} ={' '}
+                      <strong className="text-foreground font-semibold">
+                        {formatCents(exampleQuote.totalCents)}
+                      </strong>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+        <div className="px-5 py-3 border-t border-border/60 bg-muted/20 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1.5">
+          <TrendingDown className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>
+            {t(
+              'Pick a quantity that lands in the next tier and the whole purchase prices at that lower rate — buying 1,000 calls saves you 25% per call vs. buying 999.',
+              '选择刚好达到下一档的数量，整笔订单都会按更低单价计费 — 一次买 1,000 次比买 999 次每次便宜 25%。',
+            )}
+          </span>
         </div>
       </div>
 

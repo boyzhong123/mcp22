@@ -317,6 +317,89 @@ classDiagram
 
 ---
 
+## 0.1 计费模型变更清单（必须阅读）
+
+> 版本：`v1.1-calls`（当前前端实现）
+> 目标：从“余额（美元）模型”切换到“次数（calls）模型”。
+
+### A. 概念层变更（旧 → 新）
+
+1. **充值含义**
+   - 旧：充值增加 `paidCreditsCents`（美元余额）。
+   - 新：充值购买调用次数，最终体现在 key 的 `total_limit` 增长（前端展示为 calls remaining）。
+
+2. **Key 可用性判断**
+   - 旧：看余额（`paidCreditsCents - paidCreditsUsedCents`）是否 > 0。
+   - 新：看次数（`total_limit - total_used`）是否 > 0。
+
+3. **上限字段语义**
+   - 旧：`monthly_limit_cents` / `spend_cap_cents` / `threshold_cents` 按美元理解。
+   - 新：前端按“次数上限”使用（字段名暂未改，语义已切换，见 TODO）。
+
+4. **充值记录文案**
+   - 旧：`Top-up · $xx.xx`。
+   - 新：优先展示 `+N calls`（后端有 `calls` 字段时）。
+
+5. **前端成功态策略**
+   - 旧：后端失败也可能继续本地显示成功（已修复）。
+   - 新：`topups/intent` 或 `topups/:id/confirm` 任一失败即报错，不显示成功，不写本地成功记录。
+
+### B. 接口层变更（重点）
+
+1. `POST /billing/topups/intent`
+   - 继续接收 `amount_cents`（后端支付金额）。
+   - 前端金额来源改为：`calls -> priceForCalls(calls)` 计算得出。
+   - `method` 由前端按实际支付方式传（`card|ach|wire`），不再固定写死 `card`。
+
+2. `POST /billing/topups/:transactionId/confirm`
+   - 成功后后端必须写入可查询交易记录（`GET /billing/transactions` 能看到）。
+   - 推荐返回里包含 `calls`（便于前端直接展示 `+N calls`）。
+
+3. `GET /billing/transactions`
+   - 建议返回：
+     - `amount_cents`（支付金额）
+     - `calls`（本次购买次数，可选但强烈建议）
+     - `kind/status/method/key_id/invoice_number`
+
+### C. 兼容期 TODO（后端字段命名）
+
+当前后端字段名仍含 `*_cents`，但前端语义已按 calls 使用。建议后续重命名：
+
+- `monthly_limit_cents` -> `monthly_limit_calls`
+- `spend_cap_cents` -> `spend_cap_calls`
+- `threshold_cents` -> `threshold_calls`
+
+---
+
+## 0.2 充值梯度与预设（前后端必须一致）
+
+> 这是当前 UI/价格计算的“单一真相来源”。后端若有活动价或策略变更，需同步更新前端 `src/app/dev-en/_lib/pricing.ts`。
+
+### 阶梯单价（整笔按档位单价，flat）
+
+| 档位 | 购买次数区间 | 单价（USD/次） | 计算方式 |
+| --- | --- | --- | --- |
+| Tier 1 | 1 - 999 | $0.02 | 总价 = 次数 * 0.02 |
+| Tier 2 | 1,000 - 9,999 | $0.015 | 总价 = 次数 * 0.015 |
+| Tier 3 | >= 10,000 | $0.01 | 总价 = 次数 * 0.01 |
+
+### 前端预设充值按钮（需明显展示）
+
+- `100`
+- `500`
+- `1,000`
+- `5,000`
+- `10,000`
+- `50,000`
+
+### 计价示例
+
+- 500 次 -> $10.00（Tier 1）
+- 1,000 次 -> $15.00（Tier 2）
+- 10,000 次 -> $100.00（Tier 3）
+
+---
+
 ## 1. Auth（登录 / 会话）
 
 登录方式四种：`email`（一次性验证码）、`google`、`github`、`microsoft`。
@@ -535,11 +618,10 @@ ApiKey {
   freeDailyResetAt: string   // UTC 日期翻转时重置
   freeTotalLimit: number
   freeTotalUsed: number
-  // 付费额度（per-key，仅 paid 有效），单位 cents
-  paidCreditsCents: number
-  paidCreditsUsedCents: number
-  spendCapCents: number | null   // 月度封顶，null=不封顶
-  lowBalanceAlert: { enabled: boolean; thresholdCents: number } | null
+  // Calls 模型：付费 key 和 starter 都基于次数池服务
+  // paidCredits* 已废弃（兼容期可保留，但前端不再依赖）
+  spendCapCents: number | null   // 语义已切到“月度调用上限（次）”
+  lowBalanceAlert: { enabled: boolean; thresholdCents: number } | null // 语义已切到“剩余次数阈值”
 }
 ```
 
@@ -708,23 +790,25 @@ Billing 的接口既在 Billing 页自己用，也被 **充值弹窗 `stripe-che
 <p><img src="./images/dev-en/stripe-checkout-modal.png" alt="Top-up 充值弹窗截图（docs/images/dev-en/stripe-checkout-modal.png）" width="720" /></p>
 <p><img src="./images/dev-en/recharge-history.png" alt="充值历史截图（docs/images/dev-en/recharge-history.png）" width="900" /></p>
 
-### 5.1 定价
+### 5.1 定价（按次数）
 
 `GET /billing/pricing`
 
+推荐返回结构（与前端 calls 模型对齐）：
+
 ```json
 {
-  "mcpCallRatePerK": 1.0,
-  "volumeTiers": [
-    { "upTo": 100000, "discount": 0, "label": "0 – 100K calls" },
-    { "upTo": 1000000, "discount": 0.15, "label": "100K – 1M calls" },
-    { "upTo": 10000000, "discount": 0.30, "label": "1M – 10M calls" },
-    { "upTo": null, "discount": null, "label": "10M+ calls" }
-  ]
+  "tiers": [
+    { "up_to": 999, "unit_cents": 2.0, "label": "1-999 calls" },
+    { "up_to": 9999, "unit_cents": 1.5, "label": "1000-9999 calls" },
+    { "up_to": null, "unit_cents": 1.0, "label": "10000+ calls" }
+  ],
+  "presets": [100, 500, 1000, 5000, 10000, 50000],
+  "pricing_mode": "flat_tier"
 }
 ```
 
-### 5.2 账户月度消费上限（Spend Limit）
+### 5.2 账户月度调用上限（Calls Limit）
 
 - `GET /billing/spend-limit` →
   ```ts
@@ -734,6 +818,8 @@ Billing 的接口既在 Billing 页自己用，也被 **充值弹窗 `stripe-che
   ```json
   { "monthlyCapCents": 20000, "warnAtPercents": [50, 75, 90] }
   ```
+
+> 注意：字段名暂时还是 `*Cents`，但当前前端把它当“次数”处理（见 §0.1）。
 
 ### 5.3 支付方式（Stripe 托管）
 
@@ -755,31 +841,31 @@ PaymentMethod {
 - `POST /billing/payment-methods/:id/default`
 - `DELETE /billing/payment-methods/:id` —— 若删除的是默认卡，后端自动把第一张剩余卡置为默认
 
-### 5.4 充值到某个 Key（Credit Top-up）
+### 5.4 充值到某个 Key（Top-up by Calls）
 
 前端 `stripe-checkout-modal.tsx` 支持：saved 卡 / new-card / Apple / Google / Link / Cash App / PayPal / Amazon Pay / ACH / Wire。
 
-- 创建 PaymentIntent
+- 创建 top-up intent（金额由 calls 换算）
   `POST /billing/topups/intent`
   ```json
   {
-    "keyId": "key_xxx",
-    "amountCents": 5000,
-    "method": "card" | "apple-pay" | "google-pay" | "link" | "cashapp" | "paypal" | "amazon-pay" | "ach" | "wire",
-    "paymentMethodId": "pm_xxx" | null,
+    "key_id": 123,
+    "amount_cents": 1500,
+    "method": "card" | "ach" | "wire",
+    "payment_method_id": 456,
     "country": "US",
-    "savePaymentMethod": true
+    "save_payment_method": true
   }
   ```
-  → `{ clientSecret, paymentIntentId, transactionId }`
+  → `{ client_secret, payment_intent_id, transaction_id }`
 
 - 回调/确认
   `POST /billing/topups/:transactionId/confirm` → `Transaction`
-  （更常见做法：后端监听 Stripe webhook，自动把到账金额加到 `paidCreditsCents` 并产出 Transaction；前端做 long-poll 或 SSE 等待。）
+  （更常见做法：后端监听 Stripe webhook，自动把本次购买次数写入 key 的 `total_limit`，并产出 `Transaction`。）
 
 - **关键后端行为**：top-up 成功后必须原子地：
   1. 创建 `Transaction`（kind=`credit-topup`，关联 keyId / projectId）
-  2. `ApiKey.paidCreditsCents += amountCents`
+  2. `ApiKey.total_limit += purchased_calls`
   3. 触发一条发票邮件（若 `NotificationSettings.paymentReceipts`）
 
 ### 5.5 交易 / 充值历史
@@ -795,6 +881,7 @@ Transaction {
   description: string,
   invoiceNumber: string,       // 'INV-xxxxx'
   kind: 'credit-topup' | 'card-added',
+  calls?: number,              // 建议返回：本次购买次数
   keyId?: string,
   projectId?: string
 }

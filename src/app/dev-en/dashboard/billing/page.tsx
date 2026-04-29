@@ -12,11 +12,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
+  formatCalls,
   formatCents,
+  getAccountCallsThisMonth,
   getAccountSavingsThisMonthCents,
   getAccountSpendThisMonthCents,
   getBillingTier,
-  getKeyBalanceCents,
+  getKeyCallsRemaining,
+  getKeyCallsTotal,
+  getKeyCallsUsed,
   getSpendLimit,
   getTransactions,
   getUsage,
@@ -65,6 +69,7 @@ export default function BillingPage() {
     warnAtPercents: [50, 75, 90],
   });
   const spendThisMonth = useMockStore(getAccountSpendThisMonthCents, 0);
+  const callsThisMonth = useMockStore(getAccountCallsThisMonth, 0);
   const savingsThisMonth = useMockStore(getAccountSavingsThisMonthCents, 0);
 
   const [period, setPeriod] = useState<Period>(28);
@@ -106,10 +111,10 @@ export default function BillingPage() {
     queueMicrotask(() => setModifyLimitOpen(true));
   }, []);
 
-  const limitPct = Math.min(
-    100,
-    (spendThisMonth / Math.max(1, spendLimit.monthlyCapCents)) * 100,
-  );
+  const hasSpendLimit = (spendLimit.monthlyCapCents ?? 0) > 0;
+  const limitPct = hasSpendLimit
+    ? Math.min(100, (callsThisMonth / Math.max(1, spendLimit.monthlyCapCents)) * 100)
+    : 0;
   const limitColor =
     limitPct < 50 ? 'bg-emerald-500' : limitPct < 85 ? 'bg-amber-500' : 'bg-red-500';
 
@@ -192,17 +197,17 @@ export default function BillingPage() {
     return m;
   }, [usage]);
 
-  // Sum of **remaining** credits across paid keys — more useful on a
-  // balance card than lifetime-loaded credits, which never goes down.
-  const totalPaidCreditsCents = useMemo(
-    () => keys.reduce((acc, k) => acc + getKeyBalanceCents(k), 0),
+  // Sum of **remaining** calls across paid keys — the new model "buy calls,
+  // pay per call" makes this the single most important balance number.
+  const totalCallsRemaining = useMemo(
+    () => keys.reduce((acc, k) => acc + getKeyCallsRemaining(k), 0),
     [keys],
   );
 
-  // Count only paid keys that are currently funded. Needs-credits & revoked
+  // Count only paid keys that have calls available. Needs-credits & revoked
   // keys shouldn't contribute to the "n keys" subtitle on the KPI.
   const fundedKeyCount = useMemo(
-    () => keys.filter((k) => getKeyBalanceCents(k) > 0).length,
+    () => keys.filter((k) => getKeyCallsRemaining(k) > 0).length,
     [keys],
   );
 
@@ -226,7 +231,7 @@ export default function BillingPage() {
       };
       const rd = rank(a) - rank(b);
       if (rd !== 0) return rd;
-      return getKeyBalanceCents(b) - getKeyBalanceCents(a);
+      return getKeyCallsRemaining(b) - getKeyCallsRemaining(a);
     });
   }, [keys]);
 
@@ -244,32 +249,36 @@ export default function BillingPage() {
           className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110 shadow-sm"
         >
           <Plus className="h-4 w-4" />
-          {t('Add credits', '充值')}
+          {t('Top up calls', '充值次数')}
         </button>
       </div>
 
       {/* KPI strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <StatCard
-          label={tx('Spend this month')}
-          value={formatCents(spendThisMonth)}
+          label={t('Calls this month', '本月调用')}
+          value={formatCalls(callsThisMonth)}
           sub={
-            <>
-              <span className="tabular-nums">{limitPct.toFixed(1)}%</span>
-              {t(' of ', ' / ')}
-              <span className="tabular-nums">{formatCents(spendLimit.monthlyCapCents)}</span>
-              {t(' limit', ' 上限')}
-            </>
+            hasSpendLimit ? (
+              <>
+                <span className="tabular-nums">{limitPct.toFixed(1)}%</span>
+                {t(' of ', ' / ')}
+                <span className="tabular-nums">{formatCalls(spendLimit.monthlyCapCents)}</span>
+                {t(' limit', ' 上限')}
+              </>
+            ) : (
+              t('No monthly limit set', '未设置月度上限')
+            )
           }
-          progressPct={limitPct}
+          progressPct={hasSpendLimit ? limitPct : 0}
           progressColor={limitColor}
         />
         <StatCard
-          label={tx('Credits remaining')}
-          value={formatCents(totalPaidCreditsCents)}
+          label={t('Calls remaining', '剩余次数')}
+          value={formatCalls(totalCallsRemaining)}
           sub={t(
-            `Across ${fundedKeyCount} funded paid key${fundedKeyCount === 1 ? '' : 's'}`,
-            `跨 ${fundedKeyCount} 个已充值付费 key`,
+            `Across ${fundedKeyCount} active paid key${fundedKeyCount === 1 ? '' : 's'}`,
+            `跨 ${fundedKeyCount} 把可用付费 key`,
           )}
         />
         <StatCard
@@ -288,22 +297,29 @@ export default function BillingPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              {tx('Monthly spend limit')}
+              {t('Monthly call limit', '月度调用上限')}
               <span className="text-[10px] font-medium normal-case tracking-normal px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">
                 {tx('Experimental')}
               </span>
             </div>
             <div className="mt-2 text-2xl font-semibold tabular-nums">
-              {formatCents(spendThisMonth)}
+              {formatCalls(callsThisMonth)}
               <span className="text-muted-foreground font-normal text-base ml-1">
-                / {formatCents(spendLimit.monthlyCapCents)}
+                {hasSpendLimit
+                  ? `/ ${formatCalls(spendLimit.monthlyCapCents)}`
+                  : `/ ${t('no limit', '无上限')}`}
               </span>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              {t(
-                `${limitPct.toFixed(1)}% of this month's cap used. Warnings at ${spendLimit.warnAtPercents.join('%, ')}%.`,
-                `本月上限已用 ${limitPct.toFixed(1)}%。警告阈值:${spendLimit.warnAtPercents.join('%, ')}%。`,
-              )}
+              {hasSpendLimit
+                ? t(
+                    `${limitPct.toFixed(1)}% of this month's cap used. Warnings at ${spendLimit.warnAtPercents.join('%, ')}%.`,
+                    `本月上限已用 ${limitPct.toFixed(1)}%。警告阈值:${spendLimit.warnAtPercents.join('%, ')}%。`,
+                  )
+                : t(
+                    'No monthly cap set — set one to be alerted before runaway calls.',
+                    '尚未设置月度上限——设置后可在调用激增前收到提醒。',
+                  )}
             </div>
           </div>
           <button
@@ -581,15 +597,15 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Credits by key */}
+      {/* Calls remaining by key */}
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold flex items-center gap-2">
-              <Wallet className="h-4 w-4" /> {tx('Credits by paid key')}
+              <Wallet className="h-4 w-4" /> {t('Calls by paid key', '各付费 Key 的剩余次数')}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {tx('Each paid key has its own balance — top up the ones running low. Your starter key is listed on the')}{' '}
+              {t('Each paid key has its own pool of purchased calls — top up the ones running low. Your starter key is listed on the', '每把付费 Key 都有独立的购买次数池 — 余量偏低时及时充值。Starter key 见')}{' '}
               <Link
                 href="/dashboard/keys"
                 className="underline underline-offset-2 hover:text-foreground"
@@ -623,7 +639,8 @@ export default function BillingPage() {
           <ul className="divide-y divide-border">
             {sortedKeys.map((k) => {
               const project = projects.find((p) => p.id === k.projectId);
-              const balance = getKeyBalanceCents(k);
+              const callsLeft = getKeyCallsRemaining(k);
+              const callsTotalForKey = getKeyCallsTotal(k);
               const monthSpend = spendByKeyThisMonth.get(k.id) ?? 0;
               const tier = getBillingTier(k);
               const revoked = tier === 'revoked';
@@ -675,10 +692,13 @@ export default function BillingPage() {
 
                   <div className="min-w-[120px] text-right">
                     <div className="text-sm font-semibold tabular-nums">
-                      {formatCents(balance)}
+                      {formatCalls(callsLeft)}
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      {tx('Balance')}
+                      {t('Calls left', '剩余次数')}
+                      {callsTotalForKey > 0 && (
+                        <span className="text-muted-foreground/60"> / {formatCalls(callsTotalForKey)}</span>
+                      )}
                     </div>
                   </div>
 

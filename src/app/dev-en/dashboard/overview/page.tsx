@@ -27,12 +27,15 @@ import {
 import { cn } from '@/lib/utils';
 import { useMockAuth } from '../../_lib/mock-auth';
 import {
+  formatCalls,
   formatCents,
   formatDate,
   getAccountCallsThisMonth,
   getAccountSavingsThisMonthCents,
   getAccountSpendThisMonthCents,
-  getKeyBalanceCents,
+  getKeyCallsRemaining,
+  getKeyCallsTotal,
+  getKeyCallsUsed,
   getKeyUsageSummary,
   getSpendLimit,
   getStarterKey,
@@ -74,13 +77,15 @@ export default function OverviewPage() {
   const activePaidKeys = paidKeys.filter((k) => k.status === 'active');
   const recent = transactions.slice(0, 5);
   const hasFundedPaid = activePaidKeys.some(
-    (k) => getKeyBalanceCents(k) > 0,
+    (k) => getKeyCallsRemaining(k) > 0,
   );
   // We keep the raw percent (uncapped) so the KPI card reads correct when
   // the user has genuinely blown past the limit, but clamp the UI bar.
   const hasSpendLimit = (spendLimit.monthlyCapCents ?? 0) > 0;
+  // monthlyCapCents now carries a call count (1:1) under the calls-billing
+  // model — compare it against this month's calls, not dollars.
   const limitUsedPctRaw = hasSpendLimit
-    ? (spend / spendLimit.monthlyCapCents) * 100
+    ? (calls / spendLimit.monthlyCapCents) * 100
     : 0;
   const limitUsedPct = Math.min(100, limitUsedPctRaw);
 
@@ -125,8 +130,8 @@ export default function OverviewPage() {
         starter={starter}
         activePaidKeys={activePaidKeys}
         hasFundedPaid={hasFundedPaid}
-        spendCents={spend}
-        spendLimitCents={spendLimit.monthlyCapCents}
+        callsThisMonth={calls}
+        callsLimit={spendLimit.monthlyCapCents}
         limitUsedPctRaw={limitUsedPctRaw}
         onAddCredits={openAddCreditsFor}
       />
@@ -163,12 +168,12 @@ export default function OverviewPage() {
         />
         <StatCard
           icon={Gauge}
-          label={t('Spend limit used', '支出上限已用')}
+          label={t('Call limit used', '调用上限已用')}
           value={hasSpendLimit ? `${limitUsedPct.toFixed(1)}%` : t('Not set', '未设置')}
           sub={
             hasSpendLimit
-              ? `${formatCents(spend)} / ${formatCents(spendLimit.monthlyCapCents)}`
-              : t('Set a monthly cap to control spend', '设置月度上限以控制支出')
+              ? `${formatCalls(calls)} / ${formatCalls(spendLimit.monthlyCapCents)}`
+              : t('Set a monthly call cap to throttle traffic', '设置月度调用上限以限流')
           }
           href="/dashboard/billing?edit=spend-limit#spend-limit"
           cta={hasSpendLimit ? t('Adjust limit', '调整上限') : t('Set limit', '设置上限')}
@@ -225,16 +230,12 @@ export default function OverviewPage() {
           ) : (
             <ul className="space-y-3">
               {rankedPaidKeys.map(({ key, summary }) => {
-                const balance = getKeyBalanceCents(key);
-                const totalLoaded = key.paidCreditsCents;
-                const paidPct =
-                  totalLoaded > 0
-                    ? Math.min(
-                        100,
-                        (key.paidCreditsUsedCents / totalLoaded) * 100,
-                      )
-                    : 0;
-                const needsCredits = totalLoaded === 0 || balance === 0;
+                const callsLeft = getKeyCallsRemaining(key);
+                const callsTotal = getKeyCallsTotal(key);
+                const callsUsed = getKeyCallsUsed(key);
+                const usedPct =
+                  callsTotal > 0 ? Math.min(100, (callsUsed / callsTotal) * 100) : 0;
+                const needsCredits = callsTotal === 0 || callsLeft === 0;
                 return (
                   <li
                     key={key.id}
@@ -265,29 +266,29 @@ export default function OverviewPage() {
                         )}
                       </div>
                       <div className="mt-2">
-                        {totalLoaded > 0 ? (
+                        {callsTotal > 0 ? (
                           <BalanceBar
-                            label={tx('Credits remaining')}
-                            text={`${formatCents(balance)} ${t('of', '/')} ${formatCents(totalLoaded)}`}
-                            pct={paidPct}
+                            label={t('Calls remaining', '剩余次数')}
+                            text={`${formatCalls(callsLeft)} ${t('of', '/')} ${formatCalls(callsTotal)}`}
+                            pct={usedPct}
                           />
                         ) : (
                           <div className="text-[11px] text-muted-foreground">
-                            {tx('No credits loaded — add some to activate this key.')}
+                            {t('No calls purchased — top up to activate this key.', '尚未购买调用次数 — 充值即可激活。')}
                           </div>
                         )}
                         <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                           {key.spendCapCents !== null && key.spendCapCents > 0 ? (
                             <span className="inline-flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              {t(`Cap ${formatCents(key.spendCapCents)}/mo`, `上限 ${formatCents(key.spendCapCents)}/月`)}
+                              <Zap className="h-3 w-3" />
+                              {t(`Cap ${formatCalls(key.spendCapCents)} calls/mo`, `上限 ${formatCalls(key.spendCapCents)} 次/月`)}
                             </span>
                           ) : null}
                           {key.lowBalanceAlert?.enabled ? (
                             <span className="inline-flex items-center gap-1">
                               <Bell className="h-3 w-3" />
                               {t('Alert ≤', '提醒 ≤')}{' '}
-                              {formatCents(key.lowBalanceAlert.thresholdCents)}
+                              {formatCalls(key.lowBalanceAlert.thresholdCents)} {t('calls', '次')}
                             </span>
                           ) : null}
                         </div>
@@ -468,8 +469,8 @@ interface AlertInputs {
   starter: ApiKey | null;
   activePaidKeys: ApiKey[];
   hasFundedPaid: boolean;
-  spendCents: number;
-  spendLimitCents: number;
+  callsThisMonth: number;
+  callsLimit: number;
   limitUsedPctRaw: number;
   onAddCredits: (keyId?: string) => void;
   t: (en: string, zh: string) => string;
@@ -482,7 +483,7 @@ interface AlertInputs {
  * most actionable). Pure function, easy to exhaust-test.
  */
 function buildAccountAlerts(i: AlertInputs): AlertRow[] {
-  const { starter, activePaidKeys, hasFundedPaid, spendCents, spendLimitCents,
+  const { starter, activePaidKeys, hasFundedPaid, callsThisMonth, callsLimit,
     limitUsedPctRaw, onAddCredits, t, tx } = i;
 
   const rows: AlertRow[] = [];
@@ -494,10 +495,10 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
       id: 'spend-cap-hit',
       severity: 'critical',
       icon: XOctagon,
-      title: t('Monthly spend cap reached', '已达到本月支出上限'),
+      title: t('Monthly call cap reached', '已达到本月调用上限'),
       desc: t(
-        `You spent ${formatCents(spendCents)} of ${formatCents(spendLimitCents)}. Further paid calls are being rejected (SPEND_CAP_EXCEEDED) until you raise the cap or next UTC month.`,
-        `本月消费 ${formatCents(spendCents)}/${formatCents(spendLimitCents)}。后续付费调用会被拒绝（SPEND_CAP_EXCEEDED），直到提高上限或进入下个 UTC 月。`,
+        `You used ${formatCalls(callsThisMonth)} of ${formatCalls(callsLimit)} calls. Further paid calls are being rejected (SPEND_CAP_EXCEEDED) until you raise the cap or next UTC month.`,
+        `本月已调用 ${formatCalls(callsThisMonth)}/${formatCalls(callsLimit)} 次。后续付费调用会被拒绝（SPEND_CAP_EXCEEDED），直到提高上限或进入下个 UTC 月。`,
       ),
       actions: [
         {
@@ -510,12 +511,12 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     });
   }
 
-  // 2 ── Active paid keys that were funded at some point but are now at
-  // $0 balance. Calls through these keys will return INSUFFICIENT_CREDITS.
+  // 2 ── Active paid keys that purchased calls before but are now at zero
+  // calls remaining. Calls through these keys will return INSUFFICIENT_CALLS.
   // Ignore "never funded" keys here — those get their own softer alert
   // (#7 below) because they're a setup-in-progress state, not a regression.
   const depletedPaid = activePaidKeys.filter(
-    (k) => k.paidCreditsCents > 0 && getKeyBalanceCents(k) === 0,
+    (k) => getKeyCallsTotal(k) > 0 && getKeyCallsRemaining(k) === 0,
   );
   if (depletedPaid.length > 0) {
     const first = depletedPaid[0];
@@ -524,12 +525,12 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
       severity: 'critical',
       icon: AlertTriangle,
       title: t(
-        `${depletedPaid.length} paid key${depletedPaid.length === 1 ? '' : 's'} out of credits`,
-        `${depletedPaid.length} 把付费 Key 余额耗尽`,
+        `${depletedPaid.length} paid key${depletedPaid.length === 1 ? '' : 's'} out of calls`,
+        `${depletedPaid.length} 把付费 Key 调用次数已用完`,
       ),
       desc: t(
-        `${first.name} has $0 left — calls return INSUFFICIENT_CREDITS. Top up to resume traffic.`,
-        `${first.name} 余额为 $0，调用会返回 INSUFFICIENT_CREDITS。充值后恢复服务。`,
+        `${first.name} has 0 calls left — requests will be rejected. Top up to resume traffic.`,
+        `${first.name} 剩余调用次数为 0，请求将被拒绝。充值后恢复服务。`,
       ),
       actions: [
         {
@@ -627,18 +628,18 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
   const lowPaid = activePaidKeys.filter(isLowBalance);
   if (lowPaid.length > 0) {
     const first = lowPaid[0];
-    const remaining = getKeyBalanceCents(first);
+    const remaining = getKeyCallsRemaining(first);
     rows.push({
       id: 'paid-low-balance',
       severity: 'warning',
       icon: Bell,
       title: t(
-        `${lowPaid.length} paid key${lowPaid.length === 1 ? '' : 's'} low on credits`,
-        `${lowPaid.length} 把付费 Key 余额偏低`,
+        `${lowPaid.length} paid key${lowPaid.length === 1 ? '' : 's'} low on calls`,
+        `${lowPaid.length} 把付费 Key 剩余次数偏低`,
       ),
       desc: t(
-        `${first.name} has ${formatCents(remaining)} left (alert set at ${formatCents(first.lowBalanceAlert!.thresholdCents)}).`,
-        `${first.name} 余额 ${formatCents(remaining)}（告警阈值 ${formatCents(first.lowBalanceAlert!.thresholdCents)}）。`,
+        `${first.name} has ${formatCalls(remaining)} calls left (alert set at ${formatCalls(first.lowBalanceAlert!.thresholdCents)}).`,
+        `${first.name} 剩余 ${formatCalls(remaining)} 次（告警阈值 ${formatCalls(first.lowBalanceAlert!.thresholdCents)}）。`,
       ),
       actions: [
         {
@@ -658,12 +659,12 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
       severity: 'warning',
       icon: Gauge,
       title: t(
-        `Spend cap ${limitUsedPctRaw.toFixed(0)}% used`,
-        `支出上限已用 ${limitUsedPctRaw.toFixed(0)}%`,
+        `Call cap ${limitUsedPctRaw.toFixed(0)}% used`,
+        `调用上限已用 ${limitUsedPctRaw.toFixed(0)}%`,
       ),
       desc: t(
-        `${formatCents(spendCents)} of ${formatCents(spendLimitCents)} used this month. Calls will be rejected once the cap is hit.`,
-        `本月已消费 ${formatCents(spendCents)}/${formatCents(spendLimitCents)}。到达上限后调用会被拒绝。`,
+        `${formatCalls(callsThisMonth)} of ${formatCalls(callsLimit)} calls used this month. Calls will be rejected once the cap is hit.`,
+        `本月已调用 ${formatCalls(callsThisMonth)}/${formatCalls(callsLimit)} 次。到达上限后调用会被拒绝。`,
       ),
       actions: [
         {
@@ -678,7 +679,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
   // 7 ── Paid keys that were created but never funded. Lowest priority —
   // it's a setup TODO more than a regression. Skip if we already surfaced
   // a depleted-paid alert; they'd be redundant signals.
-  const neverFundedPaid = activePaidKeys.filter((k) => k.paidCreditsCents === 0);
+  const neverFundedPaid = activePaidKeys.filter((k) => getKeyCallsTotal(k) === 0);
   if (neverFundedPaid.length > 0 && depletedPaid.length === 0) {
     const first = neverFundedPaid[0];
     rows.push({
@@ -689,8 +690,9 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
         `${neverFundedPaid.length} paid key${neverFundedPaid.length === 1 ? '' : 's'} not yet activated`,
         `${neverFundedPaid.length} 把付费 Key 尚未激活`,
       ),
-      desc: tx(
-        'Paid keys need credits before they can serve traffic. Top up any amount to activate.',
+      desc: t(
+        'Paid keys need purchased calls before they can serve traffic. Top up to activate.',
+        '付费 Key 需先购买调用次数才能开始服务请求。充值即可激活。',
       ),
       actions: [
         {
@@ -837,13 +839,12 @@ function StarterKeyStrip({ apiKey }: { apiKey: ApiKey }) {
     100,
     (apiKey.freeTotalUsed / Math.max(1, apiKey.freeTotalLimit)) * 100,
   );
-  const balanceCents = getKeyBalanceCents(apiKey);
+  const callsLeft = getKeyCallsRemaining(apiKey);
+  const callsTotalForKey = getKeyCallsTotal(apiKey);
+  const callsUsed = getKeyCallsUsed(apiKey);
   const paidPct =
-    apiKey.paidCreditsCents > 0
-      ? Math.min(
-          100,
-          (apiKey.paidCreditsUsedCents / apiKey.paidCreditsCents) * 100,
-        )
+    callsTotalForKey > 0
+      ? Math.min(100, (callsUsed / callsTotalForKey) * 100)
       : 0;
 
   return (
@@ -895,8 +896,8 @@ function StarterKeyStrip({ apiKey }: { apiKey: ApiKey }) {
             <p className="text-[11px] text-muted-foreground truncate">
               {upgraded
                 ? t(
-                    `Calls now billed from credits · ${formatCents(balanceCents)} left`,
-                    `现从付费余额扣费 · 余额 ${formatCents(balanceCents)}`,
+                    `Daily cap lifted · ${formatCalls(callsLeft)} calls left`,
+                    `已解除每日上限 · 剩余 ${formatCalls(callsLeft)} 次`,
                   )
                 : tx('Included with your account · 30/day · 900 lifetime')}
             </p>
@@ -925,12 +926,11 @@ function StarterKeyStrip({ apiKey }: { apiKey: ApiKey }) {
           />
           {upgraded && (
             <MiniQuota
-              label={tx('Balance')}
-              used={apiKey.paidCreditsUsedCents}
-              limit={apiKey.paidCreditsCents}
+              label={t('Calls left', '剩余次数')}
+              used={callsUsed}
+              limit={callsTotalForKey}
               pct={paidPct}
               tone="purple"
-              formatAsMoney
             />
           )}
         </div>

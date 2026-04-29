@@ -1,32 +1,32 @@
 'use client';
 
 import {
-  AlertCircle,
+  ArrowLeft,
   Building2,
   Check,
+  ChevronRight,
   Copy,
   CreditCard,
-  Gauge,
   Landmark,
   Lock,
   Plus,
   ShieldCheck,
   Smartphone,
   TrendingDown,
-  Wallet,
   X,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  addKeyCreditsCents,
+  addKeyCalls,
   addPaymentMethod,
   addTransaction,
-  estimateKeyCreditRunway,
+  formatCalls,
   formatCents,
   getKey,
-  getUsage,
+  getKeyCallsRemaining,
   listKeys,
   listPaymentMethods,
   listProjects,
@@ -40,7 +40,16 @@ import { useMockStore } from '../_lib/use-mock-store';
 import { useMockAuth } from '../_lib/mock-auth';
 import { useLang } from '../_lib/use-lang';
 import { billing, describeError } from '../_lib/api';
-import { realKeyId } from '../_lib/mock-store-bridge';
+import { realKeyId, realPmId } from '../_lib/mock-store-bridge';
+import {
+  CALL_PRESETS,
+  CALL_TIERS,
+  formatUnitPrice,
+  priceForCalls,
+  savingsVsBase,
+  tierRangeLabel,
+  type PricingQuote,
+} from '../_lib/pricing';
 
 type CheckoutMode = 'add-credits' | 'add-payment-method';
 
@@ -51,8 +60,6 @@ interface StripeCheckoutModalProps {
   mode?: CheckoutMode;
   keyId?: string;
 }
-
-const AMOUNT_OPTIONS = [2000, 5000, 10000, 25000];
 
 const COUNTRIES = [
   { code: 'US', label: 'United States' },
@@ -194,8 +201,10 @@ function OpenedCheckoutModal({
     return defaultCardId ? (`saved:${defaultCardId}` as MethodKey) : 'new-card';
   });
 
-  const [amountCents, setAmountCents] = useState<number>(5000);
-  const [customAmount, setCustomAmount] = useState<string>('');
+  // Calls billing model: user picks a quantity of calls, the price is
+  // derived from the current 3-tier flat schedule (see _lib/pricing.ts).
+  const [callsCount, setCallsCount] = useState<number>(1000);
+  const [customCalls, setCustomCalls] = useState<string>('');
 
   // new card fields
   const [cardNumber, setCardNumber] = useState('');
@@ -237,17 +246,30 @@ function OpenedCheckoutModal({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveCents = useMemo(() => {
+  // 2-step wizard for `add-credits`:
+  //   Step 1 — choose calls (and key if global picker)
+  //   Step 2 — choose payment method, fill details, pay
+  // `add-payment-method` skips step 1 entirely (no calls to buy).
+  type Step = 1 | 2;
+  const [step, setStep] = useState<Step>(mode === 'add-payment-method' ? 2 : 1);
+
+  const effectiveCalls = useMemo(() => {
     if (mode === 'add-payment-method') return 0;
-    if (customAmount.trim()) {
-      const v = Math.round(parseFloat(customAmount) * 100);
+    if (customCalls.trim()) {
+      const v = parseInt(customCalls.replace(/[^0-9]/g, ''), 10);
       return Number.isFinite(v) && v > 0 ? v : 0;
     }
-    return amountCents;
-  }, [customAmount, amountCents, mode]);
+    return callsCount;
+  }, [customCalls, callsCount, mode]);
 
+  const quote: PricingQuote = useMemo(
+    () => priceForCalls(effectiveCalls),
+    [effectiveCalls],
+  );
+  const effectiveCents = quote.totalCents;
   const taxCents = 0;
   const totalCents = effectiveCents + taxCents;
+  const savings = useMemo(() => savingsVsBase(quote), [quote]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -277,30 +299,6 @@ function OpenedCheckoutModal({
     ? projects.find((p) => p.id === targetKey.projectId)
     : undefined;
 
-  /** Fingerprint of usage table so runway recalculates when any row changes. */
-  const usageRunwaySig = useMockStore(() => {
-    let h = 0;
-    const arr = getUsage();
-    for (let i = 0; i < arr.length; i++) {
-      const p = arr[i];
-      h =
-        ((h * 31 +
-          (p.calls ?? 0) * 17 +
-          (p.costCents ?? 0) * 3 +
-          (p.savingsCents ?? 0)) >>>
-          0) %
-        2147483647;
-    }
-    return `${arr.length}:${h}`;
-  }, '0:0');
-
-  const creditRunway = useMemo(() => {
-    void usageRunwaySig; // subscribe to usage mutations for this derived estimate
-    if (mode !== 'add-credits' || !effectiveKeyId) return null;
-    if (totalCents < 100) return null;
-    return estimateKeyCreditRunway(effectiveKeyId, totalCents);
-  }, [mode, effectiveKeyId, totalCents, usageRunwaySig]);
-
   // Derived: is the currently selected saved card?
   const selectedSavedId = method.startsWith('saved:') ? method.slice('saved:'.length) : null;
   const selectedSavedCard = selectedSavedId
@@ -316,7 +314,8 @@ function OpenedCheckoutModal({
   const nameValid = cardName.trim().length > 1;
   const newCardValid = cardValid && expiryValid && cvcValid && nameValid;
   const linkCodeValid = linkStep === 'code-sent' && /^\d{6}$/.test(linkCode);
-  const amountValid = mode === 'add-payment-method' ? true : effectiveCents >= 100;
+  const amountValid =
+    mode === 'add-payment-method' ? true : effectiveCalls >= 1 && effectiveCents >= 1;
   // Credits flow requires a chosen key before we can charge anything. In
   // per-row entries `keyId` is already supplied → always valid.
   const keyValid = mode === 'add-payment-method' ? true : !!effectiveKeyId;
@@ -399,34 +398,54 @@ function OpenedCheckoutModal({
       if (pm.isDefault) setDefaultPaymentMethod(pm.id);
     }
 
-    // Pending top-ups (e.g. wire transfer awaiting bank receipt) don't add
-    // credits to the key until they settle. Succeeded methods credit instantly.
-    // Call real backend API to actually add credits to the key.
+    // Pending top-ups (e.g. wire transfer awaiting bank receipt) don't grow
+    // the key's call quota until they settle. Succeeded methods credit
+    // instantly. Backend `POST /billing/topups/intent` takes amount_cents and
+    // adds calls to the key's total_limit on confirm.
     if (mode === 'add-credits' && effectiveKeyId && !pending) {
       const numericKeyId = realKeyId(effectiveKeyId);
-      if (Number.isFinite(numericKeyId)) {
-        try {
-          const intentRes = await billing.createTopupIntent({
-            key_id: numericKeyId,
-            amount_cents: totalCents,
-            method: 'card',
-          });
-          await billing.confirmTopup(intentRes.transaction_id);
-        } catch (err) {
-          console.warn('[stripe-checkout] topup failed:', describeError(err));
-          // Continue anyway — local mock will show the change; hydration will
-          // correct if backend actually failed.
-        }
+      if (!Number.isFinite(numericKeyId)) {
+        setProcessing(false);
+        setError(tx('Invalid key selected. Please retry.'));
+        return;
       }
-      // Also update local mock for immediate UI feedback
-      addKeyCreditsCents(effectiveKeyId, totalCents);
+      try {
+        const topupMethod: 'card' | 'ach' | 'wire' =
+          method === 'ach' ? 'ach' : method === 'wire' ? 'wire' : 'card';
+        const selectedPmId =
+          selectedSavedCard?.id && Number.isFinite(realPmId(selectedSavedCard.id))
+            ? realPmId(selectedSavedCard.id)
+            : undefined;
+        const intentRes = await billing.createTopupIntent({
+          key_id: numericKeyId,
+          amount_cents: totalCents,
+          method: topupMethod,
+          payment_method_id: selectedPmId,
+          country,
+          save_payment_method: method === 'new-card' ? saveCard : undefined,
+        });
+        await billing.confirmTopup(intentRes.transaction_id);
+      } catch (err) {
+        const msg = describeError(err);
+        console.warn('[stripe-checkout] topup failed:', msg);
+        // Do NOT show fake success when backend didn't settle the top-up.
+        // This prevents "充值成功但记录为空" mismatch.
+        setProcessing(false);
+        setError(msg);
+        return;
+      }
+      // Optimistic UI: grow the local "calls remaining" pool immediately.
+      // The bridge invalidates 'keys' after confirmTopup, which re-hydrates
+      // and replaces this with authoritative data shortly.
+      addKeyCalls(effectiveKeyId, effectiveCalls);
     }
 
+    const callsLabel = formatCalls(effectiveCalls);
     const baseDesc =
       mode === 'add-credits'
         ? targetKey
-          ? `${t('Credits added to', '已充值到')} ${targetKey.name}`
-          : tx('Credits added')
+          ? `+${callsLabel} ${t('calls', '次')} · ${targetKey.name}`
+          : `+${callsLabel} ${t('calls', '次')}`
         : tx('Payment method added');
 
     const txn = addTransaction({
@@ -612,8 +631,8 @@ function OpenedCheckoutModal({
             <p className="text-sm text-muted-foreground">
               {mode === 'add-credits'
                 ? method === 'wire'
-                  ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Credits will be added once funds arrive (usually 1–3 business days).', '。款项到账后将立即充值(通常 1–3 个工作日)。')}`
-                  : `${formatCents(totalCents)}${targetKey ? ` ${t('added to', '已充值到')} ${targetKey.name}.` : ` ${t('added', '已充值')}.`}`
+                  ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Calls will be added once funds arrive (usually 1–3 business days).', '。款项到账后将立即开通(通常 1–3 个工作日)。')}`
+                  : `+${formatCalls(effectiveCalls)} ${t('calls', '次调用')}${targetKey ? ` ${t('added to', '已添加到')} ${targetKey.name}.` : ` ${t('added', '已添加')}.`} ${t('Charged', '扣款')} ${formatCents(totalCents)}.`
                 : tx('Your new payment method is ready for future payments.')}
             </p>
           </div>
@@ -624,9 +643,15 @@ function OpenedCheckoutModal({
           >
             {/* Scrollable content — everything except the Pay footer */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-4">
+            {/* Step header — only shown for add-credits flow; for
+                 add-payment-method there's no quantity step so it'd be noise. */}
+            {mode === 'add-credits' && (
+              <StepIndicator step={step} />
+            )}
+
             {/* 0. Key picker (only when no keyId was pre-selected, i.e. global
-                 Add-credits CTA) */}
-            {needsKeyPicker && (
+                 Add-credits CTA) — Step 1 */}
+            {step === 1 && needsKeyPicker && (
               <section>
                 <SectionLabel>{tx('Which key?')}</SectionLabel>
                 {allKeys.filter((k) => k.status !== 'revoked').length === 0 ? (
@@ -679,15 +704,9 @@ function OpenedCheckoutModal({
                     {targetKey && (
                       <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span>
-                          {tx('Current balance:')}{' '}
+                          {t('Calls remaining:', '剩余次数：')}{' '}
                           <strong className="text-foreground tabular-nums">
-                            {formatCents(
-                              Math.max(
-                                0,
-                                targetKey.paidCreditsCents -
-                                  targetKey.paidCreditsUsedCents,
-                              ),
-                            )}
+                            {formatCalls(getKeyCallsRemaining(targetKey))}
                           </strong>
                         </span>
                         <span className="text-border">·</span>
@@ -701,142 +720,79 @@ function OpenedCheckoutModal({
               </section>
             )}
 
-            {/* 1. Amount (only in add-credits) */}
-            {mode === 'add-credits' && (
-              <section>
-                <SectionLabel>{tx('Amount (USD)')}</SectionLabel>
-                <div className="grid grid-cols-4 gap-2 mb-2">
-                  {AMOUNT_OPTIONS.map((a) => (
+            {/* 1. Calls picker — Step 1. User chooses how many calls to buy;
+                 the price is derived from the active tier of the 3-step flat
+                 schedule (see _lib/pricing.ts). */}
+            {step === 1 && mode === 'add-credits' && (
+              <section className="space-y-3">
+                <SectionLabel>{tx('How many calls?')}</SectionLabel>
+
+                {/* Tier price card — 3 rows, the active one highlighted. */}
+                <TierPriceTable activeIndex={quote.tierIndex} />
+
+                {/* Preset chips */}
+                <div className="grid grid-cols-3 gap-2">
+                  {CALL_PRESETS.map((p) => (
                     <button
                       type="button"
-                      key={a}
+                      key={p}
                       onClick={() => {
-                        setAmountCents(a);
-                        setCustomAmount('');
+                        setCallsCount(p);
+                        setCustomCalls('');
                       }}
                       className={cn(
-                        'h-9 rounded-lg border text-sm font-medium transition-colors',
-                        !customAmount && amountCents === a
-                          ? 'border-foreground bg-foreground text-background'
-                          : 'border-border bg-background hover:border-foreground/40',
+                        'h-10 rounded-xl border text-sm font-semibold transition-all tabular-nums',
+                        !customCalls && callsCount === p
+                          ? 'border-zinc-900 bg-zinc-900 text-white shadow-[0_8px_18px_-12px_rgba(0,0,0,0.55)]'
+                          : 'border-border/80 bg-white hover:border-zinc-900/30 hover:bg-zinc-50',
                       )}
                     >
-                      {formatCents(a)}
+                      {formatCalls(p)}
                     </button>
                   ))}
                 </div>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={customAmount}
-                  onChange={(e) =>
-                    setCustomAmount(e.target.value.replace(/[^0-9.]/g, '').slice(0, 10))
-                  }
-                  placeholder={tx('Or enter custom amount (min $1.00)')}
-                  className="w-full h-9 px-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
+
+                {/* Custom input */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={customCalls}
+                    onChange={(e) =>
+                      setCustomCalls(e.target.value.replace(/[^0-9]/g, '').slice(0, 9))
+                    }
+                    placeholder={tx('Or enter a custom number of calls')}
+                    className="w-full h-9 pl-3 pr-16 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">
+                    {tx('calls')}
+                  </span>
+                </div>
+
+                {/* Live quote — what the user pays right now. */}
+                <QuoteSummary
+                  calls={effectiveCalls}
+                  unitCents={quote.unitCents}
+                  totalCents={effectiveCents}
+                  savedCents={savings.savedCents}
+                  savedPct={savings.pct}
                 />
-
-                {creditRunway && targetKey && (
-                  <div className="mt-3 relative overflow-hidden rounded-xl border border-[#635bff]/25 bg-gradient-to-br from-[#635bff]/[0.07] via-[#635bff]/[0.03] to-transparent">
-                    {/* Decorative glow in the corner — mirrors Stripe's
-                         dashboard "insight card" aesthetic. */}
-                    <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-[#635bff]/15 blur-3xl" />
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#635bff]/40 to-transparent"
-                    />
-
-                    <div className="relative px-4 py-3.5">
-                      {/* Header chip */}
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="inline-flex items-center gap-1.5 rounded-full bg-[#635bff]/12 border border-[#635bff]/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#635bff] dark:text-[#a5a0ff]">
-                          <Gauge className="h-3 w-3" />
-                          {tx('Runway estimate')}
-                        </div>
-                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground tabular-nums">
-                          {t(`Last ${creditRunway.windowDays}d`, `最近 ${creditRunway.windowDays} 天`)}
-                        </span>
-                      </div>
-
-                      {creditRunway.estimatedDays != null ? (
-                        <>
-                          {/* Hero duration — what the user really wants to see */}
-                          <div className="flex items-baseline gap-2 mb-3">
-                            <span className="text-[22px] font-bold tracking-tight tabular-nums text-foreground leading-none">
-                              {formatRunwayDuration(creditRunway.estimatedDays)}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {tx('of runway at your current pace')}
-                            </span>
-                          </div>
-
-                          {/* 3-up metric grid, separated by a hairline */}
-                          <div className="grid grid-cols-3 gap-3 pt-2.5 border-t border-border/50">
-                            <RunwayStat
-                              icon={<Wallet className="h-3 w-3" />}
-                              label={tx('Balance after')}
-                              value={formatCents(creditRunway.balanceAfterCents)}
-                            />
-                            <RunwayStat
-                              icon={<TrendingDown className="h-3 w-3" />}
-                              label={tx('Daily burn')}
-                              value={`~${formatCents(
-                                Math.max(1, Math.round(creditRunway.avgDailyNetCents)),
-                              )}`}
-                              suffix={t('/day', '/ 天')}
-                            />
-                            {creditRunway.estimatedCallsAtPace != null && (
-                              <RunwayStat
-                                icon={<Check className="h-3 w-3" />}
-                                label={t('≈ API calls', '≈ API 调用')}
-                                value={creditRunway.estimatedCallsAtPace.toLocaleString(
-                                  'en-US',
-                                )}
-                              />
-                            )}
-                          </div>
-
-                          {creditRunway.confidence === 'low' && (
-                            <div className="mt-2.5 flex items-start gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-1.5 text-[10px] text-amber-700 dark:text-amber-300">
-                              <AlertCircle className="h-3 w-3 mt-[1px] shrink-0" />
-                              <span className="leading-snug">
-                                {tx('Sparse usage history — treat this as a rough guide, not a guarantee.')}
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        /* Cold-start state — no burn history yet. Stripe's
-                           own dashboard shows a calm neutral copy here rather
-                           than guessing. */
-                        <div className="flex items-start gap-2.5">
-                          <div className="mt-0.5 h-8 w-8 shrink-0 rounded-full bg-[#635bff]/10 border border-[#635bff]/20 flex items-center justify-center">
-                            <Gauge className="h-4 w-4 text-[#635bff] dark:text-[#a5a0ff]" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-[13px] font-semibold text-foreground">
-                              {tx('Not enough history yet')}
-                            </div>
-                            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-                              {t('No net spend on this key in the last', '该密钥在过去')}{' '}
-                              {creditRunway.windowDays}{' '}
-                              {t('days. Balance after top-up will be', '天内无净消耗。充值后余额为')}{' '}
-                              <strong className="text-foreground tabular-nums font-semibold">
-                                {formatCents(creditRunway.balanceAfterCents)}
-                              </strong>
-                              .
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </section>
+            )}
+
+            {/* Step 2 from here on: payment method + details + summary. */}
+            {step === 2 && mode === 'add-credits' && (
+              <Step2Recap
+                calls={effectiveCalls}
+                totalCents={totalCents}
+                unitCents={quote.unitCents}
+                keyName={targetKey?.name}
+              />
             )}
 
             {/* 2. Payment method picker — matches Stripe Payment Element:
                  Express checkout at top, "Or pay with card" divider, cards below. */}
+            {step === 2 && (
             <section className="space-y-3">
               {/* Express checkout (credits flow only — no wallet makes sense
                   in add-payment-method, since only cards save) */}
@@ -1020,8 +976,10 @@ function OpenedCheckoutModal({
                 </div>
               )}
             </section>
+            )}
 
             {/* 3. Method-specific details */}
+            {step === 2 && (
             <section className="rounded-lg border border-border bg-muted/20 p-3">
               {method === 'new-card' && (
                 <NewCardPanel
@@ -1136,8 +1094,10 @@ function OpenedCheckoutModal({
                 />
               )}
             </section>
+            )}
 
             {/* 4. Receipt email */}
+            {step === 2 && (
             <section>
               <SectionLabel>{tx('Receipt email')}</SectionLabel>
               <input
@@ -1148,11 +1108,20 @@ function OpenedCheckoutModal({
                 className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
               />
             </section>
+            )}
 
             {/* 5. Itemized summary */}
-            {mode === 'add-credits' && (
+            {step === 2 && mode === 'add-credits' && (
               <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 space-y-1.5">
-                <SummaryRow label={tx('Subtotal')} value={formatCents(effectiveCents)} />
+                <SummaryRow
+                  label={t('Calls purchased', '购买次数')}
+                  value={formatCalls(effectiveCalls)}
+                />
+                <SummaryRow
+                  label={t('Per call', '单价')}
+                  value={formatUnitPrice(quote.unitCents)}
+                  muted
+                />
                 <SummaryRow
                   label={tx('Estimated tax')}
                   value={formatCents(taxCents)}
@@ -1176,42 +1145,89 @@ function OpenedCheckoutModal({
                  ACH) grow. The soft top border + shadow separates it from
                  the scrollable content. */}
             <div className="shrink-0 border-t border-border/60 bg-background/95 backdrop-blur-sm px-5 py-4 space-y-2 shadow-[0_-6px_14px_-10px_rgba(17,24,39,0.18)]">
-              <button
-                type="submit"
-                disabled={!formValid || processing}
-                className={cn(
-                  'group relative w-full h-11 rounded-lg text-white text-sm font-semibold',
-                  'bg-[#635bff] shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_2px_rgba(17,24,39,0.08)]',
-                  'transition-[transform,box-shadow,background-color] duration-150 ease-out',
-                  'hover:bg-[#5148e3] hover:-translate-y-px hover:shadow-[0_4px_14px_-4px_rgba(99,91,255,0.55),0_1px_0_rgba(255,255,255,0.1)_inset]',
-                  'active:translate-y-0 active:bg-[#4b43d6] active:shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_2px_rgba(17,24,39,0.12)]',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#635bff]/60 focus-visible:ring-offset-background',
-                  'disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:-translate-y-0 disabled:hover:bg-[#635bff] disabled:hover:shadow-none',
-                  'flex items-center justify-center gap-2',
-                )}
-              >
-                {processing ? (
-                  <>
-                    <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {tx('Processing…')}
-                  </>
-                ) : (
-                  <>
-                    {method === 'ach' || method === 'wire' ? (
-                      <Landmark className="h-4 w-4" />
-                    ) : (
-                      <CreditCard className="h-4 w-4" />
+              {/* Step 1: Continue (no payment yet). Step 2: Back + Pay. */}
+              {step === 1 && mode === 'add-credits' ? (
+                <button
+                  type="button"
+                  disabled={!amountValid || !keyValid}
+                  onClick={() => {
+                    if (!amountValid || !keyValid) return;
+                    setError(null);
+                    setStep(2);
+                  }}
+                  className={cn(
+                    'group relative w-full h-11 rounded-lg text-white text-sm font-semibold',
+                    'bg-[#635bff] shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_2px_rgba(17,24,39,0.08)]',
+                    'transition-[transform,box-shadow,background-color] duration-150 ease-out',
+                    'hover:bg-[#5148e3] hover:-translate-y-px hover:shadow-[0_4px_14px_-4px_rgba(99,91,255,0.55),0_1px_0_rgba(255,255,255,0.1)_inset]',
+                    'active:translate-y-0 active:bg-[#4b43d6]',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#635bff]/60 focus-visible:ring-offset-background',
+                    'disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:-translate-y-0 disabled:hover:bg-[#635bff] disabled:hover:shadow-none',
+                    'flex items-center justify-center gap-2',
+                  )}
+                >
+                  {t('Continue', '下一步')}
+                  <span className="text-xs font-normal opacity-90 tabular-nums">
+                    · {formatCalls(effectiveCalls)} {t('calls', '次')} · {formatCents(totalCents || 0)}
+                  </span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {mode === 'add-credits' && (
+                    <button
+                      type="button"
+                      disabled={processing}
+                      onClick={() => {
+                        if (processing) return;
+                        setError(null);
+                        setStep(1);
+                      }}
+                      className="h-11 px-3 rounded-lg border border-border bg-background hover:bg-muted/40 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 inline-flex items-center gap-1"
+                      aria-label={t('Back', '上一步')}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">{t('Back', '上一步')}</span>
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={!formValid || processing}
+                    className={cn(
+                      'group relative flex-1 h-11 rounded-lg text-white text-sm font-semibold',
+                      'bg-[#635bff] shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_2px_rgba(17,24,39,0.08)]',
+                      'transition-[transform,box-shadow,background-color] duration-150 ease-out',
+                      'hover:bg-[#5148e3] hover:-translate-y-px hover:shadow-[0_4px_14px_-4px_rgba(99,91,255,0.55),0_1px_0_rgba(255,255,255,0.1)_inset]',
+                      'active:translate-y-0 active:bg-[#4b43d6] active:shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_2px_rgba(17,24,39,0.12)]',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#635bff]/60 focus-visible:ring-offset-background',
+                      'disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:-translate-y-0 disabled:hover:bg-[#635bff] disabled:hover:shadow-none',
+                      'flex items-center justify-center gap-2',
                     )}
-                    {mode === 'add-credits'
-                      ? method === 'wire'
-                        ? `${tx('Get wire instructions')} · ${formatCents(totalCents || 0)}`
-                        : method === 'ach'
-                          ? `${tx('Pay by ACH')} · ${formatCents(totalCents || 0)}`
-                          : `${tx('Pay')} ${formatCents(totalCents || 0)}`
-                      : tx('Save payment method')}
-                  </>
-                )}
-              </button>
+                  >
+                    {processing ? (
+                      <>
+                        <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        {tx('Processing…')}
+                      </>
+                    ) : (
+                      <>
+                        {method === 'ach' || method === 'wire' ? (
+                          <Landmark className="h-4 w-4" />
+                        ) : (
+                          <CreditCard className="h-4 w-4" />
+                        )}
+                        {mode === 'add-credits'
+                          ? method === 'wire'
+                            ? `${tx('Get wire instructions')} · ${formatCents(totalCents || 0)}`
+                            : method === 'ach'
+                              ? `${tx('Pay by ACH')} · ${formatCents(totalCents || 0)}`
+                              : `${tx('Pay')} ${formatCents(totalCents || 0)} · +${formatCalls(effectiveCalls)} ${t('calls', '次')}`
+                          : tx('Save payment method')}
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               <p className="text-[10px] text-muted-foreground text-center leading-relaxed flex items-center justify-center gap-1">
                 <Lock className="h-2.5 w-2.5" />
@@ -1225,17 +1241,242 @@ function OpenedCheckoutModal({
   );
 }
 
-/** Human-readable duration from a fractional day count (runway estimate). */
-function formatRunwayDuration(days: number): string {
-  if (!Number.isFinite(days) || days <= 0) return '—';
-  if (days < 1) return 'less than a day';
-  if (days < 14) return `${Math.round(days)} days`;
-  if (days < 56) return `${Math.round(days / 7)} weeks`;
-  if (days < 730) return `${Math.round(days / 30)} months`;
-  return `${(days / 365).toFixed(1)} years`;
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+/**
+ * Two-step wizard header. Step 1 = pick how many calls; Step 2 = pay.
+ * Splitting the flow keeps the initial screen short and on-task ("how
+ * many calls?") instead of overwhelming users with the full Stripe
+ * payment surface up front. The visual treatment mirrors typical
+ * checkout / onboarding wizards: the active dot fills, completed dots
+ * show a check.
+ */
+function StepIndicator({ step }: { step: 1 | 2 }) {
+  const { t } = useLang();
+  const items: { idx: 1 | 2; label: string }[] = [
+    { idx: 1, label: t('Choose calls', '选择次数') },
+    { idx: 2, label: t('Payment', '支付方式') },
+  ];
+  return (
+    <div className="flex items-center gap-2 -mt-1 mb-1">
+      {items.map((it, i) => {
+        const active = step === it.idx;
+        const completed = step > it.idx;
+        return (
+          <div key={it.idx} className="flex items-center gap-2">
+            <div
+              className={cn(
+                'h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums shrink-0 transition-colors',
+                completed
+                  ? 'bg-emerald-500 text-white'
+                  : active
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {completed ? <Check className="h-3 w-3" strokeWidth={3} /> : it.idx}
+            </div>
+            <span
+              className={cn(
+                'text-[11px] font-medium transition-colors',
+                active ? 'text-foreground' : 'text-muted-foreground',
+              )}
+            >
+              {it.label}
+            </span>
+            {i === 0 && (
+              <span
+                className={cn(
+                  'h-px w-6 transition-colors',
+                  step === 2 ? 'bg-emerald-500/60' : 'bg-border',
+                )}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+/**
+ * Compact recap shown at the top of step 2 so the user can verify the
+ * quantity & total they're about to pay without scrolling back. Click the
+ * "Edit" link to jump back to step 1. The layout intentionally mirrors a
+ * receipt header: amount on the right, units on the left.
+ */
+function Step2Recap({
+  calls,
+  totalCents,
+  unitCents,
+  keyName,
+}: {
+  calls: number;
+  totalCents: number;
+  unitCents: number;
+  keyName?: string;
+}) {
+  const { t } = useLang();
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 px-3.5 py-2.5 flex items-center gap-3">
+      <div className="h-8 w-8 rounded-lg bg-foreground/[0.06] flex items-center justify-center shrink-0">
+        <Zap className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] text-muted-foreground leading-tight">
+          {keyName ? (
+            <>
+              {t('Topping up', '充值到')}{' '}
+              <span className="font-medium text-foreground">{keyName}</span>
+            </>
+          ) : (
+            t('Order summary', '订单概览')
+          )}
+        </div>
+        <div className="text-sm font-semibold tabular-nums leading-tight mt-0.5">
+          {formatCalls(calls)} {t('calls', '次')}{' '}
+          <span className="text-muted-foreground font-normal text-[11px]">
+            · {formatUnitPrice(unitCents)} {t('/ call', '/ 次')}
+          </span>
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <div className="text-base font-bold tabular-nums">{formatCents(totalCents)}</div>
+        <div className="text-[10px] text-muted-foreground">{t('Total', '合计')}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Pricing schedule card. Renders the 3 flat tiers; the row matching the
+ * user's currently-selected call count gets an "Active" highlight.
+ *
+ * Volume kicks in automatically when the chosen call count crosses a tier
+ * threshold — we don't ask the user to "upgrade" anywhere; this is only a
+ * transparency surface so the price they see is never a surprise.
+ */
+function TierPriceTable({ activeIndex }: { activeIndex: number }) {
+  const { t, tx } = useLang();
+  return (
+    <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-white to-zinc-50/70 overflow-hidden shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
+      <div className="px-3.5 py-2.5 border-b border-border/60 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <Zap className="h-3 w-3" />
+          {t('Volume tiers · flat per-call rate', '阶梯价 · 整笔按档位单价')}
+        </div>
+        <span className="text-[10px] rounded-full px-2 py-0.5 border border-emerald-500/30 bg-emerald-500/10 text-emerald-700">
+          {t('Auto matched', '自动匹配')}
+        </span>
+      </div>
+      <ul className="divide-y divide-border/70">
+        {CALL_TIERS.map((tier, i) => {
+          const active = i === activeIndex;
+          return (
+            <li
+              key={i}
+              className={cn(
+                'flex items-center justify-between px-3.5 py-2.5 text-xs transition-colors',
+                active
+                  ? 'bg-gradient-to-r from-emerald-500/[0.10] via-emerald-500/[0.05] to-transparent'
+                  : 'hover:bg-zinc-900/[0.02]',
+              )}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className={cn(
+                    'inline-flex items-center justify-center h-5 w-5 rounded-full text-[9px] font-bold tabular-nums shrink-0',
+                    active
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {i + 1}
+                </span>
+                <span
+                  className={cn(
+                    'tabular-nums',
+                    active ? 'font-semibold text-foreground' : 'text-muted-foreground/90',
+                  )}
+                >
+                  {tierRangeLabel(i)} {t('calls', '次')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'tabular-nums font-semibold text-[13px]',
+                    active ? 'text-zinc-900' : 'text-muted-foreground',
+                  )}
+                >
+                  {formatUnitPrice(tier.unitCents)}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {t('/ call', '/ 次')}
+                </span>
+                {active && (
+                  <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-900 text-white">
+                    {tx('Active')}
+                  </span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Live quote panel — what the user pays for the currently chosen quantity.
+ * Shows savings vs base tier when the user qualified for a volume discount.
+ */
+function QuoteSummary({
+  calls,
+  unitCents,
+  totalCents,
+  savedCents,
+  savedPct,
+}: {
+  calls: number;
+  unitCents: number;
+  totalCents: number;
+  savedCents: number;
+  savedPct: number;
+}) {
+  const { t } = useLang();
+  if (calls <= 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-background px-3 py-2.5 text-[11px] text-muted-foreground">
+        {t('Pick a quantity above to see your price.', '在上方选择次数后会显示总价。')}
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-border bg-background px-3 py-2.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="text-[11px] text-muted-foreground tabular-nums">
+          <span className="text-foreground font-semibold">{formatCalls(calls)}</span>{' '}
+          {t('calls', '次')}{' '}
+          <span className="text-muted-foreground/70">×</span>{' '}
+          <span className="font-mono">{formatUnitPrice(unitCents)}</span>{' '}
+          <span className="text-muted-foreground/70">=</span>
+        </div>
+        <div className="text-base font-bold tabular-nums">{formatCents(totalCents)}</div>
+      </div>
+      {savedCents > 0 && (
+        <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+          <TrendingDown className="h-3 w-3" />
+          {t(
+            `Volume discount applied — save ${formatCents(savedCents)} (${savedPct}%)`,
+            `已应用阶梯优惠 — 节省 ${formatCents(savedCents)} (${savedPct}%)`,
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Shared chevron-down glyph for the native <select> elements used in the
  *  modal's key picker (matches the FilterSelect styling on the billing page). */
@@ -1883,35 +2124,6 @@ function LinkPanel({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function RunwayStat({
-  icon,
-  label,
-  value,
-  suffix,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  suffix?: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
-        <span className="text-muted-foreground/70">{icon}</span>
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="mt-0.5 text-[13px] font-semibold text-foreground tabular-nums leading-tight flex items-baseline gap-0.5 truncate">
-        <span className="truncate">{value}</span>
-        {suffix && (
-          <span className="text-[10px] font-normal text-muted-foreground">
-            {suffix}
-          </span>
-        )}
-      </div>
     </div>
   );
 }

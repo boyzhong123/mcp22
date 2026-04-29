@@ -13,7 +13,7 @@
  * ═══════════════════════════════════════════════════════════ */
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
 import {
   AlertCircle,
@@ -629,10 +629,36 @@ export function BackToOverview({
   containerClassName?: string;
   label?: string;
 } = {}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
+  const fallbackHref = from === 'dev' ? '/dev-en/dashboard/overview' : '/';
+
+  const handleBack = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    // Prefer true "go back" so docs opened from keys/overview/etc returns
+    // to the exact previous page. If there's no reliable same-origin referrer
+    // (direct open/new tab), fall back to a deterministic destination.
+    const hasHistory = typeof window !== 'undefined' && window.history.length > 1;
+    const referrer = typeof document !== 'undefined' ? document.referrer : '';
+    const sameOriginReferrer =
+      typeof window !== 'undefined' &&
+      !!referrer &&
+      referrer.startsWith(window.location.origin) &&
+      !/\/(global\/docs|docs)(\?|#|$)/.test(referrer);
+
+    if (hasHistory && sameOriginReferrer) {
+      router.back();
+      return;
+    }
+    router.push(fallbackHref);
+  };
+
   return (
     <div className={containerClassName}>
       <Link
-        href="/"
+        href={fallbackHref}
+        onClick={handleBack}
         className={cn(
           'group inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-3.5 py-1.5',
           'text-[12.5px] font-medium text-zinc-700',

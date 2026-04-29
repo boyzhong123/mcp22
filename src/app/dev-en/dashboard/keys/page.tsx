@@ -30,10 +30,13 @@ import {
   addProject,
   createKey,
   deleteKey,
+  formatCalls,
   formatCents,
   formatDateShort,
   getBillingTier,
-  getKeyBalanceCents,
+  getKeyCallsRemaining,
+  getKeyCallsTotal,
+  getKeyCallsUsed,
   getStarterKey,
   isStarterUpgraded,
   keyLast4,
@@ -178,11 +181,11 @@ export default function KeysPage() {
         </button>
       </div>
 
-      {/* Starter exhausted upgrade banner — only surfaces when 900 lifetime
-           calls are spent AND no paid key is funded. Wired identically to
-           the Overview banner for consistency. */}
+      {/* Starter exhausted upgrade banner — only surfaces when lifetime
+           calls are spent AND no paid key has calls left. Wired identically
+           to the Overview banner for consistency. */}
       {starter && starter.freeTotalUsed >= starter.freeTotalLimit &&
-        !paidKeys.some((k) => getKeyBalanceCents(k) > 0) && (
+        !paidKeys.some((k) => getKeyCallsRemaining(k) > 0) && (
           <StarterExhaustedBanner
             onCreate={openCreate}
             onAddCredits={(kid) => {
@@ -431,11 +434,11 @@ export default function KeysPage() {
             <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
-                {t('Paid keys start with ', '付费 Key 创建时余额为 ')}
-                <span className="font-semibold text-foreground">{t('$0 balance', '$0')}</span>
+                {t('Paid keys start with ', '付费 Key 创建时配额为 ')}
+                <span className="font-semibold text-foreground">{t('0 calls', '0 次')}</span>
                 {t(
-                  " and cannot serve traffic until you add credits. You'll be offered a top-up right after creation.",
-                  '，充值前无法处理请求。创建完成后会立即引导你充值。',
+                  " and cannot serve traffic until you top up. You'll be offered a top-up right after creation.",
+                  '，购买调用次数前无法处理请求。创建完成后会立即引导你充值。',
                 )}
               </span>
             </div>
@@ -738,13 +741,13 @@ function NewKeyToast({
           {!apiKey.isStarter && (
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <div className="text-[11px] text-muted-foreground">
-                {tx('This key needs credits before it can serve traffic.')}
+                {t('This key needs purchased calls before it can serve traffic.', '此 Key 需要先购买调用次数才能开始服务请求。')}
               </div>
               <button
                 onClick={onAddCredits}
                 className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-foreground text-background text-[11px] font-medium hover:brightness-110"
               >
-                <DollarSign className="h-3 w-3" /> {tx('Add credits')}
+                <DollarSign className="h-3 w-3" /> {t('Top up', '充值')}
               </button>
             </div>
           )}
@@ -774,10 +777,8 @@ function StarterKeyCard({
   const totalPct = Math.min(100, (k.freeTotalUsed / totalLimit) * 100);
   const exhausted = k.freeTotalUsed >= k.freeTotalLimit;
   const upgraded = isStarterUpgraded(k);
-  const balanceCents = getKeyBalanceCents(k);
-  const loadedCents = k.paidCreditsCents;
-  const usedCents = k.paidCreditsUsedCents;
-  const usedPct = loadedCents > 0 ? Math.min(100, (usedCents / loadedCents) * 100) : 0;
+  const callsRemaining = getKeyCallsRemaining(k);
+  const callsTotal = getKeyCallsTotal(k);
 
   return (
     <div
@@ -919,67 +920,47 @@ function StarterKeyCard({
           />
         </div>
 
-        {/* Balance row — only visible if the key has actual dollar credits.
-            If the key was upgraded via quota increase (backend adds total_limit),
-            we skip this card since the quota bar above already shows the increase.
-            Visually distinct "premium" treatment: gradient border, prominent
-            balance number with glow, segmented progress bar. */}
-        {upgraded && loadedCents > 0 && (
+        {/* Calls remaining card (upgraded only). The Lifetime quota bar above
+            already shows the same data, but a prominent "purchased calls"
+            summary makes it obvious the top-up landed. No more dollar balance
+            here — the new model is "buy calls, pay per call". */}
+        {upgraded && (
           <div className="mt-4 relative rounded-xl overflow-hidden">
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/30 via-indigo-500/20 to-transparent p-px">
               <div className="h-full w-full rounded-[11px] bg-background/95 dark:bg-background/80" />
             </div>
             <div className="relative px-4 py-3.5">
-              <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-md shadow-violet-500/30 shrink-0">
                     <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300 leading-none">
-                      {t('Credit balance', '账户余额')}
+                      {t('Calls remaining', '剩余次数')}
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-1 leading-tight">
-                      {t('Pay-as-you-go after free quota', '免费额度用完后按余额计费')}
+                      {t('Top-ups buy calls — pay per call, no daily cap', '充值即购买调用次数 — 按次扣费，无每日上限')}
                     </div>
                   </div>
                 </div>
                 <div className="text-right tabular-nums shrink-0">
                   <div className="text-[22px] font-bold tracking-[-0.02em] leading-none bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-                    {formatCents(balanceCents)}
+                    {formatCalls(callsRemaining)}
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-1">
-                    {formatCents(usedCents)}
+                    {formatCalls(k.freeTotalUsed)}
                     {t(' used of ', ' 已用 / ')}
-                    {formatCents(loadedCents)}
+                    {formatCalls(callsTotal)}
                   </div>
                 </div>
               </div>
-              {(() => {
-                const remainingPct = Math.max(0, Math.min(100, 100 - usedPct));
-                const low = remainingPct <= 10;
-                const medium = remainingPct <= 30 && remainingPct > 10;
-                return (
-                  <div className="relative h-2 rounded-full bg-muted/60 overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full transition-all duration-500 ease-out',
-                        low
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                          : medium
-                            ? 'bg-gradient-to-r from-violet-500/70 to-indigo-500/70'
-                            : 'bg-gradient-to-r from-violet-500 via-violet-500 to-indigo-500',
-                      )}
-                      style={{ width: `${remainingPct}%` }}
-                    />
-                  </div>
-                );
-              })()}
               <div className="mt-2.5 flex items-start gap-1.5 text-[10px] text-muted-foreground leading-snug">
                 <ShieldCheck className="h-3 w-3 mt-px shrink-0 text-violet-500/70" />
                 <span>
-                  {tx(
-                    'Daily cap is lifted while this key has credits. Usage draws from the free lifetime allowance first, then from your balance.',
+                  {t(
+                    'Daily cap is lifted while this key has purchased calls. Top up any time to add more.',
+                    '只要购买的次数尚未用完，每日限制即解除。可随时充值增加配额。',
                   )}
                 </span>
               </div>
@@ -1093,12 +1074,12 @@ function QuotaBar({
 }
 
 function PaidTableHeader() {
-  const { tx } = useLang();
+  const { t, tx } = useLang();
   return (
     <div className="hidden md:grid grid-cols-[1.4fr_1fr_1.1fr_1.1fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border">
       <div>{tx('Key')}</div>
       <div>{tx('Project')}</div>
-      <div>{tx('Balance')}</div>
+      <div>{t('Calls remaining', '剩余次数')}</div>
       <div>{tx('Limits')}</div>
       <div className="text-right">{tx('Actions')}</div>
     </div>
@@ -1203,18 +1184,20 @@ function PaidKeyRow({
   const isPaused = k.status === 'paused';
   const isEnabled = !isRevoked && !isPaused;
   const tier = getBillingTier(k);
-  const balanceCents = getKeyBalanceCents(k);
-  const totalLoaded = k.paidCreditsCents;
+  const callsRemaining = getKeyCallsRemaining(k);
+  const callsTotal = getKeyCallsTotal(k);
+  const callsUsed = getKeyCallsUsed(k);
   const usedPct =
-    totalLoaded > 0 ? Math.min(100, (k.paidCreditsUsedCents / totalLoaded) * 100) : 0;
+    callsTotal > 0 ? Math.min(100, (callsUsed / callsTotal) * 100) : 0;
+  const remainingPct = Math.max(0, 100 - usedPct);
 
   const hasCap = k.spendCapCents !== null && k.spendCapCents > 0;
   const hasAlert = !!k.lowBalanceAlert?.enabled;
   const capSummary = hasCap
-    ? `${t('Cap', '上限')} ${formatCents(k.spendCapCents ?? 0)}${t('/mo', '/月')}`
+    ? `${t('Cap', '上限')} ${formatCalls(k.spendCapCents ?? 0)}${t(' calls/mo', ' 次/月')}`
     : tx('No cap');
   const alertSummary = hasAlert
-    ? `${t('Alert ≤', '提醒阈值 ≤')} ${formatCents(k.lowBalanceAlert?.thresholdCents ?? 0)}`
+    ? `${t('Alert ≤', '提醒阈值 ≤')} ${formatCalls(k.lowBalanceAlert?.thresholdCents ?? 0)} ${t('calls', '次')}`
     : tx('No alert');
 
   return (
@@ -1289,36 +1272,37 @@ function PaidKeyRow({
         </div>
       </div>
 
-      {/* Balance */}
+      {/* Calls remaining */}
       <div className="min-w-0">
-        {totalLoaded === 0 ? (
+        {callsTotal === 0 ? (
           <div className="text-xs">
-            <div className="font-semibold tabular-nums">$0.00</div>
+            <div className="font-semibold tabular-nums">0</div>
             <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
-              {tx('Top up to activate')}
+              {t('Top up to add calls', '充值添加调用次数')}
             </div>
           </div>
         ) : (
           <>
             <div className="text-sm font-semibold tabular-nums">
-              {formatCents(balanceCents)}
+              {formatCalls(callsRemaining)}
             </div>
             <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
+              {/* Battery-style: bar shows REMAINING, drains as calls are used. */}
               <div
                 className={cn(
                   'h-full transition-all',
-                  usedPct >= 90
+                  remainingPct <= 10
                     ? 'bg-amber-500'
-                    : usedPct >= 70
+                    : remainingPct <= 30
                       ? 'bg-foreground/60'
                       : 'bg-emerald-500/70',
                 )}
-                style={{ width: `${usedPct}%` }}
+                style={{ width: `${remainingPct}%` }}
               />
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
-              {formatCents(k.paidCreditsUsedCents)} {t('used of', '已用 /')}{' '}
-              {formatCents(totalLoaded)}
+              {formatCalls(callsUsed)} {t('used of', '已用 /')}{' '}
+              {formatCalls(callsTotal)}
             </div>
           </>
         )}

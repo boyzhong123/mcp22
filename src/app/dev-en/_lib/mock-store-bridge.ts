@@ -83,13 +83,11 @@ function mapKey(k: RealApiKey): MockApiKey {
   const periodLimit = k.period_limit ?? k.limit?.period_limit ?? 0;
   const totalUsed = k.total_used ?? 0;
   const periodUsed = k.period_used ?? 0;
-  const balanceCents = k.balance_cents ?? 0;
 
-  // 后端没有 is_starter 字段，但按文档规则：
-  // 第一个 Key 有 total_limit=900, period_limit=30（Starter key）
-  // 后续 Key 配额为 0（付费 key）
-  // 所以用启发式判断：有配额的就是 Starter key
-  const isStarter = k.is_starter ?? (totalLimit > 0 && periodLimit > 0);
+  // Heuristic: starter key has both lifetime and per-day caps (the backend
+  // seeds it with total_limit=900, period_limit=30). Paid keys may have a
+  // total_limit (their purchased calls) but no per-day cap.
+  const isStarter = k.is_starter ?? (periodLimit > 0 && totalLimit > 0);
 
   const status: 'active' | 'paused' | 'revoked' = (() => {
     if (k.status === 'paused' || k.status === 'revoked' || k.status === 'active') return k.status;
@@ -109,12 +107,17 @@ function mapKey(k: RealApiKey): MockApiKey {
     lastUsedAt: null,
     status,
     isStarter,
-    freeDailyLimit: isStarter ? periodLimit : 0,
-    freeDailyUsed: isStarter ? periodUsed : 0,
+    // Calls model: every key uses freeTotalLimit/Used as its "calls remaining"
+    // pool. For paid keys, this grows when the user tops up. The legacy
+    // freeDaily* fields stay as the per-day cap (only meaningful for starter).
+    freeDailyLimit: periodLimit,
+    freeDailyUsed: periodUsed,
     freeDailyResetAt: new Date().toISOString().slice(0, 10),
-    freeTotalLimit: isStarter ? totalLimit : 0,
-    freeTotalUsed: isStarter ? totalUsed : 0,
-    paidCreditsCents: isStarter ? 0 : balanceCents,
+    freeTotalLimit: totalLimit,
+    freeTotalUsed: totalUsed,
+    // Dollar-balance model is deprecated. Backend doesn't expose it on this
+    // endpoint and the UI should read calls remaining via getKeyCallsRemaining().
+    paidCreditsCents: 0,
     paidCreditsUsedCents: 0,
     spendCapCents: k.spend_cap_cents ?? null,
     lowBalanceAlert: k.low_balance_alert
@@ -146,6 +149,19 @@ function mapTransaction(t: RealTransaction): MockTransaction {
     ? (t.method as MockTransaction['method'])
     : 'card';
   const kind: TransactionKind = t.kind === 'card-added' ? 'card-added' : 'credit-topup';
+  // Calls model: surface the purchased-call count in the transaction copy
+  // when the backend reports it. Falls back to a generic "Top-up" line so
+  // historical rows (created before the migration) still render sensibly.
+  const purchasedCalls =
+    typeof (t as { calls?: number }).calls === 'number'
+      ? (t as { calls?: number }).calls
+      : undefined;
+  const description =
+    kind === 'card-added'
+      ? 'Card added'
+      : purchasedCalls && purchasedCalls > 0
+        ? `+${purchasedCalls.toLocaleString('en-US')} calls`
+        : `Top-up · ${t.last4 ?? ''}`.trim();
   return {
     id: mockTxId(t.id),
     createdAt: t.created_at,
@@ -153,7 +169,7 @@ function mapTransaction(t: RealTransaction): MockTransaction {
     status,
     method,
     last4: t.last4 ?? '----',
-    description: kind === 'card-added' ? 'Card added' : `Top-up · ${t.last4 ?? ''}`.trim(),
+    description,
     invoiceNumber: t.invoice_number ?? '',
     kind,
     keyId: t.key_id != null ? mockKeyId(t.key_id) : undefined,
@@ -279,15 +295,22 @@ export function installMutationProxy(): void {
     addKeyCreditsCents: (mockId, amountCents) => {
       const id = realKeyId(mockId);
       if (!Number.isFinite(id) || amountCents <= 0) return;
-      // Two-step backend flow: create top-up intent → confirm immediately.
-      // Real Stripe card processing is not wired here — backend simulates
-      // the charge and credits the key. Re-hydration after invalidate('keys')
-      // will refresh the balance from authoritative source.
+      // Legacy entry point — the new top-up flow (calls model) drives the
+      // intent/confirm calls directly from stripe-checkout-modal so we have
+      // the purchased-call count in scope. Keep this for compat: still hits
+      // the backend in case any older path lands here.
       safe(
         billing
           .createTopupIntent({ key_id: id, amount_cents: amountCents, method: 'card' })
           .then((res) => billing.confirmTopup(res.transaction_id)),
       );
+    },
+    addKeyCalls: (_mockId, _calls) => {
+      // No-op proxy — the real top-up call is fired by stripe-checkout-modal
+      // (which knows the purchased call count and the resulting amount_cents).
+      // The local-store mutation already optimistically grew freeTotalLimit;
+      // the modal's billing.confirmTopup() invalidate('keys') triggers a
+      // hydrate so authoritative state lands shortly after.
     },
     updateKeySettings: (mockId, patch) => {
       const id = realKeyId(mockId);

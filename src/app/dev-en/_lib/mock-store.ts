@@ -340,6 +340,7 @@ type MutationProxy = {
     patch: { spendCapCents?: number | null; lowBalanceAlert?: LowBalanceAlert | null },
   ) => void;
   addKeyCreditsCents?: (mockId: string, amountCents: number) => void;
+  addKeyCalls?: (mockId: string, calls: number) => void;
   inviteTeamMember?: (input: { email: string; role: TeamRole; name?: string }) => void;
   updateTeamMemberRole?: (mockId: string, role: TeamRole) => void;
   removeTeamMember?: (mockId: string) => void;
@@ -1039,6 +1040,26 @@ export function updateNotificationSettings(
 }
 
 // ─── Derived helpers ────────────────────────────────────────────────────────
+
+/**
+ * Calls-based billing model (replaces the older $-balance model). Every key —
+ * Starter and paid alike — uses `freeTotalLimit` (total purchased + free
+ * calls) and `freeTotalUsed` (consumed). Top-ups grow `freeTotalLimit`; the
+ * dashboard shows "calls remaining" instead of dollar balances.
+ */
+export function getKeyCallsRemaining(k: ApiKey): number {
+  if (k.status === 'revoked') return 0;
+  return Math.max(0, k.freeTotalLimit - k.freeTotalUsed);
+}
+
+export function getKeyCallsTotal(k: ApiKey): number {
+  return Math.max(0, k.freeTotalLimit);
+}
+
+export function getKeyCallsUsed(k: ApiKey): number {
+  return Math.max(0, k.freeTotalUsed);
+}
+
 /**
  * Classify a key's current billing state. Used across the UI to decide
  * which badges, CTAs, and progress bars to show.
@@ -1049,8 +1070,7 @@ export function getBillingTier(k: ApiKey): BillingTier {
   if (k.isStarter) {
     return k.freeTotalUsed >= k.freeTotalLimit ? 'starter-exhausted' : 'starter';
   }
-  const balance = k.paidCreditsCents - k.paidCreditsUsedCents;
-  return balance > 0 ? 'paid-active' : 'needs-credits';
+  return getKeyCallsRemaining(k) > 0 ? 'paid-active' : 'needs-credits';
 }
 
 /** True if this key is the account's starter/freebie key. */
@@ -1064,8 +1084,10 @@ export function hasFreeAllowance(k: ApiKey): boolean {
 }
 
 /** Remaining balance in cents for a paid key (0 for revoked).
- *  Starter keys start at $0 and, once topped up, behave like paid keys —
- *  their balance is tracked the same way. */
+ *  @deprecated The product moved to a call-quota model — top-ups buy calls,
+ *  not dollars. Most call sites should use `getKeyCallsRemaining(k)` instead.
+ *  Kept for back-compat with a few places that still display the legacy
+ *  paidCredits fields. After full migration this can be removed. */
 export function getKeyBalanceCents(k: ApiKey): number {
   if (k.status === 'revoked') return 0;
   return Math.max(0, k.paidCreditsCents - k.paidCreditsUsedCents);
@@ -1075,14 +1097,13 @@ export function getKeyBalanceCents(k: ApiKey): number {
  *  its daily trial cap and makes it behave like a paid key on top of the
  *  original lifetime free allowance. */
 // Starter key 的初始免费配额
-const STARTER_INITIAL_TOTAL_LIMIT = 900;
+export const STARTER_INITIAL_TOTAL_LIMIT = 900;
 
 export function isStarterUpgraded(k: ApiKey): boolean {
   if (!k.isStarter) return false;
-  // 两种判断方式：
-  // 1. 有美元余额（原余额模式）
-  // 2. 配额被增加过（后端的配额模式：充值 = 增加 total_limit）
-  return k.paidCreditsCents > 0 || k.freeTotalLimit > STARTER_INITIAL_TOTAL_LIMIT;
+  // Calls model: starter is "upgraded" once its lifetime quota grows past
+  // the initial 900 (top-up adds purchased calls to total_limit).
+  return k.freeTotalLimit > STARTER_INITIAL_TOTAL_LIMIT || k.paidCreditsCents > 0;
 }
 
 /**
@@ -1092,8 +1113,7 @@ export function isStarterUpgraded(k: ApiKey): boolean {
  */
 export function isKeyServing(k: ApiKey): boolean {
   if (k.status === 'revoked' || k.status === 'paused') return false;
-  if (k.isStarter) return k.freeTotalUsed < k.freeTotalLimit;
-  return getKeyBalanceCents(k) > 0;
+  return getKeyCallsRemaining(k) > 0;
 }
 
 /**
@@ -1104,10 +1124,13 @@ export function isKeyServing(k: ApiKey): boolean {
 export function isLowBalance(k: ApiKey): boolean {
   if (k.isStarter || k.status === 'revoked') return false;
   if (!k.lowBalanceAlert || !k.lowBalanceAlert.enabled) return false;
-  const balance = getKeyBalanceCents(k);
-  // Only surface as low if there's still SOME balance — a $0 balance is
-  // "needs credits", a stronger state which takes precedence.
-  return balance > 0 && balance <= k.lowBalanceAlert.thresholdCents;
+  // Calls model: re-interpret the threshold as "calls remaining" instead of
+  // dollar balance. The alert structure on the backend hasn't changed yet,
+  // so we treat threshold_cents as a call count (a future migration may
+  // rename the field; for now this is the cleanest UI mapping).
+  const callsLeft = getKeyCallsRemaining(k);
+  const threshold = k.lowBalanceAlert.thresholdCents;
+  return callsLeft > 0 && callsLeft <= threshold;
 }
 
 /**
@@ -1472,6 +1495,48 @@ export function addKeyCreditsCents(id: string, amountCents: number): ApiKey | un
   notify();
   mutationProxy.addKeyCreditsCents?.(id, amountCents);
   return updated;
+}
+
+/**
+ * Add purchased calls to a key (calls billing model). Optimistically grows
+ * `freeTotalLimit` so the UI reflects the top-up immediately; the bridge
+ * re-hydrates from `/api/keys` afterwards to settle the authoritative count.
+ */
+export function addKeyCalls(id: string, calls: number): ApiKey | undefined {
+  seedIfNeeded();
+  const delta = Math.max(0, Math.floor(calls || 0));
+  if (delta === 0) return undefined;
+  let updated: ApiKey | undefined;
+  const next = (cache.keys ?? []).map((k) => {
+    if (k.id !== id) return k;
+    updated = {
+      ...k,
+      freeTotalLimit: k.freeTotalLimit + delta,
+    };
+    return updated;
+  });
+  cache.keys = next;
+  write(STORAGE.keys, next);
+  notify();
+  mutationProxy.addKeyCalls?.(id, delta);
+  return updated;
+}
+
+/** Total calls remaining across every non-revoked key on the account. */
+export function getAccountCallsRemaining(): number {
+  return listKeys().reduce((acc, k) => acc + getKeyCallsRemaining(k), 0);
+}
+
+/** Total calls purchased + free across every non-revoked key. */
+export function getAccountCallsTotal(): number {
+  return listKeys()
+    .filter((k) => k.status !== 'revoked')
+    .reduce((acc, k) => acc + getKeyCallsTotal(k), 0);
+}
+
+/** Format a call count with US thousands separators. */
+export function formatCalls(n: number): string {
+  return Math.max(0, Math.floor(n || 0)).toLocaleString('en-US');
 }
 
 export function setSpendLimitCents(monthlyCapCents: number, warnAtPercents?: number[]): void {

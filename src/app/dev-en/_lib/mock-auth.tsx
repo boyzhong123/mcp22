@@ -31,7 +31,9 @@ interface MockAuthContextType {
   loading: boolean;
   login: (args: LoginArgs) => Promise<MockUser>;
   logout: () => void;
-  updateProfile: (patch: Partial<Pick<MockUser, 'name' | 'avatarUrl' | 'email'>>) => void;
+  updateProfile: (
+    patch: Partial<Pick<MockUser, 'name' | 'avatarUrl' | 'email'>>,
+  ) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export function MockAuthProvider({ children }: { children: ReactNode }) {
@@ -58,8 +60,8 @@ export function useMockAuth(): MockAuthContextType {
       throw new Error('use real auth login flow at /login');
     },
     logout: () => real.logout(),
-    updateProfile: (patch) => {
-      void real.patchProfile({
+    updateProfile: async (patch) => {
+      return real.patchProfile({
         name: patch.name,
         email: patch.email,
         avatar_url: patch.avatarUrl,
