@@ -44,5 +44,9 @@ next-env.d.ts
 # Local Netlify folder
 .netlify
 
+# Local-only Netlify deploy artifacts (kept off the company repo)
+/netlify.toml
+/forwarder/
+
 # Locally uploaded media (handled by backend in production)
 /public/uploads/

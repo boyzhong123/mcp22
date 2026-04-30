@@ -10,12 +10,10 @@
 <div align="center">
 
 <a href="#-quickstart"><img src="https://img.shields.io/badge/▶_Install_in_30_seconds-1a7f37?style=for-the-badge" alt="Install in 30 seconds"/></a>
-<a href="https://chivoxmcp2.netlify.app/global/demo"><img src="https://img.shields.io/badge/🎬_Live_preview-grey?style=for-the-badge" alt="Live preview"/></a>
-<a href="https://chivoxmcp2.netlify.app/global"><img src="https://img.shields.io/badge/🌐_Website-0969da?style=for-the-badge" alt="Website"/></a>
 
 <br/>
 
-<img src="https://img.shields.io/badge/release-v1.1.3-111827?style=flat-square" alt="release"/>
+<img src="https://img.shields.io/badge/release-v1.1.4-111827?style=flat-square" alt="release"/>
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
 <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>
@@ -413,7 +411,7 @@ Honest defaults. Start free with **all 16 tools unlocked** — no feature gates,
   width="100%"
 />
 
-> **Free tier ≠ crippled tier.** Every starter key gets **30 calls/day · 900 calls lifetime** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. When you outgrow it, top up credits and let the volume tiers do the rest. Failed calls are never billed. Full breakdown on the [pricing page →](https://chivoxmcp2.netlify.app/global).
+> **Free tier ≠ crippled tier.** Every starter key gets **30 calls/day · 900 calls lifetime** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. When you outgrow it, top up credits and let the volume tiers do the rest. Failed calls are never billed.
 
 ---
 
@@ -491,9 +489,5 @@ Apache-2.0 © 2026 Suzhou Chivox Information Technology Co., Ltd.
 ---
 
 <div align="center">
-  <sub>Made by <b>Chivox</b> · Since 2011 in speech AI</sub><br/>
-  <a href="https://chivoxmcp2.netlify.app/global">Website</a> ·
-  <a href="https://chivoxmcp2.netlify.app/global/demo">Demo</a> ·
-  <a href="https://chivoxmcp2.netlify.app/global/docs">Docs</a> ·
-  <a href="https://boyzhong123.github.io/mcp22/">Full design preview</a>
+  <sub>Made by <b>Chivox</b> · Since 2011 in speech AI</sub>
 </div>

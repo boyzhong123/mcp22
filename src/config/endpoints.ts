@@ -5,7 +5,7 @@
  *   1. 构建/运行时的环境变量（NEXT_PUBLIC_*）
  *   2. 本文件定义的生产默认值
  *
- * 运维部署时只需要在 Netlify / 自建环境里覆盖 `NEXT_PUBLIC_API_BASE_URL` 等
+ * 运维部署时只需要在部署平台 / 自建环境里覆盖 `NEXT_PUBLIC_API_BASE_URL` 等
  * 变量即可切换后端接口地址，不用改代码。
  *
  * 注意：

@@ -4,20 +4,6 @@
   </a>
 </p>
 
-<p align="center">
-  <a href="https://chivoxmcp2.netlify.app">
-    <img src="https://img.shields.io/badge/🌐_官网_Website-chivoxmcp2.netlify.app-2563EB?style=for-the-badge&logoColor=white" alt="Website" />
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://chivoxmcp2.netlify.app/zh/docs">
-    <img src="https://img.shields.io/badge/📖_文档_Docs-Read_Now-10B981?style=for-the-badge" alt="Docs" />
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://chivoxmcp2.netlify.app/zh/demo">
-    <img src="https://img.shields.io/badge/🎬_Demo-Try_Live-7C3AED?style=for-the-badge" alt="Demo" />
-  </a>
-</p>
-
 <h1 align="center">
   <img src="logo.png" alt="Chivox MCP" height="48" />
 </h1>
@@ -49,7 +35,7 @@ LLM 直接调用这些工具，无需额外开发——拿到**音素级**评测
 
 ## 🚀 三种接入姿势
 
-官网文档根据使用场景定义了三条路径，按需选择 → **[完整文档](https://chivoxmcp2.netlify.app/zh/docs)**
+官网文档根据使用场景定义了三条路径，按需选择。
 
 ---
 
@@ -76,7 +62,7 @@ LLM 直接调用这些工具，无需额外开发——拿到**音素级**评测
 
 支持客户端：Cursor · Claude Desktop · Claude Code · Windsurf · Zed · Continue · 扣子 · 豆包 · 飞书 · 钉钉 · Dify · n8n · Flowise
 
-📌 **[免费获取 API Key →](https://chivoxmcp2.netlify.app/zh/dashboard/keys)**
+📌 **免费获取 API Key**：在驰声开发者控制台注册即可。
 
 ---
 
@@ -228,11 +214,11 @@ response = client.chat.completions.create(
 | **Scale** | 高并发 · 更大折扣 |
 | **Enterprise** | 私有化部署 · 定制 SLA · 7×24 支持 |
 
-→ **[查看套餐详情](https://chivoxmcp2.netlify.app/zh/dashboard/plans)**
+→ **查看套餐详情**：登录开发者控制台查看实时报价。
 
 ---
 
 <p align="center">
   由 <b>驰声科技 Chivox</b> 出品 · Apache-2.0 License<br>
-  <a href="https://chivoxmcp2.netlify.app"><b>chivoxmcp2.netlify.app</b></a> · v1.1.3
+  v1.1.4
 </p>
