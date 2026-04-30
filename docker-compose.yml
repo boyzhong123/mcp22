@@ -1,0 +1,34 @@
+services:
+  web:
+    image: chivoxmcp-global:1.1.1
+    # 也可改成构建：把上一行删掉，启用下面三行
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: chivoxmcp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # —— 必填：后端 API 地址 ——
+      API_BASE_URL: ${API_BASE_URL:-https://fc.cloud.chivox.com/api}
+
+      # —— 选填：SMTP（联系表单） ——
+      SMTP_HOST: ${SMTP_HOST:-smtp.qiye.163.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      # 推荐用 base64 避免 $ 被 shell 展开
+      SMTP_PASS_B64: ${SMTP_PASS_B64:-}
+
+      # —— 选填：Global 入口开关 ——
+      NEXT_PUBLIC_SHOW_GLOBAL_ENTRY: ${NEXT_PUBLIC_SHOW_GLOBAL_ENTRY:-}
+
+      # 监听
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

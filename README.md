@@ -15,7 +15,7 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/release-v1.1.1-111827?style=flat-square" alt="release"/>
+<img src="https://img.shields.io/badge/release-v1.1.2-111827?style=flat-square" alt="release"/>
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
 <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>
@@ -32,6 +32,8 @@
 ---
 
 > **TL;DR** — **LLMs can't hear audio. Chivox MCP gives them ears: one tool call returns `overall / accuracy / fluency / phonemes[]` — a structured JSON your model can reason over directly. No SDK wrapping, no feature extraction, no glue code.**
+
+> 🛠️ **For ops / engineers running this repo:** see [`docs/deploy/README.md`](./docs/deploy/README.md) for the deployment guide, or paste [`docs/deploy/quickstart-prompt.md`](./docs/deploy/quickstart-prompt.md) into Cursor / Claude / Codex to spin up a local preview in ~30 seconds.
 
 ---
 

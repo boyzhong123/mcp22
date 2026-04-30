@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Local Netlify folder
 .netlify
+
+# Locally uploaded media (handled by backend in production)
+/public/uploads/
