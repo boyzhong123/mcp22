@@ -1,5 +1,9 @@
 # Contact Email Forwarder (SMTP relay)
 
+> ⚠️ **仅供 Netlify / Vercel 等海外 Serverless 平台使用。**
+> 公司内部 / 自建机房部署本仓库时**不需要这个目录**，可以直接忽略 ——
+> 内网环境下后端进程能直连 SMTP，无需中转。
+
 Netlify Functions often cannot reliably connect to outbound SMTP (465/587). This tiny service receives the contact-form payload from Netlify, verifies an HMAC signature, then sends email via your existing 163 SMTP (`smtp.qiye.163.com:465`).
 
 ## Run

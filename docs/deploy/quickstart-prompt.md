@@ -72,7 +72,7 @@ npm run dev
 | 你以为 | 实际 |
 |---|---|
 | `npm install` | ❌ 可能装出与 lockfile 不一致的依赖。**必须 `npm ci`**。 |
-| 不加 `--legacy-peer-deps` | ❌ peer dep 冲突直接装失败。Netlify 也是这么配的。 |
+| 不加 `--legacy-peer-deps` | ❌ peer dep 冲突直接装失败，必须加。 |
 | `npm start` 看效果 | ❌ `npm start` 等于 `next start`，没 build 就报错。**预览用 `npm run dev`**。 |
 | 不配 `API_BASE_URL` | ❌ 所有 `/api/*` 接口走默认内网地址，本地必然 502。 |
 
