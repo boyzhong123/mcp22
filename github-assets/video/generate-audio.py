@@ -58,8 +58,8 @@ SUBTITLE_PAIRS: list[tuple[str, str]] = [
         "一套 MCP 覆盖全场景。雅思口语备考、K12 课程、普通话水平测试、儿童自然拼读和启蒙、一对一辅导、飞书钉钉 IM 机器人、播客质检、以及 Dify、n8n 等整个开发者生态。准备好开始了吗？",
     ),
     (
-        "Getting started is simple. One line of config, instant integration. Behind this: twenty years of exam-grade speech engines, serving one hundred eighty-five countries, ten billion users, and ninety-five percent alignment with human experts. Visit chivox M C P two dot netlify dot app. Ship your voice-enabled AI product today.",
-        "开始很简单。一行配置，即刻接入。背后是：20 年考试级语音引擎，服务 185 个国家、100 亿用户，与人类专家 95%+ 一致性。访问 chivoxmcp2.netlify.app。今天就发布你的语音 AI 产品。",
+        "Getting started is simple. One line of config, instant integration. Behind this: twenty years of exam-grade speech engines, serving one hundred eighty-five countries, ten billion users, and ninety-five percent alignment with human experts. Visit the Chivox developer portal. Ship your voice-enabled AI product today.",
+        "开始很简单。一行配置，即刻接入。背后是：20 年考试级语音引擎，服务 185 个国家、100 亿用户，与人类专家 95%+ 一致性。访问 Chivox MCP。今天就发布你的语音 AI 产品。",
     ),
 ]
 

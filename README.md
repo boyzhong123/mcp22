@@ -13,7 +13,7 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/release-v1.1.4-111827?style=flat-square" alt="release"/>
+<img src="https://img.shields.io/badge/release-v1.1.5-111827?style=flat-square" alt="release"/>
 <img src="https://img.shields.io/npm/v/@chivox/mcp?style=flat-square&logo=npm&logoColor=white&color=cb3837" alt="npm"/>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="license"/>
 <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="mcp"/>

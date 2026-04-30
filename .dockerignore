@@ -14,7 +14,6 @@ dist
 npm-debug.log*
 yarn-debug.log*
 .pnpm-debug.log*
-.netlify
 github-assets
 docs/images
 public/uploads

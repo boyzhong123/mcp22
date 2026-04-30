@@ -41,12 +41,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Local Netlify folder
+# Personal preview tooling (kept off the company repo)
 .netlify
-
-# Local-only Netlify deploy artifacts (kept off the company repo)
 /netlify.toml
 /forwarder/
+/deno.lock
 
 # Locally uploaded media (handled by backend in production)
 /public/uploads/

@@ -11,7 +11,7 @@
 #   ├── package.json
 #   ├── node_modules/     运行时依赖
 #   ├── .next/            构建好的服务器代码
-#   ├── public/           静态资源（含 uploads/ 头像目录）
+#   ├── public/           静态资源（前端无状态，头像走后端 API）
 #   ├── .next/static/     被 server.js 注入的客户端静态资源
 #   ├── run.sh            启动脚本（运维直接执行）
 #   └── ENV.example       环境变量样例（运维按需复制为 .env）

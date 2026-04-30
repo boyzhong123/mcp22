@@ -220,5 +220,5 @@ response = client.chat.completions.create(
 
 <p align="center">
   由 <b>驰声科技 Chivox</b> 出品 · Apache-2.0 License<br>
-  v1.1.4
+  v1.1.5
 </p>

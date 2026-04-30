@@ -336,8 +336,8 @@ window.__CHIVOX_VOICE_MANIFEST__ = {
         },
         {
           "file": "slide7_s03.mp3",
-          "en": "Visit chivox M C P two dot netlify dot app.",
-          "zh": "访问 chivoxmcp2.netlify.app。",
+          "en": "Visit the Chivox developer portal.",
+          "zh": "访问 Chivox MCP。",
           "durationMs": 4872
         },
         {

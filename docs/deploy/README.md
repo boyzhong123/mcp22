@@ -1,6 +1,6 @@
 # Chivox MCP 官网 · 运维部署文档
 
-> 适用版本：`v1.1.2+`
+> 适用版本：`v1.1.5+`
 > 适用环境：CentOS 7+ / Ubuntu 20.04+ / 任意 Linux 服务器或 Docker 主机
 
 ---
@@ -36,7 +36,7 @@
 | Docker | ≥ 20.10 |
 | docker compose | v2（`docker compose ...` 而非 `docker-compose`） |
 | 内存 | ≥ 1 GB（构建时建议 ≥ 2 GB） |
-| 磁盘 | ≥ 2 GB（含镜像与上传目录） |
+| 磁盘 | ≥ 2 GB（镜像本身约 300 MB） |
 | 出网 | 拉取 `node:20-alpine` 镜像 + 调用后端 API |
 
 ### 1.2 部署步骤
@@ -45,7 +45,7 @@
 
 ```bash
 # 1) 拉镜像（如使用内网 harbor 请改 tag 前缀）
-docker pull <镜像仓库>/chivoxmcp-global:1.1.1
+docker pull <镜像仓库>/chivoxmcp-global:1.1.5
 
 # 2) 准备目录
 mkdir -p /data/chivoxmcp
@@ -56,7 +56,7 @@ cat > .env <<'EOF'
 API_BASE_URL=https://fc.cloud.chivox.com/api
 SMTP_HOST=smtp.qiye.163.com
 SMTP_PORT=465
-SMTP_USER=sales@chivox.com
+SMTP_USER=BD@chivox.com
 SMTP_PASS_B64=<base64 后的授权码>
 EOF
 
@@ -65,7 +65,7 @@ docker run -d --name chivoxmcp \
   --restart unless-stopped \
   -p 3000:3000 \
   --env-file ./.env \
-  <镜像仓库>/chivoxmcp-global:1.1.1
+  <镜像仓库>/chivoxmcp-global:1.1.5
 ```
 
 > 本服务**不写本地磁盘**（无状态），无需挂卷；所有用户数据由后端 API 负责。
@@ -78,14 +78,14 @@ git clone https://git.chivox.com/zhongxuesheng/chivoxmcp-global.git
 cd chivoxmcp-global
 
 # 2) 构建本地镜像
-docker build -t chivoxmcp-global:1.1.1 .
+docker build -t chivoxmcp-global:1.1.5 .
 
 # 3) （可选）创建 .env 覆盖默认值
 cat > .env <<'EOF'
 API_BASE_URL=https://fc.cloud.chivox.com/api
 SMTP_HOST=smtp.qiye.163.com
 SMTP_PORT=465
-SMTP_USER=sales@chivox.com
+SMTP_USER=BD@chivox.com
 SMTP_PASS_B64=<base64 授权码>
 EOF
 
@@ -97,7 +97,7 @@ docker compose logs -f web   # 实时查看日志
 ### 1.3 升级版本
 
 ```bash
-docker pull <镜像仓库>/chivoxmcp-global:1.1.2   # 新版本号
+docker pull <镜像仓库>/chivoxmcp-global:1.1.6   # 新版本号
 docker rm -f chivoxmcp
 docker run -d ...                              # 用同样的命令再起一次
 ```
@@ -154,7 +154,7 @@ ls -lh chivoxmcp-global-*.tar.gz
 ```bash
 # 1) 解压
 sudo mkdir -p /opt/chivoxmcp && cd /opt/chivoxmcp
-sudo tar -xzf /path/to/chivoxmcp-global-1.1.1-202604300000.tar.gz
+sudo tar -xzf /path/to/chivoxmcp-global-1.1.5-202604300000.tar.gz
 
 # 2) 配置环境变量
 sudo cp ENV.example .env
