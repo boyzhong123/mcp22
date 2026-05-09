@@ -1,30 +1,22 @@
+'use client';
+
 import type { ReactNode } from 'react';
-import { SectionTabs, type SectionTab } from '../../_components/section-tabs';
+import { Bell } from 'lucide-react';
+import { PageHeader } from '../../_components/page-header';
 
-const TABS: SectionTab[] = [
-  {
-    href: '/dashboard/settings',
-    label: 'Notifications',
-    zhLabel: '通知',
-    description:
-      'Choose which emails reach you. Critical security alerts always fire and cannot be disabled.',
-    zhDescription:
-      '选择接收哪些邮件。重要安全告警始终开启，无法关闭。',
-  },
-  {
-    href: '/dashboard/settings/members',
-    label: 'Members',
-    zhLabel: '团队成员',
-    description:
-      'Invite teammates to share keys, usage dashboards and billing. Roles control what each member can do.',
-    zhDescription: '邀请成员共享密钥、用量数据与账单。通过角色控制权限。',
-  },
-];
-
+// Single-purpose surface today: notification preferences. The previous
+// SectionTabs scaffolding (Notifications + Members) collapsed once the
+// console went single-seat — when multi-seat lands we'll restore tabs.
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
-    <div>
-      <SectionTabs title="Settings" zhTitle="设置" tabs={TABS} />
+    <div className="space-y-6">
+      <PageHeader
+        icon={Bell}
+        title="Settings"
+        zhTitle="设置"
+        description="Email preferences and account-level low-balance alert. Personal info lives on your profile."
+        zhDescription="邮件提醒偏好以及账户级余额不足提醒。个人资料请前往个人资料页。"
+      />
       {children}
     </div>
   );

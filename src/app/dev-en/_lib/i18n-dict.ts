@@ -221,6 +221,13 @@ export const DICT: Record<string, string> = {
   'Monthly spend cap': '月度消费上限',
   'Low-balance alert': '低余额提醒',
   'No spend cap': '未设上限',
+  'No call cap': '无调用上限',
+  'Call cap': '调用上限',
+  'Unlimited': '不限制',
+  'per day': '每日',
+  'Currently': '当前',
+  'month': '月',
+  'day': '日',
   'No low-balance alert': '未设低余额提醒',
   'No cap': '未设上限',
   'No alert': '未设提醒',
@@ -504,7 +511,7 @@ export const DICT: Record<string, string> = {
   'Total paid': '累计支付',
   'Total transactions': '累计交易',
   'Latest top-up': '最近一次充值',
-  'Recent top-ups': '最近充值',
+  'Recent top-ups': '近期充值',
   'Monthly spend limit': '月度消费上限',
   'Monthly spend limit (USD)': '月度消费上限（USD）',
   'Monthly cap enforced across all your API keys':
@@ -733,6 +740,33 @@ export const DICT: Record<string, string> = {
   'Choose a project and key, then pay': '选择项目与 key，再支付',
   '. Start a top-up from the Billing or API Keys page.':
     '。请从账单页或 API 密钥页开始充值。',
+
+  // ── Onboarding tour ─────────────────────────────────────────────────────
+  'Product tour': '产品引导',
+  Step: '步骤',
+  'Skip tour': '跳过引导',
+  'Close tour': '关闭引导',
+  'Welcome to Chivox MCP': '欢迎使用 Chivox MCP',
+  "Quick 7-step tour of your developer console — we'll show you where everything lives. You can skip at any time.":
+    '7 步快速了解开发者控制台，随时可以跳过。',
+  'Overview — your daily snapshot': '概览 — 每日用量速览',
+  'See total calls this month, account alerts, recent activity, and quick links to common actions.':
+    '查看本月累计调用次数、账号告警、最近动态，以及常用操作的快捷入口。',
+  'API Keys — create & manage keys': 'API 密钥 — 创建与管理 Key',
+  'Your Starter key is free (30 calls/day, 900 lifetime). Create paid keys for production traffic and set per-key call limits.':
+    '免费 Starter Key（每日 30 次，终身 900 次）。创建付费 Key 用于生产流量，支持独立设置用量上限。',
+  'Usage — call charts & breakdowns': '用量 — 调用趋势与明细',
+  'View daily call charts, filter by key or date range, and track error rates and latency over time.':
+    '查看每日调用曲线，可按 Key 或时间段过滤，跟踪错误率与延迟趋势。',
+  'Billing — top up calls & invoices': '账单 — 充值次数与发票',
+  'Top up API calls with tiered pricing: 1k+ calls saves 25%, 10k+ saves 50%. View transaction history and download invoices.':
+    '按阶梯价充值次数：满 1,000 次省 25%，满 10,000 次省 50%。查看充值记录并下载发票。',
+  'Settings — team, profile & notifications': '设置 — 团队、资料与通知',
+  'Invite teammates, update your profile and avatar, manage notification preferences and webhook endpoints.':
+    '邀请团队成员、更新个人资料与头像、管理通知偏好和 Webhook 端点。',
+  'API Docs — MCP spec & quickstart': 'API 文档 — MCP 规范与快速上手',
+  'Full MCP spec, quickstart guides, error code reference, and SDK examples. Opens in the same tab with a back button.':
+    '完整 MCP 规范、快速上手指南、错误码参考与 SDK 示例，点左上角返回键回到控制台。',
 };
 
 function normalizeI18nKey(input: string): string {

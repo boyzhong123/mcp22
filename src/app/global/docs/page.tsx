@@ -397,7 +397,7 @@ function DocsHeader() {
               Live demo
             </Link>
             <a
-              href="https://github.com/"
+              href="https://github.com/boyzhong123/mcp22"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 hover:text-zinc-900 hover:bg-zinc-900/[0.04] transition-colors"
@@ -473,7 +473,7 @@ function DocsHero() {
           Try the live demo
         </Link>
         <a
-          href="https://github.com/"
+          href="https://github.com/boyzhong123/mcp22"
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1.5 h-11 px-4 text-sm font-medium rounded-full text-zinc-700 hover:text-zinc-900 transition-colors"
@@ -1977,7 +1977,7 @@ function DocsFooter() {
             BD@chivox.com
           </a>
           <a
-            href="https://github.com/"
+            href="https://github.com/boyzhong123/mcp22"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 hover:text-zinc-900 transition-colors"

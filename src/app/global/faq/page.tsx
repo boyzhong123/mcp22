@@ -4,7 +4,6 @@ import { FadeUp } from '@/components/animated-section';
 import {
   AmbientBackdrop,
   BackToOverview,
-  ContactSection,
   SiteFooter,
   TopNav,
 } from '../_chrome';
@@ -76,7 +75,6 @@ export default function GlobalFaqPage() {
         </div>
       </section>
 
-      <ContactSection />
       <SiteFooter />
     </div>
   );

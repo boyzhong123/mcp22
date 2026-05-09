@@ -72,7 +72,6 @@ export function DevEnCommandPalette() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
-  const [addCreditsKeyId, setAddCreditsKeyId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -81,9 +80,10 @@ export function DevEnCommandPalette() {
     router.push(href);
   };
 
-  const openAddCredits = (kid?: string) => {
+  // Wallet model: every "Add credits" entry point opens the modal in
+  // account-level top-up mode — no per-key choice required.
+  const openAddCredits = () => {
     closePalette();
-    setAddCreditsKeyId(kid ?? null);
     setAddCreditsOpen(true);
   };
 
@@ -157,14 +157,6 @@ export function DevEnCommandPalette() {
         run: () => go('/dashboard/settings'),
       },
       {
-        id: 'nav:members',
-        section: 'Navigation',
-        label: t('Go to Settings · Members', '前往 设置 · 团队成员'),
-        icon: Users,
-        keywords: 'team invite roles',
-        run: () => go('/dashboard/settings/members'),
-      },
-      {
         id: 'nav:docs',
         section: 'Navigation',
         label: t('Open API Docs', '打开 API 文档'),
@@ -196,11 +188,10 @@ export function DevEnCommandPalette() {
       {
         id: 'act:spend-limit',
         section: 'Actions',
-        label: t('Adjust spend limit', '调整支出上限'),
+        label: t('Adjust spend & call limits', '调整调用 / 消费上限'),
         icon: CreditCard,
-        keywords: 'cap monthly safety',
-        run: () =>
-          go('/dashboard/billing?edit=spend-limit#spend-limit'),
+        keywords: 'cap monthly safety daily limits throttle',
+        run: () => go('/dashboard/limits'),
       },
       {
         id: 'act:theme',
@@ -231,25 +222,10 @@ export function DevEnCommandPalette() {
         id: `key:${k.id}`,
         section: 'Keys',
         label: `${k.name} · ${keyLast4(k.secret)}`,
-        hint: t(
-          `${k.env === 'production' ? 'Prod' : 'Dev'} · view on Keys page`,
-          `${k.env === 'production' ? '生产' : '开发'} · 在密钥页查看`,
-        ),
+        hint: t('View on Keys page', '在密钥页查看'),
         icon: Key,
-        keywords: `${k.secret} ${k.env} ${keyLast4(k.secret)}`,
+        keywords: `${k.secret} ${keyLast4(k.secret)}`,
         run: () => go('/dashboard/keys'),
-      });
-      keyItems.push({
-        id: `key:${k.id}:add-credits`,
-        section: 'Keys',
-        label: t(
-          `Add credits to ${k.name}`,
-          `为 ${k.name} 充值`,
-        ),
-        hint: keyLast4(k.secret),
-        icon: Plus,
-        keywords: `${k.secret} topup recharge ${keyLast4(k.secret)}`,
-        run: () => openAddCredits(k.id),
       });
     }
 
@@ -521,7 +497,6 @@ export function DevEnCommandPalette() {
         open={addCreditsOpen}
         onClose={() => setAddCreditsOpen(false)}
         mode="add-credits"
-        keyId={addCreditsKeyId ?? undefined}
       />
     </>
   );

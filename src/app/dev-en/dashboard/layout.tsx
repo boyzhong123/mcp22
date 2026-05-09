@@ -8,6 +8,7 @@ import { DevEnSidebar } from '../_components/sidebar';
 import { DevEnTopBar } from '../_components/topbar';
 import { DevEnCommandPalette } from '../_components/command-palette';
 import { DataHydrator } from '../_components/data-hydrator';
+import { OnboardingTour } from '../_components/onboarding-tour';
 import { useUi } from '../_lib/use-ui-store';
 
 export default function DevEnDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -56,6 +57,7 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
       </main>
       <DevEnCommandPalette />
       <DataHydrator />
+      <OnboardingTour />
     </div>
   );
 }

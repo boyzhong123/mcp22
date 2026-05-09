@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowRight, AudioWaveform, Check, Eye, EyeOff, KeyRound, Mail } from 'lucide-react';
+import { ArrowRight, AudioWaveform, Check, Eye, EyeOff, KeyRound, Mail, Play } from 'lucide-react';
 import { useAuth } from '../_lib/auth-context';
 import { useLang } from '../_lib/use-lang';
 import { OAuthButtons } from '../_components/oauth-buttons';
@@ -14,7 +14,7 @@ type Mode = 'password' | 'otp';
 
 export default function DevEnLoginPage() {
   const router = useRouter();
-  const { user, loginWithPassword, sendOtp, verifyOtp } = useAuth();
+  const { user, loginWithPassword, sendOtp, verifyOtp, loginAsDemo } = useAuth();
   const { t, tx } = useLang();
 
   const [mode, setMode] = useState<Mode>('password');
@@ -178,6 +178,22 @@ export default function DevEnLoginPage() {
               {tx('Welcome back, developer.')}
             </p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              loginAsDemo();
+              router.push('/dashboard/overview');
+            }}
+            className="group w-full h-11 text-sm font-semibold rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 active:brightness-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 mb-4"
+          >
+            <Play className="h-4 w-4" />
+            {t('Try Demo Account', '体验账号登录')}
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </button>
+          <p className="text-[11px] text-center text-muted-foreground mb-4">
+            {t('No registration required. Explore with sample data.', '无需注册，使用样例数据探索功能。')}
+          </p>
 
           <OAuthButtons />
 

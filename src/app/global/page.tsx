@@ -9,6 +9,8 @@ import {
   BookOpen,
   Check,
   Copy,
+  ChevronDown,
+  ChevronUp,
   Mail,
   MessageSquareText,
   Sparkles,
@@ -18,7 +20,6 @@ import {
   Bot,
   Baby,
   GraduationCap,
-  Globe2,
   Zap,
   Mic2,
   ShieldCheck,
@@ -31,7 +32,6 @@ import { FadeUp, StaggerContainer, StaggerItem, CountUp } from '@/components/ani
 import {
   TopNav,
   SiteFooter,
-  ContactSection,
   AmbientBackdrop,
   SAMPLE_MCP_RICH_JSON,
 } from './_chrome';
@@ -262,7 +262,19 @@ const USE_CASES: {
 ];
 
 /* ── benchmarks ──────────────────────────────────────────── */
-const BENCHMARK_TABS = [
+type BenchmarkTab = {
+  id: string;
+  label: string;
+  metric: string;
+  metricLabel: string;
+  body: string;
+  chart: string;
+  subStats: { value: string; label: string }[];
+  bullets: string[];
+  footnote: string;
+};
+
+const BENCHMARK_TABS: BenchmarkTab[] = [
   {
     id: 'correlation',
     label: 'Expert correlation',
@@ -271,6 +283,17 @@ const BENCHMARK_TABS = [
     body:
       'Scores align with certified human expert rubrics at 95%+ correlation. Validated by national standardized speaking tests in 100+ cities.',
     chart: 'correlation',
+    subStats: [
+      { value: '0.95+', label: 'Pearson r vs experts' },
+      { value: '<2 pts', label: 'Mean absolute error' },
+      { value: '500K+', label: 'Calibration utterances' },
+    ],
+    bullets: [
+      'Per-dimension rubrics: pron, fluency, completeness, prosody.',
+      'Calibration corpus refreshed quarterly across L1/L2 cohorts.',
+      'Stable across mic quality, room noise and child voices.',
+    ],
+    footnote: 'Validated against national speaking-test rubrics · ISO/IEC 17025-aligned labs',
   },
   {
     id: 'latency',
@@ -280,6 +303,17 @@ const BENCHMARK_TABS = [
     body:
       'Streaming WebSocket sessions return multi-dimensional scores in a few hundred milliseconds after end-of-speech. Perfect for real-time tutoring UX.',
     chart: 'latency',
+    subStats: [
+      { value: '180 ms', label: 'p50 end-of-speech → JSON' },
+      { value: '<500 ms', label: 'p95 same region' },
+      { value: '6 regions', label: 'Edge POPs worldwide' },
+    ],
+    bullets: [
+      'Streaming WebSocket with partial scores while speaking.',
+      'Same-region P95 under half a second — built for live UX.',
+      'Backpressure-aware client SDKs in JS, Python, Swift, Kotlin.',
+    ],
+    footnote: 'Measured over 30-day rolling production traffic · last refreshed weekly',
   },
   {
     id: 'coverage',
@@ -289,6 +323,17 @@ const BENCHMARK_TABS = [
     body:
       'One integration covers every stage of your learner journey — from single-word phonics to open-ended conversation.',
     chart: 'coverage',
+    subStats: [
+      { value: '60+', label: 'Phonemes scored' },
+      { value: 'HSK 1–9', label: 'Mandarin lexical depth' },
+      { value: 'CEFR A1–C2', label: 'English proficiency range' },
+    ],
+    bullets: [
+      'Same payload contract across every task type.',
+      'Children, teens, adults — acoustically tuned per cohort.',
+      'AI-Talk turn-taking metrics for open-ended dialog drills.',
+    ],
+    footnote: 'Aligned to CEFR descriptors and HSK 3.0 vocabulary lists',
   },
   {
     id: 'scale',
@@ -298,6 +343,17 @@ const BENCHMARK_TABS = [
     body:
       'Production traffic serving ministries, test centers, and consumer apps, with 99.99% uptime SLA on enterprise plans.',
     chart: 'scale',
+    subStats: [
+      { value: '99.99%', label: 'Enterprise uptime SLA' },
+      { value: '20 yrs', label: 'Speech-AI research' },
+      { value: '14+', label: 'Granted patents' },
+    ],
+    bullets: [
+      'Trusted by national testing centers and consumer apps.',
+      'Privacy-first retention: configurable TTL, EU residency option.',
+      'SOC 2 Type II controls in flight; GDPR-friendly defaults.',
+    ],
+    footnote: '2024 production volume · ministry, test-center and consumer deployments',
   },
 ];
 
@@ -481,16 +537,20 @@ export default function GlobalLandingPage() {
             </FadeUp>
           </div>
 
-          {/* prominent install terminal — centered below, spans content width */}
-          <FadeUp delay={0.32}>
-            <div className="mt-12 md:mt-14">
-              <HeroInstallPill />
-            </div>
-          </FadeUp>
-
-          {/* deep-dive carousel — below the fold */}
+          {/* deep-dive carousel — below the fold.
+           * Soft gradient hairline + centered eyebrow acts as a section
+           * separator without the harshness of a plain <hr>. */}
           <FadeUp delay={0.4}>
-            <div className="mt-20 max-w-6xl xl:max-w-7xl mx-auto">
+            <div className="mt-16 md:mt-20 max-w-6xl xl:max-w-7xl mx-auto">
+              <div className="flex items-center gap-4 mb-8 md:mb-10">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-foreground/12 to-foreground/15" />
+                <span className="inline-flex items-center gap-2 text-[10.5px] font-mono uppercase tracking-[0.22em] text-muted-foreground whitespace-nowrap">
+                  <span className="h-1 w-1 rounded-full bg-foreground/35" />
+                  /highlights
+                  <span className="text-foreground/30 normal-case tracking-normal">5 frames</span>
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-l from-transparent via-foreground/12 to-foreground/15" />
+              </div>
               <HeroCarousel />
             </div>
           </FadeUp>
@@ -500,8 +560,8 @@ export default function GlobalLandingPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        * CORE CAPABILITIES — what the MCP can do, in 4 tiles
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative py-16 md:py-20 border-b border-[#e9e2d2]/70">
-        <div className="container mx-auto px-6 max-w-6xl">
+      <section id="capabilities" className="relative py-16 md:py-20 border-b border-[#e9e2d2]/70 scroll-mt-24">
+        <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl">
           <FadeUp className="mb-10 text-center max-w-2xl mx-auto">
             <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/what-it-does</div>
             <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3">
@@ -575,10 +635,125 @@ export default function GlobalLandingPage() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       * QUICKSTART — 3 steps, dead simple
+       * PROOF — combined depth (Mandarin) + scale (research benchmarks)
+       * Comes BEFORE Quickstart so we earn credibility before asking
+       * the reader to install anything. Two halves of the same
+       * credibility story on a single screen.
+       * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        id="proof"
+        className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 warm-card-bleed scroll-mt-24"
+      >
+        <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl relative">
+          <FadeUp className="mb-8 max-w-2xl">
+            <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
+              /proof
+            </div>
+            <h2 className="heading-display text-3xl md:text-[38px] tracking-[-0.02em] mb-3 leading-[1.12]">
+              Mandarin depth, production scale &mdash; same payload.
+            </h2>
+            <p className="text-muted-foreground leading-relaxed text-[15px]">
+              Toggle zh / en to see the same{' '}
+              <span className="font-mono text-foreground/80">pron.*</span> /{' '}
+              <span className="font-mono text-foreground/80">details[]</span> contract. Benchmarks on the
+              right are live numbers you can sanity-check against your own eval harness.
+            </p>
+          </FadeUp>
+
+          {/* ── two-column proof grid: depth (Mandarin panel) | scale (benchmarks) ── */}
+          <div className="grid lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT — Depth */}
+            <div className="lg:col-span-7 flex flex-col gap-5">
+              <FadeUp delay={0.1}>
+                <BilingualScorePanel />
+              </FadeUp>
+            </div>
+
+            {/* RIGHT — Scale (benchmarks) */}
+            <div className="lg:col-span-5">
+              <FadeUp delay={0.12}>
+                <div className="flex gap-1 overflow-x-auto mb-3 -mx-1 px-1">
+                  {BENCHMARK_TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setBenchmark(t.id)}
+                      className={`relative text-left px-3 py-2 rounded-lg text-[12.5px] whitespace-nowrap transition-all ${
+                        t.id === benchmark
+                          ? 'bg-background text-foreground border border-border/60 shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-background/60 border border-transparent'
+                      }`}
+                    >
+                      <span className="font-medium">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-background p-6 md:p-7">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="min-w-0">
+                      <div className="text-4xl md:text-5xl heading-display tracking-[-0.03em] leading-none mb-2">
+                        {activeBench.metric}
+                      </div>
+                      <div className="text-[12.5px] text-muted-foreground">{activeBench.metricLabel}</div>
+                    </div>
+                    <BenchmarkMicroChart id={activeBench.chart} />
+                  </div>
+
+                  <p className="text-[13.5px] text-foreground/85 leading-relaxed">
+                    {activeBench.body}
+                  </p>
+
+                  {/* sub-stats row — three small tiles */}
+                  <div className="mt-5 grid grid-cols-3 gap-2.5">
+                    {activeBench.subStats.map((s) => (
+                      <div
+                        key={s.label}
+                        className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5"
+                      >
+                        <div className="text-[15px] font-semibold tracking-[-0.01em] tabular-nums leading-tight">
+                          {s.value}
+                        </div>
+                        <div className="mt-1 text-[10.5px] text-muted-foreground leading-snug">
+                          {s.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* proof bullets */}
+                  <ul className="mt-5 space-y-2">
+                    {activeBench.bullets.map((b) => (
+                      <li
+                        key={b}
+                        className="flex items-start gap-2 text-[12.5px] text-foreground/85 leading-relaxed"
+                      >
+                        <Check className="h-3.5 w-3.5 mt-[3px] text-emerald-600 shrink-0" strokeWidth={3} />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* footnote — source / verification line */}
+                  <div className="mt-5 pt-4 border-t border-border/60 flex items-start gap-2 text-[11px] text-muted-foreground leading-relaxed">
+                    <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-emerald-500/60 shrink-0" />
+                    <span>{activeBench.footnote}</span>
+                  </div>
+                </div>
+              </FadeUp>
+            </div>
+          </div>
+
+          {/* Scale + trust proof points live in the hero carousel now. */}
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       * QUICKSTART — 3 steps, dead simple. Sits AFTER /proof so the
+       * reader has already seen the credibility story by the time we
+       * hand them an install command.
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section id="quickstart" className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 scroll-mt-24">
-        <div className="container mx-auto px-6 max-w-6xl">
+        <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl">
           <FadeUp className="mb-12 text-center">
             <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/quickstart</div>
             <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3">
@@ -607,121 +782,10 @@ export default function GlobalLandingPage() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       * MANDARIN DEPTH — concrete proof the payload resolves the
-       * hardest acoustic signals. Technical proof, not market sell.
-       * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section
-        id="mandarin-moat"
-        className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 scroll-mt-24"
-      >
-        <div className="container mx-auto px-6 max-w-6xl">
-          <FadeUp className="mb-6 max-w-3xl">
-            <div className="inline-flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
-              <span>/payload-depth</span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[9px] font-mono text-rose-600 dark:text-rose-400 normal-case tracking-normal">
-                <span className="h-1 w-1 rounded-full bg-rose-500" />
-                Depth proof
-              </span>
-            </div>
-            <h2 className="heading-display text-3xl md:text-[42px] tracking-[-0.02em] mb-3 leading-[1.1]">
-              Mandarin is where the payload proves itself.
-              <br />
-              <span className="text-muted-foreground/90">If it resolves tonal sandhi, it resolves anything.</span>
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              English handles the long tail of L2 learners. Mandarin is the pressure test &mdash; four tones,
-              sandhi, erhua, retroflex, the acoustic edge cases that kill generic STT. Both ship as{' '}
-              <span className="font-mono text-foreground/80">pron.*</span> /{' '}
-              <span className="font-mono text-foreground/80">details[]</span> on the same payload contract,
-              with tone objects and per-phoneme windows for zh, stress and CEFR alignment for en. One
-              integration, two acoustically opposite languages.
-            </p>
-          </FadeUp>
-
-          {/* ── coverage proof strip — capability chips, no market TAM ── */}
-          <FadeUp delay={0.06}>
-            <div className="mb-8 rounded-xl border border-rose-500/15 bg-gradient-to-r from-rose-50/70 via-amber-50/50 to-rose-50/30 px-4 md:px-5 py-3.5 flex flex-col md:flex-row md:items-center gap-3 md:gap-5">
-              <div className="inline-flex items-center gap-1.5 shrink-0">
-                <Globe2 className="h-3.5 w-3.5 text-rose-600" />
-                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-rose-700/90">
-                  Mandarin depth
-                </span>
-              </div>
-              <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1.5 flex-1 min-w-0">
-                <span className="inline-flex items-baseline gap-1.5">
-                  <span className="heading-display text-[17px] md:text-[19px] tabular-nums tracking-[-0.02em] text-rose-700">
-                    HSK 1-9
-                  </span>
-                  <span className="text-[12.5px] text-foreground/75">
-                    lexical ladder covered
-                  </span>
-                </span>
-                <span className="hidden md:inline-block h-3 w-px bg-rose-500/25" />
-                <span className="inline-flex items-baseline gap-1.5">
-                  <span className="heading-display text-[17px] md:text-[19px] tabular-nums tracking-[-0.02em] text-rose-700">
-                    5 tones
-                  </span>
-                  <span className="text-[12.5px] text-foreground/75">
-                    + sandhi + erhua resolved
-                  </span>
-                </span>
-                <span className="hidden md:inline-block h-3 w-px bg-rose-500/25" />
-                <span className="inline-flex items-baseline gap-1.5">
-                  <span className="heading-display text-[17px] md:text-[19px] tabular-nums tracking-[-0.02em] text-rose-700">
-                    95%+
-                  </span>
-                  <span className="text-[12.5px] text-foreground/75">
-                    agreement with human raters
-                  </span>
-                </span>
-              </div>
-              <div className="shrink-0 inline-flex items-center gap-1.5 text-[12.5px] italic text-foreground/80">
-                <ArrowRight className="h-3.5 w-3.5 text-rose-600" />
-                Same payload shape, hardest signal.
-              </div>
-            </div>
-          </FadeUp>
-
-          <FadeUp delay={0.1}>
-            <BilingualScorePanel />
-          </FadeUp>
-
-          <FadeUp delay={0.18}>
-            <div className="mt-6 rounded-xl border border-zinc-900/[0.08] bg-white/55 backdrop-blur-sm p-5 md:p-6">
-              <div className="text-[10.5px] font-mono tracking-[0.18em] uppercase text-muted-foreground mb-2">
-                Code-switching · cross-lingual scoring
-              </div>
-              <p className="text-[13.5px] text-foreground/80 leading-relaxed">
-                Score a heritage speaker mid-sentence as they flip between languages &mdash;{' '}
-                <span className="italic">
-                  &ldquo;I told her <span className="font-zh">我下周回家</span> and she was thrilled.&rdquo;
-                </span>{' '}
-                Returns separate EN / zh sub-scores plus a blended fluency index. Same payload contract,
-                two languages interleaved.
-              </p>
-            </div>
-          </FadeUp>
-
-          <FadeUp delay={0.22}>
-            <div className="mt-6 text-[12.5px] text-muted-foreground">
-              Looking to ship a Mandarin coach on top of this?{' '}
-              <a
-                href="#use-cases"
-                className="inline-flex items-center gap-1 text-emerald-800 hover:text-emerald-900 font-medium transition-colors"
-              >
-                See the build-a-tutor use case
-                <ArrowRight className="h-3 w-3" />
-              </a>
-            </div>
-          </FadeUp>
-        </div>
-      </section>
-
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        * USE CASES — with real imagery
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section id="use-cases" className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 scroll-mt-24">
-        <div className="container mx-auto px-6 max-w-6xl">
+        <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl">
           <FadeUp className="mb-12 max-w-2xl">
             <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/use-cases</div>
             <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3">
@@ -758,100 +822,10 @@ export default function GlobalLandingPage() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       * BENCHMARKS — quiet cards with inline micro-charts
+       * CTA — visually merged into ContactSection below (no border, slim padding).
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 warm-card-bleed">
-        <div className="container mx-auto px-6 max-w-6xl relative">
-          <FadeUp className="mb-10">
-            <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/benchmarks</div>
-            <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3">
-              Speech scoring driven by research
-            </h2>
-            <p className="text-muted-foreground leading-relaxed max-w-2xl">
-              The engine behind Chivox MCP is 20 years of R&amp;D in pronunciation assessment. Here\u2019s how it
-              holds up in production.
-            </p>
-          </FadeUp>
-
-          <div className="grid lg:grid-cols-12 gap-6 items-stretch">
-            <div className="lg:col-span-4">
-              <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
-                {BENCHMARK_TABS.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setBenchmark(t.id)}
-                    className={`relative text-left px-4 py-3 rounded-lg text-sm whitespace-nowrap transition-all ${
-                      t.id === benchmark
-                        ? 'bg-background text-foreground border border-border/60 shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-background/60 border border-transparent'
-                    }`}
-                  >
-                    <span className="font-medium">{t.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="lg:col-span-8">
-              <div className="rounded-2xl border border-border/60 bg-background p-7 md:p-9 h-full">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5 mb-5">
-                  <div>
-                    <div className="text-5xl md:text-6xl heading-display tracking-[-0.03em] leading-none mb-2">
-                      {activeBench.metric}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{activeBench.metricLabel}</div>
-                  </div>
-                  <BenchmarkMicroChart id={activeBench.chart} />
-                </div>
-                <div className="h-px bg-border/60 my-5" />
-                <p className="text-foreground/85 leading-relaxed">{activeBench.body}</p>
-              </div>
-            </div>
-          </div>
-
-          <StaggerContainer className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { value: 9.2, suffix: 'B+', label: 'evaluations per year' },
-              { value: 95, suffix: '%+', label: 'correlation with human experts' },
-              { value: 185, suffix: '', label: 'countries & regions' },
-              { value: 20, suffix: ' yrs', label: 'in speech AI research' },
-            ].map((s) => (
-              <StaggerItem key={s.label}>
-                <div className="glass-card px-5 py-6 text-center">
-                  <div className="text-2xl md:text-3xl heading-display tracking-[-0.02em] tabular-nums">
-                    <CountUp value={s.value} suffix={s.suffix} />
-                  </div>
-                  <div className="text-[11px] text-muted-foreground mt-1.5 leading-snug">{s.label}</div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-
-          {/* trust bullets — lifted from the old Trust section */}
-          <FadeUp delay={0.15}>
-            <div className="mt-8 grid md:grid-cols-2 gap-x-6 gap-y-2.5">
-              {[
-                'Validated by national testing centers for standardized speaking exams',
-                '14+ granted patents in speech assessment',
-                '99.99% uptime SLA for enterprise deployments',
-                'GDPR-friendly data handling for EU markets',
-              ].map((f) => (
-                <div key={f} className="flex items-start gap-2.5 text-[13px] text-foreground/80">
-                  <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
-          </FadeUp>
-        </div>
-      </section>
-
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       * CTA
-       * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative py-16 md:py-24">
-        <div className="container mx-auto px-6 max-w-6xl">
+      <section className="relative pt-14 md:pt-20 pb-0">
+        <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl">
           <div className="warm-card px-8 py-16 md:px-14 md:py-20 text-center">
             <div className="text-[11px] font-mono tracking-[0.22em] uppercase text-emerald-700 mb-3">
               Ready to wire it up?
@@ -867,7 +841,7 @@ export default function GlobalLandingPage() {
               and you&rsquo;re reading the same JSON you just saw above.
             </p>
             <p className="text-[13px] text-muted-foreground/85 mb-8 max-w-2xl mx-auto font-mono tracking-tight">
-              Starter key free &middot; spend caps &middot; low-balance alerts &middot; zero audio retention
+              Free trial &middot; spend caps &middot; low-balance alerts &middot; zero audio retention
             </p>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
               <a
@@ -895,8 +869,6 @@ export default function GlobalLandingPage() {
           </div>
         </div>
       </section>
-
-      <ContactSection />
 
       <SiteFooter />
     </main>
@@ -2003,164 +1975,88 @@ function HeroWaveGlyph() {
  * ────────────────────────────────────────────────────────── */
 const HERO_SLIDES = [
   {
+    order: 1,
     id: 'setup',
-    label: 'One MCP integration',
+    label: 'Plug-and-play',
     chip: 'npx · 60 s',
     tone: 'emerald',
-    headline: 'One MCP, wired into every agent runtime.',
-    sub: 'Four tools. Claude, Cursor, Cline, LangChain, any custom loop — zero audio plumbing.',
+    headline: 'One MCP. Every agent runtime.',
+    sub: 'Plug Chivox into Claude, Cursor, Cline, LangChain, or any custom loop in minutes.',
+    points: [
+      'One npx command — no SDK to install.',
+      'Same payload for Mandarin and English.',
+      'Works with any MCP-compatible client.',
+    ],
   },
   {
-    id: 'phoneme',
-    label: 'Raw speech → diagnosis',
-    chip: 'Beyond STT',
-    tone: 'violet',
-    headline: 'Raw audio in. Structured diagnosis out.',
-    sub: 'Per-phoneme accuracy, stress, liaison, ms-level windows — the signal an LLM needs to reason, not just transcribe.',
-  },
-  {
+    order: 2,
     id: 'mandarin',
-    label: 'Proof of payload depth',
+    label: 'Mandarin depth',
     chip: 'Hardest acoustic signal',
     tone: 'rose',
-    headline: 'If it resolves tonal sandhi, it resolves anything.',
-    sub: 'Tone, sandhi, erhua, retroflex — the acoustic edge cases generic STT flatlines on. Same payload shape as every other language.',
+    headline: 'Hardest acoustic signal? Solved.',
+    sub: 'Tones, sandhi, erhua, retroflex — surfaced as structured fields instead of lost in transcription.',
+    points: [
+      'Tone objects + sandhi resolved per syllable.',
+      'HSK 1–9 lexical depth, ready for coaching.',
+      'Same JSON shape as English scoring.',
+    ],
   },
   {
+    order: 3,
+    id: 'phoneme',
+    label: 'Phoneme diagnosis',
+    chip: 'Beyond STT',
+    tone: 'violet',
+    headline: 'Raw audio in. Clear diagnosis out.',
+    sub: 'Per-phoneme accuracy, stress, liaison, ms-level windows — the signal an LLM can actually reason on.',
+    points: [
+      'Word + phoneme scores with millisecond spans.',
+      'Stress, liaison and intonation flags built in.',
+      'Drives feedback and next-drill generation.',
+    ],
+  },
+  {
+    order: 4,
     id: 'reasoning',
-    label: 'A reasoning payload',
+    label: 'Reasoning-ready JSON',
     chip: 'Not a leaderboard cell',
     tone: 'amber',
-    headline: 'A payload your LLM can reason over — not a score.',
-    sub: 'Dozens of top-level and per-token fields: pron, fluency, audio_quality, details[] with stress, liaison, ms ranges, phonemes and tone objects.',
+    headline: 'A payload, not just a score.',
+    sub: 'Dozens of fields — pron, fluency, audio quality, per-word details — designed for LLM agents.',
+    points: [
+      'Stable JSON keys for reliable agent loops.',
+      'Rich sub-scores on every utterance.',
+      'Plays nicely with GPT, Claude and Gemini.',
+    ],
+  },
+  {
+    order: 5,
+    id: 'scale',
+    label: 'Enterprise-ready',
+    chip: 'Production proof',
+    tone: 'sky',
+    headline: 'Scale you can ship to enterprise.',
+    sub: '9B+ evaluations a year, 99.99% uptime, 185 regions — scoring that aligns with human experts.',
+    points: [
+      'Used by national testing centers and consumer apps.',
+      'Enterprise SLAs with privacy-first retention.',
+      '95%+ correlation with certified human rubrics.',
+    ],
   },
 ] as const;
 
 type HeroSlideId = (typeof HERO_SLIDES)[number]['id'];
 
-/* Install terminal — the 60-second "just copy this" CTA.
- * Given a full chrome, emerald "ready" indicator, and click-to-copy
- * feedback so it reads as "a real, runnable thing" instead of decoration. */
-function HeroInstallPill() {
-  const [copied, setCopied] = useState(false);
-  const cmd = 'npx -y @chivox/mcp';
-
-  const onCopy = () => {
-    if (!navigator.clipboard) return;
-    navigator.clipboard.writeText(cmd).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
-  };
-
-  return (
-    <div className="mx-auto max-w-5xl mb-12">
-      {/* label row */}
-      <div className="flex items-center justify-center gap-2 mb-2.5 text-[11px] tracking-[0.14em] uppercase text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-mono normal-case tracking-wider text-emerald-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse" />
-          60-second install
-        </span>
-        <span className="text-muted-foreground/60">·</span>
-        <span className="normal-case tracking-normal text-[12px] text-muted-foreground">
-          Copy → paste → your agent hears.
-        </span>
-      </div>
-
-      {/* terminal card with gradient glow */}
-      <div className="relative group">
-        {/* soft colored glow that lights up on hover */}
-        <div
-          aria-hidden
-          className="absolute -inset-[2px] rounded-2xl opacity-70 group-hover:opacity-100 transition-opacity duration-500 blur-md pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(90deg, rgba(16,185,129,0.35), rgba(56,189,248,0.2) 40%, rgba(16,185,129,0.35))',
-          }}
-        />
-
-        <div className="relative rounded-2xl border border-zinc-900/[0.1] bg-white/75 backdrop-blur-xl overflow-hidden shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.6)]">
-          {/* chrome bar */}
-          <div className="flex items-center justify-between px-3.5 py-2 border-b border-zinc-900/[0.07] bg-gradient-to-b from-white/80 to-zinc-50/60">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
-            </div>
-            <span className="text-[10.5px] font-mono text-zinc-500 tracking-tight">
-              terminal · zsh
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-emerald-700">
-              ready
-            </span>
-          </div>
-
-          {/* command row */}
-          <button
-            type="button"
-            onClick={onCopy}
-            aria-label="Copy install command"
-            className="w-full flex items-center gap-2 px-4 py-4 text-left group/cmd focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-          >
-            <span className="text-emerald-600 font-mono text-[15px] md:text-base shrink-0 select-none">
-              $
-            </span>
-            <code className="flex-1 whitespace-nowrap overflow-x-auto font-mono text-[15px] md:text-base font-medium text-zinc-900 tracking-tight">
-              {cmd}
-            </code>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-semibold transition-all duration-200 shrink-0 ${
-                copied
-                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700'
-                  : 'border-zinc-900/10 bg-white text-zinc-700 group-hover/cmd:border-zinc-900/25 group-hover/cmd:text-zinc-900'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy
-                </>
-              )}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* sub-caption — the three clients it works with */}
-      <div className="mt-3 text-center text-[11.5px] text-muted-foreground">
-        Works with <span className="font-medium text-foreground/85">Claude Desktop</span>,{' '}
-        <span className="font-medium text-foreground/85">Cursor</span>,{' '}
-        <span className="font-medium text-foreground/85">Cline</span> &amp; any MCP client.
-      </div>
-    </div>
-  );
-}
-
 /** Time between auto-advances; progress bar uses the same duration. */
 const HERO_CAROUSEL_MS = 3500;
 
 function HeroCarousel() {
-  const [active, setActive] = useState<HeroSlideId>('mandarin');
+  const [active, setActive] = useState<HeroSlideId>('setup');
+  const [zoomOpen, setZoomOpen] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
-  // Progress is intentionally NOT React state — writing it every frame via
-  // setState would re-render the entire carousel (including all slide
-  // children) 60×/s, which is what caused the visible "freeze" stutters
-  // under load. Instead we mutate a ref and write transform directly to
-  // the DOM. React only owns the rare slide change.
-  const progressRef = useRef(0);
-  const barRef = useRef<HTMLDivElement | null>(null);
   const pausedRef = useRef(false);
-
-  const writeBar = (v: number) => {
-    const el = barRef.current;
-    if (el) el.style.transform = `scaleX(${reduceMotion ? 0 : v})`;
-  };
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -2170,59 +2066,47 @@ function HeroCarousel() {
     return () => mq.removeEventListener('change', apply);
   }, []);
 
-  // Reset progress whenever the active slide changes (manual click or auto).
   useEffect(() => {
-    progressRef.current = 0;
-    writeBar(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, reduceMotion]);
-
-  // One rAF loop for the lifetime of the component. It reads `pausedRef`
-  // so mouse hover/leave doesn't tear the loop down — no cleanup thrash,
-  // no missed frames, no drift.
-  useEffect(() => {
-    if (reduceMotion) {
-      writeBar(0);
-      return;
-    }
-    let raf = 0;
-    let last = performance.now();
-    const tick = (now: number) => {
-      // Backgrounded tabs can deliver huge dt spikes; clamp so a wake-up
-      // doesn't fling the bar a full slide forward.
-      const dt = Math.min(100, now - last);
-      last = now;
-      if (!pausedRef.current) {
-        const next = Math.min(1, progressRef.current + dt / HERO_CAROUSEL_MS);
-        progressRef.current = next;
-        writeBar(next);
-        if (next >= 1) {
-          progressRef.current = 0;
-          writeBar(0);
-          setActive((cur) => {
-            const i = HERO_SLIDES.findIndex((s) => s.id === cur);
-            return HERO_SLIDES[(i + 1) % HERO_SLIDES.length].id;
-          });
-        }
-      }
-      raf = requestAnimationFrame(tick);
+    if (!zoomOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomOpen(false);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [zoomOpen]);
+
+  // Auto-advance (unless user prefers reduced motion). We pause on hover
+  // via `pausedRef` so users can read without fighting the carousel.
+  useEffect(() => {
+    if (reduceMotion) return;
+    const id = window.setInterval(() => {
+      if (pausedRef.current) return;
+      setActive((cur) => {
+        const i = HERO_SLIDES.findIndex((s) => s.id === cur);
+        return HERO_SLIDES[(i + 1) % HERO_SLIDES.length]!.id;
+      });
+    }, HERO_CAROUSEL_MS);
+    return () => window.clearInterval(id);
   }, [reduceMotion]);
 
   const activeIdx = HERO_SLIDES.findIndex((s) => s.id === active);
 
-  // position relative to active: 0 = center, -1 = prev (left peek),
-  // +1 = next (right peek), 2 = parked out of view.
-  const positionFor = (idx: number): -1 | 0 | 1 | 2 => {
+  const activeSlide = HERO_SLIDES[Math.max(0, activeIdx)]!;
+
+  const goPrev = () => {
     const n = HERO_SLIDES.length;
-    const d = ((idx - activeIdx) % n + n) % n;
-    if (d === 0) return 0;
-    if (d === 1) return 1;
-    if (d === n - 1) return -1;
-    return 2;
+    setActive((cur) => {
+      const i = HERO_SLIDES.findIndex((s) => s.id === cur);
+      return HERO_SLIDES[(i - 1 + n) % n]!.id;
+    });
+  };
+
+  const goNext = () => {
+    const n = HERO_SLIDES.length;
+    setActive((cur) => {
+      const i = HERO_SLIDES.findIndex((s) => s.id === cur);
+      return HERO_SLIDES[(i + 1) % n]!.id;
+    });
   };
 
   return (
@@ -2233,124 +2117,243 @@ function HeroCarousel() {
     >
       <div className="absolute -inset-4 rounded-3xl bg-foreground/[0.04] blur-2xl pointer-events-none" />
 
-      {/* coverflow stage */}
-      <div className="relative h-[460px] md:h-[500px]">
-        {HERO_SLIDES.map((slide, i) => {
-          const pos = positionFor(i);
-          const isActive = pos === 0;
-          const isParked = pos === 2;
-          const transform =
-            pos === 0
-              ? 'translate(-50%, 0) scale(1)'
-              : pos === -1
-              ? 'translate(-112%, 4%) scale(0.74)'
-              : pos === 1
-              ? 'translate(12%, 4%) scale(0.74)'
-              : 'translate(-50%, 6%) scale(0.6)'; // parked
-
-          return (
-            <div
-              key={slide.id}
-              role={isActive || isParked ? undefined : 'button'}
-              tabIndex={isActive || isParked ? -1 : 0}
-              aria-hidden={isParked || undefined}
-              aria-label={isActive || isParked ? undefined : `Show slide ${slide.label}`}
-              onClick={isActive || isParked ? undefined : () => setActive(slide.id)}
-              onKeyDown={
-                isActive || isParked
-                  ? undefined
-                  : (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setActive(slide.id);
-                      }
-                    }
-              }
-              className={`absolute left-1/2 top-0 w-[min(100%,680px)] origin-top transition-all duration-[600ms] ease-[cubic-bezier(0.22,0.61,0.36,1)] ${
-                isActive
-                  ? 'z-20 opacity-100 pointer-events-auto cursor-default'
-                  : isParked
-                  ? 'z-0 opacity-0 pointer-events-none'
-                  : 'z-10 opacity-55 hover:opacity-80 cursor-pointer'
-              }`}
-              style={{
-                transform,
-                filter: isActive ? undefined : 'blur(0.5px) saturate(0.92)',
-              }}
-            >
-              <HeroSlideCard slide={slide} isActive={isActive} />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* footer — auto-advance progress + slogan + slide nav */}
-      <div className="mt-1 max-w-[720px] mx-auto px-1">
-        <div className="mb-3 h-1 w-full rounded-full bg-foreground/[0.07] overflow-hidden" aria-hidden>
-          <div
-            ref={barRef}
-            className="h-full w-full origin-left rounded-full will-change-transform"
-            style={{
-              transform: `scaleX(${reduceMotion ? 0 : 0})`,
-              background:
-                'linear-gradient(90deg, #10b981 0%, #34d399 50%, #fbbf24 100%)',
-            }}
-          />
+      <div className="grid lg:grid-cols-12 gap-6 items-center">
+        {/* LEFT — uniform 16:9 long-strip card, click to zoom.
+         * Capped at max-w-[460px] and pinned to the LEFT edge of its
+         * column. The right column's copy is pinned to its RIGHT edge,
+         * so the two halves breathe instead of crashing into each other
+         * in the middle of the row. */}
+        <div className="lg:col-span-6">
+          <button
+            type="button"
+            onClick={() => setZoomOpen(true)}
+            aria-label="Open screenshot preview"
+            className="group block w-full max-w-[460px] mx-auto lg:mx-0 lg:mr-auto text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-2xl"
+          >
+            <HeroSlideCard slide={activeSlide} isActive />
+          </button>
         </div>
-        <div className="relative min-h-[76px]">
-          {HERO_SLIDES.map((s, i) => (
-            <div
-              key={s.id}
-              aria-hidden={i !== activeIdx}
-              className={`absolute inset-0 transition-all duration-500 ease-out ${
-                i === activeIdx
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 translate-y-1 pointer-events-none'
-              }`}
-            >
+
+        {/* RIGHT — copy + vertical (up/down) switching.
+         * Capped + pinned to the right edge so it sits opposite the
+         * left card with a comfortable gap in the middle. */}
+        <div className="lg:col-span-6 flex flex-col justify-center w-full max-w-[520px] mx-auto lg:mx-0 lg:ml-auto">
+          <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+            <div className="min-w-0">
               <div className="flex items-start gap-3">
                 <span
                   className={`mt-1.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[12px] font-mono font-semibold ${
-                    s.tone === 'emerald'
+                    activeSlide.tone === 'emerald'
                       ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/25'
-                      : s.tone === 'rose'
+                      : activeSlide.tone === 'rose'
                       ? 'bg-rose-500/10 text-rose-700 border border-rose-500/25'
-                      : s.tone === 'amber'
+                      : activeSlide.tone === 'amber'
                       ? 'bg-amber-500/10 text-amber-700 border border-amber-500/30'
                       : 'bg-violet-500/10 text-violet-700 border border-violet-500/25'
                   }`}
                 >
-                  0{i + 1}
+                  {String(activeSlide.order).padStart(2, '0')}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[22px] md:text-[26px] font-semibold tracking-[-0.02em] leading-[1.2] text-foreground">
-                    {s.headline}
+                  <div
+                    className="text-[22px] md:text-[28px] font-semibold tracking-[-0.02em] leading-[1.15] text-foreground"
+                    style={{
+                      display: '-webkit-box',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {activeSlide.headline}
                   </div>
-                  <div className="mt-1 text-[14px] md:text-[15px] text-muted-foreground leading-snug">
-                    {s.sub}
+                  <div
+                    className="mt-2 text-[14px] md:text-[15px] text-muted-foreground leading-snug"
+                    style={{
+                      display: '-webkit-box',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {activeSlide.sub}
+                  </div>
+                </div>
+              </div>
+
+              {activeSlide.points?.length ? (
+                <div className="mt-3 space-y-1.5 pl-10">
+                  {activeSlide.points.slice(0, 3).map((p) => (
+                    <div key={p} className="text-[12.5px] text-foreground/70 flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-foreground/30 shrink-0" />
+                      <span
+                        className="leading-relaxed"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: 1,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {p}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2 shrink-0 items-end justify-center self-stretch">
+              <button
+                type="button"
+                onClick={goPrev}
+                aria-label="Previous slide"
+                className="h-9 w-9 rounded-lg border border-border bg-background/70 hover:bg-background shadow-sm flex items-center justify-center transition-colors"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                aria-label="Next slide"
+                className="h-9 w-9 rounded-lg border border-border bg-background/70 hover:bg-background shadow-sm flex items-center justify-center transition-colors"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <div className="flex items-center gap-1 shrink-0" role="tablist" aria-label="Carousel position">
+              {HERO_SLIDES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={s.id === active}
+                  onClick={() => setActive(s.id)}
+                  aria-label={`Show slide ${s.label}`}
+                  className={cn(
+                    'h-1 rounded-full transition-all duration-300 ease-out',
+                    s.id === active
+                      ? 'w-7 bg-foreground'
+                      : 'w-3 bg-foreground/15 hover:bg-foreground/30',
+                  )}
+                />
+              ))}
+            </div>
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground shrink-0">
+              {String(activeIdx + 1).padStart(2, '0')}
+              <span className="opacity-50"> / {String(HERO_SLIDES.length).padStart(2, '0')}</span>
+            </span>
+            <span className="h-3 w-px bg-border shrink-0" aria-hidden />
+            <span className="text-[12px] text-foreground/75 min-w-0 truncate">
+              {activeSlide.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => setZoomOpen(true)}
+              className="ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium border border-border bg-background/70 hover:bg-background transition-colors"
+            >
+              View larger
+              <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {zoomOpen && (
+        <div className="fixed inset-0 z-[100]">
+          <button
+            type="button"
+            aria-label="Close preview"
+            onClick={() => setZoomOpen(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-6xl">
+              <div className="relative rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setZoomOpen(false)}
+                  className="absolute right-2 top-2 z-20 h-9 w-9 rounded-full border border-white/15 bg-black/55 text-white hover:bg-black/70 backdrop-blur flex items-center justify-center"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+
+                <div className="grid lg:grid-cols-12 gap-4 items-center">
+                  <div className="lg:col-span-8">
+                    <HeroSlideCard slide={activeSlide} isActive />
+                  </div>
+                  <div className="lg:col-span-4 self-center rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md p-4 lg:p-5 text-white">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[12px] font-mono font-semibold border border-white/15 bg-white/10">
+                        {String(activeSlide.order).padStart(2, '0')}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[18px] lg:text-[20px] font-semibold tracking-[-0.02em] leading-snug">
+                          {activeSlide.headline}
+                        </div>
+                        <div className="mt-2 text-[13px] text-white/75 leading-relaxed">
+                          {activeSlide.sub}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-3">
+                      <div className="flex items-center gap-1 shrink-0" role="tablist" aria-label="Carousel position">
+                        {HERO_SLIDES.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={s.id === active}
+                            onClick={() => setActive(s.id)}
+                            aria-label={`Show slide ${s.label}`}
+                            className={cn(
+                              'h-1 rounded-full transition-all duration-300 ease-out',
+                              s.id === active
+                                ? 'w-7 bg-white'
+                                : 'w-3 bg-white/25 hover:bg-white/45',
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-mono tabular-nums text-white/70 shrink-0">
+                        {String(activeIdx + 1).padStart(2, '0')}
+                        <span className="opacity-60"> / {String(HERO_SLIDES.length).padStart(2, '0')}</span>
+                      </span>
+
+                      <div className="ml-auto flex items-center gap-2 self-center">
+                        <button
+                          type="button"
+                          onClick={goPrev}
+                          aria-label="Previous slide"
+                          className="h-9 w-9 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={goNext}
+                          aria-label="Next slide"
+                          className="h-9 w-9 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-[12px] text-white/65">
+                      {activeSlide.label}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-
-        <div className="mt-2 flex items-center justify-center gap-1.5">
-          {HERO_SLIDES.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setActive(s.id)}
-              aria-label={`Show slide ${s.label}`}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                s.id === active
-                  ? 'w-6 bg-foreground'
-                  : 'w-1.5 bg-foreground/20 hover:bg-foreground/40'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -2364,14 +2367,14 @@ function HeroSlideCard({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border shadow-[0_24px_80px_-24px_rgba(0,0,0,0.22)] ${
+      className={`overflow-hidden rounded-2xl border shadow-[0_24px_80px_-24px_rgba(0,0,0,0.22)] flex flex-col aspect-[16/9] ${
         isActive
           ? 'bg-white border-zinc-900/[0.1]'
           : 'glass-card'
       }`}
     >
       {/* window chrome */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-900/[0.08] bg-white/40 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-900/[0.08] bg-white/40 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
           <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
@@ -2381,6 +2384,8 @@ function HeroSlideCard({
           chivox ·{' '}
           {slide.id === 'setup'
             ? 'mcp.config'
+            : slide.id === 'scale'
+            ? 'scale.metrics'
             : slide.id === 'mandarin'
             ? 'assess.mandarin'
             : slide.id === 'phoneme'
@@ -2402,9 +2407,10 @@ function HeroSlideCard({
         </span>
       </div>
 
-      {/* viewport */}
-      <div className="relative min-h-[360px] md:min-h-[400px]">
+      {/* viewport — fills the remaining height of the 16:9 frame */}
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         {slide.id === 'setup' && <HeroSlideSetup />}
+        {slide.id === 'scale' && <HeroSlideScale />}
         {slide.id === 'mandarin' && <HeroSlideMandarin />}
         {slide.id === 'phoneme' && <HeroSlidePhoneme />}
         {slide.id === 'reasoning' && <HeroSlideReasoning />}
@@ -2413,170 +2419,331 @@ function HeroSlideCard({
   );
 }
 
-/* Slide 01 — Instant setup: minimal config + tools registered */
+/* Slide 01 — One MCP, every runtime.
+ * Horizontal long-strip: config snippet on the left, the list of
+ * runtimes the same MCP connects to on the right. The visual sells
+ * the “drop into any agent loop” promise of the slide copy. */
 function HeroSlideSetup() {
+  const runtimes: { name: string; meta: string }[] = [
+    { name: 'Claude Desktop', meta: 'mcpServers' },
+    { name: 'Cursor',         meta: 'mcp.json' },
+    { name: 'Cline',          meta: 'cline.config' },
+    { name: 'LangChain',      meta: 'MCPClient' },
+    { name: 'Custom loop',    meta: 'stdio · ws' },
+  ];
   return (
-    <div className="h-full p-5 md:p-6 flex flex-col gap-4">
-      <div className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">
-        claude_desktop_config.json
+    <div className="h-full p-3.5 grid grid-cols-[1.05fr_1fr] gap-2.5 items-stretch">
+      {/* LEFT — config snippet */}
+      <div className="rounded-xl border border-zinc-900/[0.85] bg-zinc-950 text-zinc-100 p-2.5 font-mono text-[10px] leading-[1.55] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-emerald-400/80 text-[9.5px] tracking-[0.16em] uppercase">mcp.config</span>
+          <span className="inline-flex items-center gap-1 text-emerald-300 text-[9.5px]">
+            <Check className="h-3 w-3" strokeWidth={3} /> connected
+          </span>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div><span className="text-zinc-500">{'{'}</span></div>
+          <div className="pl-2"><span className="text-sky-300">&quot;mcpServers&quot;</span><span className="text-zinc-500">: {'{'}</span></div>
+          <div className="pl-4"><span className="text-emerald-300">&quot;chivox&quot;</span><span className="text-zinc-500">: {'{'}</span></div>
+          <div className="pl-6"><span className="text-sky-300">&quot;command&quot;</span><span className="text-zinc-500">: </span><span className="text-amber-200">&quot;npx&quot;</span><span className="text-zinc-500">,</span></div>
+          <div className="pl-6"><span className="text-sky-300">&quot;args&quot;</span><span className="text-zinc-500">: [</span><span className="text-amber-200">&quot;-y&quot;</span><span className="text-zinc-500">, </span><span className="text-amber-200">&quot;@chivox/mcp&quot;</span><span className="text-zinc-500">]</span></div>
+          <div className="pl-4"><span className="text-zinc-500">{'}'}</span></div>
+          <div className="pl-2"><span className="text-zinc-500">{'}'}</span></div>
+          <div><span className="text-zinc-500">{'}'}</span></div>
+        </div>
       </div>
-      <pre className="flex-1 rounded-xl border border-zinc-900/[0.08] bg-white/50 backdrop-blur-sm p-4 font-mono text-[12.5px] leading-[1.7] whitespace-pre text-zinc-800 overflow-hidden">
-<span className="text-zinc-500">{`// drop in, connect.`}</span>{`
-`}<span className="text-zinc-700">{`{`}</span>{`
-  `}<span className="text-sky-700">{`"mcpServers"`}</span><span className="text-zinc-500">{`: {`}</span>{`
-    `}<span className="text-emerald-700">{`"chivox"`}</span><span className="text-zinc-500">{`: {`}</span>{`
-      `}<span className="text-sky-700">{`"command"`}</span><span className="text-zinc-500">{`: `}</span><span className="text-amber-700">{`"npx"`}</span><span className="text-zinc-500">{`,`}</span>{`
-      `}<span className="text-sky-700">{`"args"`}</span><span className="text-zinc-500">{`: [`}</span><span className="text-amber-700">{`"-y"`}</span><span className="text-zinc-500">{`, `}</span><span className="text-amber-700">{`"@chivox/mcp"`}</span><span className="text-zinc-500">{`]`}</span>{`
-    `}<span className="text-zinc-500">{`}`}</span>{`
-  `}<span className="text-zinc-500">{`}`}</span>{`
-`}<span className="text-zinc-700">{`}`}</span>
-      </pre>
-      <div className="rounded-lg border border-zinc-900/[0.08] bg-white/50 backdrop-blur-sm px-3 py-2 flex items-center gap-2 font-mono text-[11.5px]">
-        <Terminal className="h-3.5 w-3.5 text-zinc-500" />
-        <span className="text-zinc-500">$</span>
-        <span className="text-zinc-800">npx -y @chivox/mcp</span>
-        <span className="ml-auto inline-flex items-center gap-1 text-emerald-700">
-          <Check className="h-3 w-3" strokeWidth={3} /> 4 tools registered
-        </span>
+
+      {/* RIGHT — connected runtimes */}
+      <div className="flex flex-col gap-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-muted-foreground">runtimes · same payload</span>
+          <span className="text-[9.5px] font-mono text-emerald-700">5 / 5 ok</span>
+        </div>
+        {runtimes.map((r) => (
+          <div
+            key={r.name}
+            className="flex items-center gap-2 rounded-md border border-zinc-900/[0.08] bg-white/65 px-2 py-1"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)] shrink-0" />
+            <span className="text-[12px] text-zinc-800 font-medium truncate">{r.name}</span>
+            <span className="ml-auto text-[9.5px] font-mono text-zinc-500 truncate">{r.meta}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-/* Slide 02 — Mandarin moat: pitch-contour visualization.
- * Hero visual is an F0 trace plot. Text annotations sit at
- * the top and bottom; the "generic-STT mishears it as 睡觉"
- * fact becomes a small side-note rather than a competing
- * red box. Conveys "we see pitch, not just phonemes". */
-function HeroSlideMandarin() {
-  // Pitch plot layout (viewBox 0-360 × 0-150)
-  //   y=10  → high (5)
-  //   y=140 → low  (1)
-  const y = (v: number) => 10 + ((5 - v) * 130) / 4; // v ∈ [1..5]
+/* Slide 02 — Trust & scale: a compact "metrics dashboard" card.
+ * Purpose: bring the benchmark + trust bullets (previously below)
+ * into the hero rotation so the first fold can sell credibility too. */
+/* Slide 05 — Enterprise scale. Editorial layout:
+ * LEFT  → hero metric (9.2B+ evals/year) + growth sparkline +
+ *         a 3-up support stat strip
+ * RIGHT → "Trusted by" name strip + 3 proof bullets, each with a
+ *         labeled icon so the row reads like a checklist, not text.
+ */
+function HeroSlideScale() {
+  // 12-point smoothed growth curve (relative units) — gives the eye a
+  // "this thing has been compounding for years" cue without claiming
+  // anything load-bearing. Pure decorative tabular-nums-friendly data.
+  const spark = [14, 19, 26, 35, 46, 58, 71, 84, 96, 108, 122, 138];
+  const sparkW = 240;
+  const sparkH = 50;
+  const sparkMax = Math.max(...spark);
+  const stepX = sparkW / (spark.length - 1);
+  const points = spark.map((v, i) => {
+    const x = i * stepX;
+    const y = sparkH - 3 - (v / sparkMax) * (sparkH - 8);
+    return [x, y] as const;
+  });
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L ${sparkW} ${sparkH} L 0 ${sparkH} Z`;
+  const lastPt = points[points.length - 1]!;
+
+  const trusted = ['National testing centers', 'Consumer apps', 'Ministry deployments'];
+
+  const proofs: { label: string; body: string }[] = [
+    { label: '14+ patents',     body: 'pronunciation assessment' },
+    { label: '99.99% SLA',      body: 'enterprise tier' },
+    { label: 'Privacy-first',   body: 'configurable retention' },
+  ];
 
   return (
-    <div className="h-full p-5 md:p-6 flex flex-col gap-4 relative">
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <div className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">
-          pitch trace · F0 contour
-        </div>
-        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-emerald-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          locked to tone
-        </span>
-      </div>
+    <div className="h-full p-3.5 grid grid-cols-[1.15fr_1fr] gap-2.5 items-stretch">
+      {/* LEFT — hero metric + sparkline + 3-up support */}
+      <div className="relative rounded-xl border border-sky-500/20 bg-gradient-to-br from-sky-50/70 via-white/65 to-white/45 backdrop-blur-sm p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
+        {/* decorative glow */}
+        <div
+          aria-hidden
+          className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-sky-400/20 blur-3xl pointer-events-none"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-x-3 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-sky-500/15 to-transparent"
+        />
 
-      {/* Target word, big and quiet */}
-      <div className="flex items-end justify-between gap-4">
-        <div className="flex items-baseline gap-3">
-          <span className="font-zh text-[44px] leading-none tracking-tight text-zinc-900">水饺</span>
-          <div className="flex flex-col">
-            <span className="font-pinyin text-[15px] text-zinc-700">shuǐ jiǎo</span>
-            <span className="text-[10.5px] font-mono text-zinc-500">= dumplings</span>
+        <div className="flex items-center justify-between">
+          <span className="text-[9.5px] font-mono uppercase tracking-[0.18em] text-sky-800/70">
+            production scale · 2025
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-sky-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-500 shadow-[0_0_0_3px_rgba(14,165,233,0.18)]" />
+            live
+          </span>
+        </div>
+
+        {/* hero metric */}
+        <div className="relative">
+          <div className="flex items-baseline gap-2.5">
+            <span className="heading-display text-[44px] md:text-[48px] font-semibold leading-none tracking-[-0.035em] tabular-nums text-zinc-900">
+              9.2B+
+            </span>
+            <span className="text-[11.5px] text-muted-foreground leading-tight">
+              evaluations
+              <br />
+              per year
+            </span>
+          </div>
+          <div className="mt-1 text-[10.5px] text-muted-foreground">
+            <span className="font-mono text-emerald-700">▲ 28% YoY</span>
+            <span className="mx-1.5 text-zinc-300">·</span>
+            across <span className="font-mono text-foreground/75">185</span> countries
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">target tones</div>
-          <div className="font-mono text-[13px] text-zinc-800 tabular-nums">T3 + T3</div>
-          <div className="text-[10px] font-mono text-emerald-700">→ sandhi: T2 + T3</div>
+
+        {/* sparkline */}
+        <svg viewBox={`0 0 ${sparkW} ${sparkH}`} preserveAspectRatio="none" className="w-full h-[42px]" aria-hidden>
+          <defs>
+            <linearGradient id="scaleSpark" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={areaPath} fill="url(#scaleSpark)" />
+          <path d={linePath} fill="none" stroke="#0284c7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx={lastPt[0]} cy={lastPt[1]} r="3" fill="#0284c7" />
+          <circle cx={lastPt[0]} cy={lastPt[1]} r="6" fill="#0ea5e9" opacity="0.18" />
+        </svg>
+
+        {/* 3-up support stats */}
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-sky-500/15">
+          <div className="min-w-0">
+            <div className="font-mono text-[13.5px] font-semibold tabular-nums text-zinc-900 leading-none">
+              99.99%
+            </div>
+            <div className="mt-1 text-[9.5px] text-muted-foreground">uptime</div>
+          </div>
+          <div className="min-w-0">
+            <div className="font-mono text-[13.5px] font-semibold tabular-nums text-zinc-900 leading-none">
+              95%+
+            </div>
+            <div className="mt-1 text-[9.5px] text-muted-foreground">vs experts</div>
+          </div>
+          <div className="min-w-0">
+            <div className="font-mono text-[13.5px] font-semibold tabular-nums text-zinc-900 leading-none">
+              20 yrs
+            </div>
+            <div className="mt-1 text-[9.5px] text-muted-foreground">research</div>
+          </div>
         </div>
       </div>
 
-      {/* Pitch-contour plot */}
-      <div className="relative rounded-xl border border-zinc-900/[0.08] bg-gradient-to-br from-white/70 via-white/50 to-emerald-50/40 backdrop-blur-sm px-3 pt-3 pb-2">
-        <svg viewBox="0 0 360 150" className="w-full h-[150px]" aria-hidden>
+      {/* RIGHT — trusted-by + compact proof rows */}
+      <div className="flex flex-col gap-1.5 min-w-0">
+        <div className="flex items-center justify-between">
+          <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+            trusted by
+          </span>
+          <span className="text-[9.5px] font-mono text-zinc-400">3 cohorts</span>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {trusted.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center rounded-md border border-zinc-900/[0.08] bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-0.5 flex flex-col gap-1">
+          {proofs.map((p) => (
+            <div
+              key={p.label}
+              className="flex items-center gap-1.5 text-[11px] leading-tight"
+            >
+              <Check className="h-3 w-3 text-sky-600 shrink-0" strokeWidth={3} />
+              <span className="font-semibold text-zinc-800 whitespace-nowrap">
+                {p.label}
+              </span>
+              <span className="text-muted-foreground truncate">· {p.body}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Slide 02 — Mandarin depth. Horizontal strip:
+ * LEFT  → big Hanzi + pinyin + sandhi chip (the "what we resolved")
+ * RIGHT → compact F0 pitch contour, Chao 5-level, with produced vs
+ *         citation traces. The plot stays the visual hero. */
+function HeroSlideMandarin() {
+  // y(v): map tone level (1..5) into svg viewBox 0..80
+  const y = (v: number) => 8 + ((5 - v) * 64) / 4;
+  return (
+    <div className="h-full p-3.5 grid grid-cols-[0.8fr_1.2fr] gap-2.5 items-stretch">
+      {/* LEFT — target word card */}
+      <div className="flex flex-col justify-center gap-1 min-w-0">
+        <div className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+          target · zh-CN
+        </div>
+        <div className="font-zh text-[40px] leading-none tracking-tight text-zinc-900">水饺</div>
+        <div className="font-pinyin text-[12.5px] text-zinc-700 leading-tight">
+          shuǐ jiǎo
+          <span className="text-zinc-400"> · dumplings</span>
+        </div>
+        <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-mono whitespace-nowrap">
+          <span className="rounded border border-zinc-900/[0.08] bg-white/70 px-1 py-[1px] text-zinc-700">
+            T3·T3
+          </span>
+          <ArrowRight className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+          <span className="rounded border border-emerald-500/35 bg-emerald-50 px-1 py-[1px] text-emerald-700">
+            T2·T3 sandhi
+          </span>
+        </div>
+        <div className="mt-1 text-[9.5px] text-zinc-500 leading-snug">
+          generic STT hears <span className="font-zh text-zinc-700">睡觉</span> — wrong tones.
+        </div>
+      </div>
+
+      {/* RIGHT — pitch contour */}
+      <div className="rounded-xl border border-zinc-900/[0.08] bg-gradient-to-br from-white/75 to-emerald-50/45 backdrop-blur-sm px-3 py-2 flex flex-col min-h-0">
+        <div className="flex items-center justify-between text-[9.5px] font-mono uppercase tracking-wider text-muted-foreground mb-1">
+          <span>F0 · 5-level Chao</span>
+          <span className="inline-flex items-center gap-1 text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            locked to tone
+          </span>
+        </div>
+        <svg viewBox="0 0 360 90" className="w-full h-auto" aria-hidden>
           <defs>
             <linearGradient id="traceGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="#10b981" />
-              <stop offset="55%" stopColor="#10b981" />
               <stop offset="55%" stopColor="#059669" />
               <stop offset="100%" stopColor="#047857" />
             </linearGradient>
           </defs>
-
-          {/* gridlines — tone levels 1..5 */}
           {[1, 2, 3, 4, 5].map((lvl) => (
             <g key={lvl}>
-              <line x1="24" x2="348" y1={y(lvl)} y2={y(lvl)} stroke="rgba(24,24,27,0.06)" strokeWidth="1" />
-              <text x="10" y={y(lvl) + 3} fontSize="8" fontFamily="ui-monospace, monospace" fill="rgba(24,24,27,0.35)">
+              <line x1="22" x2="350" y1={y(lvl)} y2={y(lvl)} stroke="rgba(24,24,27,0.06)" />
+              <text x="8" y={y(lvl) + 3} fontSize="7.5" fontFamily="ui-monospace, monospace" fill="rgba(24,24,27,0.35)">
                 {lvl}
               </text>
             </g>
           ))}
-
-          {/* syllable dividers */}
-          <line x1="184" x2="184" y1="10" y2="140" stroke="rgba(24,24,27,0.08)" strokeDasharray="3 3" />
-
-          {/* Actual (produced) contour — solid emerald */}
-          {/* shuǐ → rises 3→5 (sandhi T2), jiǎo → 2-1-4 dip-rise (T3) */}
+          <line x1="184" x2="184" y1="8" y2="76" stroke="rgba(24,24,27,0.08)" strokeDasharray="3 3" />
           <path
-            d="M 30 90  C 70 88, 110 48, 170 18
-               L 184 18
-               M 198 62  C 230 62, 246 138, 268 134
-               C 290 130, 310 90, 340 28"
+            d="M 30 56 C 70 54, 110 28, 170 12 L 184 12
+               M 198 38 C 222 38, 240 76, 264 72 C 288 68, 308 50, 340 16"
             fill="none"
             stroke="url(#traceGrad)"
-            strokeWidth="2.6"
+            strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-
-          {/* Citation (target) contour — dashed, light */}
-          {/* Both syllables drawn as full T3 (2-1-4) to show what citation would be */}
           <path
-            d="M 30 62  C 60 130, 110 138, 140 90  C 158 66, 172 30, 184 22
-               M 198 62  C 228 130, 260 138, 290 90  C 308 66, 322 30, 336 22"
+            d="M 30 38 C 60 76, 100 78, 140 56 C 158 42, 172 18, 184 14
+               M 198 38 C 222 76, 252 78, 282 56 C 300 42, 318 18, 336 14"
             fill="none"
             stroke="rgba(16,185,129,0.35)"
-            strokeWidth="1.4"
+            strokeWidth="1.3"
             strokeDasharray="3 3"
             strokeLinecap="round"
           />
-
-          {/* syllable labels */}
-          <text x="100" y="145" fontSize="9.5" fontFamily="ui-monospace, monospace" fill="rgba(16,185,129,0.85)" textAnchor="middle">
+          <circle cx="340" cy="16" r="3" fill="#059669" />
+          <circle cx="340" cy="16" r="5.5" fill="#10b981" opacity="0.18" />
+          <text x="100" y="86" fontSize="8" fontFamily="ui-monospace, monospace" fill="rgba(16,185,129,0.85)" textAnchor="middle">
             shuǐ · rising
           </text>
-          <text x="265" y="145" fontSize="9.5" fontFamily="ui-monospace, monospace" fill="rgba(16,185,129,0.85)" textAnchor="middle">
+          <text x="265" y="86" fontSize="8" fontFamily="ui-monospace, monospace" fill="rgba(16,185,129,0.85)" textAnchor="middle">
             jiǎo · dip–rise
           </text>
-
-          {/* end dot */}
-          <circle cx="340" cy="28" r="3.5" fill="#059669" />
-          <circle cx="340" cy="28" r="6" fill="#10b981" opacity="0.18" />
         </svg>
-
-        {/* legend */}
-        <div className="flex items-center gap-3 px-1 pt-1 text-[10px] font-mono text-zinc-500">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-[2px] w-4 rounded-full bg-emerald-600" />
+        <div className="flex items-center gap-3 pt-1 text-[9.5px] font-mono text-zinc-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-[2px] w-3.5 rounded-full bg-emerald-600" />
             produced
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-[2px] w-4 rounded-full border-t border-dashed border-emerald-500/60" />
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-[2px] w-3.5 rounded-full border-t border-dashed border-emerald-500/60" />
             citation
           </span>
-          <span className="ml-auto">F0 · 5-level Chao</span>
+          <span className="ml-auto text-emerald-700">Δ ≈ 6 cents</span>
         </div>
-      </div>
 
-      {/* generic-STT side-note — deliberately small, so the plot stays king */}
-      <div className="rounded-lg border border-zinc-900/[0.06] bg-white/50 px-3 py-2 flex items-center gap-2.5">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 shrink-0">
-          generic STT
-        </span>
-        <span className="text-[12px] text-zinc-600">
-          heard <span className="font-zh text-zinc-800">睡觉</span>{' '}
-          <span className="font-pinyin">(shuì jiào · sleep)</span>
-        </span>
-        <span className="ml-auto text-[10px] font-mono text-rose-500">✕ tone miss</span>
-      </div>
-
-      <div className="text-[11px] text-zinc-500 leading-relaxed">
-        Catches tones, erhua, neutral tone &amp; sandhi — the difference between{' '}
-        <span className="font-pinyin text-zinc-700">mā</span> (mom) and{' '}
-        <span className="font-pinyin text-zinc-700">mǎ</span> (horse).
+        {/* Tonal events resolved — single-line ticks, no row cards,
+         * so the bottom block stays under one card-height even at the
+         * narrowest hero-card width. */}
+        <div className="mt-1.5 pt-1.5 border-t border-emerald-500/15 flex flex-col gap-0.5 min-h-0">
+          <div className="flex items-center justify-between text-[9.5px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+            <span>tonal events</span>
+            <span className="text-emerald-700 normal-case tracking-normal">2 / 2</span>
+          </div>
+          {[
+            { syl: 'shuǐ', detail: 'T3→T2 sandhi' },
+            { syl: 'jiǎo', detail: 'T3 dip–rise' },
+          ].map((r) => (
+            <div key={r.syl} className="flex items-center gap-1.5 text-[10px] leading-tight">
+              <Check className="h-2.5 w-2.5 text-emerald-600 shrink-0" strokeWidth={3} />
+              <span className="font-pinyin text-emerald-800 w-8 shrink-0">{r.syl}</span>
+              <span className="font-mono text-zinc-600 truncate">{r.detail}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -2588,18 +2755,24 @@ function HeroSlideMandarin() {
  *    accuracy bars plus supra-segmental cues (stress, liaison,
  *    intonation). Intentionally granular; no prose.
  * ───────────────────────────────────────────────────────── */
+/* Slide 03 — Phoneme diagnosis. Horizontal strip:
+ * LEFT  → target word + IPA + supra-segmental chips
+ * RIGHT → 4 phoneme bars (top) + ms-timeline (bottom),
+ *         color-coded by status. */
 function HeroSlidePhoneme() {
   const phones: Array<{
     ipa: string;
     v: number;
+    ms: number;
     status: 'ok' | 'weak' | 'bad' | 'dropped';
     note?: string;
   }> = [
-    { ipa: '/θ/', v: 35, status: 'bad', note: 'heard /s/' },
-    { ipa: '/ɪ/', v: 92, status: 'ok' },
-    { ipa: '/ŋ/', v: 54, status: 'weak', note: 'weak release' },
-    { ipa: '/k/', v: 0,  status: 'dropped', note: 'dropped' },
+    { ipa: '/θ/', v: 35, ms: 110, status: 'bad',     note: 'heard /s/' },
+    { ipa: '/ɪ/', v: 92, ms: 130, status: 'ok' },
+    { ipa: '/ŋ/', v: 54, ms: 100, status: 'weak',    note: 'weak release' },
+    { ipa: '/k/', v: 0,  ms: 0,   status: 'dropped', note: 'dropped' },
   ];
+  const totalMs = phones.reduce((sum, p) => sum + (p.ms || 60), 0);
   const barCls = (s: (typeof phones)[number]['status']) =>
     s === 'ok'      ? 'bg-gradient-to-t from-emerald-400 to-emerald-600'
     : s === 'weak'  ? 'bg-gradient-to-t from-amber-300 to-amber-500'
@@ -2609,127 +2782,217 @@ function HeroSlidePhoneme() {
     s === 'ok'      ? 'bg-emerald-50 text-emerald-700 border-emerald-500/30'
     : s === 'weak'  ? 'bg-amber-50 text-amber-700 border-amber-500/40'
     :                 'bg-rose-50 text-rose-700 border-rose-500/30';
+  const segCls = (s: (typeof phones)[number]['status']) =>
+    s === 'ok'      ? 'bg-emerald-500'
+    : s === 'weak'  ? 'bg-amber-400'
+    : s === 'bad'   ? 'bg-rose-500'
+    :                 'bg-rose-200/50 border border-dashed border-rose-400 [background-image:repeating-linear-gradient(45deg,transparent_0_4px,rgba(244,63,94,0.18)_4px_8px)]';
   return (
-    <div className="h-full p-5 md:p-6 flex flex-col gap-3">
-      <div className="flex items-center justify-between text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span>word · <span className="font-mono normal-case tracking-normal text-foreground/85">think</span></span>
-        <span className="font-mono text-[11px] normal-case tracking-normal">/θɪŋk/</span>
+    <div className="h-full p-3.5 grid grid-cols-[120px_1fr] gap-2.5 items-stretch">
+      {/* LEFT — word + meta */}
+      <div className="flex flex-col justify-center gap-1 min-w-0">
+        <div className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+          word · en
+        </div>
+        <div className="text-[30px] font-semibold tracking-tight text-zinc-900 leading-none">
+          think
+        </div>
+        <div className="font-mono text-[13px] text-zinc-600">/θɪŋk/</div>
+        <div className="mt-1 flex flex-wrap gap-1">
+          <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-50 text-emerald-700">
+            stress · ok
+          </span>
+          <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-50 text-emerald-700">
+            ↘ falling
+          </span>
+        </div>
+        <div className="mt-1 text-[10px] text-zinc-500 leading-snug">
+          <span className="font-mono font-semibold text-violet-700">60+ phonemes</span> scored —
+          not a single opaque number.
+        </div>
       </div>
 
-      {/* phoneme grid */}
-      <div className="rounded-xl border border-zinc-900/[0.08] bg-white/60 backdrop-blur-sm p-4">
-        <div className="grid grid-cols-4 gap-3">
+      {/* RIGHT — phoneme bars + ms timeline */}
+      <div className="rounded-xl border border-zinc-900/[0.08] bg-white/65 backdrop-blur-sm px-2.5 py-2 min-h-0 flex flex-col">
+        <div className="grid grid-cols-4 gap-1.5">
           {phones.map((p, i) => (
-            <div key={i} className="flex flex-col items-center gap-2">
-              {/* bar */}
-              <div className="relative h-[90px] w-full flex items-end">
+            <div key={i} className="flex flex-col items-center gap-1 min-w-0">
+              <div className="relative h-[54px] w-full flex items-end">
                 <div className="absolute inset-x-0 top-0 h-px bg-zinc-900/[0.06]" />
-                <div className="absolute inset-x-0 top-1/3 h-px bg-zinc-900/[0.04]" />
-                <div className="absolute inset-x-0 top-2/3 h-px bg-zinc-900/[0.06]" />
+                <div className="absolute inset-x-0 top-1/2 h-px bg-zinc-900/[0.04]" />
                 <div
-                  className={`mx-auto w-7 rounded-t-[4px] ${barCls(p.status)}`}
-                  style={{ height: `${Math.max(p.v, p.status === 'dropped' ? 100 : 0)}%`, minHeight: p.status === 'dropped' ? '100%' : '4px' }}
+                  className={`mx-auto w-6 rounded-t-[3px] ${barCls(p.status)}`}
+                  style={{
+                    height: `${Math.max(p.v, p.status === 'dropped' ? 100 : 0)}%`,
+                    minHeight: p.status === 'dropped' ? '100%' : '4px',
+                  }}
                 />
               </div>
-              {/* phoneme label */}
               <div
-                className="font-mono text-[13px] font-semibold tabular-nums"
+                className="font-mono text-[12px] font-semibold tabular-nums"
                 style={{ fontFamily: 'var(--font-hero-serif, "Fraunces", Georgia, serif)' }}
               >
                 {p.ipa}
               </div>
-              {/* score / note */}
-              <div className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${chipCls(p.status)}`}>
+              <div className={`text-[9.5px] font-mono uppercase tracking-wider px-1.5 py-[1px] rounded-md border ${chipCls(p.status)}`}>
                 {p.status === 'dropped' ? '—' : `${p.v}%`}
               </div>
-              <div className="min-h-[14px] text-[10px] font-mono text-muted-foreground text-center">
+              <div className="min-h-[12px] text-[9.5px] font-mono text-muted-foreground text-center leading-tight truncate w-full">
                 {p.note ?? '\u00A0'}
               </div>
             </div>
           ))}
         </div>
 
-        {/* supra-segmental strip */}
-        <div className="mt-4 pt-3 border-t border-zinc-900/[0.06] grid grid-cols-3 gap-2 text-[11px] font-mono">
-          <SupraCell label="STRESS"     state="ok"   value="syllable 1 · ok" />
-          <SupraCell label="LIAISON"    state="ok"   value="n/a · ok" />
-          <SupraCell label="INTONATION" state="ok"   value="↘ falling · ok" />
-        </div>
-      </div>
-
-      {/* footer caption */}
-      <div className="rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/[0.06] to-white/40 backdrop-blur-sm px-3.5 py-2.5 flex items-center gap-2.5">
-        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-700">
-          <Waves className="h-3.5 w-3.5" />
-        </span>
-        <p className="text-[12px] leading-[1.5] text-foreground/85">
-          <span className="font-mono font-semibold text-violet-700">60+ phonemes</span> scored for accuracy, stress
-          and intonation — not a single opaque number.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function SupraCell({
-  label,
-  state,
-  value,
-}: {
-  label: string;
-  state: 'ok' | 'warn' | 'bad';
-  value: string;
-}) {
-  const cls =
-    state === 'ok'
-      ? 'text-emerald-700 before:bg-emerald-500'
-      : state === 'warn'
-      ? 'text-amber-700 before:bg-amber-500'
-      : 'text-rose-700 before:bg-rose-500';
-  return (
-    <div className="flex flex-col gap-0.5 min-w-0">
-      <span className={`inline-flex items-center gap-1.5 uppercase tracking-[0.14em] text-[10px] ${cls} before:inline-block before:h-1.5 before:w-1.5 before:rounded-full`}>
-        {label}
-      </span>
-      <span className="text-[11px] text-foreground/80 truncate">{value}</span>
-    </div>
-  );
-}
-
-function HeroSlideReasoning() {
-  return (
-    <div className="h-full p-5 md:p-6 flex flex-col gap-3">
-      <div className="flex items-center justify-between text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span>full matrix → agent reasoning</span>
-        <span className="font-mono normal-case tracking-normal text-amber-700">not one score</span>
-      </div>
-      <pre className="rounded-xl border border-zinc-900/[0.08] bg-white/55 backdrop-blur-sm p-3 font-mono text-[10.5px] sm:text-[11px] leading-[1.5] whitespace-pre text-zinc-800 max-h-[min(200px,38vh)] overflow-auto">
-        {HERO_SLIDE_REASONING_JSON}
-      </pre>
-
-      <div className="flex items-center justify-center text-muted-foreground/60">
-        <ArrowRight className="h-4 w-4 rotate-90" />
-      </div>
-
-      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.07] to-white/40 backdrop-blur-sm p-4">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/15 text-amber-700">
-              <Sparkles className="h-3.5 w-3.5" />
-            </span>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-amber-700">
-              Agent reply · auto-generated
+        {/* ms timeline — same data, replayed horizontally so the
+         * bottom of the card carries information instead of empty
+         * space. Each segment width is proportional to phoneme
+         * duration; dropped phoneme is a dashed gap. */}
+        <div className="mt-auto pt-2.5 border-t border-zinc-900/[0.06]">
+          <div className="flex items-center justify-between text-[9.5px] font-mono uppercase tracking-[0.16em] text-muted-foreground mb-1">
+            <span>timing · ms</span>
+            <span className="normal-case tracking-normal text-foreground/70">
+              {totalMs} ms · 1 dropped
             </span>
           </div>
-          <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
-            o1 · Sonnet · Gemini
+          <div className="flex h-2.5 rounded-full overflow-hidden gap-[2px]">
+            {phones.map((p, i) => {
+              const w = (p.ms || 60) / totalMs;
+              return (
+                <div
+                  key={i}
+                  className={cn('h-full', segCls(p.status))}
+                  style={{ flex: `${Math.max(w, 0.18)} 1 0%` }}
+                  title={`${p.ipa} · ${p.ms} ms`}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-1 flex text-[9px] font-mono text-muted-foreground gap-[2px]">
+            {phones.map((p, i) => {
+              const w = (p.ms || 60) / totalMs;
+              return (
+                <span
+                  key={i}
+                  className="text-center tabular-nums"
+                  style={{ flex: `${Math.max(w, 0.18)} 1 0%` }}
+                >
+                  {p.ms ? `${p.ms}` : '—'}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Slide 04 — Reasoning-ready payload. Horizontal strip:
+ * LEFT  → designed schema view (overall · sub-scores · phoneme chips),
+ *         not a raw JSON dump
+ * RIGHT → an LLM-authored coaching reply derived from the payload. */
+function HeroSlideReasoning() {
+  const subScores: { key: string; val: number }[] = [
+    { key: 'pron.accuracy',   val: 44 },
+    { key: 'pron.integrity',  val: 90 },
+    { key: 'pron.fluency',    val: 72 },
+    { key: 'pron.rhythm',     val: 65 },
+  ];
+  const phonemes: { ipa: string; v: number; status: 'ok' | 'weak' | 'bad' | 'dropped' }[] = [
+    { ipa: 'θ', v: 35, status: 'bad' },
+    { ipa: 'ɪ', v: 88, status: 'ok' },
+    { ipa: 'ŋ', v: 54, status: 'weak' },
+    { ipa: 'k', v: 0,  status: 'dropped' },
+  ];
+  const phChip = (s: (typeof phonemes)[number]['status']) =>
+    s === 'ok'      ? 'bg-emerald-50 border-emerald-500/30 text-emerald-700'
+    : s === 'weak'  ? 'bg-amber-50 border-amber-500/35 text-amber-700'
+    : s === 'bad'   ? 'bg-rose-50 border-rose-500/30 text-rose-700'
+    :                 'bg-rose-50 border-rose-500/30 text-rose-700/80 line-through';
+  return (
+    <div className="h-full p-3.5 grid grid-cols-[1.1fr_1fr] gap-2.5 items-stretch">
+      {/* LEFT — schema-visualizer card */}
+      <div className="rounded-xl border border-zinc-900/[0.08] bg-gradient-to-br from-white/80 via-white/65 to-amber-50/35 backdrop-blur-sm flex flex-col gap-1 p-2.5 min-h-0 overflow-hidden">
+        <div className="flex items-center justify-between text-[9.5px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
+          <span>response · application/json</span>
+          <span className="text-amber-700 normal-case tracking-normal">14 fields</span>
+        </div>
+
+        {/* overall — hero score row */}
+        <div className="flex items-baseline gap-2.5 rounded-lg bg-amber-500/[0.07] border border-amber-500/20 px-2.5 py-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-amber-800/70">overall</span>
+          <span className="font-mono text-[22px] font-semibold tabular-nums text-amber-700 leading-none">48</span>
+          <span className="ml-auto text-[10px] font-mono text-amber-700/60">/100</span>
+        </div>
+
+        {/* sub-scores · 2x2 grid */}
+        <div className="grid grid-cols-2 gap-1.5">
+          {subScores.map((r) => (
+            <div
+              key={r.key}
+              className="flex items-center justify-between rounded-md border border-zinc-900/[0.06] bg-white/70 px-2 py-1"
+            >
+              <span className="font-mono text-[9.5px] text-zinc-500 truncate">{r.key}</span>
+              <span className="font-mono text-[11px] font-semibold tabular-nums text-zinc-800 ml-2 shrink-0">{r.val}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* details — single-word row */}
+        <div className="flex items-center gap-2 rounded-md border border-zinc-900/[0.06] bg-white/70 px-2 py-1.5">
+          <span className="font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">details[0]</span>
+          <span className="font-mono text-[11px] text-zinc-800 font-medium">&quot;think&quot;</span>
+          <span className="font-mono text-[9.5px] text-zinc-500">2400–2910 ms</span>
+          <span className="ml-auto inline-flex items-center text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border border-rose-500/30 bg-rose-50 text-rose-700">
+            mispron
           </span>
         </div>
-        <p className="text-[13px] leading-[1.55] text-foreground/85">
-          &ldquo;I noticed you pronounced <strong>think</strong> as <em>sink</em>. Place your tongue between your teeth for the{' '}
-          <code className="font-mono text-[12px] px-1 py-0.5 rounded bg-white/60 border border-zinc-900/[0.06]">/θ/</code>{' '}
-          sound. Try: <em>&ldquo;Thirty thirsty thinkers thought&hellip;&rdquo;</em>&rdquo;
+
+        {/* phoneme chips */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {phonemes.map((p) => (
+            <span
+              key={p.ipa}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] border',
+                phChip(p.status),
+              )}
+            >
+              <span style={{ fontFamily: 'var(--font-hero-serif, "Fraunces", Georgia, serif)' }}>
+                /{p.ipa}/
+              </span>
+              <span className="tabular-nums opacity-80">
+                {p.status === 'dropped' ? '—' : p.v}
+              </span>
+            </span>
+          ))}
+          <span className="ml-auto text-[9.5px] font-mono text-muted-foreground">+ 60 fields</span>
+        </div>
+      </div>
+
+      {/* RIGHT — agent reply */}
+      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.07] to-white/40 backdrop-blur-sm p-3 flex flex-col gap-2 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-700">
+            <Sparkles className="h-3 w-3" />
+          </span>
+          <span className="text-[9.5px] font-mono uppercase tracking-wider text-amber-700">
+            agent reply · auto-generated
+          </span>
+        </div>
+        <p className="text-[12px] leading-[1.55] text-foreground/85">
+          &ldquo;You said <strong>think</strong> as <em>sink</em>. Place your tongue between your
+          teeth for{' '}
+          <code className="font-mono text-[11px] px-1 py-0.5 rounded bg-white/60 border border-zinc-900/[0.06]">
+            /θ/
+          </code>
+          . Try: <em>&ldquo;Thirty thirsty thinkers&hellip;&rdquo;</em>&rdquo;
         </p>
+        <div className="mt-auto flex items-center justify-between gap-2 text-[9.5px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+          <span>plays nicely with</span>
+          <span className="text-foreground/70">o1 · Sonnet · Gemini</span>
+        </div>
       </div>
     </div>
   );
@@ -2969,50 +3232,33 @@ function BilingualScorePanel() {
 
   return (
     <div>
-      {/* Header rail — toggle + payload-contract + locales-on-request,
-          consolidated into one row so language signal isn't duplicated. */}
-      <div className="mb-3 flex flex-wrap items-center gap-2.5">
-        <div className="inline-flex items-center gap-1 rounded-full border border-zinc-900/[0.08] bg-white/70 backdrop-blur-sm p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="inline-flex items-center gap-0.5 rounded-full border border-zinc-900/[0.08] bg-white/70 backdrop-blur-sm p-0.5">
           <button
             type="button"
             onClick={() => setLang('zh')}
             aria-pressed={isZh}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium whitespace-nowrap transition-all duration-200 ${
+            className={`rounded-full px-3 py-1 text-[12px] font-medium transition-all duration-200 ${
               isZh
-                ? 'bg-gradient-to-r from-rose-500/15 to-amber-500/10 text-rose-800 shadow-[inset_0_0_0_1px_rgba(244,63,94,0.3)]'
+                ? 'bg-rose-500/12 text-rose-900 shadow-[inset_0_0_0_1px_rgba(244,63,94,0.22)]'
                 : 'text-zinc-500 hover:text-zinc-800'
             }`}
           >
-            <span aria-hidden className="text-[13px] leading-none">🇨🇳</span>
-            <span className="font-mono text-[11px]">zh-CN</span>
-            <span className="opacity-70">· tones · sandhi</span>
+            Mandarin
           </button>
           <button
             type="button"
             onClick={() => setLang('en')}
             aria-pressed={!isZh}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium whitespace-nowrap transition-all duration-200 ${
+            className={`rounded-full px-3 py-1 text-[12px] font-medium transition-all duration-200 ${
               !isZh
-                ? 'bg-gradient-to-r from-sky-500/15 to-indigo-500/10 text-sky-800 shadow-[inset_0_0_0_1px_rgba(14,165,233,0.3)]'
+                ? 'bg-sky-500/12 text-sky-900 shadow-[inset_0_0_0_1px_rgba(14,165,233,0.22)]'
                 : 'text-zinc-500 hover:text-zinc-800'
             }`}
           >
-            <span aria-hidden className="text-[13px] leading-none">🇬🇧</span>
-            <span className="font-mono text-[11px]">en-US</span>
-            <span className="opacity-70">· phonemes · CEFR</span>
+            English
           </button>
         </div>
-
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground whitespace-nowrap">
-          <ArrowRight className="h-3 w-3 text-emerald-600" aria-hidden />
-          same{' '}
-          <span className="font-mono text-foreground/80">pron.*</span> /{' '}
-          <span className="font-mono text-foreground/80">details[]</span> contract
-        </span>
-
-        <span className="ml-auto text-[11px] italic text-muted-foreground whitespace-nowrap hidden md:inline-block">
-          Other locales on request.
-        </span>
       </div>
 
       <div
@@ -3926,4 +4172,3 @@ function BenchmarkMicroChart({ id }: { id: string }) {
 void Bot;
 void Baby;
 void GraduationCap;
-void Globe2;

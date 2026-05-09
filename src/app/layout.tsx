@@ -1,5 +1,5 @@
 import { Geist, Geist_Mono, Noto_Sans_SC, Fraunces } from 'next/font/google';
-import { ThemeProvider } from '@/components/theme-provider';
+import { RootThemeProvider } from '@/components/root-theme-provider';
 import './globals.css';
 
 const geistSans = Geist({
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansSC.variable} ${fraunces.variable} h-full`}
     >
       <body className="min-h-full flex flex-col relative">
-        <ThemeProvider>{children}</ThemeProvider>
+        <RootThemeProvider>{children}</RootThemeProvider>
       </body>
     </html>
   );

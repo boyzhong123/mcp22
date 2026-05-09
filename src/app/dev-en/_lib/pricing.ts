@@ -1,92 +1,118 @@
 /**
- * Tiered call-based pricing for top-ups.
+ * Account-wallet pricing helpers.
  *
- * Users buy "calls" (API invocations); the dollar amount is derived from
- * the tier their requested quantity falls into. This is FLAT pricing — the
- * whole order is billed at the single tier the call count lands in (NOT
- * marginal/cumulative across tiers).
+ * Under the wallet model the user buys *dollars* (with a satte-tier bonus
+ * on larger top-ups), and calls are derived from that wallet balance at a
+ * single flat per-call rate. The legacy per-call quantity tiers
+ * (`CALL_TIERS` / `priceForCalls` / etc.) are gone — the only "tiers" left
+ * are the top-up bonus tiers, which live in `_lib/topup-bonus.ts`.
  *
- * Backend `POST /billing/topups/intent` still receives `amount_cents`; we
- * simply convert calls → dollars on the client and let the backend grow
- * the key's `total_limit` accordingly.
+ * This file used to export the old call-quantity API. We keep a thin
+ * deprecated compatibility layer here so external imports keep type-
+ * checking until each call site has been migrated; new code should import
+ * from `topup-bonus.ts` directly.
  */
 
+import {
+  TOPUP_TIERS,
+  TOPUP_PRESETS_CENTS,
+  callsForAmount,
+  quoteTopup,
+} from './topup-bonus';
+
+/** Format a call count with US thousands separators. */
+export function formatCalls(n: number): string {
+  return Math.max(0, Math.floor(n || 0)).toLocaleString('en-US');
+}
+
+// ─── Legacy call-quantity API (deprecated) ──────────────────────────────────
+// Several pages still import these. Each is rewired to the new bonus model
+// so the numbers stay coherent during the migration window.
+
 export interface CallTier {
-  /** Inclusive upper bound for this tier (use Infinity for the top tier). */
+  /** @deprecated */
   upTo: number;
-  /** Per-call price in cents (may be fractional, e.g. 1.5 = $0.015). */
+  /** @deprecated */
   unitCents: number;
 }
 
-export const CALL_TIERS: CallTier[] = [
-  { upTo: 999, unitCents: 2 },
-  { upTo: 9999, unitCents: 1.5 },
-  { upTo: Infinity, unitCents: 1 },
-];
+/**
+ * @deprecated Call-quantity tiers are gone. We surface the **top-up bonus**
+ * tiers under the same name so the legacy "Rates" page still renders a
+ * useful three-row table while it's being rewritten.
+ */
+export const CALL_TIERS: CallTier[] = TOPUP_TIERS.map((t) => ({
+  upTo: t.minCents,
+  unitCents: 0.1 * (1 - t.bonusPct), // dollars per 1k after bonus, in cents
+}));
+
+/** @deprecated Unused under the wallet model. Kept as an empty export. */
+export const CALL_PRESETS: number[] = [];
 
 export interface PricingQuote {
   calls: number;
   tierIndex: number;
   unitCents: number;
-  /** Total in whole cents (rounded). */
   totalCents: number;
 }
 
-/** Resolve a call count to its tier and total price (flat pricing). */
+/**
+ * @deprecated Old "buy N calls" surface. Forwards to the bonus model by
+ * computing the cents needed to fund N calls at the flat rate, then
+ * quoting that amount. Not exact (no bonus is applied to inputs that
+ * happen to land in a higher tier) but close enough for the rates page
+ * during migration.
+ */
 export function priceForCalls(calls: number): PricingQuote {
-  const safeCalls = Math.max(0, Math.floor(calls || 0));
-  const idx = CALL_TIERS.findIndex((t) => safeCalls <= t.upTo);
-  const tierIndex = idx === -1 ? CALL_TIERS.length - 1 : idx;
-  const tier = CALL_TIERS[tierIndex];
-  const totalCents = Math.round(safeCalls * tier.unitCents);
+  const safe = Math.max(0, Math.floor(calls || 0));
+  // 1 call = 0.1¢ at the flat rate.
+  const baseCents = Math.round(safe * 0.1);
+  const q = quoteTopup(baseCents);
   return {
-    calls: safeCalls,
-    tierIndex,
-    unitCents: tier.unitCents,
-    totalCents,
+    calls: safe,
+    tierIndex: q.tierIndex,
+    unitCents: 0.1,
+    totalCents: baseCents,
   };
 }
 
-/** Lower bound (inclusive) of a tier — the previous tier's upTo + 1, or 1 for tier 0. */
+/** @deprecated Always returns 0 — there's no per-call discount any more. */
+export function savingsVsBase(_quote: PricingQuote): {
+  savedCents: number;
+  pct: number;
+} {
+  return { savedCents: 0, pct: 0 };
+}
+
+/** @deprecated Tier ranges are dollar amounts now. */
 export function tierStart(i: number): number {
-  if (i <= 0) return 1;
-  return CALL_TIERS[i - 1].upTo + 1;
+  if (i <= 0) return 0;
+  return TOPUP_TIERS[i]?.minCents ?? 0;
 }
 
-/** Human-readable tier range, e.g. "1 – 999", "1,000 – 9,999", "10,000+". */
+/** @deprecated Returns dollar-tier label, e.g. "$50+ → +10% bonus". */
 export function tierRangeLabel(i: number): string {
-  const start = tierStart(i).toLocaleString('en-US');
-  const tier = CALL_TIERS[i];
-  if (tier.upTo === Infinity) return `${start}+`;
-  return `${start} – ${tier.upTo.toLocaleString('en-US')}`;
+  const tier = TOPUP_TIERS[i];
+  if (!tier) return '';
+  const dollars = (tier.minCents / 100).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+  return `${dollars}+ → ${tier.label}`;
 }
 
-/** Format a (possibly fractional) per-call price as e.g. "$0.02" or "$0.015". */
+/** @deprecated Format helper carried over from the old per-call tiers. */
 export function formatUnitPrice(unitCents: number): string {
   const dollars = unitCents / 100;
-  // Strip trailing zeros but keep at least 2 decimals
   const fixed = dollars.toFixed(4);
   const trimmed = fixed.replace(/0+$/, '').replace(/\.$/, '');
-  const minTwo = trimmed.includes('.') && trimmed.split('.')[1].length >= 2 ? trimmed : dollars.toFixed(2);
+  const minTwo =
+    trimmed.includes('.') && trimmed.split('.')[1].length >= 2
+      ? trimmed
+      : dollars.toFixed(2);
   return `$${minTwo}`;
 }
 
-/**
- * Savings vs. base (tier 0) pricing — used to surface "Volume discount applied"
- * messaging when the user lands on a cheaper tier.
- */
-export function savingsVsBase(quote: PricingQuote): { savedCents: number; pct: number } {
-  const baseUnit = CALL_TIERS[0].unitCents;
-  const baseTotal = Math.round(quote.calls * baseUnit);
-  const savedCents = Math.max(0, baseTotal - quote.totalCents);
-  const pct = baseTotal > 0 ? Math.round((savedCents / baseTotal) * 100) : 0;
-  return { savedCents, pct };
-}
-
-/** Recommended preset call counts shown as quick-pick chips. */
-export const CALL_PRESETS: number[] = [100, 500, 1000, 5000, 10000, 50000];
-
-/** Format a call count with thousands separators. */
-export function formatCalls(n: number): string {
-  return Math.max(0, Math.floor(n || 0)).toLocaleString('en-US');
-}
+// Re-export the new helpers so callers can keep a single import path.
+export { TOPUP_TIERS, TOPUP_PRESETS_CENTS, callsForAmount, quoteTopup };

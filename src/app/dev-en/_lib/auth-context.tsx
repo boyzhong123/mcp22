@@ -28,6 +28,9 @@ export type { ApiUser } from './api';
 interface AuthContextValue {
   user: ApiUser | null;
   loading: boolean;
+  isNewUser: boolean;
+  isDemo: boolean;
+  clearIsNewUser: () => void;
   loginWithPassword: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   registerWithPassword: (
     name: string,
@@ -46,19 +49,45 @@ interface AuthContextValue {
   ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   refresh: () => Promise<void>;
+  loginAsDemo: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const DEMO_TOKEN = 'demo_token_for_preview';
+const DEMO_USER: ApiUser = {
+  id: 9999,
+  email: 'demo@chivox.com',
+  name: 'Demo User',
+  role: 'user',
+  avatar_url: undefined,
+  created_at: new Date().toISOString(),
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
   const cancelledRef = useRef(false);
 
+  const clearIsNewUser = useCallback(() => setIsNewUser(false), []);
+
   const refresh = useCallback(async () => {
-    if (!getToken()) {
+    const token = getToken();
+    if (!token) {
       setUser(null);
+      setIsDemo(false);
+      setLoading(false);
+      return;
+    }
+    // Demo mode: skip API call, restore demo user from token
+    if (token === DEMO_TOKEN) {
+      if (!cancelledRef.current) {
+        setUser(DEMO_USER);
+        setIsDemo(true);
+      }
       setLoading(false);
       return;
     }
@@ -66,10 +95,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = await authApi.me();
       // backend may wrap as {user: ...} for some envs; normalize
       const normalized = (u as unknown as { user?: ApiUser }).user ?? (u as ApiUser);
-      if (!cancelledRef.current) setUser(normalized);
+      if (!cancelledRef.current) {
+        setUser(normalized);
+        setIsDemo(false);
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) setToken(null);
-      if (!cancelledRef.current) setUser(null);
+      if (!cancelledRef.current) {
+        setUser(null);
+        setIsDemo(false);
+      }
     } finally {
       if (!cancelledRef.current) setLoading(false);
     }
@@ -84,10 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   // Global 401 handler: clear session and bounce to /dev-en/login.
+  // Skip for demo mode (identified by DEMO_TOKEN).
   useEffect(() => {
     registerUnauthenticatedHandler(() => {
+      // Demo mode should not trigger logout on 401
+      if (getToken() === DEMO_TOKEN) return;
       setToken(null);
       setUser(null);
+      setIsDemo(false);
       try {
         const path = window.location.pathname;
         const onLogin = path === '/login' || path.startsWith('/login/');
@@ -123,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await authApi.register({ name, email, password });
         const res = await authApi.login({ email, password });
         applyLogin(res.token, res.user);
+        setIsNewUser(true);
         return { ok: true };
       } catch (err) {
         return { ok: false, error: describeError(err, 'login') };
@@ -153,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           terms_accepted: termsAccepted,
         });
         applyLogin(res.token, res.user);
+        if (res.is_new_user) setIsNewUser(true);
         return { ok: true, isNewUser: res.is_new_user };
       } catch (err) {
         return { ok: false, error: describeError(err, 'login') };
@@ -181,16 +222,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     // best-effort server-side ack; ignore failures (stateless JWT)
-    authApi.logout().catch(() => {});
+    if (!isDemo) {
+      authApi.logout().catch(() => {});
+    }
     setToken(null);
     setUser(null);
+    setIsDemo(false);
     router.push('/login');
-  }, [router]);
+  }, [router, isDemo]);
+
+  const loginAsDemo = useCallback(() => {
+    setToken(DEMO_TOKEN);
+    setUser(DEMO_USER);
+    setIsDemo(true);
+    setIsNewUser(true);
+    invalidate('auth');
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       loading,
+      isNewUser,
+      isDemo,
+      clearIsNewUser,
       loginWithPassword,
       registerWithPassword,
       sendOtp,
@@ -199,10 +254,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       patchProfile,
       logout,
       refresh,
+      loginAsDemo,
     }),
     [
       user,
       loading,
+      isNewUser,
+      isDemo,
+      clearIsNewUser,
       loginWithPassword,
       registerWithPassword,
       sendOtp,
@@ -211,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       patchProfile,
       logout,
       refresh,
+      loginAsDemo,
     ],
   );
 

@@ -42,10 +42,6 @@ const ROUTE_CRUMBS: Record<string, Crumb[]> = {
     { href: '/dashboard/settings', en: 'Settings', zh: '设置' },
     { en: 'Notifications', zh: '通知' },
   ],
-  '/dashboard/settings/members': [
-    { href: '/dashboard/settings', en: 'Settings', zh: '设置' },
-    { en: 'Members', zh: '团队成员' },
-  ],
 };
 
 function resolveCrumbs(pathname: string): Crumb[] {

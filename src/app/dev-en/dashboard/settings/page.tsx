@@ -9,11 +9,16 @@ import {
   Mail,
   Rss,
   TrendingDown,
+  Wallet,
 } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
+  getAccountAlert,
   getNotificationSettings,
+  updateAccountAlert,
   updateNotificationSettings,
+  type AccountLowBalanceAlert,
   type NotificationSettings,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
@@ -29,14 +34,20 @@ const DEFAULT_NOTIF: NotificationSettings = {
   securityAlerts: true,
 };
 
+const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
+  enabled: true,
+  thresholdCents: 500,
+};
+
 // NOTE: Personal info (avatar, name, email, sign-in method) lives on
 // /dashboard/profile and is reachable via the sidebar user chip. The
-// Settings surface is intentionally scoped to *workspace* preferences —
-// notifications here, team members on /settings/members — so the two
+// Settings surface is intentionally scoped to *workspace* preferences
+// — notifications + the account-level low-balance alert — so the two
 // concerns stop fighting for the same page.
 export default function SettingsPage() {
   const { t } = useLang();
   const notif = useMockStore(getNotificationSettings, DEFAULT_NOTIF);
+  const accountAlert = useMockStore(getAccountAlert, DEFAULT_ACCOUNT_ALERT);
 
   const patch = (p: Partial<NotificationSettings>) => {
     updateNotificationSettings(p);
@@ -44,6 +55,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      <AccountAlertSection
+        alert={accountAlert}
+        onChange={(next) => updateAccountAlert(next)}
+      />
       <Section
         icon={Bell}
         title={t('Email notifications', '邮件通知')}
@@ -95,10 +110,13 @@ export default function SettingsPage() {
           />
           <Toggle
             icon={Bell}
-            label={t('Low-balance alerts (master)', '余额不足提醒（总开关）')}
+            label={t(
+              'Low-balance email (master)',
+              '余额不足邮件（总开关）',
+            )}
             desc={t(
-              'Master switch for the per-key alerts you configured on the API Keys page.',
-              '控制在 API 密钥页面为每个 Key 配置的余额不足提醒。',
+              'Master switch for the account-level low-balance alert configured above. Off here mutes the email; the in-app banner still shows.',
+              '总开关关闭后将不再发送上方账户级余额不足邮件，但应用内提示仍会显示。',
             )}
             on={notif.lowBalanceAlertsMaster}
             onChange={(v) => patch({ lowBalanceAlertsMaster: v })}
@@ -127,6 +145,104 @@ export default function SettingsPage() {
         </div>
       </Section>
     </div>
+  );
+}
+
+/**
+ * Account-level low-balance alert. Replaces the old per-key alert config:
+ * one threshold for the whole wallet (every Key consumes the same balance),
+ * with a quick toggle + dollar threshold input. Persisted via
+ * `updateAccountAlert` so other surfaces (Overview banner, sidebar nudge)
+ * pick up the change immediately.
+ */
+function AccountAlertSection({
+  alert,
+  onChange,
+}: {
+  alert: AccountLowBalanceAlert;
+  onChange: (next: AccountLowBalanceAlert) => void;
+}) {
+  const { t } = useLang();
+  const [draft, setDraft] = useState<string>(
+    () => (alert.thresholdCents / 100).toFixed(2),
+  );
+
+  const commitThreshold = () => {
+    const dollars = Number.parseFloat(draft);
+    if (!Number.isFinite(dollars) || dollars < 0) {
+      setDraft((alert.thresholdCents / 100).toFixed(2));
+      return;
+    }
+    const cents = Math.round(dollars * 100);
+    onChange({ ...alert, thresholdCents: cents });
+    setDraft((cents / 100).toFixed(2));
+  };
+
+  return (
+    <Section
+      icon={Wallet}
+      title={t('Account low-balance alert', '账户余额不足提醒')}
+      subtitle={t(
+        'All your keys share one wallet. We email you (and show an in-app banner) once the balance drops below the threshold below.',
+        '所有 Key 共享一个钱包。当余额低于下方阈值时，我们会发送邮件并在应用内显示提示。',
+      )}
+    >
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <Toggle
+          icon={Bell}
+          label={t('Notify me when balance is low', '余额不足时通知我')}
+          desc={t(
+            'Triggers as soon as your wallet drops at or below the threshold. We never spam — at most one email per drop event.',
+            '钱包余额低于阈值时立即触发，每次跌破最多一封邮件。',
+          )}
+          on={alert.enabled}
+          onChange={(v) => onChange({ ...alert, enabled: v })}
+        />
+        <div className="flex items-start gap-4 px-4 py-3.5 border-t border-border">
+          <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <label
+              htmlFor="account-alert-threshold"
+              className="text-sm font-medium block"
+            >
+              {t('Threshold', '阈值')}
+            </label>
+            <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+              {t(
+                'Common picks: $5 (heads-up), $20 (refill soon), $50 (paid-team default).',
+                '常用值：$5（提前预警）、$20（尽快充值）、$50（团队付费默认）。',
+              )}
+            </p>
+          </div>
+          <div
+            className={cn(
+              'flex items-center gap-1 h-9 rounded-md border border-border bg-muted/30 px-2 shrink-0',
+              !alert.enabled && 'opacity-60',
+            )}
+          >
+            <span className="text-xs text-muted-foreground">$</span>
+            <input
+              id="account-alert-threshold"
+              type="number"
+              min={0}
+              step="0.01"
+              value={draft}
+              disabled={!alert.enabled}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitThreshold}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+              }}
+              className="w-20 bg-transparent text-sm font-semibold tabular-nums focus:outline-none disabled:cursor-not-allowed"
+            />
+          </div>
+        </div>
+      </div>
+    </Section>
   );
 }
 

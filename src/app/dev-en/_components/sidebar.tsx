@@ -10,6 +10,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ExternalLink,
+  Gauge,
   Key,
   LayoutDashboard,
   LogOut,
@@ -32,17 +33,19 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   zhLabel: string;
+  tourId?: string;
 };
 
-// Flat five-item top-level nav — matches what OpenAI, Anthropic and Vercel
-// ship in 2025. Team / Members and Top-ups / Rates live as tabs inside
-// Settings and Billing respectively.
+// Flat top-level nav — matches what OpenAI, Anthropic and Vercel ship
+// in 2025. Top-ups / Rates live as tabs inside Billing; Limits is a
+// dedicated page so caps don't get buried under unrelated billing UI.
 const NAV: NavItem[] = [
-  { href: '/dashboard/overview', icon: LayoutDashboard, label: 'Overview', zhLabel: '概览' },
-  { href: '/dashboard/keys', icon: Key, label: 'API Keys', zhLabel: 'API 密钥' },
-  { href: '/dashboard/usage', icon: BarChart3, label: 'Usage', zhLabel: '用量' },
-  { href: '/dashboard/billing', icon: Receipt, label: 'Billing', zhLabel: '账单' },
-  { href: '/dashboard/settings', icon: Settings, label: 'Settings', zhLabel: '设置' },
+  { href: '/dashboard/overview', icon: LayoutDashboard, label: 'Overview', zhLabel: '概览', tourId: 'nav-overview' },
+  { href: '/dashboard/keys', icon: Key, label: 'API Keys', zhLabel: 'API 密钥', tourId: 'nav-keys' },
+  { href: '/dashboard/usage', icon: BarChart3, label: 'Usage', zhLabel: '用量', tourId: 'nav-usage' },
+  { href: '/dashboard/billing', icon: Receipt, label: 'Billing', zhLabel: '账单', tourId: 'nav-billing' },
+  { href: '/dashboard/limits', icon: Gauge, label: 'Limits', zhLabel: '上限', tourId: 'nav-limits' },
+  { href: '/dashboard/settings', icon: Settings, label: 'Settings', zhLabel: '设置', tourId: 'nav-settings' },
 ];
 
 // Keep a flat export for any caller outside this file.
@@ -238,6 +241,7 @@ export function DevEnSidebar() {
                 icon: BookOpen,
                 label: 'API Docs',
                 zhLabel: 'API 文档',
+                tourId: 'nav-docs',
               }}
               isActive={false}
               collapsed={collapsed}
@@ -319,6 +323,7 @@ function SidebarLink({
     <Link
       href={item.href}
       onClick={onNavigate}
+      data-tour={item.tourId}
       className={cn(
         'group relative flex items-center gap-2.5 rounded-md text-[13px] transition-colors',
         collapsed ? 'lg:justify-center lg:px-0 lg:py-2 px-2.5 py-2' : 'px-2.5 py-2',

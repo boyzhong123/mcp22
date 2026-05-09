@@ -70,12 +70,15 @@ type NavItem = {
   external?: boolean;
 };
 
-/** Primary nav items (anchors scroll on /, jump to /#… elsewhere). */
+/** Primary nav items (anchors scroll on /, jump to /#… elsewhere).
+ *  Order strictly mirrors what the visitor scrolls past on the homepage:
+ *  Hero → Capabilities → Proof → Quickstart → Use cases → CTA.
+ *  Hero/CTA are unanchored on purpose; the rest map 1:1. */
 const NAV_ITEMS: readonly NavItem[] = [
+  { href: '#capabilities', label: 'Capabilities' },
+  { href: '#proof', label: 'Proof' },
   { href: '#quickstart', label: 'Quickstart' },
-  { href: '#mandarin-moat', label: 'Mandarin' },
   { href: '#use-cases', label: 'Use cases' },
-  { href: '#contact', label: 'Contact' },
 ] as const;
 
 /** Deep-dive sub-pages, surfaced as a "Resources ▾" dropdown. */
@@ -269,6 +272,7 @@ export function TopNav() {
   const [progress, setProgress] = useState(0);
   const [active, setActive] = useState<string>('');
   const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
   const resourcesRef = useRef<HTMLDivElement | null>(null);
   const scrollRaf = useRef<number | null>(null);
 
@@ -292,29 +296,48 @@ export function TopNav() {
     };
   }, []);
 
-  // Track the visible section so the corresponding pill lights up
-  // (only meaningful on the /global landing, where the anchor targets exist).
+  // Track the visible section so the corresponding pill lights up.
+  // We pick the section whose top has just crossed a probe line just
+  // below the sticky nav. This is more robust than IntersectionObserver
+  // for tall sections and small viewports, because there's *always*
+  // exactly one match no matter the layout.
   useEffect(() => {
     if (!onLanding) return;
     const ids = NAV_ITEMS.filter((i) => !i.external && i.href.startsWith('#')).map(
       (i) => i.href.slice(1),
     );
-    const targets = ids
-      .map((id) => document.getElementById(id))
-      .filter((el): el is HTMLElement => !!el);
-    if (targets.length === 0) return;
+    if (ids.length === 0) return;
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) setActive(`#${visible[0].target.id}`);
-      },
-      { rootMargin: '-30% 0px -55% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
-    );
-    targets.forEach((t) => io.observe(t));
-    return () => io.disconnect();
+    let raf = 0;
+    const probeOffset = 120; // px below viewport top — accounts for sticky nav
+
+    const compute = () => {
+      raf = 0;
+      const probe = window.scrollY + probeOffset;
+      let currentId: string | null = null;
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.offsetTop <= probe) {
+          currentId = id;
+        }
+      }
+      // Fallback: if none has crossed yet, light up the first one.
+      setActive(currentId ? `#${currentId}` : `#${ids[0]}`);
+    };
+
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(compute);
+    };
+
+    compute();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [onLanding]);
 
   // Close the Resources menu on outside click / escape
@@ -334,6 +357,16 @@ export function TopNav() {
       document.removeEventListener('keydown', onKey);
     };
   }, [resourcesOpen]);
+
+  // Close contact modal on Escape.
+  useEffect(() => {
+    if (!contactOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContactOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [contactOpen]);
 
   const anchorHref = (hash: string) => (onLanding ? hash : `/${hash}`);
   const resourceActive = RESOURCE_ITEMS.some((r) => pathname.startsWith(r.href));
@@ -421,6 +454,19 @@ export function TopNav() {
                   </a>
                 );
               })}
+
+              {/* Contact (modal) */}
+              <button
+                type="button"
+                onClick={() => setContactOpen(true)}
+                className={cn(
+                  'relative inline-flex items-center gap-1.5 rounded-full transition-all duration-300',
+                  scrolled ? 'px-2.5 py-1' : 'px-3 py-1.5',
+                  'hover:text-zinc-900 hover:bg-zinc-900/[0.04]',
+                )}
+              >
+                Contact
+              </button>
 
               {/* Resources ▾ dropdown — collapsed deep-dive pages */}
               <div className="relative" ref={resourcesRef}>
@@ -569,7 +615,7 @@ export function TopNav() {
               </Link>
 
               <a
-                href="https://github.com/"
+                href="https://github.com/boyzhong123/mcp22"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Chivox MCP on GitHub"
@@ -616,6 +662,116 @@ export function TopNav() {
           </div>
         </div>
       </header>
+
+      {contactOpen && (
+        <div className="fixed inset-0 z-[120]">
+          <button
+            type="button"
+            aria-label="Close contact"
+            onClick={() => setContactOpen(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-6xl">
+              <div
+                className="relative rounded-3xl border border-emerald-500/[0.18] overflow-hidden"
+                style={{
+                  background:
+                    'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(251,246,233,0.94) 100%)',
+                  backdropFilter: 'blur(30px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+                  boxShadow:
+                    'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 0 0 1px rgba(255,255,255,0.55), 0 36px 80px -36px rgba(16,52,33,0.44), 0 12px 28px -18px rgba(16,185,129,0.22)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(false)}
+                  aria-label="Close"
+                  className="absolute right-4 top-4 z-20 h-9 w-9 rounded-full border border-zinc-900/10 bg-white/70 hover:bg-white text-zinc-900 flex items-center justify-center shadow-sm"
+                >
+                  ×
+                </button>
+
+                <div className="p-6 md:p-8">
+                  <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                    <div className="lg:col-span-5">
+                      <div className="text-[11px] font-mono tracking-[0.22em] uppercase text-emerald-700 mb-3">
+                        /contact
+                      </div>
+                      <h2 className="heading-display text-3xl md:text-[40px] tracking-[-0.025em] leading-[1.08] mb-5">
+                        Let&rsquo;s build your voice agent together.
+                      </h2>
+                      <p className="text-muted-foreground text-[15px] leading-relaxed mb-8 max-w-md">
+                        Tell us what you&rsquo;re building. We&rsquo;ll reply within one business day with
+                        pilot credits, pricing, or a deployment plan — whichever you need first.
+                      </p>
+
+                      <ul className="space-y-3.5 mb-8">
+                        {[
+                          {
+                            title: 'Enterprise pricing & self-hosted deployments',
+                            body: 'Volume tiers, VPC install, SLAs, and on-prem engines for regulated buyers.',
+                          },
+                          {
+                            title: 'Missing a language or dialect?',
+                            body: 'We train new acoustic models on request. Send us your target accent.',
+                          },
+                          {
+                            title: 'Pilot credits for evaluation teams',
+                            body: 'Free benchmark run on your own audio, with a side-by-side report.',
+                          },
+                        ].map((item) => (
+                          <li key={item.title} className="flex gap-3">
+                            <div
+                              className="mt-[6px] h-5 w-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-700 inline-flex items-center justify-center"
+                              aria-hidden
+                            >
+                              <Check className="h-3 w-3" strokeWidth={3} />
+                            </div>
+                            <div>
+                              <div className="text-[14.5px] font-semibold text-zinc-900 tracking-[-0.005em]">
+                                {item.title}
+                              </div>
+                              <div className="text-[13px] text-muted-foreground leading-relaxed">
+                                {item.body}
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="rounded-xl border border-zinc-900/[0.08] bg-white/55 backdrop-blur-sm p-4">
+                        <div className="text-[11px] font-mono tracking-[0.2em] uppercase text-muted-foreground mb-2">
+                          Prefer plain email?
+                        </div>
+                        <div className="text-[13.5px]">
+                          <a
+                            href="mailto:BD@chivox.com?subject=Chivox%20MCP%20inquiry"
+                            className="inline-flex items-center gap-2 text-zinc-900 hover:text-emerald-700 transition-colors"
+                          >
+                            <Mail className="h-3.5 w-3.5 text-emerald-600" />
+                            <span className="font-medium">BD@chivox.com</span>
+                            <span className="text-muted-foreground">
+                              · developer &amp; enterprise inquiries
+                            </span>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-7">
+                      <div className="warm-card p-6 md:p-8">
+                        <GlobalContactForm />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -795,85 +951,119 @@ const USE_CASE_OPTIONS: Array<{ value: GlobalContactUseCase; label: string }> = 
 ];
 
 export function ContactSection() {
+  const [open, setOpen] = useState(false);
+
   return (
     <section
       id="contact"
-      className="relative py-20 md:py-28 border-t border-[#e9e2d2]/70 scroll-mt-28"
+      className="relative pt-12 md:pt-16 pb-20 md:pb-24 scroll-mt-28"
       style={{
         background:
           'linear-gradient(to bottom, rgba(251,246,233,0) 0%, rgba(16,185,129,0.05) 40%, rgba(245,158,11,0.04) 100%)',
       }}
     >
       <div className="container mx-auto px-6 max-w-7xl">
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          <div className="lg:col-span-5">
-            <div className="text-[11px] font-mono tracking-[0.22em] uppercase text-emerald-700 mb-3">
-              /contact
-            </div>
-            <h2 className="heading-display text-3xl md:text-[40px] tracking-[-0.025em] leading-[1.08] mb-5">
-              Let&rsquo;s build your voice agent together.
-            </h2>
-            <p className="text-muted-foreground text-[15px] leading-relaxed mb-8 max-w-md">
-              Tell us what you&rsquo;re building. We&rsquo;ll reply within one business day with
-              pilot credits, pricing, or a deployment plan — whichever you need first.
-            </p>
-
-            <ul className="space-y-3.5 mb-8">
-              {[
-                {
-                  title: 'Enterprise pricing & self-hosted deployments',
-                  body: 'Volume tiers, VPC install, SLAs, and on-prem engines for regulated buyers.',
-                },
-                {
-                  title: 'Missing a language or dialect?',
-                  body: 'We train new acoustic models on request. Send us your target accent.',
-                },
-                {
-                  title: 'Pilot credits for evaluation teams',
-                  body: 'Free benchmark run on your own audio, with a side-by-side report.',
-                },
-              ].map((item) => (
-                <li key={item.title} className="flex gap-3">
-                  <div
-                    className="mt-[6px] h-5 w-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-700 inline-flex items-center justify-center"
-                    aria-hidden
-                  >
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </div>
-                  <div>
-                    <div className="text-[14.5px] font-semibold text-zinc-900 tracking-[-0.005em]">
-                      {item.title}
-                    </div>
-                    <div className="text-[13px] text-muted-foreground leading-relaxed">
-                      {item.body}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            <div className="rounded-xl border border-zinc-900/[0.08] bg-white/55 backdrop-blur-sm p-4">
-              <div className="text-[11px] font-mono tracking-[0.2em] uppercase text-muted-foreground mb-2">
-                Prefer plain email?
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-mono tracking-[0.22em] uppercase text-emerald-700 mb-3">
+                /contact
               </div>
-              <div className="text-[13.5px]">
-                <a
-                  href="mailto:BD@chivox.com?subject=Chivox%20MCP%20inquiry"
-                  className="inline-flex items-center gap-2 text-zinc-900 hover:text-emerald-700 transition-colors"
-                >
-                  <Mail className="h-3.5 w-3.5 text-emerald-600" />
-                  <span className="font-medium">BD@chivox.com</span>
-                  <span className="text-muted-foreground">
-                    · developer &amp; enterprise inquiries
-                  </span>
-                </a>
-              </div>
+              <h2 className="heading-display text-3xl md:text-[40px] tracking-[-0.025em] leading-[1.08]">
+                Let&rsquo;s build your voice agent together.
+              </h2>
+              <p className="text-muted-foreground text-[15px] leading-relaxed mt-4 max-w-xl">
+                Tell us what you&rsquo;re building. We&rsquo;ll reply within one business day with
+                pilot credits, pricing, or a deployment plan — whichever you need first.
+              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              className={cn(
+                'inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-semibold',
+                'border border-emerald-500/30 bg-white/70 backdrop-blur-sm text-emerald-800',
+                'hover:bg-white hover:border-emerald-500/55 hover:-translate-y-px transition-all duration-200',
+                'shadow-[0_10px_26px_-18px_rgba(16,185,129,0.55),inset_0_1px_0_rgba(255,255,255,0.8)]',
+              )}
+            >
+              {open ? 'Hide contact form' : 'Contact us'}
+              <ChevronDown
+                className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
+              />
+            </button>
           </div>
 
-          <div className="lg:col-span-7">
-            <div className="warm-card p-6 md:p-8">
-              <GlobalContactForm />
+          <div
+            className={cn(
+              'grid lg:grid-cols-12 gap-8 lg:gap-12 items-start',
+              'transition-[max-height,opacity,transform] duration-300 ease-out',
+              open ? 'mt-10 opacity-100 translate-y-0' : 'mt-6 opacity-0 -translate-y-1 pointer-events-none',
+            )}
+            style={{
+              maxHeight: open ? 1600 : 0,
+            }}
+          >
+            <div className={cn('lg:col-span-5', !open && 'hidden lg:block')}>
+              <ul className="space-y-3.5 mb-8">
+                {[
+                  {
+                    title: 'Enterprise pricing & self-hosted deployments',
+                    body: 'Volume tiers, VPC install, SLAs, and on-prem engines for regulated buyers.',
+                  },
+                  {
+                    title: 'Missing a language or dialect?',
+                    body: 'We train new acoustic models on request. Send us your target accent.',
+                  },
+                  {
+                    title: 'Pilot credits for evaluation teams',
+                    body: 'Free benchmark run on your own audio, with a side-by-side report.',
+                  },
+                ].map((item) => (
+                  <li key={item.title} className="flex gap-3">
+                    <div
+                      className="mt-[6px] h-5 w-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-700 inline-flex items-center justify-center"
+                      aria-hidden
+                    >
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </div>
+                    <div>
+                      <div className="text-[14.5px] font-semibold text-zinc-900 tracking-[-0.005em]">
+                        {item.title}
+                      </div>
+                      <div className="text-[13px] text-muted-foreground leading-relaxed">
+                        {item.body}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="rounded-xl border border-zinc-900/[0.08] bg-white/55 backdrop-blur-sm p-4">
+                <div className="text-[11px] font-mono tracking-[0.2em] uppercase text-muted-foreground mb-2">
+                  Prefer plain email?
+                </div>
+                <div className="text-[13.5px]">
+                  <a
+                    href="mailto:BD@chivox.com?subject=Chivox%20MCP%20inquiry"
+                    className="inline-flex items-center gap-2 text-zinc-900 hover:text-emerald-700 transition-colors"
+                  >
+                    <Mail className="h-3.5 w-3.5 text-emerald-600" />
+                    <span className="font-medium">BD@chivox.com</span>
+                    <span className="text-muted-foreground">
+                      · developer &amp; enterprise inquiries
+                    </span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7">
+              <div className="warm-card p-6 md:p-8">
+                <GlobalContactForm />
+              </div>
             </div>
           </div>
         </div>
@@ -893,11 +1083,11 @@ function GlobalContactForm() {
     email: '',
     useCase: undefined,
     message: '',
-    source: `${pathname}#contact`,
+    source: `${pathname}#contact-modal`,
   });
 
   useEffect(() => {
-    setForm((f) => ({ ...f, source: `${pathname}#contact` }));
+    setForm((f) => ({ ...f, source: `${pathname}#contact-modal` }));
   }, [pathname]);
 
   const inputClass =
@@ -949,7 +1139,7 @@ function GlobalContactForm() {
               email: '',
               useCase: undefined,
               message: '',
-              source: `${pathname}#contact`,
+              source: `${pathname}#contact-modal`,
             });
           }}
           className="text-[13px] font-medium text-zinc-700 hover:text-zinc-900 underline underline-offset-2 hover:no-underline"
@@ -1171,7 +1361,7 @@ export function SiteFooter() {
 
   return (
     <footer
-      className="relative"
+      className="relative mt-16 md:mt-20"
       style={{
         background:
           'linear-gradient(to bottom right, rgba(16,185,129,0.10) 0%, rgba(245,158,11,0.06) 55%, rgba(255,255,255,0.35) 100%)',
@@ -1210,7 +1400,7 @@ export function SiteFooter() {
                   <path d="M4.98 3.5A2.5 2.5 0 1 1 4.97 8.5a2.5 2.5 0 0 1 .01-5zM3 9.5h4v11H3v-11zm6 0h3.8v1.5h.1c.5-1 1.9-2 3.9-2 4.2 0 5 2.7 5 6.2v5.3h-4v-4.7c0-1.1 0-2.6-1.6-2.6-1.6 0-1.8 1.2-1.8 2.5v4.8H9v-11z" fill="currentColor" />
                 </svg>
               </SocialIcon>
-              <SocialIcon label="GitHub" href="https://github.com/">
+              <SocialIcon label="GitHub" href="https://github.com/boyzhong123/mcp22">
                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
                   <path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.6 1 1.6 1 .9 1.5 2.4 1.1 3 .8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.8v2.7c0 .3.2.6.7.5A10 10 0 0 0 12 2z" fill="currentColor" />
                 </svg>
@@ -1240,13 +1430,18 @@ export function SiteFooter() {
             <div className="text-[13.5px] font-medium text-zinc-800 mb-4">Developers</div>
             <ul className="flex flex-col gap-3 text-[14px] text-zinc-700">
               <li>
-                <Link href={anchorHref('#quickstart')} className="hover:text-zinc-900 transition-colors">
-                  Quickstart
+                <Link href={anchorHref('#capabilities')} className="hover:text-zinc-900 transition-colors">
+                  Capabilities
                 </Link>
               </li>
               <li>
-                <Link href={anchorHref('#mandarin-moat')} className="hover:text-zinc-900 transition-colors">
-                  Mandarin moat
+                <Link href={anchorHref('#proof')} className="hover:text-zinc-900 transition-colors">
+                  Proof
+                </Link>
+              </li>
+              <li>
+                <Link href={anchorHref('#quickstart')} className="hover:text-zinc-900 transition-colors">
+                  Quickstart
                 </Link>
               </li>
               <li>
@@ -1270,13 +1465,16 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <Link href={anchorHref('#contact')} className="hover:text-zinc-900 transition-colors">
+                <a
+                  href="mailto:BD@chivox.com?subject=Chivox%20MCP%20inquiry"
+                  className="hover:text-zinc-900 transition-colors"
+                >
                   Contact sales
-                </Link>
+                </a>
               </li>
               <li>
                 <a
-                  href="https://github.com/"
+                  href="https://github.com/boyzhong123/mcp22"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 hover:text-zinc-900 transition-colors"

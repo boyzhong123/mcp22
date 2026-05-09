@@ -45,6 +45,13 @@ function CallbackInner() {
 
     setToken(token);
 
+    // If backend signals this is a brand-new account, flag it so DataHydrator
+    // can create a Starter key on first load (OAuth flow does a hard reload so
+    // React state doesn't survive; localStorage is the cross-reload channel).
+    if (params.get('is_new_user') === 'true') {
+      try { localStorage.setItem('dev-en:oauth-new-user', '1'); } catch { /* ignore */ }
+    }
+
     // Hard navigation so AuthProvider re-bootstraps with /auth/me.
     window.location.replace(redirect);
   }, [params, router]);

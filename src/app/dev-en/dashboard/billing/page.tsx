@@ -14,30 +14,33 @@ import { cn } from '@/lib/utils';
 import {
   formatCalls,
   formatCents,
+  getAccountBalanceCents,
   getAccountCallsThisMonth,
-  getAccountSavingsThisMonthCents,
   getAccountSpendThisMonthCents,
-  getBillingTier,
-  getKeyCallsRemaining,
-  getKeyCallsTotal,
-  getKeyCallsUsed,
-  getSpendLimit,
+  getKeyMonthlyCalls,
   getTransactions,
   getUsage,
+  getWallet,
   listPaidKeys,
   listProjects,
+  type AccountWallet,
   type ApiKey,
   type Project,
   type Transaction,
   type UsagePoint,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
+import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { ManageSavedCardsModal } from '../../_components/manage-saved-cards-modal';
-import { SpendLimitModal } from '../../_components/spend-limit-modal';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { useLang } from '../../_lib/use-lang';
 
+const DEFAULT_WALLET: AccountWallet = {
+  paidCreditsCents: 0,
+  paidCreditsUsedCents: 0,
+  bonusReceivedCents: 0,
+};
 type Period = 7 | 14 | 28 | 90;
 const PERIODS: Period[] = [7, 14, 28, 90];
 
@@ -63,20 +66,14 @@ export default function BillingPage() {
   // card on the API Keys page.
   const keys = useMockStore(listPaidKeys, [] as ApiKey[]);
   const transactions = useMockStore(getTransactions, [] as Transaction[]);
-  const spendLimit = useMockStore(getSpendLimit, {
-    monthlyCapCents: 5000_00,
-    resetDay: 1,
-    warnAtPercents: [50, 75, 90],
-  });
   const spendThisMonth = useMockStore(getAccountSpendThisMonthCents, 0);
   const callsThisMonth = useMockStore(getAccountCallsThisMonth, 0);
-  const savingsThisMonth = useMockStore(getAccountSavingsThisMonthCents, 0);
+  const wallet = useMockStore(getWallet, DEFAULT_WALLET);
+  const balanceCents = useMockStore(getAccountBalanceCents, 0);
 
   const [period, setPeriod] = useState<Period>(28);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [keyFilter, setKeyFilter] = useState<string>('all');
-  const [modifyLimitOpen, setModifyLimitOpen] = useState(false);
-  const [addCreditsKeyId, setAddCreditsKeyId] = useState<string | null>(null);
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
   const [manageCardsOpen, setManageCardsOpen] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -93,30 +90,16 @@ export default function BillingPage() {
     if (!stillValid) setKeyFilter('all');
   };
 
-  // Deep-link: `/dashboard/billing?edit=spend-limit` auto-opens the
-  // modify modal (from Overview KPI card, Pricing CTA, and Overview quick
-  // actions). We strip the query param so re-renders don't reopen, and defer
-  // the open via queueMicrotask so we don't call setState synchronously inside
-  // the effect body (React 19's set-state-in-effect rule).
+  // Legacy deep-link: `/dashboard/billing?edit=spend-limit` used to
+  // open the inline cap modal. The cap UI now lives at /dashboard/limits,
+  // so we redirect there transparently if the param is present.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('edit') !== 'spend-limit') return;
-    params.delete('edit');
-    const qs = params.toString();
-    const next = `/dashboard/billing${qs ? `?${qs}` : ''}#spend-limit`;
-    window.history.replaceState(null, '', next);
-    const el = document.getElementById('spend-limit');
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    queueMicrotask(() => setModifyLimitOpen(true));
+    window.location.replace('/dashboard/limits');
   }, []);
 
-  const hasSpendLimit = (spendLimit.monthlyCapCents ?? 0) > 0;
-  const limitPct = hasSpendLimit
-    ? Math.min(100, (callsThisMonth / Math.max(1, spendLimit.monthlyCapCents)) * 100)
-    : 0;
-  const limitColor =
-    limitPct < 50 ? 'bg-emerald-500' : limitPct < 85 ? 'bg-amber-500' : 'bg-red-500';
 
   // Colour by project (by order in the projects list, stable across renders).
   const projectColorMap = useMemo(() => {
@@ -142,7 +125,6 @@ export default function BillingPage() {
       date: string;
       perProject: Record<string, number>;
       total: number;
-      totalSavings: number;
     }[] = [];
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(today.getTime() - i * 86400000);
@@ -158,22 +140,18 @@ export default function BillingPage() {
         return true;
       });
       let total = 0;
-      let totalSavings = 0;
       for (const p of pts) {
         const pid = keyProjectIndex.get(p.keyId);
         if (!pid) continue;
         perProject[pid] = (perProject[pid] ?? 0) + p.costCents;
         total += p.costCents;
-        totalSavings += p.savingsCents;
       }
-      days.push({ date, perProject, total, totalSavings });
+      days.push({ date, perProject, total });
     }
     return days;
   }, [usage, projects, period, keyFilter, projectFilter, keyProjectIndex]);
 
   const periodTotalCost = stackedData.reduce((acc, d) => acc + d.total, 0);
-  const periodTotalSavings = stackedData.reduce((acc, d) => acc + d.totalSavings, 0);
-  const periodGross = periodTotalCost + periodTotalSavings;
   const maxDay = Math.max(1, ...stackedData.map((d) => d.total));
 
   const chartWidth = 720;
@@ -197,17 +175,16 @@ export default function BillingPage() {
     return m;
   }, [usage]);
 
-  // Sum of **remaining** calls across paid keys — the new model "buy calls,
-  // pay per call" makes this the single most important balance number.
-  const totalCallsRemaining = useMemo(
-    () => keys.reduce((acc, k) => acc + getKeyCallsRemaining(k), 0),
-    [keys],
-  );
+  // Per-key MTD calls — the wallet model removes per-key balances, but
+  // "how much is each key consuming?" remains a critical question.
+  const callsByKeyThisMonth = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const k of keys) m.set(k.id, getKeyMonthlyCalls(k.id));
+    return m;
+  }, [keys]);
 
-  // Count only paid keys that have calls available. Needs-credits & revoked
-  // keys shouldn't contribute to the "n keys" subtitle on the KPI.
-  const fundedKeyCount = useMemo(
-    () => keys.filter((k) => getKeyCallsRemaining(k) > 0).length,
+  const activeKeyCount = useMemo(
+    () => keys.filter((k) => k.status === 'active').length,
     [keys],
   );
 
@@ -219,127 +196,93 @@ export default function BillingPage() {
     [transactions],
   );
 
-  // Rank: funded paid keys first (largest balance first), then
-  // needs-credits, then revoked. Starter is already filtered out upstream.
+  // Rank: active keys first, ordered by this month's call volume so the
+  // hottest workloads sit on top. Revoked sinks to the bottom.
   const sortedKeys = useMemo(() => {
     return [...keys].sort((a, b) => {
-      const rank = (k: ApiKey) => {
-        const tier = getBillingTier(k);
-        if (tier === 'revoked') return 3;
-        if (tier === 'needs-credits') return 2;
-        return 0;
-      };
-      const rd = rank(a) - rank(b);
-      if (rd !== 0) return rd;
-      return getKeyCallsRemaining(b) - getKeyCallsRemaining(a);
+      const aRevoked = a.status === 'revoked' ? 1 : 0;
+      const bRevoked = b.status === 'revoked' ? 1 : 0;
+      if (aRevoked !== bRevoked) return aRevoked - bRevoked;
+      const ac = callsByKeyThisMonth.get(a.id) ?? 0;
+      const bc = callsByKeyThisMonth.get(b.id) ?? 0;
+      return bc - ac;
     });
-  }, [keys]);
+  }, [keys, callsByKeyThisMonth]);
 
-  const openAddCreditsFor = (kid?: string) => {
-    setAddCreditsKeyId(kid ?? null);
-    setAddCreditsOpen(true);
-  };
+  const openAddCredits = () => setAddCreditsOpen(true);
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-[-0.01em]">
+            {t('Billing', '账单')}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {t(
+              'One wallet shared across every key. Top-ups unlock every key on the account at once.',
+              '所有 Key 共享一个钱包。一次充值即可解锁全部 Key。',
+            )}
+          </p>
+        </div>
         <button
           type="button"
-          onClick={() => openAddCreditsFor()}
+          onClick={openAddCredits}
           className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110 shadow-sm"
         >
           <Plus className="h-4 w-4" />
-          {t('Top up calls', '充值次数')}
+          {t('Add credits', '充值')}
         </button>
       </div>
 
-      {/* KPI strip */}
+      {/* Account wallet hero — same component used on Overview/Keys, the
+           single canonical "where am I in money + trial?" surface. */}
+      <AccountWalletStrip onAddCredits={openAddCredits} />
+
+      {/* KPI strip — money-only. Calls / trial-allowance metrics live on
+           Overview & Usage pages; this page is about $$ in / $$ out, so we
+           keep the trio focused on spend dynamics and runway. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <StatCard
-          label={t('Calls this month', '本月调用')}
-          value={formatCalls(callsThisMonth)}
+          icon={Wallet}
+          label={t('Account balance', '账户余额')}
+          value={formatCents(balanceCents)}
           sub={
-            hasSpendLimit ? (
-              <>
-                <span className="tabular-nums">{limitPct.toFixed(1)}%</span>
-                {t(' of ', ' / ')}
-                <span className="tabular-nums">{formatCalls(spendLimit.monthlyCapCents)}</span>
-                {t(' limit', ' 上限')}
-              </>
-            ) : (
-              t('No monthly limit set', '未设置月度上限')
-            )
+            wallet.bonusReceivedCents > 0
+              ? t(
+                  `Includes +${formatCents(wallet.bonusReceivedCents)} bonus to date`,
+                  `含累计赠送 +${formatCents(wallet.bonusReceivedCents)}`,
+                )
+              : t(
+                  'Shared by every key on this account',
+                  '所有 Key 共享同一余额',
+                )
           }
-          progressPct={hasSpendLimit ? limitPct : 0}
-          progressColor={limitColor}
         />
         <StatCard
-          label={t('Calls remaining', '剩余次数')}
-          value={formatCalls(totalCallsRemaining)}
+          icon={ReceiptText}
+          label={t('Spent this month', '本月消费')}
+          value={formatCents(spendThisMonth)}
           sub={t(
-            `Across ${fundedKeyCount} active paid key${fundedKeyCount === 1 ? '' : 's'}`,
-            `跨 ${fundedKeyCount} 把可用付费 key`,
+            `${formatCalls(callsThisMonth)} calls billed`,
+            `产生 ${formatCalls(callsThisMonth)} 次调用`,
           )}
         />
         <StatCard
-          label={tx('Savings this month')}
-          value={formatCents(savingsThisMonth)}
-          sub={tx('Volume discounts applied')}
-          tone="emerald"
+          icon={CreditCard}
+          label={t('Lifetime topped up', '累计充值')}
+          value={formatCents(wallet.paidCreditsCents)}
+          sub={
+            wallet.bonusReceivedCents > 0
+              ? t(
+                  `+${formatCents(wallet.bonusReceivedCents)} bonus credits earned`,
+                  `获赠 +${formatCents(wallet.bonusReceivedCents)} 额度`,
+                )
+              : t('No bonus credits yet', '暂无赠送额度')
+          }
         />
       </div>
 
-      {/* Spend-limit card */}
-      <div
-        id="spend-limit"
-        className="rounded-2xl border border-border bg-background p-5 scroll-mt-16"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              {t('Monthly call limit', '月度调用上限')}
-              <span className="text-[10px] font-medium normal-case tracking-normal px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">
-                {tx('Experimental')}
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold tabular-nums">
-              {formatCalls(callsThisMonth)}
-              <span className="text-muted-foreground font-normal text-base ml-1">
-                {hasSpendLimit
-                  ? `/ ${formatCalls(spendLimit.monthlyCapCents)}`
-                  : `/ ${t('no limit', '无上限')}`}
-              </span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {hasSpendLimit
-                ? t(
-                    `${limitPct.toFixed(1)}% of this month's cap used. Warnings at ${spendLimit.warnAtPercents.join('%, ')}%.`,
-                    `本月上限已用 ${limitPct.toFixed(1)}%。警告阈值:${spendLimit.warnAtPercents.join('%, ')}%。`,
-                  )
-                : t(
-                    'No monthly cap set — set one to be alerted before runaway calls.',
-                    '尚未设置月度上限——设置后可在调用激增前收到提醒。',
-                  )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setModifyLimitOpen(true)}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50"
-          >
-            {tx('Modify spend limit')}
-          </button>
-        </div>
-        <div className="mt-4 h-1.5 rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn('h-full transition-all', limitColor)}
-            style={{ width: `${limitPct}%` }}
-          />
-        </div>
-        <p className="mt-3 text-[11px] text-muted-foreground leading-relaxed">
-          {tx('Spend limits are enforced with up to 10 minutes of latency; small overages may occur. Counters reset at 12:00 AM on the 1st of each month (Pacific time).')}
-        </p>
-      </div>
 
       {/* Spend-by-project chart */}
       <div className="rounded-2xl border border-border bg-background p-5">
@@ -356,17 +299,7 @@ export default function BillingPage() {
                 {formatCents(periodTotalCost)}
               </div>
               <div className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {formatCents(periodGross)}
-                </span>{' '}
-                {t('gross', '总额')} −{' '}
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                  {formatCents(periodTotalSavings)}
-                </span>{' '}
-                {t('savings', '优惠')} ={' '}
-                <span className="font-medium text-foreground">
-                  {formatCents(periodTotalCost)}
-                </span>
+                {t('Net spend in selected period.', '选定时段的实际支出。')}
               </div>
             </div>
           </div>
@@ -563,12 +496,6 @@ export default function BillingPage() {
                         </div>
                       ))}
                       <div className="h-px bg-border my-1.5" />
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-muted-foreground">{tx('Savings')}</span>
-                        <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
-                          −{formatCents(d.totalSavings)}
-                        </span>
-                      </div>
                       <div className="flex items-center justify-between py-0.5 font-semibold">
                         <span>{tx('Total')}</span>
                         <span className="tabular-nums">{formatCents(d.total)}</span>
@@ -597,54 +524,44 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Calls remaining by key */}
+      {/* Per-key spend breakdown — pure money view. Cap-related chrome
+           (progress bars, /limit suffixes, per-key spend caps subtext)
+           lives on the API Keys page; here we show only what each key
+           cost this month. */}
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold flex items-center gap-2">
-              <Wallet className="h-4 w-4" /> {t('Calls by paid key', '各付费 Key 的剩余次数')}
+              <Wallet className="h-4 w-4" /> {t('Spend by key (this month)', '本月各 Key 消费明细')}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {t('Each paid key has its own pool of purchased calls — top up the ones running low. Your starter key is listed on the', '每把付费 Key 都有独立的购买次数池 — 余量偏低时及时充值。Starter key 见')}{' '}
-              <Link
-                href="/dashboard/keys"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                {tx('API Keys')}
-              </Link>{' '}
-              {tx('page.')}
+              {t(
+                'Every key drains the same wallet — this list shows MTD calls and dollar spend per key.',
+                '所有 Key 共用同一钱包；下方按 Key 展示本月调用次数与消费金额。',
+              )}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => openAddCreditsFor()}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-muted/50"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {tx('Add credits')}
-          </button>
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {t(
+              `${activeKeyCount} active key${activeKeyCount === 1 ? '' : 's'}`,
+              `${activeKeyCount} 把活跃 Key`,
+            )}
+          </span>
         </div>
         {sortedKeys.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-            {tx("No paid keys yet — you're running on the free starter key. Create a paid key on the")}{' '}
-            <Link
-              href="/dashboard/keys"
-              className="underline hover:text-foreground"
-            >
-              {tx('API Keys page')}
-            </Link>{' '}
-            {tx('when you need more headroom.')}
+            {t(
+              "No keys yet. Create one on the API Keys page — your free trial unlocks automatically.",
+              '尚无 Key。前往 API Keys 页面创建即可，免费试用次数自动解锁。',
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-border">
             {sortedKeys.map((k) => {
               const project = projects.find((p) => p.id === k.projectId);
-              const callsLeft = getKeyCallsRemaining(k);
-              const callsTotalForKey = getKeyCallsTotal(k);
+              const monthCalls = callsByKeyThisMonth.get(k.id) ?? 0;
               const monthSpend = spendByKeyThisMonth.get(k.id) ?? 0;
-              const tier = getBillingTier(k);
-              const revoked = tier === 'revoked';
-              const needsCredits = tier === 'needs-credits';
+              const revoked = k.status === 'revoked';
 
               return (
                 <li
@@ -654,24 +571,9 @@ export default function BillingPage() {
                   <div className="flex-1 min-w-[180px]">
                     <div className="text-sm font-medium flex items-center gap-2">
                       <span className="truncate">{k.name}</span>
-                      <span
-                        className={cn(
-                          'text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded',
-                          k.env === 'production'
-                            ? 'bg-foreground/[0.04] text-foreground border border-border'
-                            : 'bg-muted text-muted-foreground border border-border',
-                        )}
-                      >
-                        {tx(k.env === 'production' ? 'Prod' : 'Dev')}
-                      </span>
                       {revoked && (
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
                           {tx('Revoked')}
-                        </span>
-                      )}
-                      {needsCredits && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wider">
-                          {tx('Needs credits')}
                         </span>
                       )}
                     </div>
@@ -692,18 +594,6 @@ export default function BillingPage() {
 
                   <div className="min-w-[120px] text-right">
                     <div className="text-sm font-semibold tabular-nums">
-                      {formatCalls(callsLeft)}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      {t('Calls left', '剩余次数')}
-                      {callsTotalForKey > 0 && (
-                        <span className="text-muted-foreground/60"> / {formatCalls(callsTotalForKey)}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="min-w-[120px] text-right">
-                    <div className="text-sm font-medium tabular-nums">
                       {formatCents(monthSpend)}
                     </div>
                     <div className="text-[11px] text-muted-foreground">
@@ -711,21 +601,14 @@ export default function BillingPage() {
                     </div>
                   </div>
 
-                  {!revoked && (
-                    <button
-                      type="button"
-                      onClick={() => openAddCreditsFor(k.id)}
-                      className={cn(
-                        'inline-flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold transition-colors',
-                        needsCredits
-                          ? 'bg-foreground text-background hover:brightness-110'
-                          : 'border border-border bg-background hover:bg-muted/50',
-                      )}
-                    >
-                      <Plus className="h-3 w-3" />
-                      {tx('Add credits')}
-                    </button>
-                  )}
+                  <div className="min-w-[110px] text-right">
+                    <div className="text-sm tabular-nums text-muted-foreground">
+                      {formatCalls(monthCalls)}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {t('calls', '次调用')}
+                    </div>
+                  </div>
                 </li>
               );
             })}
@@ -813,10 +696,7 @@ export default function BillingPage() {
         open={addCreditsOpen}
         onClose={() => setAddCreditsOpen(false)}
         mode="add-credits"
-        keyId={addCreditsKeyId ?? undefined}
       />
-
-      <SpendLimitModal open={modifyLimitOpen} onClose={() => setModifyLimitOpen(false)} />
 
       <ManageSavedCardsModal
         open={manageCardsOpen}

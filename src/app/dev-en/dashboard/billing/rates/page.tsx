@@ -1,45 +1,42 @@
 'use client';
 
-import Link from 'next/link';
-import { Check, Shield, Sparkles, TrendingDown, Users, Zap } from 'lucide-react';
+import { Check, Shield, Sparkles, TrendingDown, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   formatCalls,
   formatCents,
+  getAccountBalanceCents,
   getAccountCallsThisMonth,
-  getAccountSavingsThisMonthCents,
   getAccountSpendThisMonthCents,
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
 import {
-  CALL_TIERS,
-  formatUnitPrice,
-  priceForCalls,
-  tierRangeLabel,
-} from '../../../_lib/pricing';
+  TOPUP_TIERS,
+  callsForAmount,
+  quoteTopup,
+} from '../../../_lib/topup-bonus';
 
 const ALL_PLANS_INCLUDE = [
   { icon: Shield, text: 'Global edge delivery · TLS 1.3 encryption at rest & in flight' },
   { icon: Sparkles, text: 'MCP protocol over stdio and HTTP streaming' },
   { icon: TrendingDown, text: 'Usage analytics, per-key spend caps, and CSV export' },
-  { icon: Users, text: 'Unlimited team members · SSO (SAML / OIDC) on request' },
 ];
 
+/**
+ * Pricing reference page for the wallet-billing model.
+ *
+ * The product is now a single per-call rate ($0.001/call → 0.1¢) backed by
+ * one shared wallet. The "tiers" on this page are top-up bonus tiers — bigger
+ * top-ups grant a percentage bonus on top of the loaded credit. Calls/$ is
+ * the headline number we compare so customers can see at a glance how much
+ * cheaper a $500 top-up is than a $20 one.
+ */
 export default function PricingPage() {
+  const { t, tx } = useLang();
   const calls = useMockStore(getAccountCallsThisMonth, 0);
   const spend = useMockStore(getAccountSpendThisMonthCents, 0);
-  const savings = useMockStore(getAccountSavingsThisMonthCents, 0);
-  const { t, tx } = useLang();
-
-  // Rate that this month's call volume would land at if it were a single
-  // top-up — used for the "Current rate" mini card so the user sees what
-  // discount tier their usage corresponds to.
-  const currentQuote = priceForCalls(Math.max(1, calls));
-  const currentTierLabel =
-    currentQuote.tierIndex === 0
-      ? tierRangeLabel(0)
-      : `${tierRangeLabel(currentQuote.tierIndex)}`;
+  const balance = useMockStore(getAccountBalanceCents, 0);
 
   return (
     <div className="space-y-6">
@@ -50,49 +47,51 @@ export default function PricingPage() {
             <Sparkles className="h-3.5 w-3.5" /> {tx('Pay-as-you-go')}
           </div>
           <h2 className="mt-2 text-xl font-semibold tracking-tight">
-            {tx('Only pay for what you ship')}
+            {t('One wallet · pay only for what you ship', '一个钱包 · 用多少花多少')}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {t('Every account gets one ', '每个账号都可以获得一个')}
-            <strong className="text-foreground">{tx('free starter key')}</strong>
             {t(
-              ' — 30 calls/day, 900 total lifetime — for learning and sandboxing. Production workloads run on ',
-              ' — 每天 30 次调用，总计 900 次 — 用于学习和沙盒测试。生产工作负载运行在 ',
+              'Every account starts with ',
+              '每个账户开通后即获 ',
             )}
-            <strong className="text-foreground">{tx('paid keys')}</strong>
+            <strong className="text-foreground">
+              {t('900 free trial calls', '900 次免费试用')}
+            </strong>
             {t(
-              ' you top up by purchasing calls at the flat per-call rates below. No daily caps, no subscriptions — bigger top-ups land you on a cheaper tier automatically.',
-              ' 上，通过下方阶梯单价购买调用次数。无每日上限，无订阅 — 一次性购买的次数越多，单价越低。',
+              ' (30/day · 900 lifetime), shared across every API key. After that, calls bill against a single account wallet at ',
+              '（每天 30 次 · 终身 900 次），所有 API Key 共享。试用用完后，所有调用统一从账户钱包按 ',
+            )}
+            <strong className="text-foreground">
+              {t('$0.001/call', '$0.001/次')}
+            </strong>
+            {t(
+              ' — no subscriptions, no per-key tracking. Larger top-ups earn bigger bonuses; the table below shows what every dollar is worth.',
+              ' 计费 — 无订阅，无需逐 Key 跟踪。一次充值越多，赠送越多 — 下表展示每一美元的价值。',
             )}
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Mini label={tx('Calls this month')} value={calls.toLocaleString('en-US')} />
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Mini
+            label={tx('Calls this month')}
+            value={calls.toLocaleString('en-US')}
+          />
+          <Mini label={t('Wallet balance', '钱包余额')} value={formatCents(balance)} />
           <Mini label={tx('Net cost')} value={formatCents(spend)} />
-          <Mini
-            label={tx('Savings')}
-            value={formatCents(savings)}
-            tone="emerald"
-          />
-          <Mini
-            label={t('Current rate', '当前单价')}
-            value={formatUnitPrice(currentQuote.unitCents)}
-          />
         </div>
       </div>
 
-      {/* Per-call tiered pricing — the new flat-tier model. */}
+      {/* Top-up bonus table */}
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60">
           <div className="text-sm font-semibold flex items-center gap-2">
             <Zap className="h-4 w-4 text-amber-500" />
-            {t('Per-call pricing', '按次定价')}
+            {t('Top-up bonus tiers', '充值满赠档位')}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {t(
-              'Pick how many calls to buy when you top up — the entire purchase is billed at the single tier your call count lands in. No marginal math, no monthly minimums.',
-              '充值时选择购买次数 — 整笔订单按你所选次数所在的档位单价计费。不分段计算，无月度最低消费。',
+              'Pick how many dollars to load. Bigger top-ups earn a higher bonus, automatically applied at checkout. Calls per dollar shown after bonus.',
+              '充值时选择金额，金额越大赠送越多，结算时自动应用。下表“每美元调用次数”均为含赠送后的换算。',
             )}
           </p>
         </div>
@@ -101,54 +100,81 @@ export default function PricingPage() {
             <thead className="bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="text-left px-5 py-2.5">{t('Tier', '档位')}</th>
-                <th className="text-left px-5 py-2.5">{t('Calls per top-up', '单次充值次数')}</th>
-                <th className="text-left px-5 py-2.5">{t('Per call', '单价')}</th>
-                <th className="text-right px-5 py-2.5">{t('Example', '示例')}</th>
+                <th className="text-left px-5 py-2.5">
+                  {t('Top-up amount', '充值金额')}
+                </th>
+                <th className="text-left px-5 py-2.5">{t('Bonus', '赠送')}</th>
+                <th className="text-right px-5 py-2.5">
+                  {t('You get', '到账')}
+                </th>
+                <th className="text-right px-5 py-2.5">
+                  {t('Calls / $', '每美元调用')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {CALL_TIERS.map((tier, i) => {
-                const exampleCalls =
-                  i === 0 ? 500 : i === 1 ? 5000 : 25000;
-                const exampleQuote = priceForCalls(exampleCalls);
-                const isCurrent = i === currentQuote.tierIndex;
-                const baseUnit = CALL_TIERS[0].unitCents;
-                const savedPct = Math.round(((baseUnit - tier.unitCents) / baseUnit) * 100);
+              {TOPUP_TIERS.map((tier, i) => {
+                // Use the tier's threshold as the example amount, but the
+                // first tier ("Starter", $0+) doesn't have a useful sample
+                // at $0 — show the $20 minimum instead.
+                const exampleCents = tier.minCents > 0 ? tier.minCents : 2000;
+                const quote = quoteTopup(exampleCents);
+                const baseCallsPerDollar = callsForAmount(2000) / 20;
+                const callsPerDollar = quote.estimatedCalls / (exampleCents / 100);
+                const upliftPct = baseCallsPerDollar > 0
+                  ? Math.round(((callsPerDollar - baseCallsPerDollar) / baseCallsPerDollar) * 100)
+                  : 0;
+
                 return (
-                  <tr key={i} className={cn(isCurrent && 'bg-foreground/[0.03]')}>
-                    <td className="px-5 py-3 text-sm font-medium tabular-nums">
+                  <tr key={i}>
+                    <td className="px-5 py-3 text-sm font-medium">
                       <span
                         className={cn(
-                          'inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold mr-2',
-                          isCurrent
-                            ? 'bg-foreground text-background'
-                            : 'bg-muted text-muted-foreground',
+                          'inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold mr-2 bg-muted text-muted-foreground',
                         )}
                       >
                         {i + 1}
                       </span>
-                      {i === 0
-                        ? t('Standard', '标准价')
-                        : i === 1
-                          ? t('Volume', '批量价')
-                          : t('Bulk', '大批量价')}
+                      {tier.label}
                     </td>
-                    <td className="px-5 py-3 text-sm tabular-nums">{tierRangeLabel(i)}</td>
-                    <td className="px-5 py-3 text-sm">
-                      <span className="font-mono font-semibold tabular-nums">
-                        {formatUnitPrice(tier.unitCents)}
-                      </span>
-                      {savedPct > 0 && (
-                        <span className="ml-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                          −{savedPct}%
+                    <td className="px-5 py-3 text-sm tabular-nums">
+                      {formatCents(exampleCents)}
+                      {i === 0 && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">
+                          {t('(min)', '（起充）')}
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right text-xs text-muted-foreground tabular-nums">
-                      {formatCalls(exampleCalls)} × {formatUnitPrice(tier.unitCents)} ={' '}
-                      <strong className="text-foreground font-semibold">
-                        {formatCents(exampleQuote.totalCents)}
+                    <td className="px-5 py-3 text-sm">
+                      {tier.bonusPct > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">
+                          +{Math.round(tier.bonusPct * 100)}% ·{' '}
+                          {formatCents(quote.bonusCents)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          {t('No bonus', '无赠送')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right text-sm tabular-nums">
+                      <strong className="font-semibold">
+                        {formatCents(quote.totalCents)}
                       </strong>
+                      <div className="text-[11px] text-muted-foreground">
+                        ≈ {formatCalls(quote.estimatedCalls)}{' '}
+                        {t('calls', '次')}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-xs tabular-nums">
+                      <strong className="text-foreground font-semibold">
+                        {formatCalls(Math.round(callsPerDollar))}
+                      </strong>
+                      {upliftPct > 0 && (
+                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          +{upliftPct}% {t('vs $20', '相对 $20')}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -160,8 +186,8 @@ export default function PricingPage() {
           <TrendingDown className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
             {t(
-              'Pick a quantity that lands in the next tier and the whole purchase prices at that lower rate — buying 1,000 calls saves you 25% per call vs. buying 999.',
-              '选择刚好达到下一档的数量，整笔订单都会按更低单价计费 — 一次买 1,000 次比买 999 次每次便宜 25%。',
+              'Every key on your account spends from the same wallet. Bonus credits are non-refundable but never expire.',
+              '账户内所有 Key 共用同一钱包。赠送余额不可退款，但永不过期。',
             )}
           </span>
         </div>

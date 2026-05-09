@@ -35,17 +35,6 @@ function GithubIcon({ className }: { className?: string }) {
   );
 }
 
-function MicrosoftIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden>
-      <path fill="#F25022" d="M2 2h9.5v9.5H2z" />
-      <path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z" />
-      <path fill="#00A4EF" d="M2 12.5h9.5V22H2z" />
-      <path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z" />
-    </svg>
-  );
-}
-
 export function OAuthButtons() {
   const { startOAuth } = useAuth();
   const [pending, setPending] = useState<OAuthProvider | null>(null);
@@ -84,19 +73,6 @@ export function OAuthButtons() {
           <GoogleIcon className="h-4 w-4" />
         )}
         Continue with Google
-      </button>
-      <button
-        type="button"
-        disabled={!!pending}
-        onClick={() => handle('microsoft')}
-        className="w-full h-11 px-4 rounded-lg border border-border bg-background text-foreground text-sm font-medium flex items-center justify-center gap-2.5 hover:bg-muted/50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-      >
-        {pending === 'microsoft' ? (
-          <span className="h-4 w-4 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-        ) : (
-          <MicrosoftIcon className="h-4 w-4" />
-        )}
-        Continue with Microsoft
       </button>
     </div>
   );

@@ -16,22 +16,16 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  addKeyCalls,
   addPaymentMethod,
   addTransaction,
-  formatCalls,
   formatCents,
-  getKey,
-  getKeyCallsRemaining,
-  listKeys,
+  getAccountBalanceCents,
   listPaymentMethods,
-  listProjects,
   setDefaultPaymentMethod,
-  type ApiKey,
+  topupAccount,
   type CardBrand,
   type PaymentMethod,
   type Transaction,
@@ -39,17 +33,14 @@ import {
 import { useMockStore } from '../_lib/use-mock-store';
 import { useMockAuth } from '../_lib/mock-auth';
 import { useLang } from '../_lib/use-lang';
-import { billing, describeError } from '../_lib/api';
-import { realKeyId, realPmId } from '../_lib/mock-store-bridge';
+import { formatCalls } from '../_lib/pricing';
 import {
-  CALL_PRESETS,
-  CALL_TIERS,
-  formatUnitPrice,
-  priceForCalls,
-  savingsVsBase,
-  tierRangeLabel,
-  type PricingQuote,
-} from '../_lib/pricing';
+  TOPUP_PRESETS_CENTS,
+  TOPUP_TIERS,
+  quoteTopup,
+  tierBonusLabel,
+  type TopupQuote,
+} from '../_lib/topup-bonus';
 
 type CheckoutMode = 'add-credits' | 'add-payment-method';
 
@@ -149,62 +140,34 @@ function OpenedCheckoutModal({
   onClose,
   onSuccess,
   mode = 'add-credits',
-  keyId,
 }: Omit<StripeCheckoutModalProps, 'open'>) {
   const { tx, t } = useLang();
   const { user } = useMockAuth();
   const savedCards = useMockStore(listPaymentMethods, [] as PaymentMethod[]);
-  const projects = useMockStore(listProjects, []);
-  const allKeys = useMockStore(listKeys, [] as ApiKey[]);
+  const accountBalance = useMockStore(getAccountBalanceCents, 0);
 
-  // "Global" picker mode: user opened the modal from a non-key-scoped entry
-  // point (Billing header, Overview Quick actions, etc) and must first choose
-  // which key to top up. `keyId` given → classic per-row flow, skip the picker.
-  const needsKeyPicker = mode === 'add-credits' && !keyId;
-  // Starter keys cannot accept credits — they're free and rate-limited — so
-  // every picker here deals strictly with paid keys.
-  const fundableKeys = useMemo(
-    () => allKeys.filter((k) => !k.isStarter && k.status !== 'revoked'),
-    [allKeys],
-  );
-  const initialPickedKey = useMemo(() => {
-    if (!needsKeyPicker) return null;
-    return fundableKeys[0] ?? null;
-  }, [needsKeyPicker, fundableKeys]);
-  const [pickedProjectId, setPickedProjectId] = useState<string>(
-    () => initialPickedKey?.projectId ?? projects[0]?.id ?? '',
-  );
-  const [pickedKeyId, setPickedKeyId] = useState<string>(
-    () => initialPickedKey?.id ?? '',
-  );
-  const effectiveKeyId = keyId ?? (pickedKeyId || undefined);
-
-  // Keys the picker is allowed to offer: non-revoked, non-starter, scoped
-  // to the chosen project. Starter and revoked keys can't accept credits.
-  const pickerKeys = useMemo(() => {
-    return fundableKeys.filter((k) =>
-      pickedProjectId ? k.projectId === pickedProjectId : true,
-    );
-  }, [fundableKeys, pickedProjectId]);
-
-  const handlePickProject = (nextProjectId: string) => {
-    setPickedProjectId(nextProjectId);
-    const firstInProject = fundableKeys.find((k) => k.projectId === nextProjectId);
-    setPickedKeyId(firstInProject?.id ?? '');
-  };
+  // The account-wallet model abolishes the per-key picker: every key on
+  // the account shares one balance, so the only choice the user makes
+  // here is "how much to top up". Any `keyId` prop the caller passes is
+  // accepted for back-compat and silently ignored.
 
   const defaultCardId = savedCards.find((c) => c.isDefault)?.id ?? savedCards[0]?.id ?? null;
 
-  // In add-payment-method mode, only "new-card" makes sense.
+  // In add-payment-method mode, only "new-card" makes sense. In
+  // add-credits mode the wallet flow has been narrowed to PayPal only —
+  // every other gateway is hidden in the picker, so default the
+  // selection there too.
   const [method, setMethodRaw] = useState<MethodKey>(() => {
     if (mode === 'add-payment-method') return 'new-card';
-    return defaultCardId ? (`saved:${defaultCardId}` as MethodKey) : 'new-card';
+    return 'paypal';
   });
 
-  // Calls billing model: user picks a quantity of calls, the price is
-  // derived from the current 3-tier flat schedule (see _lib/pricing.ts).
-  const [callsCount, setCallsCount] = useState<number>(1000);
-  const [customCalls, setCustomCalls] = useState<string>('');
+  // Account-wallet top-up: user picks a dollar amount; bonus + estimated
+  // calls fall out of `quoteTopup` (see _lib/topup-bonus.ts). The default
+  // preset ($50) lands in the first bonus tier so the satte mechanic is
+  // visible from the moment the modal opens.
+  const [amountCents, setAmountCents] = useState<number>(5000);
+  const [customAmount, setCustomAmount] = useState<string>('');
 
   // new card fields
   const [cardNumber, setCardNumber] = useState('');
@@ -247,29 +210,35 @@ function OpenedCheckoutModal({
   const [error, setError] = useState<string | null>(null);
 
   // 2-step wizard for `add-credits`:
-  //   Step 1 — choose calls (and key if global picker)
+  //   Step 1 — choose top-up amount (preset chips or custom dollars)
   //   Step 2 — choose payment method, fill details, pay
-  // `add-payment-method` skips step 1 entirely (no calls to buy).
+  // `add-payment-method` skips step 1 entirely.
   type Step = 1 | 2;
   const [step, setStep] = useState<Step>(mode === 'add-payment-method' ? 2 : 1);
 
-  const effectiveCalls = useMemo(() => {
+  const effectiveCents = useMemo(() => {
     if (mode === 'add-payment-method') return 0;
-    if (customCalls.trim()) {
-      const v = parseInt(customCalls.replace(/[^0-9]/g, ''), 10);
-      return Number.isFinite(v) && v > 0 ? v : 0;
+    if (customAmount.trim()) {
+      // Accept "50", "50.00", "$50" — strip non-digit/decimal, parse as
+      // dollars, convert to cents.
+      const cleaned = customAmount.replace(/[^0-9.]/g, '');
+      const dollars = parseFloat(cleaned);
+      if (!Number.isFinite(dollars) || dollars <= 0) return 0;
+      return Math.round(dollars * 100);
     }
-    return callsCount;
-  }, [customCalls, callsCount, mode]);
+    return amountCents;
+  }, [customAmount, amountCents, mode]);
 
-  const quote: PricingQuote = useMemo(
-    () => priceForCalls(effectiveCalls),
-    [effectiveCalls],
+  const quote: TopupQuote = useMemo(
+    () => quoteTopup(effectiveCents),
+    [effectiveCents],
   );
-  const effectiveCents = quote.totalCents;
+  // Calls credited if this top-up succeeds — wallet-converted at the
+  // standard per-call rate, so the user sees the value at a glance.
+  const effectiveCalls = quote.estimatedCalls;
   const taxCents = 0;
+  // What the user actually pays (base only — bonus is on the house).
   const totalCents = effectiveCents + taxCents;
-  const savings = useMemo(() => savingsVsBase(quote), [quote]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -294,11 +263,6 @@ function OpenedCheckoutModal({
     setWireAck(false);
   };
 
-  const targetKey = effectiveKeyId ? getKey(effectiveKeyId) : undefined;
-  const targetProject = targetKey
-    ? projects.find((p) => p.id === targetKey.projectId)
-    : undefined;
-
   // Derived: is the currently selected saved card?
   const selectedSavedId = method.startsWith('saved:') ? method.slice('saved:'.length) : null;
   const selectedSavedCard = selectedSavedId
@@ -314,11 +278,15 @@ function OpenedCheckoutModal({
   const nameValid = cardName.trim().length > 1;
   const newCardValid = cardValid && expiryValid && cvcValid && nameValid;
   const linkCodeValid = linkStep === 'code-sent' && /^\d{6}$/.test(linkCode);
+  // Account-wallet model: top-up just needs a positive dollar amount.
+  // $20 minimum keeps things sensible (matches the lowest preset chip).
+  const TOPUP_MIN_CENTS = 2000;
   const amountValid =
-    mode === 'add-payment-method' ? true : effectiveCalls >= 1 && effectiveCents >= 1;
-  // Credits flow requires a chosen key before we can charge anything. In
-  // per-row entries `keyId` is already supplied → always valid.
-  const keyValid = mode === 'add-payment-method' ? true : !!effectiveKeyId;
+    mode === 'add-payment-method'
+      ? true
+      : effectiveCents >= TOPUP_MIN_CENTS;
+  // No per-key key selection in the wallet model.
+  const keyValid = true;
 
   // ACH direct debit validation (Stripe us_bank_account)
   const achRoutingValid = /^\d{9}$/.test(achRouting);
@@ -398,54 +366,26 @@ function OpenedCheckoutModal({
       if (pm.isDefault) setDefaultPaymentMethod(pm.id);
     }
 
-    // Pending top-ups (e.g. wire transfer awaiting bank receipt) don't grow
-    // the key's call quota until they settle. Succeeded methods credit
-    // instantly. Backend `POST /billing/topups/intent` takes amount_cents and
-    // adds calls to the key's total_limit on confirm.
-    if (mode === 'add-credits' && effectiveKeyId && !pending) {
-      const numericKeyId = realKeyId(effectiveKeyId);
-      if (!Number.isFinite(numericKeyId)) {
-        setProcessing(false);
-        setError(tx('Invalid key selected. Please retry.'));
-        return;
-      }
-      try {
-        const topupMethod: 'card' | 'ach' | 'wire' =
-          method === 'ach' ? 'ach' : method === 'wire' ? 'wire' : 'card';
-        const selectedPmId =
-          selectedSavedCard?.id && Number.isFinite(realPmId(selectedSavedCard.id))
-            ? realPmId(selectedSavedCard.id)
-            : undefined;
-        const intentRes = await billing.createTopupIntent({
-          key_id: numericKeyId,
-          amount_cents: totalCents,
-          method: topupMethod,
-          payment_method_id: selectedPmId,
-          country,
-          save_payment_method: method === 'new-card' ? saveCard : undefined,
-        });
-        await billing.confirmTopup(intentRes.transaction_id);
-      } catch (err) {
-        const msg = describeError(err);
-        console.warn('[stripe-checkout] topup failed:', msg);
-        // Do NOT show fake success when backend didn't settle the top-up.
-        // This prevents "充值成功但记录为空" mismatch.
-        setProcessing(false);
-        setError(msg);
-        return;
-      }
-      // Optimistic UI: grow the local "calls remaining" pool immediately.
-      // The bridge invalidates 'keys' after confirmTopup, which re-hydrates
-      // and replaces this with authoritative data shortly.
-      addKeyCalls(effectiveKeyId, effectiveCalls);
+    // Account-wallet top-up: pending methods (e.g. wire) don't credit the
+    // wallet until funds settle; succeeded methods credit instantly with
+    // the bonus already merged in. We do NOT call any backend topup intent
+    // here — the wallet lives entirely in the front-end mock layer.
+    if (mode === 'add-credits' && !pending) {
+      topupAccount({
+        baseCents: quote.baseCents,
+        bonusCents: quote.bonusCents,
+      });
     }
 
-    const callsLabel = formatCalls(effectiveCalls);
+    const baseLabel = formatCents(quote.baseCents);
+    const callsLabel = formatCalls(quote.estimatedCalls);
+    const bonusLabel =
+      quote.bonusCents > 0
+        ? ` · +${formatCents(quote.bonusCents)} ${t('bonus', '赠送')}`
+        : '';
     const baseDesc =
       mode === 'add-credits'
-        ? targetKey
-          ? `+${callsLabel} ${t('calls', '次')} · ${targetKey.name}`
-          : `+${callsLabel} ${t('calls', '次')}`
+        ? `${t('Top-up', '充值')} ${baseLabel}${bonusLabel} · ≈${callsLabel} ${t('calls', '次')}`
         : tx('Payment method added');
 
     const txn = addTransaction({
@@ -455,8 +395,6 @@ function OpenedCheckoutModal({
       last4: paidLast4,
       description: opts?.descriptionOverride ?? baseDesc,
       kind: mode === 'add-credits' ? 'credit-topup' : 'card-added',
-      keyId: effectiveKeyId,
-      projectId: targetKey?.projectId,
     });
 
     setProcessing(false);
@@ -508,21 +446,11 @@ function OpenedCheckoutModal({
       // Cash App Pay settles through Stripe like a wallet. The "last4" in
       // history is just the symbolic token since real Cash App confirmations
       // don't expose a card number to the merchant.
-      await finalizeSuccess('cashapp', CASHAPP_BACKING.last4, 'visa', {
-        descriptionOverride:
-          mode === 'add-credits' && targetKey
-            ? `Cash App Pay · ${t('Credits added to', '已充值到')} ${targetKey.name}`
-            : 'Cash App Pay',
-      });
+      await finalizeSuccess('cashapp', CASHAPP_BACKING.last4, 'visa');
       return;
     }
     if (method === 'paypal') {
-      await finalizeSuccess('paypal', PAYPAL_BACKING.last4, 'visa', {
-        descriptionOverride:
-          mode === 'add-credits' && targetKey
-            ? `PayPal · ${t('Credits added to', '已充值到')} ${targetKey.name}`
-            : 'PayPal',
-      });
+      await finalizeSuccess('paypal', PAYPAL_BACKING.last4, 'visa');
       return;
     }
     if (method === 'amazon') {
@@ -530,12 +458,6 @@ function OpenedCheckoutModal({
         'amazon-pay',
         WALLET_BACKING.amazon.last4,
         WALLET_BACKING.amazon.brand,
-        {
-          descriptionOverride:
-            mode === 'add-credits' && targetKey
-              ? `Amazon Pay · ${t('Credits added to', '已充值到')} ${targetKey.name}`
-              : 'Amazon Pay',
-        },
       );
       return;
     }
@@ -544,12 +466,7 @@ function OpenedCheckoutModal({
       // immediately so the demo shows credits right away. Last4 comes from
       // the bank account number.
       const last4 = achAccountDigits.slice(-4);
-      await finalizeSuccess('ach', last4, 'visa', {
-        descriptionOverride:
-          mode === 'add-credits' && targetKey
-            ? `ACH ${t('transfer', '转账')} · ${t('Credits added to', '已充值到')} ${targetKey.name}`
-            : `ACH ${t('transfer', '转账')}`,
-      });
+      await finalizeSuccess('ach', last4, 'visa');
       return;
     }
     if (method === 'wire') {
@@ -557,28 +474,22 @@ function OpenedCheckoutModal({
       // the user "instructions", and show a different success screen.
       await finalizeSuccess('wire', '—', 'visa', {
         pending: true,
-        descriptionOverride:
-          mode === 'add-credits' && targetKey
-            ? `Wire ${t('transfer', '转账')} · ${t('Pending for', '等待中')} ${targetKey.name}`
-            : `Wire ${t('transfer', '转账')} · ${tx('Pending')}`,
+        descriptionOverride: `Wire ${t('transfer', '转账')} · ${tx('Pending')}`,
       });
       return;
     }
   }
 
   const modalTitle =
-    mode === 'add-credits'
-      ? targetKey
-        ? `${t('Add credits to', '充值到')} ${targetKey.name}`
-        : tx('Add credits')
-      : tx('Add payment method');
+    mode === 'add-credits' ? tx('Add credits') : tx('Add payment method');
 
   const subtitle =
-    mode === 'add-credits' && targetKey
-      ? `${targetKey.maskedSecret.slice(-8)}${targetProject ? ` · ${targetProject.name}` : ''}`
-      : mode === 'add-credits'
-        ? tx('Choose a project and key, then pay')
-        : tx('Secure card entry powered by Stripe · Demo');
+    mode === 'add-credits'
+      ? t(
+          'Top up your account wallet — every key shares the same balance.',
+          '充值到账户钱包 — 所有 Key 共享同一余额。',
+        )
+      : tx('Secure card entry powered by Stripe · Demo');
 
   return (
     <div
@@ -631,8 +542,8 @@ function OpenedCheckoutModal({
             <p className="text-sm text-muted-foreground">
               {mode === 'add-credits'
                 ? method === 'wire'
-                  ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Calls will be added once funds arrive (usually 1–3 business days).', '。款项到账后将立即开通(通常 1–3 个工作日)。')}`
-                  : `+${formatCalls(effectiveCalls)} ${t('calls', '次调用')}${targetKey ? ` ${t('added to', '已添加到')} ${targetKey.name}.` : ` ${t('added', '已添加')}.`} ${t('Charged', '扣款')} ${formatCents(totalCents)}.`
+                  ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Credits will land in your wallet once funds arrive (usually 1–3 business days).', '。款项到账后将立即入账(通常 1–3 个工作日)。')}`
+                  : `+${formatCents(quote.baseCents + quote.bonusCents)} ${t('credit added to your wallet', '已入账钱包')}${quote.bonusCents > 0 ? ` (${t('incl.', '含')} +${formatCents(quote.bonusCents)} ${t('bonus', '赠送')})` : ''}. ≈${formatCalls(effectiveCalls)} ${t('calls.', '次调用。')} ${t('Charged', '扣款')} ${formatCents(totalCents)}.`
                 : tx('Your new payment method is ready for future payments.')}
             </p>
           </div>
@@ -649,190 +560,87 @@ function OpenedCheckoutModal({
               <StepIndicator step={step} />
             )}
 
-            {/* 0. Key picker (only when no keyId was pre-selected, i.e. global
-                 Add-credits CTA) — Step 1 */}
-            {step === 1 && needsKeyPicker && (
-              <section>
-                <SectionLabel>{tx('Which key?')}</SectionLabel>
-                {allKeys.filter((k) => k.status !== 'revoked').length === 0 ? (
-                  <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-                    {tx('No active API keys. Create one on the')}{' '}
-                    <Link href="/dashboard/keys" className="underline">
-                      {tx('API Keys page')}
-                    </Link>{' '}
-                    {tx('first.')}
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="relative">
-                        <select
-                          value={pickedProjectId}
-                          onChange={(e) => handlePickProject(e.target.value)}
-                          className="w-full h-9 pl-3 pr-8 text-sm rounded-lg border border-border bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-ring/20"
-                          aria-label={tx('Project')}
-                        >
-                          {projects.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDownSmall />
-                      </div>
-                      <div className="relative">
-                        <select
-                          value={pickedKeyId}
-                          onChange={(e) => setPickedKeyId(e.target.value)}
-                          className="w-full h-9 pl-3 pr-8 text-sm rounded-lg border border-border bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-ring/20"
-                          aria-label={tx('Key')}
-                          disabled={pickerKeys.length === 0}
-                        >
-                          {pickerKeys.length === 0 ? (
-                            <option value="">{tx('No keys in this project')}</option>
-                          ) : (
-                            pickerKeys.map((k) => (
-                              <option key={k.id} value={k.id}>
-                                {k.name} · {k.maskedSecret.slice(-8)}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                        <ChevronDownSmall />
-                      </div>
-                    </div>
-                    {targetKey && (
-                      <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span>
-                          {t('Calls remaining:', '剩余次数：')}{' '}
-                          <strong className="text-foreground tabular-nums">
-                            {formatCalls(getKeyCallsRemaining(targetKey))}
-                          </strong>
-                        </span>
-                        <span className="text-border">·</span>
-                        <span>
-                          {targetKey.env === 'production' ? tx('Production') : tx('Development')}
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </section>
-            )}
-
-            {/* 1. Calls picker — Step 1. User chooses how many calls to buy;
-                 the price is derived from the active tier of the 3-step flat
-                 schedule (see _lib/pricing.ts). */}
+            {/* Step 1 — top-up amount picker. The wallet is shared across
+                 every key on the account, so the user just picks dollars
+                 and we show how much bonus + how many calls land. */}
             {step === 1 && mode === 'add-credits' && (
               <section className="space-y-3">
-                <SectionLabel>{tx('How many calls?')}</SectionLabel>
+                <div className="flex items-baseline justify-between gap-2">
+                  <SectionLabel>{t('How much to top up?', '充值多少？')}</SectionLabel>
+                  <div className="text-[11px] text-muted-foreground">
+                    {t('Wallet balance:', '钱包余额：')}{' '}
+                    <strong className="text-foreground tabular-nums">
+                      {formatCents(accountBalance)}
+                    </strong>
+                  </div>
+                </div>
 
-                {/* Tier price card — 3 rows, the active one highlighted. */}
-                <TierPriceTable activeIndex={quote.tierIndex} />
+                {/* Bonus tier table — 6 rows, the active one highlighted. */}
+                <BonusTierTable activeIndex={quote.tierIndex} />
 
-                {/* Preset chips */}
+                {/* Preset chips: $20 / $50 / $100 / $300 / $500 / $1000 */}
                 <div className="grid grid-cols-3 gap-2">
-                  {CALL_PRESETS.map((p) => (
+                  {TOPUP_PRESETS_CENTS.map((p) => (
                     <button
                       type="button"
                       key={p}
                       onClick={() => {
-                        setCallsCount(p);
-                        setCustomCalls('');
+                        setAmountCents(p);
+                        setCustomAmount('');
                       }}
                       className={cn(
                         'h-10 rounded-xl border text-sm font-semibold transition-all tabular-nums',
-                        !customCalls && callsCount === p
+                        !customAmount && amountCents === p
                           ? 'border-zinc-900 bg-zinc-900 text-white shadow-[0_8px_18px_-12px_rgba(0,0,0,0.55)]'
                           : 'border-border/80 bg-white hover:border-zinc-900/30 hover:bg-zinc-50',
                       )}
                     >
-                      {formatCalls(p)}
+                      {formatCents(p)}
                     </button>
                   ))}
                 </div>
 
-                {/* Custom input */}
+                {/* Custom input — dollars, accepts decimals. */}
                 <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground pointer-events-none">
+                    $
+                  </span>
                   <input
                     type="text"
-                    inputMode="numeric"
-                    value={customCalls}
+                    inputMode="decimal"
+                    value={customAmount}
                     onChange={(e) =>
-                      setCustomCalls(e.target.value.replace(/[^0-9]/g, '').slice(0, 9))
+                      setCustomAmount(e.target.value.replace(/[^0-9.]/g, '').slice(0, 10))
                     }
-                    placeholder={tx('Or enter a custom number of calls')}
-                    className="w-full h-9 pl-3 pr-16 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
+                    placeholder={tx('Or enter a custom dollar amount')}
+                    className="w-full h-9 pl-7 pr-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">
-                    {tx('calls')}
-                  </span>
                 </div>
 
-                {/* Live quote — what the user pays right now. */}
-                <QuoteSummary
-                  calls={effectiveCalls}
-                  unitCents={quote.unitCents}
-                  totalCents={effectiveCents}
-                  savedCents={savings.savedCents}
-                  savedPct={savings.pct}
-                />
+                {/* Live quote — bonus + total credit + calls estimate. */}
+                <BonusQuoteSummary quote={quote} minCents={TOPUP_MIN_CENTS} />
               </section>
             )}
 
             {/* Step 2 from here on: payment method + details + summary. */}
             {step === 2 && mode === 'add-credits' && (
-              <Step2Recap
-                calls={effectiveCalls}
-                totalCents={totalCents}
-                unitCents={quote.unitCents}
-                keyName={targetKey?.name}
-              />
+              <Step2Recap quote={quote} />
             )}
 
             {/* 2. Payment method picker — matches Stripe Payment Element:
                  Express checkout at top, "Or pay with card" divider, cards below. */}
             {step === 2 && (
             <section className="space-y-3">
-              {/* Express checkout (credits flow only — no wallet makes sense
-                  in add-payment-method, since only cards save) */}
+              {/* Express checkout — wallet model trimmed the credits flow to
+                  PayPal only (per product decision: one fewer gateway to
+                  reconcile, and PayPal carries the bonus-credit accounting
+                  cleanly without per-key rails). All other Stripe Payment
+                  Element gateways are hidden here; they remain in the
+                  add-payment-method flow for parity with Stripe's UX. */}
               {mode === 'add-credits' && (
                 <div>
-                  <MethodGroupLabel>{tx('Express checkout')}</MethodGroupLabel>
-                  <div className="grid grid-cols-2 gap-2">
-                    <MethodRow
-                      checked={method === 'apple'}
-                      onSelect={() => setMethod('apple')}
-                      leading={
-                        <div className="h-5 w-8 rounded bg-black flex items-center justify-center">
-                          <AppleMark className="text-white" />
-                        </div>
-                      }
-                      title="Apple Pay"
-                      subtitle={tx('Authorize with Face ID or Touch ID')}
-                    />
-                    <MethodRow
-                      checked={method === 'google'}
-                      onSelect={() => setMethod('google')}
-                      leading={
-                        <div className="h-5 w-8 rounded bg-white border border-border flex items-center justify-center">
-                          <GoogleMark />
-                        </div>
-                      }
-                      title="Google Pay"
-                      subtitle={tx('Pay with your Google account')}
-                    />
-                    <MethodRow
-                      checked={method === 'link'}
-                      onSelect={() => setMethod('link')}
-                      leading={
-                        <div className="h-5 w-8 rounded bg-[#00d66f] flex items-center justify-center">
-                          <LinkMark className="text-black" />
-                        </div>
-                      }
-                      title="Link"
-                      subtitle={tx('One-click checkout by Stripe')}
-                    />
+                  <MethodGroupLabel>{tx('Pay with')}</MethodGroupLabel>
+                  <div className="grid grid-cols-1 gap-2">
                     <MethodRow
                       checked={method === 'paypal'}
                       onSelect={() => setMethod('paypal')}
@@ -844,48 +652,15 @@ function OpenedCheckoutModal({
                       title="PayPal"
                       subtitle={tx('Pay with your PayPal balance or linked card')}
                     />
-                    <MethodRow
-                      checked={method === 'cashapp'}
-                      onSelect={() => setMethod('cashapp')}
-                      leading={
-                        <div className="h-5 w-8 rounded bg-[#00d632] flex items-center justify-center">
-                          <CashAppMark />
-                        </div>
-                      }
-                      title="Cash App Pay"
-                      subtitle={tx('Scan a QR code from the Cash App')}
-                    />
-                    <MethodRow
-                      checked={method === 'amazon'}
-                      onSelect={() => setMethod('amazon')}
-                      leading={
-                        <div className="h-5 w-8 rounded bg-[#ff9900] flex items-center justify-center">
-                          <AmazonMark />
-                        </div>
-                      }
-                      title="Amazon Pay"
-                      subtitle={tx('Use addresses and cards from your Amazon account')}
-                    />
                   </div>
                 </div>
               )}
 
-              {/* Divider — matches Stripe Payment Element */}
-              {mode === 'add-credits' && (
-                <div className="flex items-center gap-3 py-0.5">
-                  <span className="h-px flex-1 bg-border" />
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {tx('Or pay with card')}
-                  </span>
-                  <span className="h-px flex-1 bg-border" />
-                </div>
-              )}
-
-              {/* Cards group */}
+              {/* Cards group — only surfaced in add-payment-method mode now;
+                  add-credits is PayPal-only. */}
+              {mode === 'add-payment-method' && (
               <div>
-                {mode === 'add-payment-method' && (
-                  <MethodGroupLabel>{tx('Credit or debit card')}</MethodGroupLabel>
-                )}
+                <MethodGroupLabel>{tx('Credit or debit card')}</MethodGroupLabel>
                 <div className="grid grid-cols-2 gap-2">
                   {savedCards.map((c) => {
                     const k = `saved:${c.id}` as MethodKey;
@@ -924,56 +699,6 @@ function OpenedCheckoutModal({
                   />
                 </div>
               </div>
-
-              {/* Bank transfer (credits only, US businesses). Kept below the
-                   card list because it's a lower-conversion option — we still
-                   surface it prominently for enterprise buyers who need to
-                   route large amounts via Finance. */}
-              {mode === 'add-credits' && (
-                <div>
-                  <div className="flex items-center gap-3 py-0.5">
-                    <span className="h-px flex-1 bg-border" />
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {tx('Or pay by bank')}
-                    </span>
-                    <span className="h-px flex-1 bg-border" />
-                  </div>
-                  <MethodGroupLabel>{tx('Bank transfer · US')}</MethodGroupLabel>
-                  <div className="grid grid-cols-2 gap-2">
-                    <MethodRow
-                      checked={method === 'ach'}
-                      onSelect={() => setMethod('ach')}
-                      disabled={effectiveCents < BANK_TRANSFER_MIN_CENTS}
-                      leading={
-                        <div className="h-5 w-8 rounded bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
-                          <Landmark className="h-3 w-3 text-sky-600 dark:text-sky-400" />
-                        </div>
-                      }
-                      title={tx('ACH direct debit')}
-                      subtitle={
-                        effectiveCents < BANK_TRANSFER_MIN_CENTS
-                          ? `${tx('Minimum')} ${formatCents(BANK_TRANSFER_MIN_CENTS)} ${tx('— increase amount to enable')}`
-                          : tx('US bank account · $0.80 flat fee · settles in 3–4 business days')
-                      }
-                    />
-                    <MethodRow
-                      checked={method === 'wire'}
-                      onSelect={() => setMethod('wire')}
-                      disabled={effectiveCents < BANK_TRANSFER_MIN_CENTS}
-                      leading={
-                        <div className="h-5 w-8 rounded bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
-                          <Building2 className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
-                        </div>
-                      }
-                      title={tx('Wire transfer')}
-                      subtitle={
-                        effectiveCents < BANK_TRANSFER_MIN_CENTS
-                          ? `${tx('Minimum')} ${formatCents(BANK_TRANSFER_MIN_CENTS)} ${tx('— increase amount to enable')}`
-                          : tx('Bank-to-bank · settles same-day · no processing fee')
-                      }
-                    />
-                  </div>
-                </div>
               )}
             </section>
             )}
@@ -1088,7 +813,7 @@ function OpenedCheckoutModal({
               {method === 'wire' && (
                 <WirePanel
                   amountCents={effectiveCents}
-                  keyLabel={targetKey?.maskedSecret?.slice(-8) ?? effectiveKeyId ?? '—'}
+                  keyLabel={user?.email?.split('@')[0] ?? 'wallet'}
                   ack={wireAck}
                   setAck={setWireAck}
                 />
@@ -1114,12 +839,24 @@ function OpenedCheckoutModal({
             {step === 2 && mode === 'add-credits' && (
               <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 space-y-1.5">
                 <SummaryRow
-                  label={t('Calls purchased', '购买次数')}
-                  value={formatCalls(effectiveCalls)}
+                  label={t('Top-up amount', '充值金额')}
+                  value={formatCents(quote.baseCents)}
+                />
+                {quote.bonusCents > 0 && (
+                  <SummaryRow
+                    label={`${t('Bonus', '赠送')} (+${Math.round(quote.bonusPct * 100)}%)`}
+                    value={`+${formatCents(quote.bonusCents)}`}
+                    muted
+                  />
+                )}
+                <SummaryRow
+                  label={t('Credit added to wallet', '入账钱包')}
+                  value={formatCents(quote.totalCents)}
+                  muted
                 />
                 <SummaryRow
-                  label={t('Per call', '单价')}
-                  value={formatUnitPrice(quote.unitCents)}
+                  label={t('≈ calls at $0.001/call', '约可调用')}
+                  value={`${formatCalls(quote.estimatedCalls)} ${t('calls', '次')}`}
                   muted
                 />
                 <SummaryRow
@@ -1128,7 +865,17 @@ function OpenedCheckoutModal({
                   muted
                 />
                 <div className="h-px bg-border" />
-                <SummaryRow label={tx('Total due')} value={formatCents(totalCents)} bold />
+                <div className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="font-semibold">{tx('Total due')}</span>
+                  <span className="text-right">
+                    <span className="font-bold tabular-nums">
+                      {formatCents(totalCents)}
+                    </span>
+                    <span className="ml-2 text-[11px] font-normal text-muted-foreground tabular-nums">
+                      ≈ {formatCalls(quote.estimatedCalls)} {t('calls', '次调用')}
+                    </span>
+                  </span>
+                </div>
               </div>
             )}
 
@@ -1166,9 +913,13 @@ function OpenedCheckoutModal({
                     'flex items-center justify-center gap-2',
                   )}
                 >
-                  {t('Continue', '下一步')}
-                  <span className="text-xs font-normal opacity-90 tabular-nums">
-                    · {formatCalls(effectiveCalls)} {t('calls', '次')} · {formatCents(totalCents || 0)}
+                  <span className="flex flex-col items-center leading-tight">
+                    <span>
+                      {t('Continue', '下一步')} · {formatCents(totalCents || 0)}
+                    </span>
+                    <span className="text-[11px] font-normal opacity-85 tabular-nums">
+                      ≈ {formatCalls(effectiveCalls)} {t('calls', '次调用')}
+                    </span>
                   </span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -1209,20 +960,40 @@ function OpenedCheckoutModal({
                         <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         {tx('Processing…')}
                       </>
-                    ) : (
+                    ) : mode !== 'add-credits' ? (
                       <>
-                        {method === 'ach' || method === 'wire' ? (
-                          <Landmark className="h-4 w-4" />
-                        ) : (
-                          <CreditCard className="h-4 w-4" />
-                        )}
-                        {mode === 'add-credits'
-                          ? method === 'wire'
+                        <CreditCard className="h-4 w-4" />
+                        {tx('Save payment method')}
+                      </>
+                    ) : method === 'wire' || method === 'ach' ? (
+                      <>
+                        <Landmark className="h-4 w-4" />
+                        <span>
+                          {method === 'wire'
                             ? `${tx('Get wire instructions')} · ${formatCents(totalCents || 0)}`
-                            : method === 'ach'
-                              ? `${tx('Pay by ACH')} · ${formatCents(totalCents || 0)}`
-                              : `${tx('Pay')} ${formatCents(totalCents || 0)} · +${formatCalls(effectiveCalls)} ${t('calls', '次')}`
-                          : tx('Save payment method')}
+                            : `${tx('Pay by ACH')} · ${formatCents(totalCents || 0)}`}
+                        </span>
+                        <span className="ml-2 text-[11px] font-normal opacity-80 tabular-nums">
+                          ≈ {formatCalls(effectiveCalls)} {t('calls', '次调用')}
+                        </span>
+                      </>
+                    ) : (
+                      // Two-line layout: primary amount on top, estimated
+                      // call count underneath. Stacking communicates "you're
+                      // paying $X and getting ~N calls" more clearly than
+                      // jamming both into a single phrase, which previously
+                      // read like a "+N calls bonus" because of the leading
+                      // plus sign.
+                      <>
+                        <CreditCard className="h-4 w-4" />
+                        <span className="flex flex-col items-center leading-tight">
+                          <span>
+                            {tx('Pay')} {formatCents(totalCents || 0)}
+                          </span>
+                          <span className="text-[11px] font-normal opacity-85 tabular-nums">
+                            ≈ {formatCalls(effectiveCalls)} {t('calls', '次调用')}
+                          </span>
+                        </span>
                       </>
                     )}
                   </button>
@@ -1305,17 +1076,7 @@ function StepIndicator({ step }: { step: 1 | 2 }) {
  * "Edit" link to jump back to step 1. The layout intentionally mirrors a
  * receipt header: amount on the right, units on the left.
  */
-function Step2Recap({
-  calls,
-  totalCents,
-  unitCents,
-  keyName,
-}: {
-  calls: number;
-  totalCents: number;
-  unitCents: number;
-  keyName?: string;
-}) {
+function Step2Recap({ quote }: { quote: TopupQuote }) {
   const { t } = useLang();
   return (
     <div className="rounded-xl border border-border bg-muted/30 px-3.5 py-2.5 flex items-center gap-3">
@@ -1324,176 +1085,222 @@ function Step2Recap({
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[11px] text-muted-foreground leading-tight">
-          {keyName ? (
-            <>
-              {t('Topping up', '充值到')}{' '}
-              <span className="font-medium text-foreground">{keyName}</span>
-            </>
-          ) : (
-            t('Order summary', '订单概览')
+          {t('Topping up wallet', '充值钱包')}
+          {quote.bonusCents > 0 && (
+            <span className="ml-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+              · {tierBonusLabel(quote.tierIndex)}
+            </span>
           )}
         </div>
         <div className="text-sm font-semibold tabular-nums leading-tight mt-0.5">
-          {formatCalls(calls)} {t('calls', '次')}{' '}
+          {formatCents(quote.totalCents)}{' '}
           <span className="text-muted-foreground font-normal text-[11px]">
-            · {formatUnitPrice(unitCents)} {t('/ call', '/ 次')}
+            ≈ {formatCalls(quote.estimatedCalls)} {t('calls', '次')}
           </span>
         </div>
       </div>
       <div className="text-right shrink-0">
-        <div className="text-base font-bold tabular-nums">{formatCents(totalCents)}</div>
-        <div className="text-[10px] text-muted-foreground">{t('Total', '合计')}</div>
+        <div className="text-base font-bold tabular-nums">
+          {formatCents(quote.baseCents)}
+        </div>
+        <div className="text-[10px] text-muted-foreground">{t('You pay', '应付')}</div>
       </div>
     </div>
   );
 }
 
 /**
- * Pricing schedule card. Renders the 3 flat tiers; the row matching the
- * user's currently-selected call count gets an "Active" highlight.
+ * Bonus tier ladder.
  *
- * Volume kicks in automatically when the chosen call count crosses a tier
- * threshold — we don't ask the user to "upgrade" anywhere; this is only a
- * transparency surface so the price they see is never a surprise.
+ * Earlier this was a vertical list of rows that looked like clickable
+ * menu items — users tried to tap them. The user can't pick a tier (the
+ * active tier is auto-matched from the amount), so the redesign drops
+ * the list metaphor entirely in favour of a horizontal ladder:
+ *
+ *   • A single track shows progress 0→max-tier.
+ *   • Six dots mark the tier breakpoints; the dot under the active
+ *     amount lights up emerald.
+ *   • Bonus % sits *above* its dot and the threshold sits *below*, so
+ *     the eye reads them as labels for the dot rather than buttons.
+ *
+ * The whole thing is a static, unfocusable visualisation — no hover,
+ * no cursor change.
  */
-function TierPriceTable({ activeIndex }: { activeIndex: number }) {
-  const { t, tx } = useLang();
+function BonusTierTable({ activeIndex }: { activeIndex: number }) {
+  const { t } = useLang();
+  const lastIdx = TOPUP_TIERS.length - 1;
+  // Progress fill: clamp to the active tier's position on the ladder.
+  // Each tier owns an equal slice of the track so the fill snaps tier
+  // by tier (matching how the amount actually unlocks bonuses).
+  const fillPct = (Math.max(0, activeIndex) / lastIdx) * 100;
+
   return (
-    <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-white to-zinc-50/70 overflow-hidden shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
-      <div className="px-3.5 py-2.5 border-b border-border/60 flex items-center justify-between gap-2">
+    <div
+      role="img"
+      aria-label={t('Top-up bonus ladder', '满赠档位')}
+      className="rounded-2xl border border-border/80 bg-gradient-to-b from-white to-zinc-50/70 px-4 pt-3 pb-4 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]"
+    >
+      <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           <Zap className="h-3 w-3" />
-          {t('Volume tiers · flat per-call rate', '阶梯价 · 整笔按档位单价')}
+          {t('Top-up bonus ladder', '满赠档位')}
         </div>
         <span className="text-[10px] rounded-full px-2 py-0.5 border border-emerald-500/30 bg-emerald-500/10 text-emerald-700">
-          {t('Auto matched', '自动匹配')}
+          {t('More you load, more we add', '充得越多，赠得越多')}
         </span>
       </div>
-      <ul className="divide-y divide-border/70">
-        {CALL_TIERS.map((tier, i) => {
+
+      {/* Bonus percentages above each dot — the headline content of
+          the ladder. Active tier gets bigger weight + emerald accent. */}
+      <div className="grid grid-cols-6 gap-1 px-1">
+        {TOPUP_TIERS.map((tier, i) => {
           const active = i === activeIndex;
+          const reached = i <= activeIndex;
           return (
-            <li
-              key={i}
+            <div
+              key={`pct-${i}`}
               className={cn(
-                'flex items-center justify-between px-3.5 py-2.5 text-xs transition-colors',
+                'text-center text-[11px] tabular-nums leading-tight',
                 active
-                  ? 'bg-gradient-to-r from-emerald-500/[0.10] via-emerald-500/[0.05] to-transparent'
-                  : 'hover:bg-zinc-900/[0.02]',
+                  ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                  : reached
+                    ? 'text-foreground/70'
+                    : 'text-muted-foreground/60',
               )}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={cn(
-                    'inline-flex items-center justify-center h-5 w-5 rounded-full text-[9px] font-bold tabular-nums shrink-0',
-                    active
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-muted text-muted-foreground',
-                  )}
-                >
-                  {i + 1}
-                </span>
-                <span
-                  className={cn(
-                    'tabular-nums',
-                    active ? 'font-semibold text-foreground' : 'text-muted-foreground/90',
-                  )}
-                >
-                  {tierRangeLabel(i)} {t('calls', '次')}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    'tabular-nums font-semibold text-[13px]',
-                    active ? 'text-zinc-900' : 'text-muted-foreground',
-                  )}
-                >
-                  {formatUnitPrice(tier.unitCents)}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {t('/ call', '/ 次')}
-                </span>
-                {active && (
-                  <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-900 text-white">
-                    {tx('Active')}
-                  </span>
-                )}
-              </div>
-            </li>
+              {tier.bonusPct === 0 ? '—' : `+${Math.round(tier.bonusPct * 100)}%`}
+            </div>
           );
         })}
-      </ul>
+      </div>
+
+      {/* The track: a single rounded bar with an emerald gradient fill
+          driven by `fillPct`. Six absolutely-positioned dots mark the
+          tier breakpoints; the active one gets a ring + scale bump so
+          it pops without needing extra labels. */}
+      <div className="relative mt-2 mx-1 h-2 rounded-full bg-zinc-200/70 dark:bg-zinc-800">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-[width] duration-300"
+          style={{ width: `${fillPct}%` }}
+        />
+        {TOPUP_TIERS.map((_, i) => {
+          const active = i === activeIndex;
+          const reached = i <= activeIndex;
+          const left = `${(i / lastIdx) * 100}%`;
+          return (
+            <span
+              key={`dot-${i}`}
+              style={{ left }}
+              className={cn(
+                'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all',
+                active
+                  ? 'h-3.5 w-3.5 bg-emerald-600 ring-4 ring-emerald-500/20 shadow-[0_0_0_2px_rgba(255,255,255,0.9)]'
+                  : reached
+                    ? 'h-2.5 w-2.5 bg-emerald-500'
+                    : 'h-2 w-2 bg-zinc-300 dark:bg-zinc-700',
+              )}
+            />
+          );
+        })}
+      </div>
+
+      {/* Threshold labels under each dot. Kept tabular so the column
+          alignment doesn't wiggle as digits change between tiers. */}
+      <div className="grid grid-cols-6 gap-1 px-1 mt-2.5">
+        {TOPUP_TIERS.map((tier, i) => {
+          const active = i === activeIndex;
+          return (
+            <div
+              key={`th-${i}`}
+              className={cn(
+                'text-center text-[10px] tabular-nums leading-tight',
+                active ? 'text-foreground font-medium' : 'text-muted-foreground/80',
+              )}
+            >
+              {tier.minCents === 0 ? '$0' : `$${Math.round(tier.minCents / 100)}`}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 /**
- * Live quote panel — what the user pays for the currently chosen quantity.
- * Shows savings vs base tier when the user qualified for a volume discount.
+ * Live quote panel — bonus + total credit + estimated calls. Includes a
+ * short "Add $X more to reach +Y%" upsell when a higher tier is reachable.
  */
-function QuoteSummary({
-  calls,
-  unitCents,
-  totalCents,
-  savedCents,
-  savedPct,
+function BonusQuoteSummary({
+  quote,
+  minCents,
 }: {
-  calls: number;
-  unitCents: number;
-  totalCents: number;
-  savedCents: number;
-  savedPct: number;
+  quote: TopupQuote;
+  minCents: number;
 }) {
   const { t } = useLang();
-  if (calls <= 0) {
+  if (quote.baseCents <= 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-background px-3 py-2.5 text-[11px] text-muted-foreground">
-        {t('Pick a quantity above to see your price.', '在上方选择次数后会显示总价。')}
+        {t('Pick an amount above to see your bonus.', '在上方选择金额后会显示赠送额。')}
+      </div>
+    );
+  }
+  if (quote.baseCents < minCents) {
+    return (
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.05] px-3 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
+        {t(
+          `Minimum top-up is ${formatCents(minCents)}.`,
+          `最低充值金额为 ${formatCents(minCents)}。`,
+        )}
       </div>
     );
   }
   return (
-    <div className="rounded-lg border border-border bg-background px-3 py-2.5">
+    <div className="rounded-lg border border-border bg-background px-3 py-2.5 space-y-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-[11px] text-muted-foreground tabular-nums">
-          <span className="text-foreground font-semibold">{formatCalls(calls)}</span>{' '}
-          {t('calls', '次')}{' '}
-          <span className="text-muted-foreground/70">×</span>{' '}
-          <span className="font-mono">{formatUnitPrice(unitCents)}</span>{' '}
-          <span className="text-muted-foreground/70">=</span>
-        </div>
-        <div className="text-base font-bold tabular-nums">{formatCents(totalCents)}</div>
+        <span className="text-[11px] text-muted-foreground">
+          {t('Top-up', '充值')}
+        </span>
+        <span className="text-sm font-semibold tabular-nums">
+          {formatCents(quote.baseCents)}
+        </span>
       </div>
-      {savedCents > 0 && (
-        <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-          <TrendingDown className="h-3 w-3" />
+      {quote.bonusCents > 0 && (
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[11px] inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
+            <TrendingDown className="h-3 w-3" />
+            {tierBonusLabel(quote.tierIndex)}
+          </span>
+          <span className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+            +{formatCents(quote.bonusCents)}
+          </span>
+        </div>
+      )}
+      <div className="h-px bg-border" />
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[11px] text-foreground font-medium">
+          {t('Credit added', '入账总额')}
+        </span>
+        <span className="text-base font-bold tabular-nums">
+          {formatCents(quote.totalCents)}
+        </span>
+      </div>
+      <div className="text-[11px] text-muted-foreground tabular-nums">
+        ≈{' '}
+        <strong className="text-foreground">
+          {formatCalls(quote.estimatedCalls)}
+        </strong>{' '}
+        {t('calls at $0.001/call', '次调用（$0.001/次）')}
+      </div>
+      {quote.nextTier && quote.nextTier.deltaCents > 0 && (
+        <div className="mt-1 rounded-md bg-emerald-500/[0.08] border border-emerald-500/20 px-2 py-1.5 text-[10.5px] text-emerald-800 dark:text-emerald-300 leading-snug">
           {t(
-            `Volume discount applied — save ${formatCents(savedCents)} (${savedPct}%)`,
-            `已应用阶梯优惠 — 节省 ${formatCents(savedCents)} (${savedPct}%)`,
+            `Add ${formatCents(quote.nextTier.deltaCents)} more to unlock +${Math.round(quote.nextTier.bonusPct * 100)}% bonus.`,
+            `再加 ${formatCents(quote.nextTier.deltaCents)} 即可解锁 +${Math.round(quote.nextTier.bonusPct * 100)}% 赠送。`,
           )}
         </div>
       )}
     </div>
-  );
-}
-
-/** Shared chevron-down glyph for the native <select> elements used in the
- *  modal's key picker (matches the FilterSelect styling on the billing page). */
-function ChevronDownSmall() {
-  return (
-    <svg
-      className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
   );
 }
 

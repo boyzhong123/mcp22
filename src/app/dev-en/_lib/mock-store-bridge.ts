@@ -15,7 +15,6 @@ import {
   maskSecret,
   type ApiKey as MockApiKey,
   type Environment,
-  type LowBalanceAlert as MockLowBalanceAlert,
   type NotificationSettings as MockNotifications,
   type PaymentMethod as MockPaymentMethod,
   type Project as MockProject,
@@ -107,25 +106,22 @@ function mapKey(k: RealApiKey): MockApiKey {
     lastUsedAt: null,
     status,
     isStarter,
-    // Calls model: every key uses freeTotalLimit/Used as its "calls remaining"
-    // pool. For paid keys, this grows when the user tops up. The legacy
-    // freeDaily* fields stay as the per-day cap (only meaningful for starter).
+    spendCapCents: k.spend_cap_cents ?? null,
+    // TODO: backend missing per-key monthly_call_cap field — defaults to null.
+    monthlyCallCap: null,
+    // ── Legacy fields ──────────────────────────────────────────────
+    // The bridge still mirrors the period/total counters the backend
+    // exposes so the legacy UI columns keep displaying *something*.
+    // Net-new code should read getAccountTrialRemaining / getWallet
+    // via the account-level helpers instead.
     freeDailyLimit: periodLimit,
     freeDailyUsed: periodUsed,
     freeDailyResetAt: new Date().toISOString().slice(0, 10),
     freeTotalLimit: totalLimit,
     freeTotalUsed: totalUsed,
-    // Dollar-balance model is deprecated. Backend doesn't expose it on this
-    // endpoint and the UI should read calls remaining via getKeyCallsRemaining().
     paidCreditsCents: 0,
     paidCreditsUsedCents: 0,
-    spendCapCents: k.spend_cap_cents ?? null,
-    lowBalanceAlert: k.low_balance_alert
-      ? {
-          enabled: k.low_balance_alert.enabled,
-          thresholdCents: k.low_balance_alert.threshold_cents,
-        }
-      : null,
+    lowBalanceAlert: null,
   };
 }
 
@@ -196,11 +192,19 @@ function mapPaymentMethod(p: RealPaymentMethod): MockPaymentMethod {
 }
 
 function mapSpendLimit(s: RealSpendLimit): MockSpendLimit {
+  // Backend currently only returns a single `monthly_limit_cents`; daily
+  // / call-count caps live entirely in the demo layer for now. Backend
+  // TODO: expose `monthly_call_cap`, `daily_limit_cents`,
+  // `daily_call_cap` so the new four-axis UI is round-trippable.
+  const monthlyCents = Number.isFinite(s.monthly_limit_cents) && s.monthly_limit_cents > 0
+    ? s.monthly_limit_cents
+    : null;
   return {
-    monthlyCapCents: Number.isFinite(s.monthly_limit_cents) ? s.monthly_limit_cents : 0,
-    // TODO: backend missing reset day; assume 1st of month
+    monthlyCapCents: monthlyCents,
+    monthlyCallCap: null,
+    dailyCapCents: null,
+    dailyCallCap: null,
     resetDay: 1,
-    // Original UI expects multiple thresholds, backend has one.
     warnAtPercents: [s.alert_threshold_pct ?? 80],
   };
 }
@@ -292,37 +296,33 @@ export function installMutationProxy(): void {
       if (!Number.isFinite(id)) return;
       safe(keysApi.remove(id));
     },
-    addKeyCreditsCents: (mockId, amountCents) => {
-      const id = realKeyId(mockId);
-      if (!Number.isFinite(id) || amountCents <= 0) return;
-      // Legacy entry point — the new top-up flow (calls model) drives the
-      // intent/confirm calls directly from stripe-checkout-modal so we have
-      // the purchased-call count in scope. Keep this for compat: still hits
-      // the backend in case any older path lands here.
-      safe(
-        billing
-          .createTopupIntent({ key_id: id, amount_cents: amountCents, method: 'card' })
-          .then((res) => billing.confirmTopup(res.transaction_id)),
-      );
+    addKeyCreditsCents: (_mockId, _amountCents) => {
+      // Account-wallet model: top-ups are no longer per-key. The wallet
+      // lives entirely in the front-end mock store; we deliberately do
+      // NOT hit the backend here so the demo doesn't kick out an
+      // INSUFFICIENT_BACKEND error for a feature that doesn't exist
+      // server-side yet.
     },
     addKeyCalls: (_mockId, _calls) => {
-      // No-op proxy — the real top-up call is fired by stripe-checkout-modal
-      // (which knows the purchased call count and the resulting amount_cents).
-      // The local-store mutation already optimistically grew freeTotalLimit;
-      // the modal's billing.confirmTopup() invalidate('keys') triggers a
-      // hydrate so authoritative state lands shortly after.
+      // No-op — see comment on addKeyCreditsCents above.
+    },
+    topupAccount: (_input) => {
+      // Account-wallet top-ups are client-only for the demo. When a real
+      // account-wallet endpoint exists we'll fire the API call here.
+    },
+    updateAccountAlert: (_alert) => {
+      // Account-level low-balance alert is client-only for the demo.
+      // Future: PATCH /account/notifications.
     },
     updateKeySettings: (mockId, patch) => {
       const id = realKeyId(mockId);
       if (!Number.isFinite(id)) return;
-      const apiPatch: { spend_cap_cents?: number | null; low_balance_alert?: { enabled: boolean; threshold_cents: number } } = {};
+      // The backend still uses `spend_cap_cents` + the legacy
+      // `low_balance_alert` envelope. We forward only the fields the
+      // wallet model still understands; the new `monthlyCallCap` lives
+      // in the front-end demo store until the backend exposes it.
+      const apiPatch: { spend_cap_cents?: number | null } = {};
       if (patch.spendCapCents !== undefined) apiPatch.spend_cap_cents = patch.spendCapCents;
-      if (patch.lowBalanceAlert !== undefined && patch.lowBalanceAlert !== null) {
-        apiPatch.low_balance_alert = {
-          enabled: patch.lowBalanceAlert.enabled,
-          threshold_cents: patch.lowBalanceAlert.thresholdCents,
-        };
-      }
       safe(keysApi.patchSettings(id, apiPatch));
     },
     inviteTeamMember: (input) => {

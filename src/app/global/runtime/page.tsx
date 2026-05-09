@@ -14,7 +14,6 @@ import { FadeUp, StaggerContainer, StaggerItem } from '@/components/animated-sec
 import {
   AmbientBackdrop,
   BackToOverview,
-  ContactSection,
   SiteFooter,
   TopNav,
 } from '../_chrome';
@@ -189,7 +188,6 @@ export default function GlobalRuntimePage() {
         </div>
       </section>
 
-      <ContactSection />
       <SiteFooter />
     </div>
   );

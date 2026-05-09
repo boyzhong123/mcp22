@@ -508,9 +508,9 @@ function DemoHeader() {
         <div className="flex items-center gap-2">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-medium rounded-full border border-zinc-900/15 bg-white hover:border-zinc-900/40 transition-colors"
+            className="inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-medium text-zinc-700 rounded-full border border-zinc-300 bg-white shadow-[0_1px_0_rgba(0,0,0,0.02)] hover:text-zinc-900 hover:border-zinc-400 hover:bg-zinc-50 transition-colors"
           >
-            <ArrowLeft className="h-3.5 w-3.5 opacity-70" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             Back
           </Link>
           <Link

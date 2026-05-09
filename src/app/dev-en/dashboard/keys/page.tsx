@@ -3,63 +3,66 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  AlertTriangle,
   BarChart3,
   Check,
   ChevronDown,
   Copy,
+  CreditCard,
   DollarSign,
-  FlaskConical,
-  Gift,
   Info,
   Key,
   MoreHorizontal,
+  Pause,
+  Pencil,
+  Pin,
+  PinOff,
+  Play,
   Plus,
-  Rocket,
-  RotateCcw,
   Settings,
-  ShieldCheck,
-  Sparkles,
-  Trash2,
   X,
   Zap,
-  CreditCard,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   addProject,
   createKey,
-  deleteKey,
   formatCalls,
   formatCents,
   formatDateShort,
+  getAccountCallsRemaining,
+  getAccountTrialRemaining,
   getBillingTier,
-  getKeyCallsRemaining,
-  getKeyCallsTotal,
-  getKeyCallsUsed,
-  getStarterKey,
-  isStarterUpgraded,
+  getKeyMonthlyCalls,
   keyLast4,
   listKeys,
-  listPaidKeys,
   listProjects,
   renameKey,
-  revokeKey,
-  rotateKeySecret,
   setKeyPaused,
+  setKeyPinned,
+  type AccountTrialRemaining,
   type ApiKey,
   type Project,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { KeySettingsModal } from '../../_components/key-settings-modal';
+import { AccountWalletStrip } from '../../_components/account-wallet-strip';
+import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
 
+const DEFAULT_TRIAL: AccountTrialRemaining = {
+  dailyLeft: 0,
+  totalLeft: 0,
+  dailyExhausted: true,
+  totalExhausted: true,
+};
+
 export default function KeysPage() {
-  useMockStore(listKeys, [] as ApiKey[]); // subscribe — list below uses helpers
+  // Wallet model: every key is equal — no Starter/Paid split — so we
+  // subscribe once to the full key list and render it flat.
+  const allKeys = useMockStore(listKeys, [] as ApiKey[]);
   const projects = useMockStore(listProjects, [] as Project[]);
-  const starter = useMockStore(() => getStarterKey() ?? null, null);
-  const paidKeys = useMockStore(listPaidKeys, [] as ApiKey[]);
   const { tx, t } = useLang();
 
   const [projectFilter, setProjectFilter] = useState<string>('all');
@@ -68,38 +71,38 @@ export default function KeysPage() {
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newEnv, setNewEnv] = useState<'development' | 'production'>('development');
   const [newProjectId, setNewProjectId] = useState<string>('');
   const [inlineNewProject, setInlineNewProject] = useState(false);
   const [inlineProjectName, setInlineProjectName] = useState('');
   const [justCreated, setJustCreated] = useState<ApiKey | null>(null);
-  const [confirmRevoke, setConfirmRevoke] = useState<ApiKey | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<ApiKey | null>(null);
-  const [confirmRotate, setConfirmRotate] = useState<ApiKey | null>(null);
+  const [confirmPause, setConfirmPause] = useState<ApiKey | null>(null);
   const [rename, setRename] = useState<{ key: ApiKey; value: string } | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [addCreditsFor, setAddCreditsFor] = useState<ApiKey | null>(null);
+  // Account-level top-ups (wallet strip, empty state, trial banner) don't
+  // need a key context. We track them with a separate boolean so toggling
+  // either path doesn't fight the key-scoped flow above.
+  const [addCreditsOpen, setAddCreditsOpen] = useState(false);
   const [settingsFor, setSettingsFor] = useState<ApiKey | null>(null);
-  const [starterCopyGuide, setStarterCopyGuide] = useState(false);
 
-  const filteredPaid = useMemo(() => {
-    return paidKeys.filter((k) => {
+  const filteredKeys = useMemo(() => {
+    const filtered = allKeys.filter((k) => {
       if (projectFilter !== 'all' && k.projectId !== projectFilter) return false;
       return true;
     });
-  }, [paidKeys, projectFilter]);
-
-  // Split paid keys into Development / Production so the user sees two
-  // clearly separate buckets instead of one long mixed list — matches how
-  // most teams actually reason about keys (test vs. live credentials).
-  const devPaid = useMemo(
-    () => filteredPaid.filter((k) => k.env === 'development'),
-    [filteredPaid],
-  );
-  const prodPaid = useMemo(
-    () => filteredPaid.filter((k) => k.env === 'production'),
-    [filteredPaid],
-  );
+    // Pinned keys always float to the top, then revoked sinks to the
+    // bottom; within each band we keep insertion order (which approximates
+    // "most recently created first" because `createKey` prepends).
+    return filtered.slice().sort((a, b) => {
+      const aPin = a.pinned ? 1 : 0;
+      const bPin = b.pinned ? 1 : 0;
+      if (aPin !== bPin) return bPin - aPin;
+      const aRev = a.status === 'revoked' ? 1 : 0;
+      const bRev = b.status === 'revoked' ? 1 : 0;
+      if (aRev !== bRev) return aRev - bRev;
+      return 0;
+    });
+  }, [allKeys, projectFilter]);
 
   const copy = async (text: string, id: string) => {
     try {
@@ -111,34 +114,10 @@ export default function KeysPage() {
     }
   };
 
-  // For starter key: show guide modal first (unless user skipped or the key
-  // has already been topped up — once upgraded, the daily cap is lifted so
-  // the warning is no longer relevant).
-  const STARTER_COPY_SKIP_KEY = 'chivox:starter-copy-skip';
-  const copyStarter = async (text: string, id: string) => {
-    const skip =
-      typeof window !== 'undefined' && sessionStorage.getItem(STARTER_COPY_SKIP_KEY) === '1';
-    const alreadyUpgraded = starter ? isStarterUpgraded(starter) : false;
-    if (!skip && !alreadyUpgraded) {
-      setStarterCopyGuide(true);
-      return;
-    }
-    await copy(text, id);
-  };
-
-  const confirmStarterCopy = async (dontAskAgain: boolean) => {
-    if (dontAskAgain && typeof window !== 'undefined') {
-      sessionStorage.setItem(STARTER_COPY_SKIP_KEY, '1');
-    }
-    setStarterCopyGuide(false);
-    if (starter) {
-      await copy(starter.secret, starter.id);
-    }
-  };
+  const trial = useMockStore(getAccountTrialRemaining, DEFAULT_TRIAL);
 
   const openCreate = () => {
     setNewName('');
-    setNewEnv('development');
     setNewProjectId(projects[0]?.id ?? '');
     setInlineNewProject(false);
     setInlineProjectName('');
@@ -153,7 +132,9 @@ export default function KeysPage() {
       projectId = p.id;
     }
     if (!projectId) return;
-    const created = createKey(newName, newEnv, projectId);
+    // Wallet model: env no longer asked for; createKey defaults to
+    // 'production' for back-compat with usage/billing slicing.
+    const created = createKey(newName, 'production', projectId);
     setJustCreated(created);
     setCreateOpen(false);
   };
@@ -166,35 +147,37 @@ export default function KeysPage() {
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">{t('API Keys', 'API 密钥')}</h1>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
             {t(
-              'Every account gets one free Starter key (30 calls/day · 900 lifetime) for learning and sandboxing. Top up the Starter key to lift its daily cap, or create a dedicated paid key for production traffic — no daily caps, pay only for what you use.',
-              '每个账号均自带一把免费 Starter Key（每日 30 次 · 总量 900 次），用于学习和沙箱测试。充值即可解除 Starter 的每日限制；或为生产环境创建独立的付费 Key — 无每日上限，按实际用量计费。',
+              'Create as many keys as you need — every key on the account shares the same free trial (30 calls/day · 900 lifetime) and wallet balance. Top up once and it unlocks every key.',
+              '按需创建任意数量的 Key — 账户内所有 Key 共享同一份免费试用额度（每日 30 次 · 终身 900 次）和钱包余额。一次充值，全部 Key 同时生效。',
             )}
           </p>
         </div>
         <button
-          id="create-paid-key"
+          id="create-key"
           onClick={openCreate}
           className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110 transition-all shrink-0"
         >
           <Plus className="h-4 w-4" />
-          {t('Create paid key', '创建付费 Key')}
+          {t('Create key', '创建 Key')}
         </button>
       </div>
 
-      {/* Starter exhausted upgrade banner — only surfaces when lifetime
-           calls are spent AND no paid key has calls left. Wired identically
-           to the Overview banner for consistency. */}
-      {starter && starter.freeTotalUsed >= starter.freeTotalLimit &&
-        !paidKeys.some((k) => getKeyCallsRemaining(k) > 0) && (
-          <StarterExhaustedBanner
-            onCreate={openCreate}
-            onAddCredits={(kid) => {
-              const target = paidKeys.find((k) => k.id === kid);
-              if (target) setAddCreditsFor(target);
-            }}
-            firstPaidKey={paidKeys.find((k) => k.status === 'active')}
-          />
-        )}
+      {/* Account wallet + trial summary. Replaces the old per-key
+           exhausted banner — under the wallet model the same balance
+           drives every key, so a single strip is the right surface. */}
+      <AccountWalletStrip onAddCredits={() => setAddCreditsOpen(true)} />
+
+      {/* Read-only summary of the four account-level caps. The Keys page
+           is the chosen "display home" for limits — the editor lives at
+           /dashboard/limits, but every Key lives under these caps so it
+           makes sense to surface them right here. */}
+      <AccountLimitsSummary />
+
+      {/* Trial-exhausted banner — surfaces only when both daily and
+           lifetime trial are spent AND the wallet is empty. */}
+      {trial.totalExhausted && getAccountCallsRemaining() === 0 && (
+        <TrialExhaustedBanner onAddCredits={() => setAddCreditsOpen(true)} />
+      )}
 
       {/* ─── "Your new key" toast ───────────────────────────────── */}
       {justCreated && (
@@ -210,145 +193,75 @@ export default function KeysPage() {
         />
       )}
 
-      {/* ─── Zone 1: Starter key ────────────────────────────────── */}
-      {starter && (
-        <section>
-          <SectionHeader
-            icon={Gift}
-            title={tx('Starter key')}
-            subtitle={tx(
-              'Included with your account — no setup required. Rate-limited for learning and sandboxing; top up any time to lift the daily cap. Cannot be deleted.',
-            )}
-            toneClass="text-emerald-600 dark:text-emerald-400"
-          />
-          <StarterKeyCard
-            apiKey={starter}
-            project={projects.find((p) => p.id === starter.projectId)}
-            copiedId={copiedId}
-            onCopy={copyStarter}
-            onAddCredits={() => setAddCreditsFor(starter)}
-          />
-        </section>
-      )}
-
-      {/* ─── Zone 2: Paid keys ──────────────────────────────────── */}
+      {/* ─── Unified key list ───────────────────────────────────────
+           Wallet model: there is no Starter / Paid split anymore. Every
+           key shares the same trial allowance + wallet, so we render one
+           flat list and let the user create as many as they want. The
+           starter (default first key) appears alongside the rest with no
+           special chrome — only its `cannot-delete` constraint differs. */}
       <section>
         <SectionHeader
-          icon={Sparkles}
-          title={tx('Paid keys')}
-          subtitle={tx(
-            'No daily caps. Runs on credits. Set per-key spend caps and low-balance alerts as needed.',
+          icon={Key}
+          title={t('Your keys', '你的 Key')}
+          subtitle={t(
+            'All keys consume the same trial allowance and wallet balance. Set per-key spend / call caps in Settings if you want to throttle a specific key.',
+            '所有 Key 共享同一份试用额度与钱包余额。如需限流可在「设置」中为单个 Key 配置消费 / 调用上限。',
           )}
-          toneClass="text-violet-600 dark:text-violet-400"
+          toneClass="text-foreground"
           action={
-            paidKeys.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <FilterSelect
-                  label={tx('Project')}
-                  value={projectFilter}
-                  onChange={setProjectFilter}
-                  options={[
-                    { value: 'all', label: tx('All projects') },
-                    ...projects.map((p) => ({ value: p.id, label: p.name })),
-                  ]}
-                />
-              </div>
+            allKeys.length > 0 ? (
+              <FilterSelect
+                label={tx('Project')}
+                value={projectFilter}
+                onChange={setProjectFilter}
+                options={[
+                  { value: 'all', label: tx('All projects') },
+                  ...projects.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+              />
             ) : undefined
           }
         />
 
-        {paidKeys.length === 0 ? (
+        {allKeys.length === 0 ? (
           <EmptyPaidKeysState onCreate={openCreate} />
+        ) : filteredKeys.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground">
+            {t('No keys match that project filter.', '该项目下暂无 Key。')}
+          </div>
         ) : (
-          <div className="space-y-5">
-            <EnvZone
-              icon={Rocket}
-              title={tx('Production')}
-              subtitle={tx('Live credentials serving real traffic — guard these and keep them topped up.')}
-              toneClass="text-foreground"
-              accentClass="border-foreground/20 bg-foreground/[0.02]"
-              count={prodPaid.length}
-            >
-              {prodPaid.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-                  {tx('No production keys yet. Create one when you are ready to ship.')}
-                </div>
-              ) : (
-                <>
-                  <PaidTableHeader />
-                  <ul className="divide-y divide-border">
-                    {prodPaid.map((k) => (
-                      <PaidKeyRow
-                        key={k.id}
-                        apiKey={k}
-                        project={projects.find((p) => p.id === k.projectId)}
-                        copy={copy}
-                        copiedId={copiedId}
-                        onAddCredits={() => setAddCreditsFor(k)}
-                        onSettings={() => setSettingsFor(k)}
-                        onRotate={() => setConfirmRotate(k)}
-                        onRevoke={() => setConfirmRevoke(k)}
-                        onDelete={() => setConfirmDelete(k)}
-                        onRename={() => setRename({ key: k, value: k.name })}
-                        menuOpen={menuFor === k.id}
-                        setMenu={(open) => setMenuFor(open ? k.id : null)}
-                      />
-                    ))}
-                  </ul>
-                </>
-              )}
-            </EnvZone>
-
-            <EnvZone
-              icon={FlaskConical}
-              title={tx('Development')}
-              subtitle={tx('Use for testing, staging, and local work. Separate balance keeps experiments from draining prod.')}
-              toneClass="text-sky-600 dark:text-sky-400"
-              accentClass="border-sky-500/20 bg-sky-500/[0.03]"
-              count={devPaid.length}
-            >
-              {devPaid.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-                  {tx('No development keys yet.')}
-                </div>
-              ) : (
-                <>
-                  <PaidTableHeader />
-                  <ul className="divide-y divide-border">
-                    {devPaid.map((k) => (
-                      <PaidKeyRow
-                        key={k.id}
-                        apiKey={k}
-                        project={projects.find((p) => p.id === k.projectId)}
-                        copy={copy}
-                        copiedId={copiedId}
-                        onAddCredits={() => setAddCreditsFor(k)}
-                        onSettings={() => setSettingsFor(k)}
-                        onRotate={() => setConfirmRotate(k)}
-                        onRevoke={() => setConfirmRevoke(k)}
-                        onDelete={() => setConfirmDelete(k)}
-                        onRename={() => setRename({ key: k, value: k.name })}
-                        menuOpen={menuFor === k.id}
-                        setMenu={(open) => setMenuFor(open ? k.id : null)}
-                      />
-                    ))}
-                  </ul>
-                </>
-              )}
-            </EnvZone>
-
-            {filteredPaid.length === 0 && (
-              <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground">
-                {tx('No paid keys match that project filter.')}
-              </div>
-            )}
+          <div className="rounded-xl border border-border bg-background">
+            {/* The wrapper deliberately omits `overflow-hidden`: the per-row
+                "more" menu pops below its trigger and was getting clipped by
+                the rounded container. We isolate header rounding via
+                `rounded-t-xl` on the header row instead so visual chrome
+                stays intact. */}
+            <PaidTableHeader />
+            <ul className="divide-y divide-border">
+              {filteredKeys.map((k) => (
+                <PaidKeyRow
+                  key={k.id}
+                  apiKey={k}
+                  project={projects.find((p) => p.id === k.projectId)}
+                  copy={copy}
+                  copiedId={copiedId}
+                  onSettings={() => setSettingsFor(k)}
+                  onPause={() => setConfirmPause(k)}
+                  onResume={() => setKeyPaused(k.id, false)}
+                  onRename={() => setRename({ key: k, value: k.name })}
+                  onTogglePin={() => setKeyPinned(k.id, !k.pinned)}
+                  menuOpen={menuFor === k.id}
+                  setMenu={(open) => setMenuFor(open ? k.id : null)}
+                />
+              ))}
+            </ul>
           </div>
         )}
       </section>
 
       {/* ─── Modals ─────────────────────────────────────────────── */}
       {createOpen && (
-        <Modal onClose={() => setCreateOpen(false)} title={tx('Create paid key')}>
+        <Modal onClose={() => setCreateOpen(false)} title={t('Create API key', '创建 API Key')}>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -361,29 +274,6 @@ export default function KeysPage() {
                 placeholder={tx('e.g. Mobile app, Staging, CI')}
                 className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
               />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                {tx('Environment')}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['development', 'production'] as const).map((env) => (
-                  <button
-                    key={env}
-                    type="button"
-                    onClick={() => setNewEnv(env)}
-                    className={cn(
-                      'h-10 rounded-lg border text-sm font-medium capitalize transition-colors',
-                      newEnv === env
-                        ? 'border-foreground bg-foreground/5 text-foreground'
-                        : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                    )}
-                  >
-                    {env === 'development' ? tx('Development') : tx('Production')}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div>
@@ -434,11 +324,9 @@ export default function KeysPage() {
             <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
-                {t('Paid keys start with ', '付费 Key 创建时配额为 ')}
-                <span className="font-semibold text-foreground">{t('0 calls', '0 次')}</span>
                 {t(
-                  " and cannot serve traffic until you top up. You'll be offered a top-up right after creation.",
-                  '，购买调用次数前无法处理请求。创建完成后会立即引导你充值。',
+                  'Every key on this account shares the same free trial (30/day · 900 lifetime) and wallet balance. You can create as many as you need — no environment or per-key billing setup required.',
+                  '账户内所有 Key 共享同一份免费试用额度（每日 30 次 · 终身 900 次）和钱包余额。可按需创建任意数量，无需选择环境或单独设置计费。',
                 )}
               </span>
             </div>
@@ -455,7 +343,7 @@ export default function KeysPage() {
                 type="submit"
                 className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110"
               >
-                {tx('Create key')}
+                {t('Create key', '创建 Key')}
               </button>
             </div>
           </form>
@@ -490,123 +378,47 @@ export default function KeysPage() {
         </Modal>
       )}
 
-      {confirmRotate && (
-        <Modal onClose={() => setConfirmRotate(null)} title={tx('Rotate secret')}>
+      {confirmPause && (
+        <Modal onClose={() => setConfirmPause(null)} title={t('Disable key', '停用 Key')}>
           <div className="flex items-start gap-3">
             <div className="h-8 w-8 rounded-md bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
-              <RotateCcw className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+              <Pause className="h-4 w-4 text-amber-600 dark:text-amber-500" />
             </div>
             <p className="text-sm text-muted-foreground">
-              {t('A fresh secret will be issued for ', '即将为 ')}
-              <strong className="text-foreground">{confirmRotate.name}</strong>
+              {t('Disabling ', '停用 ')}
+              <strong className="text-foreground">{confirmPause.name}</strong>
               {t(
-                '. The current secret stops working the moment you rotate — update all deployments first.',
-                ' 签发新的密钥。旋转后当前密钥立即失效 — 请先更新所有部署。',
+                ' will immediately reject every request that uses it (HTTP 401). You can re-enable it any time.',
+                ' 将立即拒绝所有使用该 Key 的请求（HTTP 401）。你可以随时重新启用。',
               )}
             </p>
           </div>
           <div className="flex items-center justify-end gap-2 mt-5">
             <button
-              onClick={() => setConfirmRotate(null)}
+              onClick={() => setConfirmPause(null)}
               className="h-9 px-4 rounded-lg border border-border bg-background hover:bg-muted/50 text-sm font-medium"
             >
               {tx('Cancel')}
             </button>
             <button
               onClick={() => {
-                const rotated = rotateKeySecret(confirmRotate.id);
-                setConfirmRotate(null);
-                if (rotated) setJustCreated(rotated);
+                setKeyPaused(confirmPause.id, true);
+                setConfirmPause(null);
               }}
-              className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110"
+              className="h-9 px-4 rounded-lg bg-amber-500 text-white text-sm font-medium hover:brightness-110"
             >
-              {tx('Rotate secret')}
+              {t('Disable key', '停用 Key')}
             </button>
           </div>
         </Modal>
-      )}
-
-      {confirmRevoke && (
-        <Modal onClose={() => setConfirmRevoke(null)} title={tx('Revoke key')}>
-          <div className="flex items-start gap-3">
-            <div className="h-8 w-8 rounded-md bg-destructive/10 border border-destructive/30 flex items-center justify-center shrink-0">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t('Revoking ', '吊销 ')}
-              <strong className="text-foreground">{confirmRevoke.name}</strong>
-              {t(
-                ' immediately invalidates it. Requests with this key start failing with 401.',
-                ' 将立即使其失效。使用此 Key 的请求将开始返回 401 错误。',
-              )}
-            </p>
-          </div>
-          <div className="flex items-center justify-end gap-2 mt-5">
-            <button
-              onClick={() => setConfirmRevoke(null)}
-              className="h-9 px-4 rounded-lg border border-border bg-background hover:bg-muted/50 text-sm font-medium"
-            >
-              {tx('Cancel')}
-            </button>
-            <button
-              onClick={() => {
-                revokeKey(confirmRevoke.id);
-                setConfirmRevoke(null);
-              }}
-              className="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:brightness-110"
-            >
-              {tx('Revoke')}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {confirmDelete && (
-        <Modal onClose={() => setConfirmDelete(null)} title={tx('Delete key')}>
-          <p className="text-sm text-muted-foreground">
-            {t('This permanently removes ', '这将永久删除 ')}
-            <strong className="text-foreground">{confirmDelete.name}</strong>
-            {t('. This cannot be undone.', '。此操作无法撤销。')}
-          </p>
-          <div className="flex items-center justify-end gap-2 mt-5">
-            <button
-              onClick={() => setConfirmDelete(null)}
-              className="h-9 px-4 rounded-lg border border-border bg-background hover:bg-muted/50 text-sm font-medium"
-            >
-              {tx('Cancel')}
-            </button>
-            <button
-              onClick={() => {
-                deleteKey(confirmDelete.id);
-                setConfirmDelete(null);
-              }}
-              className="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:brightness-110"
-            >
-              {tx('Delete permanently')}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {starterCopyGuide && starter && (
-        <StarterCopyGuideModal
-          apiKey={starter}
-          onCancel={() => setStarterCopyGuide(false)}
-          onTopUp={() => {
-            setStarterCopyGuide(false);
-            setAddCreditsFor(starter);
-          }}
-          onCreatePaid={() => {
-            setStarterCopyGuide(false);
-            openCreate();
-          }}
-          onContinue={confirmStarterCopy}
-        />
       )}
 
       <StripeCheckoutModal
-        open={!!addCreditsFor}
-        onClose={() => setAddCreditsFor(null)}
+        open={!!addCreditsFor || addCreditsOpen}
+        onClose={() => {
+          setAddCreditsFor(null);
+          setAddCreditsOpen(false);
+        }}
         mode="add-credits"
         keyId={addCreditsFor?.id}
       />
@@ -757,388 +569,33 @@ function NewKeyToast({
   );
 }
 
-function StarterKeyCard({
-  apiKey: k,
-  project,
-  copiedId,
-  onCopy,
-  onAddCredits,
-}: {
-  apiKey: ApiKey;
-  project: Project | undefined;
-  copiedId: string | null;
-  onCopy: (text: string, id: string) => Promise<void>;
-  onAddCredits: () => void;
-}) {
-  const { tx, t } = useLang();
-  const dailyLimit = k.freeDailyLimit || 1;
-  const totalLimit = k.freeTotalLimit || 1;
-  const dailyPct = Math.min(100, (k.freeDailyUsed / dailyLimit) * 100);
-  const totalPct = Math.min(100, (k.freeTotalUsed / totalLimit) * 100);
-  const exhausted = k.freeTotalUsed >= k.freeTotalLimit;
-  const upgraded = isStarterUpgraded(k);
-  const callsRemaining = getKeyCallsRemaining(k);
-  const callsTotal = getKeyCallsTotal(k);
 
-  return (
-    <div
-      className={cn(
-        'relative rounded-xl border overflow-hidden transition-all',
-        upgraded
-          ? 'border-violet-500/30 bg-gradient-to-br from-violet-500/[0.06] via-indigo-500/[0.04] to-background shadow-[0_1px_0_rgba(139,92,246,0.15)_inset]'
-          : 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.03] to-background',
-      )}
-    >
-      {/* Decorative top accent — only when upgraded, hints "premium" status. */}
-      {upgraded && (
-        <>
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/60 to-transparent" />
-          <div className="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-gradient-to-br from-violet-500/15 to-indigo-500/5 blur-2xl" />
-        </>
-      )}
-      <div className="relative p-5">
-        {/* Header row: identity + badges on the left, "View usage" shortcut
-            on the right. Keeping only the header in this flex row so the
-            credential block below can take the full card width. */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <span className="text-sm font-semibold">{k.name}</span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-              {t('Free · complimentary', '免费 · 赠送')}
-            </span>
-            {upgraded && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm shadow-violet-500/30 ring-1 ring-violet-300/40">
-                <Sparkles className="h-3 w-3" />
-                {t('Upgraded · daily cap lifted', '已升级 · 解除日限')}
-              </span>
-            )}
-            {exhausted && !upgraded && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                {tx('Exhausted')}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Link
-              href={`/dashboard/usage?key=${k.id}`}
-              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted/50 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              {tx('Usage')}
-            </Link>
-            <button
-              type="button"
-              onClick={onAddCredits}
-              className={cn(
-                'inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-xs font-semibold transition-colors',
-                upgraded
-                  ? 'border border-border bg-background hover:bg-muted/50 text-foreground'
-                  : 'bg-foreground text-background hover:brightness-110',
-              )}
-              title={tx('Top up to lift the daily cap and keep using this key in production')}
-            >
-              <DollarSign className="h-3.5 w-3.5" />
-              {upgraded ? tx('Add credits') : tx('Top up')}
-            </button>
-          </div>
-        </div>
-
-        {/* Credential block — full width of the card so the secret has room
-            to breathe instead of leaving dead space on the right. */}
-        <div className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] dark:bg-emerald-950/20 px-3 py-2.5">
-          <div className="flex items-baseline justify-between gap-2 mb-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-800 dark:text-emerald-300">
-              {tx('API key')}
-            </span>
-            <span className="text-[10px] text-muted-foreground">
-              {project?.name ?? '—'} {t('· provisioned with your account', '· 随账号自动开通')}
-            </span>
-          </div>
-          <div className="flex items-stretch gap-2 min-w-0">
-            <code
-              className="flex-1 min-w-0 font-mono text-[13px] sm:text-sm font-medium leading-relaxed text-foreground break-all select-all bg-background/80 dark:bg-background/40 rounded-md border border-border/80 px-2.5 py-2"
-              title={tx('Masked preview — copy for the full secret')}
-            >
-              {k.maskedSecret}
-            </code>
-            <button
-              type="button"
-              onClick={() => onCopy(k.secret, k.id)}
-              className="shrink-0 inline-flex flex-col items-center justify-center gap-0.5 h-auto min-w-[4.5rem] px-2 rounded-md border border-emerald-500/30 bg-background hover:bg-emerald-500/10 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300"
-              title={tx('Copy full API key to clipboard')}
-            >
-              {copiedId === k.id ? (
-                <>
-                  <Check className="h-4 w-4 text-emerald-600" />
-                  {tx('Copied')}
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  {tx('Copy')}
-                </>
-              )}
-            </button>
-          </div>
-          <p className="mt-1.5 text-[10px] text-muted-foreground leading-snug">
-            {tx(
-              'Use this key in your SDK or HTTP header. Only the last digits are shown here; Copy pastes the complete secret.',
-            )}
-          </p>
-        </div>
-
-        {/* Quota row */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <QuotaBar
-            label={tx('Today')}
-            used={k.freeDailyUsed}
-            limit={k.freeDailyLimit}
-            pct={dailyPct}
-            suffix={
-              upgraded
-                ? t('daily cap lifted — use your quota freely', '每日限制已解除 — 自由使用配额')
-                : t('calls · resets 00:00 UTC', '次 · 每日 00:00 UTC 重置')
-            }
-            struck={upgraded}
-          />
-          <QuotaBar
-            label={tx('Lifetime')}
-            used={k.freeTotalUsed}
-            limit={k.freeTotalLimit}
-            pct={totalPct}
-            suffix={
-              upgraded
-                ? t(
-                    'calls total — quota increased via top-up',
-                    '次总计 — 配额已通过充值增加',
-                  )
-                : t(
-                    'calls total — once exhausted, top up to keep going',
-                    '次总计 — 用完后充值即可继续',
-                  )
-            }
-          />
-        </div>
-
-        {/* Calls remaining card (upgraded only). The Lifetime quota bar above
-            already shows the same data, but a prominent "purchased calls"
-            summary makes it obvious the top-up landed. No more dollar balance
-            here — the new model is "buy calls, pay per call". */}
-        {upgraded && (
-          <div className="mt-4 relative rounded-xl overflow-hidden">
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/30 via-indigo-500/20 to-transparent p-px">
-              <div className="h-full w-full rounded-[11px] bg-background/95 dark:bg-background/80" />
-            </div>
-            <div className="relative px-4 py-3.5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-md shadow-violet-500/30 shrink-0">
-                    <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300 leading-none">
-                      {t('Calls remaining', '剩余次数')}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1 leading-tight">
-                      {t('Top-ups buy calls — pay per call, no daily cap', '充值即购买调用次数 — 按次扣费，无每日上限')}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right tabular-nums shrink-0">
-                  <div className="text-[22px] font-bold tracking-[-0.02em] leading-none bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-                    {formatCalls(callsRemaining)}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">
-                    {formatCalls(k.freeTotalUsed)}
-                    {t(' used of ', ' 已用 / ')}
-                    {formatCalls(callsTotal)}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2.5 flex items-start gap-1.5 text-[10px] text-muted-foreground leading-snug">
-                <ShieldCheck className="h-3 w-3 mt-px shrink-0 text-violet-500/70" />
-                <span>
-                  {t(
-                    'Daily cap is lifted while this key has purchased calls. Top up any time to add more.',
-                    '只要购买的次数尚未用完，每日限制即解除。可随时充值增加配额。',
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Top-up nudge — only when the Starter has never been topped up. */}
-        {!upgraded && (
-          <button
-            type="button"
-            onClick={onAddCredits}
-            className="mt-4 w-full group flex items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.05] hover:bg-emerald-500/[0.09] px-3.5 py-2.5 text-left transition-colors"
-          >
-            <div className="flex items-start gap-2.5 min-w-0">
-              <span className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/25 shrink-0">
-                <Zap className="h-3.5 w-3.5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-100">
-                  {exhausted
-                    ? t('Starter exhausted — top up to resume', 'Starter 已用完 — 充值即可恢复')
-                    : t('Top up to lift the daily cap', '充值即可解除每日限制')}
-                </p>
-                <p className="mt-0.5 text-[11px] text-emerald-900/75 dark:text-emerald-200/80 leading-snug">
-                  {tx(
-                    'Once topped up, this key runs on credits with no daily limit. Pay only for what you use.',
-                  )}
-                </p>
-              </div>
-            </div>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 group-hover:translate-x-0.5 transition-transform">
-              {tx('Add credits')} →
-            </span>
-          </button>
-        )}
-
-        {/* Footer explainer */}
-        <div className="mt-3 flex items-start gap-2 rounded-md bg-muted/30 border border-border/60 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
-          <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>
-            {upgraded
-              ? tx(
-                  'This Starter key is production-ready while credits last. Cannot be deleted — your account will always keep one Starter key.',
-                )
-              : tx(
-                  'Rate-limited to protect the shared free pool. Cannot be deleted. Top up this key or create a dedicated paid key below for production traffic.',
-                )}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuotaBar({
-  label,
-  used,
-  limit,
-  pct,
-  suffix,
-  struck = false,
-}: {
-  label: string;
-  used: number;
-  limit: number;
-  pct: number;
-  suffix: string;
-  /** When true, renders the numbers and bar in a muted, de-emphasised style
-   *  to communicate that the cap has been lifted (e.g. Starter upgraded). */
-  struck?: boolean;
-}) {
-  // Battery-style: bar shows REMAINING, not used. Fully charged → fully filled.
-  // pct is `used / limit * 100`; remaining is the inverse.
-  const remainingPct = Math.max(0, Math.min(100, 100 - pct));
-  const low = !struck && remainingPct <= 10;
-  const medium = !struck && remainingPct <= 30 && remainingPct > 10;
-  return (
-    <div className={cn(struck && 'opacity-60')}>
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {label}
-        </span>
-        <span className={cn('text-sm tabular-nums', struck && 'line-through')}>
-          <span className={cn('font-semibold', struck && 'font-normal')}>
-            {used.toLocaleString()}
-          </span>
-          <span className="text-muted-foreground"> / {limit.toLocaleString()}</span>
-        </span>
-      </div>
-      <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn(
-            'h-full transition-all duration-500 ease-out',
-            struck
-              ? 'bg-muted-foreground/30'
-              : low
-                ? 'bg-amber-500'
-                : medium
-                  ? 'bg-emerald-500/60'
-                  : 'bg-emerald-500/85',
-          )}
-          style={{ width: `${remainingPct}%` }}
-        />
-      </div>
-      <div className="mt-1 text-[11px] text-muted-foreground leading-tight">
-        {suffix}
-      </div>
-    </div>
-  );
-}
 
 function PaidTableHeader() {
   const { t, tx } = useLang();
   return (
-    <div className="hidden md:grid grid-cols-[1.4fr_1fr_1.1fr_1.1fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border">
+    <div className="hidden md:grid grid-cols-[1.6fr_1fr_1.1fr_1.1fr_auto] gap-5 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70 bg-gradient-to-b from-muted/60 to-muted/30 border-b border-border rounded-t-xl">
       <div>{tx('Key')}</div>
       <div>{tx('Project')}</div>
-      <div>{t('Calls remaining', '剩余次数')}</div>
+      <div>{t('Calls this month', '本月调用')}</div>
       <div>{tx('Limits')}</div>
-      <div className="text-right">{tx('Actions')}</div>
-    </div>
-  );
-}
-
-/**
- * Grouping wrapper for the Development / Production zones on the paid-keys
- * list. The inner `<div>` that hosts the header + rows intentionally
- * mirrors the look of the previous single table so per-row layout stays
- * consistent across zones.
- */
-function EnvZone({
-  icon: Icon,
-  title,
-  subtitle,
-  toneClass,
-  accentClass,
-  count,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  subtitle: string;
-  toneClass: string;
-  accentClass: string;
-  count: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={cn('rounded-xl border bg-background overflow-hidden', accentClass)}>
-      <div className="px-5 py-3 flex items-center gap-2 border-b border-border/60">
-        <Icon className={cn('h-4 w-4', toneClass)} />
-        <div className="min-w-0 flex-1">
-          <div className={cn('text-[12px] font-semibold uppercase tracking-[0.08em]', toneClass)}>
-            {title}
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{subtitle}</p>
-        </div>
-        <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-          {count}
-        </span>
-      </div>
-      {children}
+      <div className="text-right pr-1">{tx('Actions')}</div>
     </div>
   );
 }
 
 function EmptyPaidKeysState({ onCreate }: { onCreate: () => void }) {
-  const { tx } = useLang();
+  const { t } = useLang();
   return (
     <div className="rounded-xl border border-dashed border-border bg-background px-6 py-12 text-center">
       <div className="mx-auto h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-3">
         <Key className="h-5 w-5 text-muted-foreground" />
       </div>
-      <p className="text-sm font-medium">{tx('No paid keys yet')}</p>
+      <p className="text-sm font-medium">{t('No keys yet', '暂无 API Key')}</p>
       <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-        {tx(
-          "When you're ready for production, create a paid key and top it up with credits. No daily caps.",
+        {t(
+          'Create your first key to start integrating. The free trial unlocks automatically — top up your wallet whenever you need more.',
+          '创建第一把 Key 即可开始接入。免费试用次数自动解锁；用完后随时充值即可继续。',
         )}
       </p>
       <button
@@ -1146,7 +603,7 @@ function EmptyPaidKeysState({ onCreate }: { onCreate: () => void }) {
         className="mt-4 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110"
       >
         <Plus className="h-4 w-4" />
-        {tx('Create paid key')}
+        {t('Create key', '创建 Key')}
       </button>
     </div>
   );
@@ -1157,12 +614,11 @@ function PaidKeyRow({
   project,
   copy,
   copiedId,
-  onAddCredits,
   onSettings,
-  onRotate,
-  onRevoke,
-  onDelete,
+  onPause,
+  onResume,
   onRename,
+  onTogglePin,
   menuOpen,
   setMenu,
 }: {
@@ -1170,12 +626,14 @@ function PaidKeyRow({
   project: Project | undefined;
   copy: (text: string, id: string) => Promise<void>;
   copiedId: string | null;
-  onAddCredits: () => void;
   onSettings: () => void;
-  onRotate: () => void;
-  onRevoke: () => void;
-  onDelete: () => void;
+  /** Open the confirm-disable modal. */
+  onPause: () => void;
+  /** Re-enable a paused key (no confirm needed — symmetric with the toggle). */
+  onResume: () => void;
   onRename: () => void;
+  /** Toggle the user-pinned flag (floats this row to the top). */
+  onTogglePin: () => void;
   menuOpen: boolean;
   setMenu: (open: boolean) => void;
 }) {
@@ -1183,49 +641,65 @@ function PaidKeyRow({
   const isRevoked = k.status === 'revoked';
   const isPaused = k.status === 'paused';
   const isEnabled = !isRevoked && !isPaused;
+  const isPinned = !!k.pinned;
   const tier = getBillingTier(k);
-  const callsRemaining = getKeyCallsRemaining(k);
-  const callsTotal = getKeyCallsTotal(k);
-  const callsUsed = getKeyCallsUsed(k);
-  const usedPct =
-    callsTotal > 0 ? Math.min(100, (callsUsed / callsTotal) * 100) : 0;
-  const remainingPct = Math.max(0, 100 - usedPct);
+  const monthCalls = getKeyMonthlyCalls(k.id);
+  const callCap = k.monthlyCallCap;
+  const capPct =
+    callCap != null && callCap > 0
+      ? Math.min(100, (monthCalls / callCap) * 100)
+      : null;
 
-  const hasCap = k.spendCapCents !== null && k.spendCapCents > 0;
-  const hasAlert = !!k.lowBalanceAlert?.enabled;
-  const capSummary = hasCap
-    ? `${t('Cap', '上限')} ${formatCalls(k.spendCapCents ?? 0)}${t(' calls/mo', ' 次/月')}`
-    : tx('No cap');
-  const alertSummary = hasAlert
-    ? `${t('Alert ≤', '提醒阈值 ≤')} ${formatCalls(k.lowBalanceAlert?.thresholdCents ?? 0)} ${t('calls', '次')}`
-    : tx('No alert');
+  const hasSpendCap = k.spendCapCents !== null && k.spendCapCents > 0;
+  const hasCallCap = callCap != null && callCap > 0;
+  const hasAnyCap = hasSpendCap || hasCallCap;
 
   return (
     <li
       className={cn(
-        'px-5 py-3.5 md:grid md:grid-cols-[1.4fr_1fr_1.1fr_1.1fr_auto] md:gap-4 md:items-center flex flex-col gap-3',
+        'group relative px-5 py-3.5 md:grid md:grid-cols-[1.6fr_1fr_1.1fr_1.1fr_auto] md:gap-5 md:items-center flex flex-col gap-3 transition-colors hover:bg-muted/20',
+        // Pinned rows get a faint amber wash and a left accent — visible
+        // but never noisy enough to fight the row's own status colour.
+        isPinned && !isRevoked && 'bg-amber-50/40 dark:bg-amber-500/[0.04] hover:bg-amber-50/60',
         isRevoked && 'opacity-60',
         isPaused && 'bg-muted/30',
       )}
     >
-      {/* Name / secret + enable toggle */}
+      {/* Vertical accent bar communicates pin status without taking up
+          horizontal space. Hidden when the key is also revoked so we
+          don't double up status hints. */}
+      {isPinned && !isRevoked && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-amber-400/80"
+        />
+      )}
+
+      {/* ─── Identity column: toggle · name · status pills · last4 ─── */}
       <div className="min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <EnableToggle
             enabled={isEnabled}
             disabled={isRevoked}
-            onChange={(next) => setKeyPaused(k.id, !next)}
+            onChange={(next) => {
+              if (next) onResume();
+              else onPause();
+            }}
             labelOn={tx('Enabled')}
             labelOff={isRevoked ? tx('Revoked') : tx('Disabled')}
           />
           <span
             className={cn(
-              'text-sm font-medium truncate',
+              'text-[13px] font-semibold truncate tracking-tight',
               isPaused && 'text-muted-foreground',
             )}
+            title={k.name}
           >
             {k.name}
           </span>
+          {isPinned && !isRevoked && (
+            <Pin className="h-3 w-3 text-amber-500 shrink-0" />
+          )}
           {tier === 'needs-credits' && isEnabled && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400">
               {tx('Needs credits')}
@@ -1242,186 +716,207 @@ function PaidKeyRow({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 mt-0.5 pl-[36px]">
-          <code className="font-mono text-[11px] text-muted-foreground">
-            {keyLast4(k.secret)}
+        <div className="flex items-center gap-1 mt-1 pl-[40px]">
+          <code className="font-mono text-[11px] text-muted-foreground/90 tracking-tight">
+            sk_…{keyLast4(k.secret)}
           </code>
           <button
             onClick={() => copy(k.secret, k.id)}
             disabled={isRevoked}
-            className="h-6 w-6 rounded-md hover:bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-40"
-            title={tx('Copy')}
+            className="h-5 w-5 rounded hover:bg-muted/60 flex items-center justify-center text-muted-foreground/80 hover:text-foreground disabled:opacity-40"
+            title={tx('Copy full secret')}
           >
             {copiedId === k.id ? (
               <Check className="h-3 w-3 text-emerald-500" />
             ) : (
-              <Copy className="h-3 w-3" />
+              <Copy className="h-2.5 w-2.5" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Project */}
+      {/* ─── Project column ───────────────────────────────────────
+           Collapsed from a 3-line stack (name / slug / date) to a
+           2-line block — slug is a fragile mono identifier most users
+           don't read repeatedly, so it tucks behind the name with a
+           subtle middot. Created-at moves to the second line as a
+           pure timestamp. */}
       <div className="min-w-0">
-        <div className="text-xs font-medium truncate">{project?.name ?? '—'}</div>
-        <div className="text-[11px] text-muted-foreground font-mono truncate">
-          {project?.slug}
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <span className="text-[12.5px] font-medium truncate">
+            {project?.name ?? '—'}
+          </span>
+          {project?.slug && (
+            <span className="text-[10.5px] text-muted-foreground/70 font-mono truncate">
+              · {project.slug}
+            </span>
+          )}
         </div>
-        <div className="text-[11px] text-muted-foreground mt-1">
+        <div className="text-[10.5px] text-muted-foreground/80 mt-1 tabular-nums">
           {formatDateShort(k.createdAt)}
         </div>
       </div>
 
-      {/* Calls remaining */}
+      {/* ─── Calls this month (with optional cap progress) ─── */}
       <div className="min-w-0">
-        {callsTotal === 0 ? (
-          <div className="text-xs">
-            <div className="font-semibold tabular-nums">0</div>
-            <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
-              {t('Top up to add calls', '充值添加调用次数')}
-            </div>
-          </div>
-        ) : (
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[15px] font-semibold tabular-nums tracking-tight">
+            {formatCalls(monthCalls)}
+          </span>
+          {capPct !== null && (
+            <span className="text-[10px] text-muted-foreground tabular-nums">
+              / {formatCalls(callCap ?? 0)}
+            </span>
+          )}
+        </div>
+        {capPct !== null ? (
           <>
-            <div className="text-sm font-semibold tabular-nums">
-              {formatCalls(callsRemaining)}
-            </div>
-            <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
-              {/* Battery-style: bar shows REMAINING, drains as calls are used. */}
+            <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
               <div
                 className={cn(
-                  'h-full transition-all',
-                  remainingPct <= 10
+                  'h-full rounded-full transition-all',
+                  capPct >= 90
                     ? 'bg-amber-500'
-                    : remainingPct <= 30
+                    : capPct >= 70
                       ? 'bg-foreground/60'
                       : 'bg-emerald-500/70',
                 )}
-                style={{ width: `${remainingPct}%` }}
+                style={{ width: `${capPct}%` }}
               />
             </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
-              {formatCalls(callsUsed)} {t('used of', '已用 /')}{' '}
-              {formatCalls(callsTotal)}
+            <div className="text-[10.5px] text-muted-foreground mt-1 tabular-nums">
+              {t(`${capPct.toFixed(0)}% used this month`, `本月已用 ${capPct.toFixed(0)}%`)}
             </div>
           </>
+        ) : (
+          <div className="text-[10.5px] text-muted-foreground/80 mt-1">
+            {t('this month', '本月调用')}
+          </div>
         )}
       </div>
 
-      {/* Limits — one-line summary. Gear moved into the overflow menu so the
-          row doesn't duplicate a primary action. Click the summary itself to
-          open the settings modal (also keyboard-accessible). */}
+      {/* ─── Limits column ───────────────────────────────────────
+           When no caps are set we collapse the three-element placeholder
+           ($ No cap · Calls No cap · Click to set) into a single subtle
+           "Set limits" affordance — three muted bits next to each other
+           read as a single noisy stripe and made the row feel cluttered.
+           When caps *are* set we show only the active chips. */}
       <div className="min-w-0">
-        <button
-          type="button"
-          onClick={onSettings}
-          disabled={isRevoked}
-          className={cn(
-            'w-full text-left text-[11px] leading-snug rounded-md px-1.5 py-1 -mx-1.5 transition-colors hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none',
-            hasCap || hasAlert ? 'text-foreground' : 'text-muted-foreground',
-          )}
-          title={tx('Configure spend cap & low-balance alert')}
-        >
-          <span className="tabular-nums">{capSummary}</span>
-          <span className="text-muted-foreground/70"> · </span>
-          <span className="tabular-nums">{alertSummary}</span>
-        </button>
+        {hasAnyCap ? (
+          <button
+            type="button"
+            onClick={onSettings}
+            disabled={isRevoked}
+            className="flex flex-wrap items-center gap-1 -mx-1 px-1 py-1 rounded-md text-left transition-colors hover:bg-muted/40 disabled:opacity-40 disabled:pointer-events-none"
+            title={tx('Configure spend cap & monthly call cap')}
+          >
+            {hasSpendCap && (
+              <CapChip
+                icon={DollarSign}
+                label={`${formatCents(k.spendCapCents ?? 0)}/${t('mo', '月')}`}
+              />
+            )}
+            {hasCallCap && (
+              <CapChip
+                icon={Zap}
+                label={`${formatCalls(callCap ?? 0)}/${t('mo', '月')}`}
+              />
+            )}
+            {(!hasSpendCap || !hasCallCap) && (
+              <span className="text-[10.5px] text-muted-foreground/70">
+                {!hasSpendCap && !hasCallCap
+                  ? null
+                  : !hasSpendCap
+                    ? t('· no $ cap', '· 不限金额')
+                    : t('· no call cap', '· 不限次数')}
+              </span>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onSettings}
+            disabled={isRevoked}
+            className="inline-flex items-center gap-1 h-6 px-2 -mx-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:pointer-events-none border border-dashed border-border/70"
+            title={tx('Configure spend cap & monthly call cap')}
+          >
+            <Plus className="h-3 w-3" />
+            {t('Set limits', '设置上限')}
+          </button>
+        )}
       </div>
 
-      {/* Actions */}
-      <div className="flex md:justify-end gap-1 relative">
-        <Link
-          href={`/dashboard/usage?key=${k.id}`}
-          title={tx('View usage for this key')}
-          aria-label={tx('View usage for this key')}
-          className="h-8 px-2.5 rounded-md border border-border hover:bg-muted/50 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-        >
-          <BarChart3 className="h-3.5 w-3.5" />
-          {tx('Usage')}
-        </Link>
-        <button
-          onClick={onAddCredits}
-          disabled={isRevoked}
-          title={tx('Add credits')}
-          className="h-8 px-2.5 rounded-md border border-border hover:bg-muted/50 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-40"
-        >
-          <DollarSign className="h-3.5 w-3.5" />
-          {tx('Add credits')}
-        </button>
-        <button
-          onClick={() => setMenu(!menuOpen)}
-          title={tx('More')}
-          className="h-8 w-8 rounded-md border border-border hover:bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground"
-        >
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </button>
+      {/* ─── Actions ────────────────────────────────────────────────
+           Grouped into a single subtle pill-shaped container so the row
+           ends in one cohesive control unit instead of four floating
+           icons. Removed the per-key "$" button — top-up is account-level
+           now (driven by the wallet strip CTA), so a per-row dollar icon
+           was misleading. The "more" trigger sits past a hairline divider
+           to mark it as the menu launcher. */}
+      <div className="flex md:justify-end items-center relative">
+        <div className="inline-flex items-center rounded-lg border border-border bg-background shadow-sm p-0.5 gap-0.5">
+          <IconButton
+            icon={isPinned ? PinOff : Pin}
+            title={isPinned ? t('Unpin', '取消置顶') : t('Pin to top', '置顶')}
+            onClick={onTogglePin}
+            active={isPinned}
+          />
+          <IconButton
+            as="link"
+            icon={BarChart3}
+            title={tx('View usage for this key')}
+            href={`/dashboard/usage?key=${k.id}`}
+          />
+          <span aria-hidden className="h-4 w-px bg-border mx-0.5" />
+          <IconButton
+            icon={MoreHorizontal}
+            title={tx('More')}
+            onClick={() => setMenu(!menuOpen)}
+          />
+        </div>
         {menuOpen && (
           <>
-            <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
-            <div className="absolute right-0 top-9 z-20 w-44 rounded-lg border border-border bg-popover shadow-xl py-1 text-sm">
-              <button
+            {/* Backdrop sits at z-40 so clicking anywhere else dismisses the
+                menu without obscuring its own dropdown. */}
+            <div className="fixed inset-0 z-40" onClick={() => setMenu(false)} />
+            <div className="absolute right-0 top-9 z-50 w-44 rounded-lg border border-border bg-popover shadow-xl py-1 text-sm">
+              <MenuItem
+                icon={isPinned ? PinOff : Pin}
+                label={isPinned ? t('Unpin', '取消置顶') : t('Pin to top', '置顶')}
+                onClick={() => {
+                  setMenu(false);
+                  onTogglePin();
+                }}
+              />
+              <MenuItem
+                icon={Pencil}
+                label={tx('Rename')}
                 onClick={() => {
                   setMenu(false);
                   onRename();
                 }}
                 disabled={isRevoked}
-                className="w-full px-3 py-1.5 text-left hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-              >
-                {tx('Rename')}
-              </button>
-              <button
+              />
+              <MenuItem
+                icon={Settings}
+                label={t('Limits & alerts', '上限与提醒')}
                 onClick={() => {
                   setMenu(false);
                   onSettings();
                 }}
                 disabled={isRevoked}
-                className="w-full px-3 py-1.5 text-left hover:bg-muted/50 inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-              >
-                <Settings className="h-3 w-3" /> {tx('Limits & alerts')}
-              </button>
+              />
               {!isRevoked && (
-                <button
+                <MenuItem
+                  icon={isPaused ? Play : Pause}
+                  label={isPaused ? t('Enable key', '启用 Key') : t('Disable key', '停用 Key')}
                   onClick={() => {
                     setMenu(false);
-                    setKeyPaused(k.id, !isPaused);
+                    if (isPaused) onResume();
+                    else onPause();
                   }}
-                  className="w-full px-3 py-1.5 text-left hover:bg-muted/50 inline-flex items-center gap-2"
-                >
-                  {isPaused ? tx('Enable key') : tx('Disable key')}
-                </button>
+                />
               )}
-              {!isRevoked && (
-                <button
-                  onClick={() => {
-                    setMenu(false);
-                    onRotate();
-                  }}
-                  className="w-full px-3 py-1.5 text-left hover:bg-muted/50 inline-flex items-center gap-2"
-                >
-                  <RotateCcw className="h-3 w-3" /> {tx('Rotate secret')}
-                </button>
-              )}
-              <div className="my-1 h-px bg-border" />
-              {!isRevoked && (
-                <button
-                  onClick={() => {
-                    setMenu(false);
-                    onRevoke();
-                  }}
-                  className="w-full px-3 py-1.5 text-left hover:bg-muted/50 text-muted-foreground"
-                >
-                  {tx('Revoke')}
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setMenu(false);
-                  onDelete();
-                }}
-                className="w-full px-3 py-1.5 text-left text-destructive hover:bg-destructive/10 inline-flex items-center gap-2"
-              >
-                <Trash2 className="h-3 w-3" /> {tx('Delete')}
-              </button>
             </div>
           </>
         )}
@@ -1431,9 +926,120 @@ function PaidKeyRow({
 }
 
 /**
- * Compact on/off switch used on each paid key row. Larger-than-usual hit
- * area (28x16) with an inline label on hover via `title` — keeps the row
- * dense but discoverable.
+ * Compact pill showing a single per-key cap (spend $/mo or calls/mo).
+ * Active = a cap is configured; muted = "no cap". Clicking the parent
+ * row's button takes the user into the settings modal — the chip
+ * itself is presentational.
+ */
+function CapChip({
+  icon: Icon,
+  label,
+}: {
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] font-medium tabular-nums bg-foreground/[0.04] border border-border text-foreground">
+      <Icon className="h-2.5 w-2.5 shrink-0" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+/**
+ * Square icon button used in the row's action cluster. Renders either a
+ * <button> or a <Link> based on the `as` prop. Centralised so every
+ * action has identical 32x32 sizing, hover treatment, and active state
+ * (used for the pin toggle).
+ */
+function IconButton({
+  icon: Icon,
+  title,
+  onClick,
+  href,
+  disabled,
+  active,
+  as = 'button',
+}: {
+  icon: LucideIcon;
+  title: string;
+  onClick?: () => void;
+  href?: string;
+  disabled?: boolean;
+  active?: boolean;
+  as?: 'button' | 'link';
+}) {
+  const cls = cn(
+    'h-8 w-8 rounded-md inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:pointer-events-none',
+    active && 'bg-amber-500/10 text-amber-600 hover:text-amber-700 hover:bg-amber-500/15',
+  );
+  if (as === 'link' && href) {
+    return (
+      <Link href={href} title={title} aria-label={title} className={cls}>
+        <Icon className="h-3.5 w-3.5" />
+      </Link>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className={cls}
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+/**
+ * Single dropdown menu item with a leading icon.
+ *
+ * Centralised so every action in the row's "more" menu shares the same
+ * height, padding, and hover treatment — and so it's a one-liner to add
+ * an icon for "Rename" etc. without duplicating Tailwind soup at every
+ * call site.
+ */
+function MenuItem({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+  tone,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: 'default' | 'destructive';
+}) {
+  const isDestructive = tone === 'destructive';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'w-full px-3 py-1.5 text-left inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+        isDestructive
+          ? 'text-destructive hover:bg-destructive/10'
+          : 'hover:bg-muted/50',
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+/**
+ * Compact on/off switch used on each key row. Refined to match the
+ * Linear / Vercel aesthetic — neutral foreground colour when on (no
+ * loud emerald), smaller knob with a subtle shadow, and a focus ring
+ * for keyboard users. Hit area stays generous (28×16) so it's still
+ * comfortable on touch.
  */
 function EnableToggle({
   enabled,
@@ -1461,14 +1067,18 @@ function EnableToggle({
         onChange(!enabled);
       }}
       className={cn(
-        'relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40',
-        enabled ? 'bg-emerald-500' : 'bg-muted-foreground/30',
+        'relative h-4 w-7 shrink-0 rounded-full transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1',
+        'disabled:cursor-not-allowed disabled:opacity-40',
+        enabled
+          ? 'bg-foreground'
+          : 'bg-zinc-200 dark:bg-zinc-700',
       )}
     >
       <span
         className={cn(
-          'absolute top-0.5 h-4 w-4 rounded-full bg-background shadow-sm transition-all',
-          enabled ? 'left-[18px]' : 'left-0.5',
+          'absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] transition-all',
+          enabled ? 'left-[14px]' : 'left-0.5',
         )}
       />
     </button>
@@ -1514,185 +1124,13 @@ function Modal({
  * toward creating a paid key for production use while still allowing the
  * copy to proceed for development purposes.
  */
-function StarterCopyGuideModal({
-  apiKey,
-  onCancel,
-  onTopUp,
-  onCreatePaid,
-  onContinue,
-}: {
-  apiKey: ApiKey;
-  onCancel: () => void;
-  onTopUp: () => void;
-  onCreatePaid: () => void;
-  onContinue: (dontAskAgain: boolean) => void;
-}) {
-  const { tx, t } = useLang();
-  const [dontAsk, setDontAsk] = useState(false);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      translate="no"
-      lang="en"
-    >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-lg rounded-xl bg-background border border-border shadow-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-5 border-b border-border/60">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20 shrink-0">
-              <FlaskConical className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold tracking-tight">
-                {t('You are copying a Starter key', '你正在复制 Starter Key')}
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                <code className="font-mono text-foreground/80">{apiKey.name}</code>
-                <span className="mx-1.5 text-muted-foreground/40">·</span>
-                <span>{apiKey.freeDailyLimit}/{t('day', '日')} · {apiKey.freeTotalLimit} {t('total', '总量')}</span>
-              </p>
-            </div>
-            <button
-              onClick={onCancel}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-            {t(
-              'Starter keys have a daily call limit (30/day) and lifetime cap (900 total). They are intended for development and sandboxing only.',
-              'Starter Key 有每日调用限制（30 次/天）和总量上限（900 次）。仅建议用于开发和沙箱测试。',
-            )}
-          </p>
-        </div>
-
-        {/* Options */}
-        <div className="px-6 py-5 space-y-3">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.04] p-4">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                  {t('Not recommended for production', '不建议用于生产环境')}
-                </p>
-                <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
-                  {t(
-                    'Starter keys may hit rate limits under real traffic. For production workloads, create a paid key with no daily caps.',
-                    'Starter Key 在实际流量下可能触达限额。生产环境请创建付费 Key，无每日上限。',
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onTopUp}
-            className="group flex w-full items-start gap-3 text-left rounded-xl border border-border hover:border-violet-500/50 hover:bg-violet-500/5 transition-colors p-4"
-          >
-            <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-1 ring-violet-500/20 shrink-0">
-              <DollarSign className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold">
-                  {t('Top up this Starter key', '为当前 Starter 充值')}
-                </p>
-                <span className="text-muted-foreground group-hover:text-violet-600 group-hover:translate-x-0.5 transition-all">
-                  →
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-                {t(
-                  'Lift the daily cap while keeping the same key — no code changes, just add credits.',
-                  '保留当前 Key 不变，充值即可解除每日限制 — 无需改动代码。',
-                )}
-              </p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={onCreatePaid}
-            className="group flex w-full items-start gap-3 text-left rounded-xl border border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-colors p-4"
-          >
-            <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20 shrink-0">
-              <Plus className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold">
-                  {t('Create a dedicated paid key', '新建一个独立付费 Key')}
-                </p>
-                <span className="text-muted-foreground group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all">
-                  →
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-                {t(
-                  'Keep the Starter for sandboxing and route production traffic through a separate key — with its own balance, caps, and alerts.',
-                  '保留 Starter 用于沙箱，把生产流量打到独立的 Key 上 — 独立余额 / 上限 / 告警。',
-                )}
-              </p>
-            </div>
-          </button>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 pt-2 pb-5 border-t border-border/60 bg-muted/20">
-          <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
-            {t(
-              'If you only need this key for development or testing, you can continue copying it below.',
-              '如果你仅需用于开发或测试，可继续复制。',
-            )}
-          </p>
-          <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={dontAsk}
-              onChange={(e) => setDontAsk(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border text-foreground focus:ring-0 focus:ring-offset-0"
-            />
-            {t("Don't show this again (this session)", '本次会话不再提示')}
-          </label>
-          <div className="mt-4 flex items-center justify-end gap-2">
-            <button
-              onClick={onCancel}
-              className="h-9 px-4 text-sm font-medium rounded-lg border border-border hover:bg-muted transition-colors"
-            >
-              {tx('Cancel')}
-            </button>
-            <button
-              onClick={() => onContinue(dontAsk)}
-              className="h-9 px-4 text-sm font-medium rounded-lg bg-foreground text-background hover:brightness-110 transition-colors inline-flex items-center gap-1.5"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              {t('Copy for development use', '仅用于开发 · 继续复制')}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /**
- * Upgrade nudge shown above the Starter key section once 900 lifetime calls
- * are spent and no paid key is funded. The CTA branches: Add credits to an
- * existing paid key (if one exists) or Create a paid key outright.
+ * Account-wide exhaustion banner — shows when both the free trial AND
+ * the wallet are spent. Single CTA: top up the account wallet (every key
+ * gets unblocked at once).
  */
-function StarterExhaustedBanner({
-  onCreate,
-  onAddCredits,
-  firstPaidKey,
-}: {
-  onCreate: () => void;
-  onAddCredits: (keyId: string) => void;
-  firstPaidKey?: ApiKey;
-}) {
+function TrialExhaustedBanner({ onAddCredits }: { onAddCredits: () => void }) {
   const { tx, t } = useLang();
   return (
     <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/[0.07] via-amber-500/[0.04] to-background p-5">
@@ -1703,38 +1141,30 @@ function StarterExhaustedBanner({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="text-sm font-semibold">{tx('Starter key exhausted')}</h3>
+              <h3 className="text-sm font-semibold">
+                {t('Account out of credit', '账户余额已耗尽')}
+              </h3>
               <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                {t('0 / 900 left', '剩余 0 / 900')}
+                {t('Wallet & trial empty', '钱包与试用均已用完')}
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {tx(
-                'The 900 free lifetime calls are spent. Fund a paid key to keep your production workloads running — no subscription, pay-as-you-go with volume discounts that kick in automatically.',
+              {t(
+                'The 900 free trial calls and your wallet balance are both spent. Top up to unblock every key on your account.',
+                '900 次试用配额和钱包余额都已用完。充值后账户内所有 Key 立即恢复服务。',
               )}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {firstPaidKey ? (
-            <button
-              type="button"
-              onClick={() => onAddCredits(firstPaidKey.id)}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110"
-            >
-              <CreditCard className="h-4 w-4" />
-              {tx('Add credits')}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onCreate}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110"
-            >
-              <Plus className="h-4 w-4" />
-              {tx('Create paid key')}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onAddCredits}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110"
+          >
+            <CreditCard className="h-4 w-4" />
+            {tx('Add credits')}
+          </button>
           <Link
             href="/dashboard/billing/rates"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-background hover:bg-muted/50 text-sm font-medium"

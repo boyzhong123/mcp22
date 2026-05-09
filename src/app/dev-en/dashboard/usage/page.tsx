@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ChevronDown, Download } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   formatCents,
@@ -45,6 +45,18 @@ export default function UsagePage() {
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [keyFilter, setKeyFilter] = useState<string>('all');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Chart Y-axis dimension toggle: stack daily *calls* (count) or daily
+  // *spend* (USD cents). Both share the same X-axis and per-key colour
+  // mapping so users can flip between them mid-investigation without
+  // losing context.
+  const [chartMetric, setChartMetric] = useState<'calls' | 'cost'>('calls');
+  // Per-key breakdown table sort. `column` selects which numeric column
+  // drives the order; `dir` toggles ascending/descending. Default is
+  // calls-desc, matching the natural "biggest spender first" expectation.
+  const [breakdownSort, setBreakdownSort] = useState<{
+    column: 'calls' | 'cost';
+    dir: 'asc' | 'desc';
+  }>({ column: 'calls', dir: 'desc' });
 
   // Deep-link: `/dashboard/usage?key=<keyId>` pre-selects that key so
   // clicking "View usage" from the API Keys page drops the user into a
@@ -107,6 +119,7 @@ export default function UsagePage() {
     const days: {
       date: string;
       perKey: Record<string, number>;
+      perKeyCost: Record<string, number>;
       totalCalls: number;
       totalCostCents: number;
       totalSavingsCents: number;
@@ -115,16 +128,18 @@ export default function UsagePage() {
       const d = new Date(today.getTime() - i * 86400000);
       const date = d.toISOString().slice(0, 10);
       const perKey: Record<string, number> = {};
+      const perKeyCost: Record<string, number> = {};
       let totalCalls = 0;
       let totalCostCents = 0;
       let totalSavingsCents = 0;
       for (const p of filteredUsage.filter((x) => x.date === date)) {
         perKey[p.keyId] = (perKey[p.keyId] ?? 0) + p.calls;
+        perKeyCost[p.keyId] = (perKeyCost[p.keyId] ?? 0) + p.costCents;
         totalCalls += p.calls;
         totalCostCents += p.costCents;
         totalSavingsCents += p.savingsCents;
       }
-      days.push({ date, perKey, totalCalls, totalCostCents, totalSavingsCents });
+      days.push({ date, perKey, perKeyCost, totalCalls, totalCostCents, totalSavingsCents });
     }
     return days;
   }, [filteredUsage, period]);
@@ -138,6 +153,21 @@ export default function UsagePage() {
     stackedData[0] ?? { date: '—', totalCalls: 0 },
   );
   const maxDay = Math.max(1, ...stackedData.map((d) => d.totalCalls));
+  const maxDayCost = Math.max(1, ...stackedData.map((d) => d.totalCostCents));
+
+  // Helpers: pick the right per-key value getter and the right axis
+  // formatter based on the active metric. Centralised so the rendering
+  // code below stays metric-agnostic.
+  const isCostMetric = chartMetric === 'cost';
+  const yMax = isCostMetric ? maxDayCost : maxDay;
+  const dayTotal = (d: (typeof stackedData)[number]) =>
+    isCostMetric ? d.totalCostCents : d.totalCalls;
+  const dayPerKey = (d: (typeof stackedData)[number], keyId: string) =>
+    isCostMetric ? (d.perKeyCost[keyId] ?? 0) : (d.perKey[keyId] ?? 0);
+  const formatAxis = (v: number) =>
+    isCostMetric ? formatCents(Math.round(v)) : Math.round(v).toLocaleString('en-US');
+  const formatTooltipValue = (v: number) =>
+    isCostMetric ? formatCents(v) : v.toLocaleString('en-US');
 
   const perKeyBreakdown = useMemo(() => {
     const map = new Map<string, { calls: number; cost: number; savings: number }>();
@@ -157,8 +187,20 @@ export default function UsagePage() {
         };
       })
       .filter((row) => row.key)
-      .sort((a, b) => b.calls - a.calls);
-  }, [filteredUsage, keys]);
+      .sort((a, b) => {
+        const av = breakdownSort.column === 'calls' ? a.calls : a.cost;
+        const bv = breakdownSort.column === 'calls' ? b.calls : b.cost;
+        return breakdownSort.dir === 'desc' ? bv - av : av - bv;
+      });
+  }, [filteredUsage, keys, breakdownSort]);
+
+  const toggleBreakdownSort = (column: 'calls' | 'cost') => {
+    setBreakdownSort((prev) =>
+      prev.column === column
+        ? { column, dir: prev.dir === 'desc' ? 'asc' : 'desc' }
+        : { column, dir: 'desc' },
+    );
+  };
 
   const chartWidth = 720;
   const chartHeight = 220;
@@ -255,14 +297,9 @@ export default function UsagePage() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Kpi label={tx('Total calls')} value={kpiTotalCalls.toLocaleString('en-US')} />
         <Kpi label={tx('Net cost')} value={formatCents(kpiTotalCost)} />
-        <Kpi
-          label={tx('Savings')}
-          value={formatCents(kpiTotalSavings)}
-          tone="emerald"
-        />
         <Kpi label={tx('Avg / day')} value={kpiAvgPerDay.toLocaleString('en-US')} />
         <Kpi
           label={tx('Peak day')}
@@ -273,29 +310,65 @@ export default function UsagePage() {
 
       {/* Stacked chart */}
       <div className="rounded-2xl border border-border bg-background p-5">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {tx('Daily calls by key')}
+              {isCostMetric
+                ? t('Daily spend by key', '按 KEY 查看每日花费')
+                : t('Daily calls by key', '按 KEY 查看每日调用')}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
-              {t(
-                `${kpiTotalCalls.toLocaleString('en-US')} calls · last ${period} days`,
-                `过去 ${period} 天 · ${kpiTotalCalls.toLocaleString('en-US')} 次调用`,
-              )}
+              {isCostMetric
+                ? t(
+                    `${formatCents(kpiTotalCost)} spend · last ${period} days`,
+                    `过去 ${period} 天 · 共花费 ${formatCents(kpiTotalCost)}`,
+                  )
+                : t(
+                    `${kpiTotalCalls.toLocaleString('en-US')} calls · last ${period} days`,
+                    `过去 ${period} 天 · ${kpiTotalCalls.toLocaleString('en-US')} 次调用`,
+                  )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            {activeKeys.map((k) => (
-              <div key={k.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span
-                  className="h-2 w-2 rounded-sm"
-                  style={{ backgroundColor: keyColorMap.get(k.id) }}
-                />
-                <span className="truncate max-w-[160px]">{k.name}</span>
-              </div>
-            ))}
+          {/* Metric toggle — segmented control. Sits next to the legend
+              so the chart's two "what am I looking at?" controls live
+              together. */}
+          <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5 text-[11px] font-medium">
+            <button
+              type="button"
+              onClick={() => setChartMetric('calls')}
+              className={cn(
+                'h-6 px-2.5 rounded-md transition-colors',
+                !isCostMetric
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t('Calls', '次数')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMetric('cost')}
+              className={cn(
+                'h-6 px-2.5 rounded-md transition-colors',
+                isCostMetric
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t('Spend', '金额')}
+            </button>
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {activeKeys.map((k) => (
+            <div key={k.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span
+                className="h-2 w-2 rounded-sm"
+                style={{ backgroundColor: keyColorMap.get(k.id) }}
+              />
+              <span className="truncate max-w-[160px]">{k.name}</span>
+            </div>
+          ))}
         </div>
 
         {/* See billing/page.tsx for the rationale: outer wrapper owns the
@@ -326,7 +399,7 @@ export default function UsagePage() {
                   fill="currentColor"
                   fillOpacity={0.5}
                 >
-                  {Math.round(maxDay * t).toLocaleString('en-US')}
+                  {formatAxis(yMax * t)}
                 </text>
               </g>
             ))}
@@ -336,9 +409,9 @@ export default function UsagePage() {
               let yCursor = pad.top + innerH;
               const segments: { keyId: string; y: number; h: number; color: string }[] = [];
               activeKeys.forEach((k) => {
-                const v = d.perKey[k.id] ?? 0;
+                const v = dayPerKey(d, k.id);
                 if (v <= 0) return;
-                const h = (v / maxDay) * innerH;
+                const h = (v / yMax) * innerH;
                 yCursor -= h;
                 segments.push({
                   keyId: k.id,
@@ -400,13 +473,13 @@ export default function UsagePage() {
               const d = stackedData[hoverIdx];
               const centerPctX = ((pad.left + hoverIdx * slot + slot / 2) / chartWidth) * 100;
               const barTopPctY =
-                ((pad.top + innerH - (d.totalCalls / maxDay) * innerH) / chartHeight) * 100;
+                ((pad.top + innerH - (dayTotal(d) / yMax) * innerH) / chartHeight) * 100;
               const flipBelow = barTopPctY < 35;
               const rows = activeKeys
-                .filter((k) => (d.perKey[k.id] ?? 0) > 0)
+                .filter((k) => dayPerKey(d, k.id) > 0)
                 .map((k) => ({
                   label: k.name,
-                  value: d.perKey[k.id],
+                  value: dayPerKey(d, k.id),
                   color: keyColorMap.get(k.id) ?? '#6366f1',
                 }));
               return (
@@ -433,19 +506,22 @@ export default function UsagePage() {
                           />
                           <span className="flex-1 truncate">{r.label}</span>
                           <span className="tabular-nums">
-                            {r.value.toLocaleString('en-US')}
+                            {formatTooltipValue(r.value)}
                           </span>
                         </div>
                       ))}
                       <div className="h-px bg-border my-1.5" />
+                      {/* Footer always shows the *other* dimension so a calls
+                          tooltip still surfaces total spend, and a spend
+                          tooltip surfaces total calls. */}
                       <div className="flex items-center justify-between py-0.5">
-                        <span className="text-muted-foreground">{tx('Cost')}</span>
-                        <span className="tabular-nums">{formatCents(d.totalCostCents)}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-0.5">
-                        <span className="text-muted-foreground">{tx('Savings')}</span>
-                        <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
-                          −{formatCents(d.totalSavingsCents)}
+                        <span className="text-muted-foreground">
+                          {isCostMetric ? tx('Calls') : tx('Cost')}
+                        </span>
+                        <span className="tabular-nums">
+                          {isCostMetric
+                            ? d.totalCalls.toLocaleString('en-US')
+                            : formatCents(d.totalCostCents)}
                         </span>
                       </div>
                     </>
@@ -471,15 +547,28 @@ export default function UsagePage() {
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <th className="text-left px-5 py-2.5 font-semibold">{tx('Key')}</th>
                 <th className="text-left px-5 py-2.5 font-semibold">{tx('Project')}</th>
-                <th className="text-right px-5 py-2.5 font-semibold">{tx('Calls')}</th>
-                <th className="text-right px-5 py-2.5 font-semibold">{tx('Cost')}</th>
-                <th className="text-right px-5 py-2.5 font-semibold">{tx('Savings')}</th>
+                <th className="text-right px-5 py-2.5 font-semibold">
+                  <SortHeader
+                    label={tx('Calls')}
+                    active={breakdownSort.column === 'calls'}
+                    dir={breakdownSort.dir}
+                    onClick={() => toggleBreakdownSort('calls')}
+                  />
+                </th>
+                <th className="text-right px-5 py-2.5 font-semibold">
+                  <SortHeader
+                    label={tx('Cost')}
+                    active={breakdownSort.column === 'cost'}
+                    dir={breakdownSort.dir}
+                    onClick={() => toggleBreakdownSort('cost')}
+                  />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {perKeyBreakdown.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={4} className="px-5 py-8 text-center text-sm text-muted-foreground">
                     {tx('No usage in this window.')}
                   </td>
                 </tr>
@@ -504,9 +593,6 @@ export default function UsagePage() {
                         {row.calls.toLocaleString('en-US')}
                       </td>
                       <td className="px-5 py-3 text-right tabular-nums">{formatCents(row.cost)}</td>
-                      <td className="px-5 py-3 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                        {row.savings > 0 ? `−${formatCents(row.savings)}` : formatCents(0)}
-                      </td>
                     </tr>
                   );
                 })
@@ -516,6 +602,46 @@ export default function UsagePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Right-aligned sortable column header. Renders as a tiny inline button
+ * so users can tell at-a-glance which column drives the sort and in
+ * which direction. Inactive columns show the neutral up-down glyph;
+ * the active column shows a single arrow matching the current dir.
+ */
+function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: 'asc' | 'desc';
+  onClick: () => void;
+}) {
+  const Icon = !active ? ArrowUpDown : dir === 'desc' ? ArrowDown : ArrowUp;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center justify-end gap-1 ml-auto -mr-1 px-1 h-5 rounded transition-colors',
+        active
+          ? 'text-foreground hover:bg-muted/50'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
+      )}
+    >
+      <span>{label}</span>
+      <Icon
+        className={cn(
+          'h-3 w-3 transition-opacity',
+          active ? 'opacity-100' : 'opacity-50',
+        )}
+      />
+    </button>
   );
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { AmbientBackdrop, BackToOverview, ContactSection, SiteFooter, TopNav } from '../_chrome';
+import { AmbientBackdrop, BackToOverview, SiteFooter, TopNav } from '../_chrome';
 import { ReasoningSection } from '../_reasoning-section';
 
 export default function GlobalReasoningPage() {
@@ -10,7 +10,6 @@ export default function GlobalReasoningPage() {
       <TopNav />
       <BackToOverview containerClassName="container mx-auto px-6 max-w-7xl pt-5" />
       <ReasoningSection />
-      <ContactSection />
       <SiteFooter />
     </div>
   );

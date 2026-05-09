@@ -5,23 +5,31 @@
  * developer preview. No network calls, no API keys are real — everything
  * resets when the user clears site data.
  *
- * Billing model (two-tier):
+ * Billing model (account wallet, calls + dollars):
  *
- *   STARTER KEY — exactly one per account, provisioned automatically at
- *   signup. Flagged with `isStarter: true`. Carries a hard, non-refillable
- *   free allowance (30 calls/day, 900 calls lifetime). Cannot be deleted
- *   and never receives credits. Runs until the lifetime cap is exhausted,
- *   then stops serving traffic forever.
+ *   ACCOUNT WALLET — single source of truth for paid credit. Top-ups grow
+ *   `paidCreditsCents`; consumption grows `paidCreditsUsedCents`. All keys
+ *   on the account share this pool. Top-up amount tiers grant a bonus on
+ *   top of the base amount (see `_lib/topup-bonus.ts`).
  *
- *   PAID KEYS — everything the user creates after signup. No daily/lifetime
- *   caps; they run purely off `paidCreditsCents` (credit balance). A key
- *   with $0 balance is "needs credits" and cannot serve traffic until
- *   topped up. Each paid key optionally carries:
- *     - `spendCapCents`: monthly spend cap (null = uncapped)
- *     - `lowBalanceAlert`: email when balance drops below a threshold
+ *   TRIAL ALLOWANCE — every new account is granted 30 calls/day + 900
+ *   total lifetime, free of charge. Trial is consumed first; once exhausted
+ *   the account falls back to wallet credit (and stops serving once that
+ *   too is empty).
  *
- *   Account-level state covers the global monthly spend limit (a safety
- *   net across all keys) and saved payment methods.
+ *   ACCOUNT LOW-BALANCE ALERT — single account-level toggle that emails
+ *   when the wallet balance drops below a configured threshold.
+ *
+ *   API KEYS — Lightweight access tokens that all draw from the account
+ *   wallet. The first key on an account is flagged `isStarter: true` and
+ *   is provisioned automatically at signup; it has no special billing
+ *   behaviour (no per-key free allowance) and cannot be deleted. Optional
+ *   per-key safety nets:
+ *     - `spendCapCents`: monthly spend cap in cents (null = uncapped)
+ *     - `monthlyCallCap`: monthly call-count cap (null = uncapped)
+ *
+ *   Account-level state also covers the global monthly spend limit (cross-
+ *   key safety net) and saved payment methods.
  *
  * An in-memory cache + observable pattern powers `useSyncExternalStore`
  * consumers without violating React 19's strict set-state-in-effect rule.
@@ -76,31 +84,100 @@ export interface ApiKey {
    */
   status: 'active' | 'paused' | 'revoked';
   /**
-   * True for the account's one-and-only starter key. Non-starter keys can be
-   * created/revoked freely; the starter key is system-provisioned at signup
-   * and cannot be deleted (though it *can* be rotated — same id, new secret).
+   * True for the account's first / default key, provisioned at signup.
+   * Cannot be deleted (though it *can* be rotated — same id, new secret).
+   * Carries no special billing behaviour in the account-wallet model.
    */
   isStarter: boolean;
-  // Free-tier allowance. Only the starter key carries non-zero limits;
-  // every paid key has freeDailyLimit = freeTotalLimit = 0.
-  freeDailyLimit: number;
-  freeDailyUsed: number;
-  freeDailyResetAt: string; // ISO; refreshed whenever UTC date changes
-  freeTotalLimit: number;
-  freeTotalUsed: number;
-  // Per-key paid credits (in cents). Starter key stays at 0/0 forever.
-  paidCreditsCents: number;
-  paidCreditsUsedCents: number;
   /**
-   * Optional monthly spend cap in cents. `null` = uncapped. Applies only
-   * to paid keys; starter ignores this field.
+   * User-pinned to the top of the API Keys list. Optional — defaults
+   * to false for legacy snapshots.
+   */
+  pinned?: boolean;
+  /**
+   * Optional monthly spend cap in cents (per-key safety net). `null` =
+   * uncapped. Independent from the account-wide `SpendLimit`.
    */
   spendCapCents: number | null;
   /**
-   * Optional low-balance email alert config. `null` = feature disabled.
-   * Applies only to paid keys.
+   * Optional monthly call-count cap (per-key safety net). `null` = uncapped.
+   * When the key's calls in the current month hit this cap, it stops
+   * serving traffic until the next billing cycle or the cap is raised.
    */
+  monthlyCallCap: number | null;
+  /**
+   * Optional daily $ cap for this key; `null` = uncapped. Resets at
+   * midnight UTC. Useful when a key is exposed to user traffic that can
+   * spike unexpectedly.
+   */
+  dailySpendCapCents?: number | null;
+  /**
+   * Optional daily call-count cap for this key; `null` = uncapped.
+   * Resets at midnight UTC.
+   */
+  dailyCallCap?: number | null;
+
+  // ─── Legacy fields (account-wallet model deprecates these) ─────────────
+  // Preserved so the bridge and a few historical helpers keep compiling.
+  // - `freeDaily*` / `freeTotal*` are mirrored from the account TrialAllowance
+  //   on the starter key only, and stay at 0 elsewhere.
+  // - `paidCredits*` are no longer used (account wallet replaces them).
+  // - `lowBalanceAlert` was per-key; it now lives on AccountLowBalanceAlert.
+  /** @deprecated Mirrored from account trial on starter key only. */
+  freeDailyLimit: number;
+  /** @deprecated Mirrored from account trial on starter key only. */
+  freeDailyUsed: number;
+  /** @deprecated Mirrored from account trial on starter key only. */
+  freeDailyResetAt: string;
+  /** @deprecated Mirrored from account trial on starter key only. */
+  freeTotalLimit: number;
+  /** @deprecated Mirrored from account trial on starter key only. */
+  freeTotalUsed: number;
+  /** @deprecated Replaced by AccountWallet. */
+  paidCreditsCents: number;
+  /** @deprecated Replaced by AccountWallet. */
+  paidCreditsUsedCents: number;
+  /** @deprecated Replaced by AccountLowBalanceAlert. */
   lowBalanceAlert: LowBalanceAlert | null;
+}
+
+/**
+ * Account-level wallet — the single source of paid credit on the account.
+ * Top-ups grow `paidCreditsCents` (sum of base + bonus); usage grows
+ * `paidCreditsUsedCents`. Remaining balance is the simple difference.
+ * `bonusReceivedCents` is purely informational (lifetime bonus accrued).
+ */
+export interface AccountWallet {
+  paidCreditsCents: number;
+  paidCreditsUsedCents: number;
+  bonusReceivedCents: number;
+}
+
+/**
+ * Account-level free trial. Granted on signup and consumed before wallet
+ * credit. `dailyLimit` resets at UTC midnight; `totalLimit` is a lifetime
+ * cap that never replenishes. Once both are exhausted the account must
+ * top up to keep serving traffic.
+ */
+export interface TrialAllowance {
+  dailyLimit: number;
+  dailyUsed: number;
+  dailyResetAt: string; // YYYY-MM-DD UTC
+  totalLimit: number;
+  totalUsed: number;
+}
+
+/** Starter trial seed defaults. Easy to tune in one place. */
+export const TRIAL_DEFAULT_DAILY = 30;
+export const TRIAL_DEFAULT_TOTAL = 900;
+
+/**
+ * Single account-level low-balance email alert. The previous per-key
+ * version has been retired; one threshold across the wallet is plenty.
+ */
+export interface AccountLowBalanceAlert {
+  enabled: boolean;
+  thresholdCents: number;
 }
 
 export interface UsagePoint {
@@ -112,10 +189,34 @@ export interface UsagePoint {
   savingsCents: number;
 }
 
+/**
+ * Account-wide guardrails.
+ *
+ * Mirrors the per-key shape (`spendCapCents` / `monthlyCallCap`) but adds
+ * daily counterparts so users can throttle a noisy day without blowing
+ * the entire month. Every cap is independently nullable — `null` means
+ * "no limit on that axis", which is what the UI surfaces as
+ * "Unlimited".
+ *
+ * Historical note: the original schema only had `monthlyCapCents`, and
+ * for a stretch the field was overloaded as "monthly call cap" (with 1
+ * cent ≡ 1 call). That hack is gone now: dollars and calls live in
+ * separate fields. The legacy field is still read so older
+ * localStorage snapshots migrate cleanly via `seedIfNeeded`.
+ */
 export interface SpendLimit {
-  monthlyCapCents: number;
-  resetDay: number; // 1 = first of month
-  warnAtPercents: number[]; // e.g., [50, 75, 90]
+  /** Monthly $ cap; null = unlimited. */
+  monthlyCapCents: number | null;
+  /** Monthly call-count cap; null = unlimited. */
+  monthlyCallCap: number | null;
+  /** Daily $ cap; null = unlimited. */
+  dailyCapCents: number | null;
+  /** Daily call-count cap; null = unlimited. */
+  dailyCallCap: number | null;
+  /** Day-of-month the monthly counter resets. Always 1 today. */
+  resetDay: number;
+  /** Email warning thresholds for the monthly $ cap (e.g. [50, 75, 90]). */
+  warnAtPercents: number[];
 }
 
 export interface PaymentMethod {
@@ -227,15 +328,13 @@ export const VOLUME_TIERS: VolumeTier[] = [
 // ─── Keys & cache ───────────────────────────────────────────────────────────
 // Bump this whenever the shape of anything in STORAGE changes. On mismatch we
 // wipe dev-en:* keys (but keep dev-en-auth) so the user keeps their login and
-// the seeder re-populates fresh data in the new shape. This is the root fix
-// for `$NaN` values caused by old v1 UsagePoint records lacking costCents.
-// v3: first-key-only free allowance (30/day + 900 total); subsequent keys
-// have freeDailyLimit=0 and freeTotalLimit=0.
-// v4: starter-key model. Exactly one key per account is flagged
-// `isStarter: true` and carries the lifetime free allowance; every other
-// key is paid-only with optional `spendCapCents` and `lowBalanceAlert`
-// fields. Old ApiKey records lack these fields → reseed.
-const SCHEMA_VERSION = 7;
+// the seeder re-populates fresh data in the new shape.
+// v8: account-wallet model. Per-key paid credits, free allowance and
+// low-balance alerts have been promoted to account-level slots
+// (`wallet`, `trial`, `accountAlert`); `monthlyCallCap` is a new per-key
+// safety net. Old ApiKey records still parse but their billing-related
+// fields are ignored, so we wipe + reseed.
+const SCHEMA_VERSION = 10;
 const SCHEMA_KEY = 'dev-en:schema-version';
 
 const STORAGE = {
@@ -247,6 +346,9 @@ const STORAGE = {
   paymentMethods: 'dev-en:payment-methods',
   teamMembers: 'dev-en:team-members',
   notifications: 'dev-en:notifications',
+  wallet: 'dev-en:wallet',
+  trial: 'dev-en:trial',
+  accountAlert: 'dev-en:account-alert',
 };
 
 function migrateIfNeeded() {
@@ -272,6 +374,9 @@ interface Cache {
   paymentMethods: PaymentMethod[] | null;
   teamMembers: TeamMember[] | null;
   notifications: NotificationSettings | null;
+  wallet: AccountWallet | null;
+  trial: TrialAllowance | null;
+  accountAlert: AccountLowBalanceAlert | null;
   seeded: boolean;
 }
 
@@ -284,6 +389,9 @@ const cache: Cache = {
   paymentMethods: null,
   teamMembers: null,
   notifications: null,
+  wallet: null,
+  trial: null,
+  accountAlert: null,
   seeded: false,
 };
 
@@ -337,10 +445,20 @@ type MutationProxy = {
   deleteKey?: (mockId: string) => void;
   updateKeySettings?: (
     mockId: string,
-    patch: { spendCapCents?: number | null; lowBalanceAlert?: LowBalanceAlert | null },
+    patch: {
+      spendCapCents?: number | null;
+      monthlyCallCap?: number | null;
+      lowBalanceAlert?: LowBalanceAlert | null;
+    },
   ) => void;
+  /** @deprecated Account-wallet model — wallet topups are local-only. */
   addKeyCreditsCents?: (mockId: string, amountCents: number) => void;
+  /** @deprecated Account-wallet model — wallet topups are local-only. */
   addKeyCalls?: (mockId: string, calls: number) => void;
+  /** Account-level wallet top-up (base + bonus already merged). */
+  topupAccount?: (input: { baseCents: number; bonusCents: number }) => void;
+  /** Account-level low-balance alert update. */
+  updateAccountAlert?: (alert: AccountLowBalanceAlert) => void;
   inviteTeamMember?: (input: { email: string; role: TeamRole; name?: string }) => void;
   updateTeamMemberRole?: (mockId: string, role: TeamRole) => void;
   removeTeamMember?: (mockId: string) => void;
@@ -366,6 +484,9 @@ export function __replaceCache(partial: {
   paymentMethods?: PaymentMethod[];
   teamMembers?: TeamMember[];
   notifications?: NotificationSettings;
+  wallet?: AccountWallet;
+  trial?: TrialAllowance;
+  accountAlert?: AccountLowBalanceAlert;
 }): void {
   if (partial.projects !== undefined) cache.projects = partial.projects;
   if (partial.keys !== undefined) cache.keys = partial.keys;
@@ -375,6 +496,9 @@ export function __replaceCache(partial: {
   if (partial.paymentMethods !== undefined) cache.paymentMethods = partial.paymentMethods;
   if (partial.teamMembers !== undefined) cache.teamMembers = partial.teamMembers;
   if (partial.notifications !== undefined) cache.notifications = partial.notifications;
+  if (partial.wallet !== undefined) cache.wallet = partial.wallet;
+  if (partial.trial !== undefined) cache.trial = partial.trial;
+  if (partial.accountAlert !== undefined) cache.accountAlert = partial.accountAlert;
   cache.seeded = true;
   notify();
 }
@@ -425,18 +549,19 @@ function todayUtc(): string {
 // ─── Seed ───────────────────────────────────────────────────────────────────
 /**
  * Rich demo data — every module should tell a clear story on first login.
- * Under the first-key-only free-tier rule, exactly one key in the seed
- * carries a real allowance; the other six demonstrate every paid state.
  *
- *   Overview: mid-range KPIs, the sole free-tier key surfaces in "most
- *             active", 6-entry recent activity.
- *   Keys: 7 rows covering Free-tier active / Post-paid healthy / low / drained
- *         / awaiting-first-topup / paid-light / revoked.
- *   Usage: 120 days of stacked-per-model data with a spike + weekend trough.
- *   Billing: 28-day chart with visible trend, spend at ~55% of $200 limit,
- *            two saved cards (one expiring next month).
- *   Pricing: monthly volume lands in the "100K – 1M calls" tier.
- *   Recharge history: 4 credit top-ups + 2 card-added events over ~45 days.
+ * Under the account-wallet model:
+ *   - Wallet seeded with $87.50 remaining of $100 paid + $15 bonus accrued.
+ *   - Trial allowance partly consumed (18/30 today, 420/900 lifetime).
+ *   - 6 keys total: 1 starter (default), 5 paid demonstrating different
+ *     monthly-cap, monthly-call-cap and revoked states.
+ *   - Account-level low-balance alert enabled with threshold $5.
+ *
+ *   Overview / Billing / Keys: surface the wallet, trial, and per-key
+ *   monthly-cap progress.
+ *   Usage: 120 days of stacked data with a spike + weekend trough.
+ *   Recharge history: 4 credit top-ups (with bonus where applicable) +
+ *     2 card-added events over ~45 days.
  */
 function seedIfNeeded() {
   if (!isBrowser() || cache.seeded) return;
@@ -477,8 +602,8 @@ function seedIfNeeded() {
   // ── Keys ──
   const existingKeys = read<ApiKey[] | null>(STORAGE.keys, null);
   if (!existingKeys || existingKeys.length === 0) {
-    // Defaults describe a paid key — no free allowance, no spend cap, no
-    // alert. Overrides flip in the starter flag, per-key credits, or cap.
+    // Defaults describe a paid key — no per-key billing state. Overrides
+    // flip the starter flag, set caps, etc.
     const mk = (
       overrides: Partial<ApiKey> & Pick<ApiKey, 'name' | 'env' | 'projectId'>,
     ): ApiKey => {
@@ -491,6 +616,9 @@ function seedIfNeeded() {
         lastUsedAt: new Date(now - 15 * 60000).toISOString(),
         status: 'active',
         isStarter: false,
+        spendCapCents: null,
+        monthlyCallCap: null,
+        // Legacy fields (deprecated, kept for back-compat with bridge/UI).
         freeDailyLimit: 0,
         freeDailyUsed: 0,
         freeDailyResetAt: today,
@@ -498,16 +626,16 @@ function seedIfNeeded() {
         freeTotalUsed: 0,
         paidCreditsCents: 0,
         paidCreditsUsedCents: 0,
-        spendCapCents: null,
         lowBalanceAlert: null,
       };
       return { ...defaults, ...overrides };
     };
 
     const seeded: ApiKey[] = [
-      // ── STARTER KEY ──────────────────────────────────────────────
-      // The one-and-only freebie. Mid-consumption state shows the quota
-      // UI in a useful, non-full, non-empty position.
+      // ── STARTER (default first key) ──────────────────────────────
+      // No per-key billing state under the new model — just a regular key
+      // flagged as the account default. Trial allowance lives on the
+      // account, not on this key.
       mk({
         name: 'Starter key',
         env: 'development',
@@ -515,77 +643,53 @@ function seedIfNeeded() {
         createdAt: new Date(now - 115 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 42 * 60000).toISOString(),
         isStarter: true,
-        freeDailyLimit: 30,
-        freeDailyUsed: 18, // 60 % of today used
-        freeTotalLimit: 900,
-        freeTotalUsed: 420, // ~47 % of lifetime used
       }),
-
-      // ── PAID KEYS ────────────────────────────────────────────────
-      // 1. Healthy production key with $100 loaded, ~$76 remaining.
-      //    Has a $250/mo cap and a $5 low-balance alert configured.
+      // 1. Healthy production key with a per-key spend cap. The wallet
+      //    funds it; the cap protects against a runaway bug on this key.
       mk({
         name: 'Web App — Prod',
         env: 'production',
         projectId: 'proj_production',
         createdAt: new Date(now - 85 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 2 * 60000).toISOString(),
-        paidCreditsCents: 10000,
-        paidCreditsUsedCents: 2380,
         spendCapCents: 25000, // $250/mo cap
-        lowBalanceAlert: { enabled: true, thresholdCents: 500 },
+        monthlyCallCap: 80000, // 80K calls/mo cap
       }),
-      // 2. Drained — ran out of credits, awaiting refill.
+      // 2. Mobile prod — high-traffic key bumping into its monthly call
+      //    cap (about 60% used this month against a 50K cap).
       mk({
         name: 'Mobile — Prod',
         env: 'production',
         projectId: 'proj_production',
         createdAt: new Date(now - 70 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 6 * 3600000).toISOString(),
-        paidCreditsCents: 5000,
-        paidCreditsUsedCents: 5000,
-        lowBalanceAlert: { enabled: true, thresholdCents: 500 },
+        monthlyCallCap: 50000,
       }),
-      // 3. Low balance — triggers the "Low balance" warning pill.
+      // 3. Secondary prod — no cap configured.
       mk({
         name: 'Web App — Prod (secondary)',
         env: 'production',
         projectId: 'proj_production',
         createdAt: new Date(now - 45 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 12 * 60000).toISOString(),
-        paidCreditsCents: 2500,
-        paidCreditsUsedCents: 2120, // $3.80 left
-        lowBalanceAlert: { enabled: true, thresholdCents: 500 },
       }),
-      // 4. Revoked — kept for audit, greyed out.
-      mk({
-        name: 'Old demo key',
-        env: 'development',
-        projectId: 'proj_internal',
-        createdAt: new Date(now - 110 * 86400000).toISOString(),
-        lastUsedAt: new Date(now - 40 * 86400000).toISOString(),
-        status: 'revoked',
-      }),
-      // 5. Just created, never funded — "Needs credits" CTA state.
+      // 4. Staging — recently created, light usage, capped tight to keep
+      //    test runs from chewing through wallet balance.
       mk({
         name: 'Staging',
         env: 'development',
         projectId: 'proj_staging',
         createdAt: new Date(now - 22 * 86400000).toISOString(),
         lastUsedAt: null,
-        paidCreditsCents: 0,
-        paidCreditsUsedCents: 0,
+        monthlyCallCap: 5000,
       }),
-      // 6. Paid-light — small $15 top-up for a load-test suite. No cap,
-      //    no alert — represents a developer who just wants it to work.
+      // 5. Load test — uncapped dev key for occasional bursts.
       mk({
         name: 'Load test',
         env: 'development',
         projectId: 'proj_staging',
         createdAt: new Date(now - 18 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 7 * 60000).toISOString(),
-        paidCreditsCents: 1500,
-        paidCreditsUsedCents: 450, // $10.50 left
       }),
     ];
     write(STORAGE.keys, seeded);
@@ -615,14 +719,16 @@ function seedIfNeeded() {
       lastUsedAt: null,
       status: 'active',
       isStarter: true,
-      freeDailyLimit: 30,
+      spendCapCents: null,
+      monthlyCallCap: null,
+      // Legacy fields stay zeroed under the new account-wallet model.
+      freeDailyLimit: 0,
       freeDailyUsed: 0,
       freeDailyResetAt: today,
-      freeTotalLimit: 900,
+      freeTotalLimit: 0,
       freeTotalUsed: 0,
       paidCreditsCents: 0,
       paidCreditsUsedCents: 0,
-      spendCapCents: null,
       lowBalanceAlert: null,
     };
     cache.keys = [starter, ...cache.keys];
@@ -692,19 +798,46 @@ function seedIfNeeded() {
   }
 
   // ── Spend limit ──
-  const existingLimit = read<SpendLimit | null>(STORAGE.spendLimit, null);
+  // Migration note: legacy snapshots stored a single `monthlyCapCents`
+  // number (sometimes overloaded as "monthly calls"). We read whatever is
+  // there, then fill the new daily / call-cap fields with `null`
+  // (unlimited) so older sessions don't suddenly start rejecting traffic.
+  const existingLimit = read<Partial<SpendLimit> | null>(STORAGE.spendLimit, null);
   if (!existingLimit) {
     const seeded: SpendLimit = {
       // $200 default lets the demo's ~$90-110/mo spend land at ~50% used
       // (meaningful amber zone for the Overview KPI and Billing chart).
       monthlyCapCents: 200_00,
+      monthlyCallCap: null,
+      dailyCapCents: null,
+      dailyCallCap: null,
       resetDay: 1,
       warnAtPercents: [50, 75, 90],
     };
     write(STORAGE.spendLimit, seeded);
     cache.spendLimit = seeded;
   } else {
-    cache.spendLimit = existingLimit;
+    const migrated: SpendLimit = {
+      monthlyCapCents:
+        existingLimit.monthlyCapCents != null
+          ? existingLimit.monthlyCapCents
+          : null,
+      monthlyCallCap:
+        existingLimit.monthlyCallCap != null
+          ? existingLimit.monthlyCallCap
+          : null,
+      dailyCapCents:
+        existingLimit.dailyCapCents != null ? existingLimit.dailyCapCents : null,
+      dailyCallCap:
+        existingLimit.dailyCallCap != null ? existingLimit.dailyCallCap : null,
+      resetDay: existingLimit.resetDay ?? 1,
+      warnAtPercents:
+        existingLimit.warnAtPercents && existingLimit.warnAtPercents.length
+          ? existingLimit.warnAtPercents
+          : [50, 75, 90],
+    };
+    cache.spendLimit = migrated;
+    write(STORAGE.spendLimit, migrated);
   }
 
   // ── Payment methods ──
@@ -741,14 +874,13 @@ function seedIfNeeded() {
     cache.paymentMethods = existingPm;
   }
 
-  // ── Transactions (realistic 45-day timeline) ──
+  // ── Transactions (realistic 45-day timeline, wallet model) ──
+  // Wallet-billing change: top-ups land on the *account*, not a specific
+  // key, so transactions no longer carry keyId/projectId. We mix in two
+  // bonus tiers ($100 → +15% and $50 → +10%) to demo the bonus column on
+  // the History page, plus a couple of card-added events for variety.
   const existingTxn = read<Transaction[] | null>(STORAGE.transactions, null);
   if (!existingTxn) {
-    const keyByName = new Map(cache.keys!.map((k) => [k.name, k]));
-    const prodMain = keyByName.get('Web App — Prod');
-    const prodSecondary = keyByName.get('Web App — Prod (secondary)');
-    const prodMobile = keyByName.get('Mobile — Prod');
-
     const mkTxn = (o: Omit<Transaction, 'id' | 'invoiceNumber'>): Transaction => ({
       ...o,
       id: uuid('txn_'),
@@ -759,25 +891,21 @@ function seedIfNeeded() {
       // newest first
       mkTxn({
         createdAt: new Date(now - 1 * 86400000).toISOString(),
-        amountCents: 1000,
+        amountCents: 2000,
         status: 'succeeded',
         method: 'apple-pay',
         last4: '•••',
-        description: `Credits added to ${prodSecondary?.name ?? 'key'}`,
+        description: 'Wallet top-up · $20.00',
         kind: 'credit-topup',
-        keyId: prodSecondary?.id,
-        projectId: prodSecondary?.projectId,
       }),
       mkTxn({
         createdAt: new Date(now - 6 * 86400000).toISOString(),
-        amountCents: 5000,
+        amountCents: 10000,
         status: 'succeeded',
         method: 'card',
         last4: '4242',
-        description: `Credits added to ${prodMain?.name ?? 'key'}`,
+        description: 'Wallet top-up · $100.00 (+$15.00 bonus)',
         kind: 'credit-topup',
-        keyId: prodMain?.id,
-        projectId: prodMain?.projectId,
       }),
       mkTxn({
         createdAt: new Date(now - 10 * 86400000).toISOString(),
@@ -785,10 +913,8 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'cashapp',
         last4: 'cash',
-        description: `Cash App Pay · Credits added to ${prodMobile?.name ?? 'key'}`,
+        description: 'Cash App Pay · Wallet top-up · $20.00',
         kind: 'credit-topup',
-        keyId: prodMobile?.id,
-        projectId: prodMobile?.projectId,
       }),
       mkTxn({
         createdAt: new Date(now - 14 * 86400000).toISOString(),
@@ -796,21 +922,17 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'link',
         last4: '•••',
-        description: `Credits added to ${prodMobile?.name ?? 'key'}`,
+        description: 'Wallet top-up · $25.00',
         kind: 'credit-topup',
-        keyId: prodMobile?.id,
-        projectId: prodMobile?.projectId,
       }),
       mkTxn({
         createdAt: new Date(now - 18 * 86400000).toISOString(),
-        amountCents: 3000,
+        amountCents: 5000,
         status: 'succeeded',
         method: 'paypal',
         last4: 'ppal',
-        description: `PayPal · Credits added to ${prodSecondary?.name ?? 'key'}`,
+        description: 'PayPal · Wallet top-up · $50.00 (+$5.00 bonus)',
         kind: 'credit-topup',
-        keyId: prodSecondary?.id,
-        projectId: prodSecondary?.projectId,
       }),
       mkTxn({
         createdAt: new Date(now - 22 * 86400000).toISOString(),
@@ -827,10 +949,8 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'card',
         last4: '4242',
-        description: `Credits added to ${prodMain?.name ?? 'key'}`,
+        description: 'Wallet top-up · $50.00 (+$5.00 bonus)',
         kind: 'credit-topup',
-        keyId: prodMain?.id,
-        projectId: prodMain?.projectId,
       }),
       mkTxn({
         createdAt: new Date(now - 44 * 86400000).toISOString(),
@@ -915,6 +1035,51 @@ function seedIfNeeded() {
     cache.notifications = seeded;
   } else {
     cache.notifications = existingNotif;
+  }
+
+  // ── Account wallet ── ($87.50 left of $100 paid + $15 bonus accrued)
+  const existingWallet = read<AccountWallet | null>(STORAGE.wallet, null);
+  if (!existingWallet) {
+    const seeded: AccountWallet = {
+      // Total credits ever loaded (paid base + bonus): $100 + $15 = $115
+      paidCreditsCents: 11500,
+      // Already consumed: $115 − $87.50 remaining = $27.50
+      paidCreditsUsedCents: 2750,
+      bonusReceivedCents: 1500,
+    };
+    write(STORAGE.wallet, seeded);
+    cache.wallet = seeded;
+  } else {
+    cache.wallet = existingWallet;
+  }
+
+  // ── Trial allowance ── (mid-consumption: 18/30 today, 420/900 lifetime)
+  const existingTrial = read<TrialAllowance | null>(STORAGE.trial, null);
+  if (!existingTrial) {
+    const seeded: TrialAllowance = {
+      dailyLimit: TRIAL_DEFAULT_DAILY,
+      dailyUsed: 18,
+      dailyResetAt: today,
+      totalLimit: TRIAL_DEFAULT_TOTAL,
+      totalUsed: 420,
+    };
+    write(STORAGE.trial, seeded);
+    cache.trial = seeded;
+  } else {
+    cache.trial = existingTrial;
+  }
+
+  // ── Account-level low-balance alert ── ($5 threshold, enabled)
+  const existingAlert = read<AccountLowBalanceAlert | null>(STORAGE.accountAlert, null);
+  if (!existingAlert) {
+    const seeded: AccountLowBalanceAlert = {
+      enabled: true,
+      thresholdCents: 500,
+    };
+    write(STORAGE.accountAlert, seeded);
+    cache.accountAlert = seeded;
+  } else {
+    cache.accountAlert = existingAlert;
   }
 
   cache.seeded = true;
@@ -1039,98 +1204,218 @@ export function updateNotificationSettings(
   return next;
 }
 
+// ─── Account-level readers ──────────────────────────────────────────────────
+
+const DEFAULT_WALLET: AccountWallet = {
+  paidCreditsCents: 0,
+  paidCreditsUsedCents: 0,
+  bonusReceivedCents: 0,
+};
+const DEFAULT_TRIAL: TrialAllowance = {
+  dailyLimit: TRIAL_DEFAULT_DAILY,
+  dailyUsed: 0,
+  dailyResetAt: todayUtc(),
+  totalLimit: TRIAL_DEFAULT_TOTAL,
+  totalUsed: 0,
+};
+const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
+  enabled: false,
+  thresholdCents: 500,
+};
+
+export function getWallet(): AccountWallet {
+  seedIfNeeded();
+  return cache.wallet ?? DEFAULT_WALLET;
+}
+
+export function getTrial(): TrialAllowance {
+  seedIfNeeded();
+  return cache.trial ?? DEFAULT_TRIAL;
+}
+
+export function getAccountAlert(): AccountLowBalanceAlert {
+  seedIfNeeded();
+  return cache.accountAlert ?? DEFAULT_ACCOUNT_ALERT;
+}
+
+/** Wallet balance in cents (paid + bonus credits, minus consumed). */
+export function getAccountBalanceCents(): number {
+  const w = getWallet();
+  return Math.max(0, w.paidCreditsCents - w.paidCreditsUsedCents);
+}
+
+export interface AccountTrialRemaining {
+  dailyLeft: number;
+  totalLeft: number;
+  dailyExhausted: boolean;
+  totalExhausted: boolean;
+}
+
+// Identity-stable cache: `useSyncExternalStore` re-reads the snapshot on
+// every render and compares with `Object.is`, so any selector that
+// allocates a fresh object causes an infinite re-render loop. We memoize
+// the derived `AccountTrialRemaining` against the underlying trial
+// reference and invalidate whenever the trial cache changes.
+let _trialRemainingFor: TrialAllowance | null = null;
+let _trialRemainingValue: AccountTrialRemaining | null = null;
+
+export function getAccountTrialRemaining(): AccountTrialRemaining {
+  const t = getTrial();
+  if (_trialRemainingFor === t && _trialRemainingValue) {
+    return _trialRemainingValue;
+  }
+  const dailyLeft = Math.max(0, t.dailyLimit - t.dailyUsed);
+  const totalLeft = Math.max(0, t.totalLimit - t.totalUsed);
+  const next: AccountTrialRemaining = {
+    dailyLeft,
+    totalLeft,
+    dailyExhausted: dailyLeft <= 0,
+    totalExhausted: totalLeft <= 0,
+  };
+  _trialRemainingFor = t;
+  _trialRemainingValue = next;
+  return next;
+}
+
+/** USD cost per 1 call (mirror of MCP_CALL_RATE_PER_K but per-call). */
+export const MCP_CALL_RATE_PER_CALL_DOLLARS = MCP_CALL_RATE_PER_K / 1000;
+/** USD cents per 1 call. Default: $0.001 → 0.1 cent. */
+export const MCP_CALL_RATE_PER_CALL_CENTS = MCP_CALL_RATE_PER_CALL_DOLLARS * 100;
+
+/**
+ * Estimated calls remaining at the current rate, summing trial allowance
+ * (lifetime cap or daily cap, whichever is the binding limit) plus the
+ * dollar-converted wallet balance.
+ *
+ * The "calls available right now" view uses `min(trialDailyLeft +
+ * trialTotalLeft - already-counted, walletConverted)` — but for a
+ * back-of-envelope sum we add trial.totalLeft + walletCalls. Good enough
+ * for KPI surfaces.
+ */
+export function getAccountCallsRemaining(): number {
+  const trial = getAccountTrialRemaining();
+  const walletCalls = Math.floor(
+    getAccountBalanceCents() / Math.max(0.0001, MCP_CALL_RATE_PER_CALL_CENTS),
+  );
+  return trial.totalLeft + walletCalls;
+}
+
+/**
+ * Total calls ever provisioned to this account: trial total + wallet
+ * (purchased + bonus) converted to calls. Stable across consumption.
+ */
+export function getAccountCallsTotal(): number {
+  const trial = getTrial();
+  const w = getWallet();
+  const walletCalls = Math.floor(
+    w.paidCreditsCents / Math.max(0.0001, MCP_CALL_RATE_PER_CALL_CENTS),
+  );
+  return trial.totalLimit + walletCalls;
+}
+
+/** True if wallet balance has dropped below the configured alert threshold. */
+export function isAccountLowBalance(): boolean {
+  const a = getAccountAlert();
+  if (!a.enabled) return false;
+  const bal = getAccountBalanceCents();
+  return bal > 0 && bal <= a.thresholdCents;
+}
+
+/** This-month call count for one key, derived from usage history. */
+export function getKeyMonthlyCalls(keyId: string): number {
+  const ym = new Date().toISOString().slice(0, 7);
+  return getUsage()
+    .filter((p) => p.keyId === keyId && p.date.startsWith(ym))
+    .reduce((acc, p) => acc + (p.calls ?? 0), 0);
+}
+
 // ─── Derived helpers ────────────────────────────────────────────────────────
 
 /**
- * Calls-based billing model (replaces the older $-balance model). Every key —
- * Starter and paid alike — uses `freeTotalLimit` (total purchased + free
- * calls) and `freeTotalUsed` (consumed). Top-ups grow `freeTotalLimit`; the
- * dashboard shows "calls remaining" instead of dollar balances.
+ * Calls remaining that this key can make. In the account-wallet model the
+ * answer is **the same for every active key** — they all draw from the
+ * same wallet+trial pool. Returns 0 for revoked/paused keys, otherwise
+ * the account-level remaining count.
  */
 export function getKeyCallsRemaining(k: ApiKey): number {
-  if (k.status === 'revoked') return 0;
-  return Math.max(0, k.freeTotalLimit - k.freeTotalUsed);
+  if (k.status === 'revoked' || k.status === 'paused') return 0;
+  return getAccountCallsRemaining();
 }
 
 export function getKeyCallsTotal(k: ApiKey): number {
-  return Math.max(0, k.freeTotalLimit);
+  if (k.status === 'revoked') return 0;
+  return getAccountCallsTotal();
 }
 
 export function getKeyCallsUsed(k: ApiKey): number {
-  return Math.max(0, k.freeTotalUsed);
+  if (k.status === 'revoked') return 0;
+  return Math.max(0, getKeyCallsTotal(k) - getKeyCallsRemaining(k));
 }
 
 /**
- * Classify a key's current billing state. Used across the UI to decide
- * which badges, CTAs, and progress bars to show.
+ * Classify a key's billing state. With the wallet model everything is
+ * either active (account has balance/trial), needs-credits (account dry),
+ * paused, or revoked. The legacy `starter` / `starter-exhausted` values
+ * are no longer returned by this helper but remain in the `BillingTier`
+ * union for type compatibility with older code paths.
  */
 export function getBillingTier(k: ApiKey): BillingTier {
   if (k.status === 'revoked') return 'revoked';
   if (k.status === 'paused') return 'paused';
-  if (k.isStarter) {
-    return k.freeTotalUsed >= k.freeTotalLimit ? 'starter-exhausted' : 'starter';
-  }
-  return getKeyCallsRemaining(k) > 0 ? 'paid-active' : 'needs-credits';
+  return getAccountCallsRemaining() > 0 ? 'paid-active' : 'needs-credits';
 }
 
-/** True if this key is the account's starter/freebie key. */
+/** True if this key is the account's default ("starter") key. */
 export function isStarterKey(k: ApiKey): boolean {
   return k.isStarter === true;
 }
 
-/** Backwards-compatible alias used by older call sites. */
-export function hasFreeAllowance(k: ApiKey): boolean {
-  return k.isStarter === true && k.freeTotalLimit > 0;
+/** @deprecated Use `getAccountTrialRemaining()` — trial lives on the account now. */
+export function hasFreeAllowance(_k: ApiKey): boolean {
+  return getAccountTrialRemaining().totalLeft > 0;
 }
 
-/** Remaining balance in cents for a paid key (0 for revoked).
- *  @deprecated The product moved to a call-quota model — top-ups buy calls,
- *  not dollars. Most call sites should use `getKeyCallsRemaining(k)` instead.
- *  Kept for back-compat with a few places that still display the legacy
- *  paidCredits fields. After full migration this can be removed. */
+/** @deprecated Use `getAccountBalanceCents()`. Returns the same value for every key now. */
 export function getKeyBalanceCents(k: ApiKey): number {
   if (k.status === 'revoked') return 0;
-  return Math.max(0, k.paidCreditsCents - k.paidCreditsUsedCents);
-}
-
-/** True if the Starter key has been topped up with credits, which lifts
- *  its daily trial cap and makes it behave like a paid key on top of the
- *  original lifetime free allowance. */
-// Starter key 的初始免费配额
-export const STARTER_INITIAL_TOTAL_LIMIT = 900;
-
-export function isStarterUpgraded(k: ApiKey): boolean {
-  if (!k.isStarter) return false;
-  // Calls model: starter is "upgraded" once its lifetime quota grows past
-  // the initial 900 (top-up adds purchased calls to total_limit).
-  return k.freeTotalLimit > STARTER_INITIAL_TOTAL_LIMIT || k.paidCreditsCents > 0;
+  return getAccountBalanceCents();
 }
 
 /**
- * True if the key is currently eligible to serve traffic — not revoked,
- * and (for starter) still has lifetime allowance, or (for paid) has a
- * positive credit balance.
+ * @deprecated Legacy constant — under the new model the trial total is
+ * `TRIAL_DEFAULT_TOTAL` and lives on the account. Kept for back-compat
+ * with any UI still importing it.
+ */
+export const STARTER_INITIAL_TOTAL_LIMIT = TRIAL_DEFAULT_TOTAL;
+
+/**
+ * @deprecated The "starter upgraded" concept is gone — under the wallet
+ * model the trial allowance is independent of any top-up. Returns true
+ * whenever the wallet has been funded at least once, so any UI gated on
+ * this flag still progresses sensibly.
+ */
+export function isStarterUpgraded(_k: ApiKey): boolean {
+  return getWallet().paidCreditsCents > 0;
+}
+
+/**
+ * True if the key is currently eligible to serve traffic — not
+ * revoked/paused, and the account still has either trial or wallet
+ * credit available.
  */
 export function isKeyServing(k: ApiKey): boolean {
   if (k.status === 'revoked' || k.status === 'paused') return false;
-  return getKeyCallsRemaining(k) > 0;
+  return getAccountCallsRemaining() > 0;
 }
 
 /**
- * True if a paid key's alert is configured AND its remaining balance has
- * fallen to/below the alert threshold. Returns false for starter / revoked
- * / no-alert-configured / healthy keys.
+ * @deprecated Per-key low-balance is gone in the wallet model. Returns
+ * true whenever the **account-wide** alert is configured and tripped, so
+ * any caller still using this signal lights up correctly. New code should
+ * call `isAccountLowBalance()` directly.
  */
-export function isLowBalance(k: ApiKey): boolean {
-  if (k.isStarter || k.status === 'revoked') return false;
-  if (!k.lowBalanceAlert || !k.lowBalanceAlert.enabled) return false;
-  // Calls model: re-interpret the threshold as "calls remaining" instead of
-  // dollar balance. The alert structure on the backend hasn't changed yet,
-  // so we treat threshold_cents as a call count (a future migration may
-  // rename the field; for now this is the cleanest UI mapping).
-  const callsLeft = getKeyCallsRemaining(k);
-  const threshold = k.lowBalanceAlert.thresholdCents;
-  return callsLeft > 0 && callsLeft <= threshold;
+export function isLowBalance(_k: ApiKey): boolean {
+  return isAccountLowBalance();
 }
 
 /**
@@ -1242,10 +1527,10 @@ export function estimateKeyCreditRunway(
     keyId,
     windowDays,
   );
-  const key = getKey(keyId);
-  const remaining = key
-    ? Math.max(0, key.paidCreditsCents - key.paidCreditsUsedCents)
-    : 0;
+  // Wallet model: runway is funded by the **account** balance (any key
+  // can deplete it). The keyId remains in the signature so the burn rate
+  // is still computed per-key, but the dollar pool is shared.
+  const remaining = getAccountBalanceCents();
   const balanceAfterCents = remaining + Math.max(0, additionalCents);
 
   const avgDailyNetCents = netCents / windowDays;
@@ -1282,6 +1567,20 @@ export function getAccountCallsThisMonth(): number {
   const yyyymm = new Date().toISOString().slice(0, 7);
   return getUsage()
     .filter((p) => p.date?.startsWith(yyyymm))
+    .reduce((acc, p) => acc + (p.calls ?? 0), 0);
+}
+
+/**
+ * Total calls billed to the account *today* (across all keys).
+ *
+ * Used by the wallet strip post-trial to show progress against the
+ * account-level daily call cap that the user has configured in
+ * Settings → Account limits.
+ */
+export function getAccountCallsToday(): number {
+  const yyyymmdd = new Date().toISOString().slice(0, 10);
+  return getUsage()
+    .filter((p) => p.date === yyyymmdd)
     .reduce((acc, p) => acc + (p.calls ?? 0), 0);
 }
 
@@ -1329,21 +1628,34 @@ export function addProject(name: string): Project {
  * after creation. The starter key is created automatically by the seeder
  * and can never be created via this function.
  */
-export function createKey(name: string, env: Environment, projectId: string): ApiKey {
+// `env` is retained on the data model for back-compat with usage / billing
+// charts that still slice by environment, but the UI no longer asks for it
+// on creation — every new key defaults to `'production'`. Callers that
+// pass an explicit env (legacy paths, tests) keep working as before.
+export function createKey(
+  name: string,
+  env: Environment = 'production',
+  projectId?: string,
+): ApiKey {
   seedIfNeeded();
+  const resolvedProjectId =
+    projectId ?? cache.projects?.[0]?.id ?? 'proj_default';
   const secret = randomSecret(env);
   const today = todayUtc();
   const newKey: ApiKey = {
     id: uuid('key_'),
     name: name.trim() || 'Untitled key',
     env,
-    projectId,
+    projectId: resolvedProjectId,
     secret,
     maskedSecret: maskSecret(secret),
     createdAt: new Date().toISOString(),
     lastUsedAt: null,
     status: 'active',
     isStarter: false,
+    spendCapCents: null,
+    monthlyCallCap: null,
+    // Legacy fields zeroed under the wallet model.
     freeDailyLimit: 0,
     freeDailyUsed: 0,
     freeDailyResetAt: today,
@@ -1351,7 +1663,6 @@ export function createKey(name: string, env: Environment, projectId: string): Ap
     freeTotalUsed: 0,
     paidCreditsCents: 0,
     paidCreditsUsedCents: 0,
-    spendCapCents: null,
     lowBalanceAlert: null,
   };
   const next = [newKey, ...(cache.keys ?? [])];
@@ -1396,27 +1707,37 @@ export function rotateKeySecret(id: string): ApiKey | undefined {
 
 /**
  * Update a paid key's optional per-key settings. Passing `undefined` leaves
- * a field untouched; passing `null` for `spendCapCents` / `lowBalanceAlert`
- * clears it. No-ops on the starter key.
+ * a field untouched; passing `null` clears it. The `lowBalanceAlert` field
+ * is kept in the patch type for back-compat but no longer applied — the
+ * account-level alert (see `updateAccountAlert`) supersedes it.
  */
 export function updateKeySettings(
   id: string,
   patch: {
     spendCapCents?: number | null;
+    monthlyCallCap?: number | null;
+    dailySpendCapCents?: number | null;
+    dailyCallCap?: number | null;
+    /** @deprecated Account-level alert replaces this. Field ignored. */
     lowBalanceAlert?: LowBalanceAlert | null;
   },
 ): void {
   seedIfNeeded();
   const next = (cache.keys ?? []).map((k) => {
     if (k.id !== id) return k;
-    if (k.isStarter) return k;
     return {
       ...k,
       ...(patch.spendCapCents !== undefined
         ? { spendCapCents: patch.spendCapCents }
         : {}),
-      ...(patch.lowBalanceAlert !== undefined
-        ? { lowBalanceAlert: patch.lowBalanceAlert }
+      ...(patch.monthlyCallCap !== undefined
+        ? { monthlyCallCap: patch.monthlyCallCap }
+        : {}),
+      ...(patch.dailySpendCapCents !== undefined
+        ? { dailySpendCapCents: patch.dailySpendCapCents }
+        : {}),
+      ...(patch.dailyCallCap !== undefined
+        ? { dailyCallCap: patch.dailyCallCap }
         : {}),
     };
   });
@@ -1447,6 +1768,21 @@ export function revokeKey(id: string): void {
  * them — unlike {@link revokeKey}, which is terminal. Refuses to act on
  * the starter key and on keys that are already revoked.
  */
+/**
+ * Pin / unpin a key. Pinned keys float to the top of the API Keys list
+ * regardless of their last-used or created-at order. Purely cosmetic —
+ * doesn't affect billing, traffic, or any backend semantics.
+ */
+export function setKeyPinned(id: string, pinned: boolean): void {
+  seedIfNeeded();
+  const next = (cache.keys ?? []).map((k) =>
+    k.id === id ? { ...k, pinned } : k,
+  );
+  cache.keys = next;
+  write(STORAGE.keys, next);
+  notify();
+}
+
 export function setKeyPaused(id: string, paused: boolean): void {
   seedIfNeeded();
   const next = (cache.keys ?? []).map((k) => {
@@ -1474,64 +1810,159 @@ export function deleteKey(id: string): void {
 }
 
 /**
- * Add credits to a key. Works for both paid keys and the Starter key —
- * funding the Starter key lifts its daily trial cap while preserving the
- * original lifetime free allowance on top of the purchased credits.
- * Returns the updated key, or undefined if the id wasn't found.
+ * Top up the account wallet. `baseCents` is the amount the user paid;
+ * `bonusCents` is the matching bonus granted by the active satte tier
+ * (see `_lib/topup-bonus.ts`). Both land in `paidCreditsCents`; the
+ * bonus is also tracked separately on `bonusReceivedCents` so the UI
+ * can show "lifetime bonus accrued".
+ *
+ * Returns the new wallet snapshot.
  */
-export function addKeyCreditsCents(id: string, amountCents: number): ApiKey | undefined {
+export function topupAccount(input: {
+  baseCents: number;
+  bonusCents?: number;
+}): AccountWallet {
   seedIfNeeded();
-  let updated: ApiKey | undefined;
-  const next = (cache.keys ?? []).map((k) => {
-    if (k.id !== id) return k;
-    updated = {
-      ...k,
-      paidCreditsCents: k.paidCreditsCents + amountCents,
-    };
-    return updated;
-  });
-  cache.keys = next;
-  write(STORAGE.keys, next);
+  const base = Math.max(0, Math.round(input.baseCents));
+  const bonus = Math.max(0, Math.round(input.bonusCents ?? 0));
+  const current = cache.wallet ?? DEFAULT_WALLET;
+  const next: AccountWallet = {
+    paidCreditsCents: current.paidCreditsCents + base + bonus,
+    paidCreditsUsedCents: current.paidCreditsUsedCents,
+    bonusReceivedCents: current.bonusReceivedCents + bonus,
+  };
+  cache.wallet = next;
+  write(STORAGE.wallet, next);
   notify();
-  mutationProxy.addKeyCreditsCents?.(id, amountCents);
-  return updated;
+  mutationProxy.topupAccount?.({ baseCents: base, bonusCents: bonus });
+  return next;
 }
 
 /**
- * Add purchased calls to a key (calls billing model). Optimistically grows
- * `freeTotalLimit` so the UI reflects the top-up immediately; the bridge
- * re-hydrates from `/api/keys` afterwards to settle the authoritative count.
+ * Update the account-level low-balance alert. Passing `enabled: false`
+ * disables it; setting `thresholdCents` updates the trip wire.
  */
-export function addKeyCalls(id: string, calls: number): ApiKey | undefined {
+export function updateAccountAlert(alert: AccountLowBalanceAlert): AccountLowBalanceAlert {
   seedIfNeeded();
-  const delta = Math.max(0, Math.floor(calls || 0));
-  if (delta === 0) return undefined;
-  let updated: ApiKey | undefined;
-  const next = (cache.keys ?? []).map((k) => {
-    if (k.id !== id) return k;
-    updated = {
-      ...k,
-      freeTotalLimit: k.freeTotalLimit + delta,
-    };
-    return updated;
-  });
-  cache.keys = next;
-  write(STORAGE.keys, next);
+  const next: AccountLowBalanceAlert = {
+    enabled: !!alert.enabled,
+    thresholdCents: Math.max(0, Math.round(alert.thresholdCents ?? 0)),
+  };
+  cache.accountAlert = next;
+  write(STORAGE.accountAlert, next);
   notify();
-  mutationProxy.addKeyCalls?.(id, delta);
-  return updated;
+  mutationProxy.updateAccountAlert?.(next);
+  return next;
 }
 
-/** Total calls remaining across every non-revoked key on the account. */
-export function getAccountCallsRemaining(): number {
-  return listKeys().reduce((acc, k) => acc + getKeyCallsRemaining(k), 0);
+/**
+ * @deprecated Per-key credits are gone. Forwards to the account wallet so
+ * legacy call sites keep working — the `id` argument is ignored. Use
+ * `topupAccount({ baseCents })` directly in new code.
+ */
+export function addKeyCreditsCents(_id: string, amountCents: number): ApiKey | undefined {
+  topupAccount({ baseCents: amountCents });
+  return getKey(_id);
 }
 
-/** Total calls purchased + free across every non-revoked key. */
-export function getAccountCallsTotal(): number {
-  return listKeys()
-    .filter((k) => k.status !== 'revoked')
-    .reduce((acc, k) => acc + getKeyCallsTotal(k), 0);
+/**
+ * @deprecated Per-key call quotas are gone. No-op under the wallet model
+ * (calls are derived from wallet balance + trial). Returns the key as-is
+ * so legacy callers don't break.
+ */
+export function addKeyCalls(id: string, _calls: number): ApiKey | undefined {
+  return getKey(id);
+}
+
+// ─── Consumption (mock simulation only — UI doesn't drive this in demo) ────
+/**
+ * Simulate consuming `calls` API calls under the wallet model. The trial
+ * pool is debited first (daily then lifetime); whatever can't be covered
+ * by trial is paid for from the wallet at the per-call rate. Returns the
+ * billing breakdown so callers can render an explanation.
+ *
+ * Used by the demo's "what happens when I press send?" affordance — not
+ * called from any production code path.
+ */
+export interface ConsumeResult {
+  trialCalls: number;
+  paidCalls: number;
+  paidCents: number;
+  rejectedCalls: number;
+  reason?: 'INSUFFICIENT_CREDITS' | 'KEY_MONTHLY_CAP';
+}
+
+export function consumeCalls(keyId: string, calls: number): ConsumeResult {
+  seedIfNeeded();
+  const want = Math.max(0, Math.floor(calls || 0));
+  const result: ConsumeResult = {
+    trialCalls: 0,
+    paidCalls: 0,
+    paidCents: 0,
+    rejectedCalls: 0,
+  };
+  if (want <= 0) return result;
+  const key = getKey(keyId);
+  if (!key || key.status === 'revoked' || key.status === 'paused') {
+    result.rejectedCalls = want;
+    return result;
+  }
+
+  // Per-key monthly call-cap check first.
+  if (key.monthlyCallCap != null && key.monthlyCallCap > 0) {
+    const used = getKeyMonthlyCalls(keyId);
+    if (used >= key.monthlyCallCap) {
+      result.rejectedCalls = want;
+      result.reason = 'KEY_MONTHLY_CAP';
+      return result;
+    }
+  }
+
+  const trial = cache.trial ?? DEFAULT_TRIAL;
+  let remaining = want;
+
+  // Step 1: drain trial — daily cap binds first, then lifetime.
+  const dailyLeft = Math.max(0, trial.dailyLimit - trial.dailyUsed);
+  const totalLeft = Math.max(0, trial.totalLimit - trial.totalUsed);
+  const trialAvailable = Math.min(dailyLeft, totalLeft);
+  if (trialAvailable > 0) {
+    const fromTrial = Math.min(trialAvailable, remaining);
+    cache.trial = {
+      ...trial,
+      dailyUsed: trial.dailyUsed + fromTrial,
+      totalUsed: trial.totalUsed + fromTrial,
+    };
+    write(STORAGE.trial, cache.trial);
+    result.trialCalls += fromTrial;
+    remaining -= fromTrial;
+  }
+
+  // Step 2: anything left bills against the wallet.
+  if (remaining > 0) {
+    const w = cache.wallet ?? DEFAULT_WALLET;
+    const balance = Math.max(0, w.paidCreditsCents - w.paidCreditsUsedCents);
+    const perCall = MCP_CALL_RATE_PER_CALL_CENTS;
+    const affordable = Math.floor(balance / Math.max(0.0001, perCall));
+    const fromWallet = Math.min(affordable, remaining);
+    if (fromWallet > 0) {
+      const cost = Math.round(fromWallet * perCall);
+      cache.wallet = {
+        ...w,
+        paidCreditsUsedCents: w.paidCreditsUsedCents + cost,
+      };
+      write(STORAGE.wallet, cache.wallet);
+      result.paidCalls += fromWallet;
+      result.paidCents += cost;
+      remaining -= fromWallet;
+    }
+    if (remaining > 0) {
+      result.rejectedCalls = remaining;
+      result.reason = 'INSUFFICIENT_CREDITS';
+    }
+  }
+
+  notify();
+  return result;
 }
 
 /** Format a call count with US thousands separators. */
@@ -1539,18 +1970,48 @@ export function formatCalls(n: number): string {
   return Math.max(0, Math.floor(n || 0)).toLocaleString('en-US');
 }
 
+/**
+ * Legacy single-axis setter, kept for backward compatibility with the old
+ * "Modify call limit" modal. New UI should call `updateSpendLimit` with
+ * the full set of axes.
+ */
 export function setSpendLimitCents(monthlyCapCents: number, warnAtPercents?: number[]): void {
+  updateSpendLimit({
+    monthlyCapCents:
+      monthlyCapCents > 0 ? Math.max(0, Math.round(monthlyCapCents)) : null,
+    warnAtPercents,
+  });
+  mutationProxy.setSpendLimitCents?.(monthlyCapCents, warnAtPercents);
+}
+
+/**
+ * Update one or more axes of the account-wide spend limit. Pass `null`
+ * for an axis to mark it unlimited; omit it entirely to leave it
+ * unchanged.
+ */
+export function updateSpendLimit(
+  patch: Partial<Pick<SpendLimit, 'monthlyCapCents' | 'monthlyCallCap' | 'dailyCapCents' | 'dailyCallCap' | 'warnAtPercents' | 'resetDay'>>,
+): void {
   seedIfNeeded();
   const current = cache.spendLimit!;
+  const sanitiseCap = (v: number | null | undefined, fallback: number | null) => {
+    if (v === undefined) return fallback;
+    if (v === null) return null;
+    const n = Math.max(0, Math.round(v));
+    return n > 0 ? n : null;
+  };
   const next: SpendLimit = {
     ...current,
-    monthlyCapCents: Math.max(0, Math.round(monthlyCapCents)),
-    warnAtPercents: warnAtPercents ?? current.warnAtPercents,
+    monthlyCapCents: sanitiseCap(patch.monthlyCapCents, current.monthlyCapCents),
+    monthlyCallCap: sanitiseCap(patch.monthlyCallCap, current.monthlyCallCap),
+    dailyCapCents: sanitiseCap(patch.dailyCapCents, current.dailyCapCents),
+    dailyCallCap: sanitiseCap(patch.dailyCallCap, current.dailyCallCap),
+    resetDay: patch.resetDay ?? current.resetDay,
+    warnAtPercents: patch.warnAtPercents ?? current.warnAtPercents,
   };
   cache.spendLimit = next;
   write(STORAGE.spendLimit, next);
   notify();
-  mutationProxy.setSpendLimitCents?.(monthlyCapCents, warnAtPercents);
 }
 
 export function addPaymentMethod(input: {

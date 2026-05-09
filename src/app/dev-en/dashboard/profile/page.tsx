@@ -2,15 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Camera, Check, Loader2, Mail, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLang } from '../../_lib/use-lang';
 import { useMockAuth } from '../../_lib/mock-auth';
-
-// Mock verification code. In a real flow this gets emailed — we surface it
-// inline as a dev-preview hint so reviewers can actually complete the flow.
-const MOCK_CODE = '123456';
-const RESEND_SECONDS = 60;
 
 export default function ProfilePage() {
   const { t } = useLang();
@@ -19,12 +14,11 @@ export default function ProfilePage() {
   const [profileAvatar, setProfileAvatar] = useState(user?.avatarUrl ?? '');
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Keep local edits in sync when the underlying user record changes
-  // (e.g. after the email change modal writes through updateProfile).
+  // (e.g. avatar uploaded successfully via the picker below).
   useEffect(() => {
     setProfileName(user?.name ?? '');
     setProfileAvatar(user?.avatarUrl ?? '');
@@ -216,17 +210,8 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-10 px-3 text-sm rounded-lg border border-border bg-muted/30 flex items-center truncate text-foreground">
-              {user?.email ?? '—'}
-            </div>
-            <button
-              type="button"
-              onClick={() => setEmailModalOpen(true)}
-              className="h-10 px-3 rounded-lg border border-border bg-background hover:bg-muted/50 text-xs font-medium whitespace-nowrap"
-            >
-              {t('Change email', '更换邮箱')}
-            </button>
+          <div className="h-10 px-3 text-sm rounded-lg border border-border bg-muted/30 flex items-center truncate text-foreground">
+            {user?.email ?? '—'}
           </div>
         </div>
 
@@ -290,16 +275,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {emailModalOpen && (
-        <EmailChangeModal
-          currentEmail={user?.email ?? ''}
-          onClose={() => setEmailModalOpen(false)}
-          onConfirmed={async (newEmail) => {
-            await updateProfile({ email: newEmail });
-            setEmailModalOpen(false);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -312,241 +287,3 @@ function labelForMethod(method: string, t: (a: string, b: string) => string): st
   return method;
 }
 
-// Two-step flow: (1) enter new email → send code, (2) enter code → confirm.
-// Mocked server: any correctly-formatted email is accepted, and the code is
-// always `123456`. A resend timer prevents impatient spam — same cadence we
-// use on the login page SMS flow.
-function EmailChangeModal({
-  currentEmail,
-  onClose,
-  onConfirmed,
-}: {
-  currentEmail: string;
-  onClose: () => void;
-  onConfirmed: (newEmail: string) => Promise<void>;
-}) {
-  const { t } = useLang();
-  const [step, setStep] = useState<'email' | 'code'>('email');
-  const [newEmail, setNewEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [codeError, setCodeError] = useState<string | null>(null);
-  const [resendIn, setResendIn] = useState(0);
-
-  const emailValid = /.+@.+\..+/.test(newEmail) && newEmail !== currentEmail;
-
-  useEffect(() => {
-    if (resendIn <= 0) return;
-    const id = window.setInterval(() => setResendIn((s) => (s > 0 ? s - 1 : 0)), 1000);
-    return () => window.clearInterval(id);
-  }, [resendIn]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const sendCode = () => {
-    if (!emailValid) return;
-    setStep('code');
-    setCode('');
-    setCodeError(null);
-    setResendIn(RESEND_SECONDS);
-  };
-
-  const verify = async () => {
-    if (code.trim() === MOCK_CODE) {
-      await onConfirmed(newEmail.trim());
-    } else {
-      setCodeError(t('Incorrect code. Please try again.', '验证码不正确，请重试。'));
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-background border border-border shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm font-semibold">{t('Change email', '更换绑定邮箱')}</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8 w-8 rounded-md hover:bg-muted/50 flex items-center justify-center text-muted-foreground"
-            aria-label={t('Close', '关闭')}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Step indicator */}
-        <div className="px-5 pt-4">
-          <div className="flex items-center gap-2 text-[11px]">
-            <StepPill active={step === 'email'} done={step === 'code'} n={1}>
-              {t('New email', '新邮箱')}
-            </StepPill>
-            <div className="flex-1 h-px bg-border" />
-            <StepPill active={step === 'code'} done={false} n={2}>
-              {t('Verify', '验证')}
-            </StepPill>
-          </div>
-        </div>
-
-        {step === 'email' ? (
-          <div className="px-5 py-4 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              {t(
-                "We'll send a 6-digit code to the new address to confirm you own it. Your current email stays active until verification succeeds.",
-                '我们会向新邮箱发送 6 位验证码。验证通过前，当前邮箱仍然有效。',
-              )}
-            </p>
-            <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {t('Current email', '当前邮箱')}
-              </div>
-              <div className="text-sm font-medium mt-0.5 truncate">{currentEmail || '—'}</div>
-            </div>
-            <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
-                {t('New email', '新邮箱')}
-              </label>
-              <input
-                autoFocus
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && emailValid) sendCode();
-                }}
-                placeholder="new-email@example.com"
-                className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="px-5 py-4 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              {t('We sent a 6-digit code to', '我们已向')}{' '}
-              <span className="font-medium text-foreground">{newEmail}</span>
-              {t('. Enter it below to confirm.', ' 发送 6 位验证码，请输入以确认。')}
-            </p>
-            <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
-                {t('Verification code', '验证码')}
-              </label>
-              <input
-                autoFocus
-                inputMode="numeric"
-                maxLength={6}
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
-                  setCodeError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && code.length === 6) verify();
-                }}
-                placeholder="123456"
-                className={cn(
-                  'w-full h-11 px-3 text-base tracking-[0.4em] font-mono rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20',
-                  codeError
-                    ? 'border-red-500/60 focus:border-red-500'
-                    : 'border-border focus:border-foreground/30',
-                )}
-              />
-              {codeError && (
-                <div className="mt-1.5 text-[11px] text-red-500">{codeError}</div>
-              )}
-            </div>
-            <div className="flex items-center justify-between text-[11px]">
-              <div className="rounded-md bg-muted/40 border border-border px-2 py-1 text-muted-foreground">
-                {t('Demo code', '演示验证码')}:{' '}
-                <span className="font-mono font-semibold text-foreground">{MOCK_CODE}</span>
-              </div>
-              <button
-                type="button"
-                disabled={resendIn > 0}
-                onClick={() => setResendIn(RESEND_SECONDS)}
-                className="text-foreground hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-              >
-                {resendIn > 0
-                  ? t(`Resend in ${resendIn}s`, `${resendIn} 秒后可重发`)
-                  : t('Resend code', '重新发送')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="px-5 py-4 border-t border-border flex justify-between gap-2">
-          <button
-            type="button"
-            onClick={step === 'email' ? onClose : () => setStep('email')}
-            className="h-9 px-3 rounded-lg border border-border text-sm hover:bg-muted/50"
-          >
-            {step === 'email' ? t('Cancel', '取消') : t('Back', '返回')}
-          </button>
-          {step === 'email' ? (
-            <button
-              type="button"
-              disabled={!emailValid}
-              onClick={sendCode}
-              className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t('Send code', '发送验证码')}
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={code.length !== 6}
-            onClick={() => {
-              void verify();
-            }}
-              className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t('Verify & update', '验证并更换')}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StepPill({
-  n,
-  active,
-  done,
-  children,
-}: {
-  n: number;
-  active: boolean;
-  done: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1.5',
-        active || done ? 'text-foreground' : 'text-muted-foreground',
-      )}
-    >
-      <span
-        className={cn(
-          'h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-semibold',
-          done
-            ? 'bg-green-600 text-white'
-            : active
-              ? 'bg-foreground text-background'
-              : 'bg-muted text-muted-foreground',
-        )}
-      >
-        {done ? <Check className="h-3 w-3" /> : n}
-      </span>
-      <span className="font-medium">{children}</span>
-    </div>
-  );
-}

@@ -1,7 +1,9 @@
 'use client';
 
-import { Bell, Info, X, Zap } from 'lucide-react';
+import { CircleDollarSign, Info, X, Zap } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import { updateKeySettings, type ApiKey } from '../_lib/mock-store';
 import { useLang } from '../_lib/use-lang';
 
@@ -12,37 +14,17 @@ interface KeySettingsModalProps {
 }
 
 /**
- * Per-key settings modal. Currently covers two opt-in controls:
+ * Per-key settings modal.
  *
- *   1. Monthly spend cap — hard cap; once reached the key stops serving
- *      until either the next billing cycle or the cap is raised. "No cap"
- *      is the sane default for most developers.
- *
- *   2. Low-balance email alert — fires once when the key's remaining
- *      balance crosses the configured threshold downward. Useful for
- *      teams who want a heads-up before a key goes dark.
- *
- * Gate + lazy-init pattern: we mount `OpenedKeySettingsModal` only while
- * open=true, so every open starts with state initialised from the
- * current key snapshot without violating set-state-in-effect rules.
+ * Mirrors the account-wide `SpendLimitModal` shape: four independent
+ * caps (daily / monthly × $ / calls). Each axis can be opted out with
+ * the "Unlimited" radio. Account-level low-balance alerts live in
+ * `dashboard/settings`; this modal is purely about per-key
+ * guardrails.
  */
 export function KeySettingsModal({ open, apiKey, onClose }: KeySettingsModalProps) {
   if (!open || !apiKey) return null;
   return <OpenedKeySettingsModal apiKey={apiKey} onClose={onClose} />;
-}
-
-// Calls billing model: spend cap & low-balance threshold are now expressed
-// as call counts. We keep the legacy `*_cents` field name (1:1 mapping) so
-// the API surface keeps working without renames.
-// TODO: rename `spend_cap_cents` / `threshold_cents` → `*_calls` in backend.
-function intToInput(n: number): string {
-  return String(Math.max(0, Math.round(n)));
-}
-
-function parseInputToInt(raw: string): number {
-  const n = parseInt(raw.replace(/[^0-9]/g, ''), 10);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return n;
 }
 
 function OpenedKeySettingsModal({
@@ -53,30 +35,50 @@ function OpenedKeySettingsModal({
   onClose: () => void;
 }) {
   const { tx, t } = useLang();
-  // Spend cap
-  const [capEnabled, setCapEnabled] = useState(apiKey.spendCapCents !== null);
-  const [capCalls, setCapCalls] = useState(
-    apiKey.spendCapCents !== null ? intToInput(apiKey.spendCapCents) : '5000',
+
+  const [monthlyDollarsOn, setMonthlyDollarsOn] = useState(apiKey.spendCapCents != null);
+  const [monthlyDollars, setMonthlyDollars] = useState(
+    apiKey.spendCapCents != null
+      ? String(Math.round((apiKey.spendCapCents ?? 0) / 100))
+      : '250',
   );
 
-  // Low-balance alert
-  const [alertEnabled, setAlertEnabled] = useState(
-    apiKey.lowBalanceAlert?.enabled ?? false,
+  const [monthlyCallsOn, setMonthlyCallsOn] = useState(apiKey.monthlyCallCap != null);
+  const [monthlyCalls, setMonthlyCalls] = useState(
+    apiKey.monthlyCallCap != null ? String(apiKey.monthlyCallCap) : '50000',
   );
-  const [alertCalls, setAlertCalls] = useState(
-    apiKey.lowBalanceAlert?.thresholdCents !== undefined
-      ? intToInput(apiKey.lowBalanceAlert.thresholdCents)
-      : '500',
+
+  const [dailyDollarsOn, setDailyDollarsOn] = useState(
+    apiKey.dailySpendCapCents != null,
   );
+  const [dailyDollars, setDailyDollars] = useState(
+    apiKey.dailySpendCapCents != null
+      ? String(Math.round((apiKey.dailySpendCapCents ?? 0) / 100))
+      : '20',
+  );
+
+  const [dailyCallsOn, setDailyCallsOn] = useState(apiKey.dailyCallCap != null);
+  const [dailyCalls, setDailyCalls] = useState(
+    apiKey.dailyCallCap != null ? String(apiKey.dailyCallCap) : '5000',
+  );
+
+  const parseDollars = (raw: string): number | null => {
+    const f = parseFloat(raw.replace(/[^0-9.]/g, ''));
+    if (!Number.isFinite(f) || f <= 0) return null;
+    return Math.round(f * 100);
+  };
+  const parseCalls = (raw: string): number | null => {
+    const n = parseInt(raw.replace(/[^0-9]/g, ''), 10);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
+  };
 
   const save = () => {
-    const capCents = capEnabled ? parseInputToInt(capCalls) : null;
-    const alertThreshold = alertEnabled ? parseInputToInt(alertCalls) : 0;
     updateKeySettings(apiKey.id, {
-      spendCapCents: capCents,
-      lowBalanceAlert: alertEnabled
-        ? { enabled: true, thresholdCents: alertThreshold }
-        : null,
+      spendCapCents: monthlyDollarsOn ? parseDollars(monthlyDollars) : null,
+      monthlyCallCap: monthlyCallsOn ? parseCalls(monthlyCalls) : null,
+      dailySpendCapCents: dailyDollarsOn ? parseDollars(dailyDollars) : null,
+      dailyCallCap: dailyCallsOn ? parseCalls(dailyCalls) : null,
     });
     onClose();
   };
@@ -92,7 +94,7 @@ function OpenedKeySettingsModal({
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl bg-background border border-border shadow-2xl">
+      <div className="relative w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-2xl bg-background border border-border shadow-2xl">
         <div className="flex items-start justify-between px-5 py-4 border-b border-border/60">
           <div className="min-w-0">
             <div className="text-sm font-semibold truncate">{tx('Key settings')}</div>
@@ -111,120 +113,77 @@ function OpenedKeySettingsModal({
         </div>
 
         <div className="px-5 py-5 space-y-6">
-          {/* ─── Spend cap ────────────────────────────────────────── */}
-          <section>
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-sm font-semibold">{t('Monthly call cap', '月度调用上限')}</h4>
-            </div>
-            <p className="mt-1 text-[12px] text-muted-foreground leading-snug">
-              {t(
-                "Hard stop once this key's call count in a month hits the cap. The cap resets on your billing cycle day.",
-                '此 Key 当月调用次数到达上限后立刻停止服务，下个计费日重置。',
-              )}
-            </p>
+          <CapSection
+            icon={CircleDollarSign}
+            title={t('Monthly spend cap', '月度消费上限')}
+            description={t(
+              "Hard stop once this key's spend in a month hits the cap. Resets on your billing cycle.",
+              '此 Key 当月消费达到上限后立即停止服务，下个计费周期重置。',
+            )}
+            enabled={monthlyDollarsOn}
+            setEnabled={setMonthlyDollarsOn}
+            value={monthlyDollars}
+            setValue={setMonthlyDollars}
+            unit="dollars"
+            unitSuffix={tx('per month')}
+          />
 
-            <div className="mt-3 space-y-2">
-              <label className="flex items-center gap-2.5 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="cap"
-                  checked={!capEnabled}
-                  onChange={() => setCapEnabled(false)}
-                  className="h-3.5 w-3.5 accent-foreground"
-                />
-                <span className="text-sm">
-                  {tx('No cap')}
-                  <span className="ml-1.5 text-[11px] text-muted-foreground">
-                    {t(
-                      '(default · runs until balance is depleted)',
-                      '（默认 · 运行至余额耗尽）',
-                    )}
-                  </span>
-                </span>
-              </label>
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="radio"
-                  name="cap"
-                  checked={capEnabled}
-                  onChange={() => setCapEnabled(true)}
-                  className="h-3.5 w-3.5 accent-foreground"
-                />
-                <span className="text-sm flex items-center gap-2">
-                  {tx('Cap at')}
-                  <span className="inline-flex items-center h-8 rounded-md border border-border bg-background focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={capCalls}
-                      onChange={(e) => setCapCalls(e.target.value.replace(/[^0-9]/g, ''))}
-                      onFocus={() => setCapEnabled(true)}
-                      className="w-24 h-full px-2.5 text-sm bg-transparent tabular-nums outline-none"
-                    />
-                    <span className="pr-2.5 text-[11px] text-muted-foreground">
-                      {t('calls', '次')}
-                    </span>
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">{tx('per month')}</span>
-                </span>
-              </label>
-            </div>
-          </section>
+          <CapSection
+            icon={Zap}
+            title={t('Monthly call cap', '月度调用次数上限')}
+            description={t(
+              "Hard stop once this key's call count in a month hits the cap.",
+              '此 Key 当月调用次数达到上限后立即停止服务。',
+            )}
+            enabled={monthlyCallsOn}
+            setEnabled={setMonthlyCallsOn}
+            value={monthlyCalls}
+            setValue={setMonthlyCalls}
+            unit="calls"
+            unitSuffix={tx('per month')}
+          />
 
-          {/* ─── Low-balance alert ─────────────────────────────────── */}
-          <section>
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-sm font-semibold">{t('Low-calls email alert', '剩余次数告警')}</h4>
-            </div>
-            <p className="mt-1 text-[12px] text-muted-foreground leading-snug">
-              {t(
-                "Send a one-time email when this key's remaining calls drop to (or below) the threshold. Resets once you top up above it.",
-                '当此 Key 剩余次数低于阈值时，发送一封提醒邮件；充值至阈值之上后自动重置。',
-              )}
-            </p>
+          <div className="h-px bg-border" />
 
-            <label className="mt-3 flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={alertEnabled}
-                onChange={(e) => setAlertEnabled(e.target.checked)}
-                className="h-3.5 w-3.5 accent-foreground"
-              />
-              <span className="text-sm flex items-center gap-2">
-                {t('Email me when calls left drop below', '剩余次数低于以下值时发送邮件')}
-                <span className="inline-flex items-center h-8 rounded-md border border-border bg-background focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={alertCalls}
-                    onChange={(e) => setAlertCalls(e.target.value.replace(/[^0-9]/g, ''))}
-                    onFocus={() => setAlertEnabled(true)}
-                    disabled={!alertEnabled}
-                    className="w-24 h-full px-2.5 text-sm bg-transparent tabular-nums outline-none disabled:text-muted-foreground"
-                  />
-                  <span className="pr-2.5 text-[11px] text-muted-foreground">
-                    {t('calls', '次')}
-                  </span>
-                </span>
-              </span>
-            </label>
-          </section>
+          <CapSection
+            icon={CircleDollarSign}
+            title={t('Daily spend cap', '每日消费上限')}
+            description={t(
+              'Resets at midnight (UTC). Useful for keys exposed to spiky user traffic.',
+              '每天 UTC 0 点重置。适合面向波动较大的终端用户流量的 Key。',
+            )}
+            enabled={dailyDollarsOn}
+            setEnabled={setDailyDollarsOn}
+            value={dailyDollars}
+            setValue={setDailyDollars}
+            unit="dollars"
+            unitSuffix={tx('per day')}
+          />
 
-          {/* Info footer */}
+          <CapSection
+            icon={Zap}
+            title={t('Daily call cap', '每日调用次数上限')}
+            description={t(
+              'Resets at midnight (UTC). Helpful to bound flaky integrations.',
+              '每天 UTC 0 点重置。可用于约束不稳定的集成调用。',
+            )}
+            enabled={dailyCallsOn}
+            setEnabled={setDailyCallsOn}
+            value={dailyCalls}
+            setValue={setDailyCalls}
+            unit="calls"
+            unitSuffix={tx('per day')}
+          />
+
           <div className="flex items-start gap-2 rounded-md bg-muted/30 border border-border/60 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
             <span>
               {t(
-                'These settings apply only to this key. Your account also has a global monthly cap on the ',
-                '这些设置仅适用于此 Key。你的账号在 ',
+                'These caps apply only to this key. Account-wide guardrails are configured on the ',
+                '这些上限仅作用于此 Key。账户级护栏在 ',
               )}
-              <span className="font-medium text-foreground">{tx('Billing')}</span>
-              {t(
-                ' page as a safety net across every key.',
-                ' 页面还设置了全局月度上限，作为所有 Key 的安全网。',
-              )}
+              <span className="font-medium text-foreground">{tx('Settings')}</span>
+              {t(' page.', ' 页面配置。')}
             </span>
           </div>
         </div>
@@ -247,5 +206,99 @@ function OpenedKeySettingsModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function CapSection({
+  icon: Icon,
+  title,
+  description,
+  enabled,
+  setEnabled,
+  value,
+  setValue,
+  unit,
+  unitSuffix,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  enabled: boolean;
+  setEnabled: (v: boolean) => void;
+  value: string;
+  setValue: (v: string) => void;
+  unit: 'dollars' | 'calls';
+  unitSuffix: string;
+}) {
+  const { tx, t } = useLang();
+  const radioName = `keycap-${title}`;
+  return (
+    <section>
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <h4 className="text-sm font-semibold">{title}</h4>
+      </div>
+      <p className="mt-1 text-[12px] text-muted-foreground leading-snug">
+        {description}
+      </p>
+
+      <div className="mt-3 space-y-2">
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="radio"
+            name={radioName}
+            checked={!enabled}
+            onChange={() => setEnabled(false)}
+            className="h-3.5 w-3.5 accent-foreground"
+          />
+          <span className="text-sm">
+            {t('Unlimited', '不限制')}
+            <span className="ml-1.5 text-[11px] text-muted-foreground">
+              {t('(default)', '（默认）')}
+            </span>
+          </span>
+        </label>
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="radio"
+            name={radioName}
+            checked={enabled}
+            onChange={() => setEnabled(true)}
+            className="h-3.5 w-3.5 accent-foreground"
+          />
+          <span className="text-sm flex items-center gap-2">
+            {tx('Cap at')}
+            <span className="inline-flex items-center h-8 rounded-md border border-border bg-background focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
+              {unit === 'dollars' && (
+                <span className="pl-2.5 text-[11px] text-muted-foreground">$</span>
+              )}
+              <input
+                type="text"
+                inputMode={unit === 'dollars' ? 'decimal' : 'numeric'}
+                value={value}
+                onChange={(e) =>
+                  setValue(
+                    unit === 'dollars'
+                      ? e.target.value.replace(/[^0-9.]/g, '')
+                      : e.target.value.replace(/[^0-9]/g, ''),
+                  )
+                }
+                onFocus={() => setEnabled(true)}
+                className={cn(
+                  'h-full text-sm bg-transparent tabular-nums outline-none',
+                  unit === 'dollars' ? 'w-20 px-1.5' : 'w-24 px-2.5',
+                )}
+              />
+              {unit === 'calls' && (
+                <span className="pr-2.5 text-[11px] text-muted-foreground">
+                  {t('calls', '次')}
+                </span>
+              )}
+            </span>
+            <span className="text-[11px] text-muted-foreground">{unitSuffix}</span>
+          </span>
+        </label>
+      </div>
+    </section>
   );
 }
