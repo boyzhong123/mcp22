@@ -118,32 +118,30 @@ export function DevEnSidebar() {
         {/* Brand row */}
         <div
           className={cn(
-            'flex items-center h-14 border-b border-white/5',
+            'flex items-center h-[88px] border-b border-white/5',
             collapsed ? 'lg:justify-center lg:px-0 px-4 justify-between' : 'px-4 justify-between',
           )}
         >
           <Link
             href="/global"
             className={cn(
-              'flex items-center gap-2.5 group flex-1 min-w-0',
+              'flex items-center gap-[5px] group whitespace-nowrap flex-1 min-w-0',
               collapsed && 'lg:gap-0',
             )}
             aria-label="Chivox MCP"
           >
-            <div className="relative h-7 w-7 rounded-md bg-white flex items-center justify-center ring-1 ring-white/10 shrink-0">
-              <AudioWaveform className="h-4 w-4 text-[#0d0d0d]" strokeWidth={2.25} />
-              <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-[#0d0d0d]" />
+            <div className="relative h-[3.6rem] w-[3.6rem] shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
             </div>
             <span
               className={cn(
-                'font-semibold tracking-[-0.02em] text-[13px] flex items-baseline gap-1 text-white min-w-0',
+                'font-semibold tracking-[-0.02em] text-[22px] leading-none flex items-center gap-0.5 text-white min-w-0 whitespace-nowrap',
                 collapsed && 'lg:hidden',
               )}
             >
               <span>Chivox</span>
-              <span className="bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300 bg-clip-text text-transparent truncate">
-                MCP
-              </span>
+              <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
             </span>
           </Link>
           <button
@@ -185,7 +183,7 @@ export function DevEnSidebar() {
             >
               <Search className="h-3.5 w-3.5" />
               <span>{t('Search…', '搜索…')}</span>
-              <span className="ml-auto flex items-center gap-0.5">
+              <span className="ml-auto flex items-center gap-px">
                 <kbd className="h-4 min-w-4 px-1 rounded bg-white/10 text-[10px] font-medium text-zinc-400">
                   ⌘
                 </kbd>
@@ -280,7 +278,7 @@ export function DevEnSidebar() {
                 <>
                   <ChevronsLeft className="h-3.5 w-3.5" />
                   <span>{t('Collapse', '折叠')}</span>
-                  <span className="ml-auto flex items-center gap-0.5">
+                  <span className="ml-auto flex items-center gap-px">
                     <kbd className="h-4 min-w-4 px-1 rounded bg-white/10 text-[9px] font-medium">
                       ⌘
                     </kbd>
@@ -325,7 +323,7 @@ function SidebarLink({
       onClick={onNavigate}
       data-tour={item.tourId}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-md text-[13px] transition-colors',
+        'group relative flex items-center gap-[5px] rounded-md text-[13px] transition-colors',
         collapsed ? 'lg:justify-center lg:px-0 lg:py-2 px-2.5 py-2' : 'px-2.5 py-2',
         isActive
           ? 'bg-white/[0.06] text-white font-medium'
@@ -414,12 +412,12 @@ function UserChip({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          'w-full flex items-center gap-2.5 transition-colors',
+          'w-full flex items-center gap-[5px] transition-colors',
           collapsed ? 'lg:p-2 p-3 lg:justify-center' : 'p-3',
           open ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]',
         )}
       >
-        <div className="h-7 w-7 shrink-0 rounded-full overflow-hidden ring-1 ring-white/10">
+        <div className="h-11 w-11 shrink-0 rounded-full overflow-hidden ring-1 ring-white/10">
           {avatar}
         </div>
         <div className={cn('min-w-0 flex-1 text-left', collapsed && 'lg:hidden')}>
@@ -440,8 +438,8 @@ function UserChip({
             collapsed ? 'lg:left-full lg:bottom-2 lg:ml-2 lg:mb-0 left-2' : 'left-2 right-2 w-auto',
           )}
         >
-          <div className="px-3 py-2 flex items-center gap-2.5 border-b border-white/5 mb-1">
-            <div className="h-9 w-9 shrink-0 rounded-full overflow-hidden ring-1 ring-white/10">
+          <div className="px-3 py-2 flex items-center gap-[5px] border-b border-white/5 mb-1">
+            <div className="h-11 w-11 shrink-0 rounded-full overflow-hidden ring-1 ring-white/10">
               {avatar}
             </div>
             <div className="min-w-0">
@@ -460,7 +458,7 @@ function UserChip({
               setOpen(false);
               closeMobile();
             }}
-            className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-zinc-200 hover:bg-white/[0.06]"
+            className="flex items-center gap-[5px] px-3 py-2 text-[13px] text-zinc-200 hover:bg-white/[0.06]"
           >
             <UserIcon className="h-3.5 w-3.5 text-zinc-400" />
             {t('Personal profile', '个人资料')}
@@ -473,7 +471,7 @@ function UserChip({
               setOpen(false);
               onLogout();
             }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-zinc-200 hover:bg-white/[0.06]"
+            className="w-full flex items-center gap-[5px] px-3 py-2 text-[13px] text-zinc-200 hover:bg-white/[0.06]"
           >
             <LogOut className="h-3.5 w-3.5 text-zinc-400" />
             {t('Log out', '退出登录')}

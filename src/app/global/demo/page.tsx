@@ -490,16 +490,14 @@ function DemoHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70">
       <div className="container mx-auto max-w-7xl px-5 sm:px-7 lg:px-10 h-14 flex items-center justify-between gap-4">
-        <Link href="/" className="shrink-0 flex items-center gap-2.5 group">
-          <span className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center shadow-sm ring-1 ring-zinc-900/10">
-            <AudioWaveform className="h-[18px] w-[18px] text-[#fbf6e9]" strokeWidth={2.3} />
-            <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+        <Link href="/" className="shrink-0 flex items-center gap-[5px] group whitespace-nowrap">
+          <span className="relative h-[3.6rem] w-[3.6rem] shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
           </span>
-          <span className="font-bold tracking-[-0.02em] text-[17px] leading-none flex items-baseline gap-1">
+          <span className="font-bold tracking-[-0.02em] text-[22px] leading-none flex items-center gap-0.5">
             <span className="text-zinc-900">Chivox</span>
-            <span className="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
-              MCP
-            </span>
+            <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
             <span className="ml-1 text-[12.5px] font-mono font-medium text-muted-foreground">
               / Playground
             </span>
@@ -877,7 +875,7 @@ function ToneBlock({ detail }: { detail: DetailRow }) {
         </span>
         <span className={accepted ? 'text-emerald-700' : 'text-rose-700'}>{status}</span>
       </div>
-      <div className="flex items-end gap-0.5 h-6">
+      <div className="flex items-end gap-px h-6">
         {conf.map((c, i) => {
           const isRef = i === detail.toneRef;
           const isDet = i === detail.toneDetected;

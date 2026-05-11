@@ -15,15 +15,17 @@ const SIDEBAR_KEY = 'dev-en:sidebar-collapsed';
 type State = {
   sidebarCollapsed: boolean;
   paletteOpen: boolean;
+  tourOpen: boolean;
 };
 
 function readInitial(): State {
   if (typeof window === 'undefined') {
-    return { sidebarCollapsed: false, paletteOpen: false };
+    return { sidebarCollapsed: false, paletteOpen: false, tourOpen: false };
   }
   return {
     sidebarCollapsed: window.localStorage.getItem(SIDEBAR_KEY) === '1',
     paletteOpen: false,
+    tourOpen: false,
   };
 }
 
@@ -44,7 +46,7 @@ export function getUiState(): State {
 }
 
 export function getUiServerState(): State {
-  return { sidebarCollapsed: false, paletteOpen: false };
+  return { sidebarCollapsed: false, paletteOpen: false, tourOpen: false };
 }
 
 export function setSidebarCollapsed(next: boolean): void {
@@ -74,5 +76,17 @@ export function closePalette(): void {
 
 export function togglePalette(): void {
   state = { ...state, paletteOpen: !state.paletteOpen };
+  emit();
+}
+
+export function openTour(): void {
+  if (state.tourOpen) return;
+  state = { ...state, tourOpen: true };
+  emit();
+}
+
+export function closeTour(): void {
+  if (!state.tourOpen) return;
+  state = { ...state, tourOpen: false };
   emit();
 }

@@ -114,6 +114,14 @@ export const RESOURCE_ITEMS: readonly {
     icon: MessagesSquare,
     accent: 'from-sky-500/15 to-sky-500/0 text-sky-700',
   },
+  {
+    href: '/docs',
+    label: 'Developer docs',
+    summary: 'Endpoints, payload schema, SDKs, and end-to-end integration recipes.',
+    eyebrow: 'Reference',
+    icon: BookOpen,
+    accent: 'from-violet-500/15 to-violet-500/0 text-violet-700',
+  },
 ] as const;
 
 /* ══ Lightweight auth-state hook ═════════════════════════════
@@ -455,19 +463,6 @@ export function TopNav() {
                 );
               })}
 
-              {/* Contact (modal) */}
-              <button
-                type="button"
-                onClick={() => setContactOpen(true)}
-                className={cn(
-                  'relative inline-flex items-center gap-1.5 rounded-full transition-all duration-300',
-                  scrolled ? 'px-2.5 py-1' : 'px-3 py-1.5',
-                  'hover:text-zinc-900 hover:bg-zinc-900/[0.04]',
-                )}
-              >
-                Contact
-              </button>
-
               {/* Resources ▾ dropdown — collapsed deep-dive pages */}
               <div className="relative" ref={resourcesRef}>
                 <button
@@ -524,7 +519,7 @@ export function TopNav() {
                       </span>
                     </div>
 
-                    <div className="px-2 pb-2">
+                    <div className="px-2 pb-3">
                       {RESOURCE_ITEMS.map((r, i) => {
                         const isOn = pathname.startsWith(r.href);
                         const Icon = r.icon;
@@ -546,7 +541,7 @@ export function TopNav() {
                             <span
                               aria-hidden
                               className={cn(
-                                'mt-[2px] inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                                'mt-[2px] inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
                                 'bg-gradient-to-br ring-1 ring-inset ring-zinc-900/[0.06]',
                                 'shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]',
                                 'transition-transform duration-300 group-hover:scale-[1.04]',
@@ -586,53 +581,42 @@ export function TopNav() {
                         );
                       })}
                     </div>
-
-                    {/* footer */}
-                    <Link
-                      href="/docs"
-                      onClick={() => setResourcesOpen(false)}
-                      className="group flex items-center justify-between gap-2 border-t border-emerald-500/[0.12] px-4 py-2.5 text-[12px] font-medium text-zinc-700 hover:text-emerald-800 hover:bg-emerald-500/[0.05] transition-colors"
-                    >
-                      <span className="inline-flex items-center gap-1.5">
-                        <BookOpen className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100" />
-                        Browse the full developer docs
-                      </span>
-                      <ArrowRight className="h-3.5 w-3.5 opacity-60 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:opacity-100" />
-                    </Link>
                   </div>
                 )}
               </div>
-
-              <Link
-                href="/docs"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full hover:text-zinc-900 hover:bg-zinc-900/[0.04] transition-all duration-300',
-                  scrolled ? 'px-2.5 py-1' : 'px-3 py-1.5',
-                )}
-              >
-                <BookOpen className="h-3.5 w-3.5 opacity-70" />
-                Docs
-              </Link>
 
               <a
                 href="https://github.com/boyzhong123/mcp22"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Chivox MCP on GitHub"
+                title="GitHub"
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full hover:text-zinc-900 hover:bg-zinc-900/[0.04] transition-all duration-300',
-                  scrolled ? 'px-2 py-1' : 'px-3 py-1.5',
+                  'inline-flex items-center justify-center rounded-full text-zinc-700 hover:text-zinc-900 hover:bg-zinc-900/[0.04] transition-all duration-300',
+                  scrolled ? 'h-7 w-7' : 'h-8 w-8',
                 )}
               >
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
+                <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" aria-hidden>
                   <path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.6 1 1.6 1 .9 1.5 2.4 1.1 3 .8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.8v2.7c0 .3.2.6.7.5A10 10 0 0 0 12 2z" fill="currentColor" />
                 </svg>
-                <span className={cn(scrolled && 'sr-only lg:not-sr-only')}>GitHub</span>
-                <ArrowUpRight className={cn('h-3 w-3 opacity-55', scrolled && 'hidden lg:inline-block')} />
               </a>
             </nav>
 
             <div className="flex items-center gap-2 shrink-0 ml-auto md:ml-0">
+              <button
+                type="button"
+                onClick={() => setContactOpen(true)}
+                className={cn(
+                  'hidden md:inline-flex items-center gap-1.5 text-sm font-medium rounded-full',
+                  'border border-zinc-900/[0.12] bg-white/55 backdrop-blur-md text-zinc-800',
+                  'hover:bg-white/85 hover:border-zinc-900/25 hover:text-zinc-900 hover:-translate-y-px',
+                  'transition-[height,padding,box-shadow,transform,background-color,border-color] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]',
+                  scrolled ? 'h-[34px] px-3 text-[13px]' : 'h-10 px-3.5',
+                )}
+              >
+                Contact
+              </button>
               <HeaderAuthCTA scrolled={scrolled} />
             </div>
 
@@ -919,21 +903,14 @@ export function AmbientBackdrop() {
 
 export function ChivoxMcpBrand({ className, onWarm = false }: { className?: string; onWarm?: boolean }) {
   return (
-    <span className={cn('flex items-center gap-2.5 shrink-0', className)}>
-      <span className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center shadow-sm ring-1 ring-zinc-900/10">
-        <AudioWaveform className="h-[18px] w-[18px] text-[#fbf6e9]" strokeWidth={2.3} />
-        <span
-          className={cn(
-            'absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2',
-            onWarm ? 'ring-[#fbf6e9]' : 'ring-background',
-          )}
-        />
+    <span className={cn('flex items-center gap-[5px] shrink-0 whitespace-nowrap', className)}>
+      <span className="relative h-[3.6rem] w-[3.6rem] shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
       </span>
-      <span className="font-bold tracking-[-0.02em] text-lg leading-none flex items-baseline gap-1">
+      <span className="font-bold tracking-[-0.02em] text-[22px] leading-none flex items-center gap-0.5">
         <span className={onWarm ? 'text-zinc-900' : 'text-foreground'}>Chivox</span>
-        <span className="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
-          MCP
-        </span>
+        <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
       </span>
     </span>
   );
@@ -1377,7 +1354,7 @@ export function SiteFooter() {
       />
 
       <div className="container mx-auto px-6 py-14 md:py-16 max-w-6xl">
-        <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+        <div className="grid lg:grid-cols-12 gap-[5px] lg:gap-12 items-start">
           <div className="lg:col-span-7">
             <Link
               href="/"
@@ -1389,7 +1366,7 @@ export function SiteFooter() {
 
             <div className="text-[13.5px] font-medium text-zinc-800 mb-4">Stay connected with us</div>
 
-            <div className="flex flex-wrap items-center gap-2.5 mb-4">
+            <div className="flex flex-wrap items-center gap-[5px] mb-4">
               <SocialIcon label="X / Twitter" href="https://x.com/">
                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
                   <path d="M17.6 3h3.3l-7.2 8.3L22 21h-6.6l-5.2-6.7L4.3 21H1l7.8-8.9L1 3h6.8l4.7 6.2L17.6 3zm-1.1 16h1.8L7.6 5H5.6l10.9 14z" fill="currentColor" />

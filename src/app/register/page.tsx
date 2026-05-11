@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowRight, AudioWaveform, Check, Eye, EyeOff, KeyRound, Mail, User } from 'lucide-react';
+import { ArrowRight, Check, Eye, EyeOff, KeyRound, Mail, User } from 'lucide-react';
 import { useAuth } from '../dev-en/_lib/auth-context';
 import { useLang } from '../dev-en/_lib/use-lang';
 import { OAuthButtons } from '../dev-en/_components/oauth-buttons';
@@ -80,16 +80,14 @@ export default function RegisterPage() {
         <div className="absolute -bottom-1/4 -right-1/4 w-[60%] h-[60%] bg-gradient-to-tl from-white/[0.05] via-transparent to-transparent rounded-full blur-[80px]" />
 
         <div className="relative z-10 flex flex-col p-10 xl:p-12 w-full">
-          <Link href="/global" className="flex items-center gap-2.5 group" aria-label="Back to Chivox MCP home">
-            <div className="relative h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-lg shadow-white/10">
-              <AudioWaveform className="h-4 w-4 text-zinc-950" />
-              <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-zinc-900" />
+          <Link href="/global" className="flex items-center gap-[5px] group whitespace-nowrap" aria-label="Back to Chivox MCP home">
+            <div className="relative h-[3.6rem] w-[3.6rem]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
             </div>
-            <span className="font-bold text-lg tracking-[-0.02em] text-white/90 group-hover:text-white transition-colors flex items-baseline gap-1">
+            <span className="font-bold text-[22px] tracking-[-0.02em] text-white/90 group-hover:text-white transition-colors flex items-center gap-0.5 whitespace-nowrap">
               <span>Chivox</span>
-              <span className="bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300 bg-clip-text text-transparent">
-                MCP
-              </span>
+              <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
             </span>
           </Link>
 
@@ -132,16 +130,14 @@ export default function RegisterPage() {
 
       <div className="flex-1 flex items-center justify-center px-6 py-10 bg-background relative">
         <div className="w-full max-w-[400px] relative z-10">
-          <Link href="/global" className="lg:hidden flex items-center gap-2.5 mb-8" aria-label="Back to Chivox MCP home">
-            <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-foreground to-foreground/80 flex items-center justify-center shadow-sm ring-1 ring-foreground/10">
-              <AudioWaveform className="h-4 w-4 text-background" strokeWidth={2.3} />
-              <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+          <Link href="/global" className="lg:hidden flex items-center gap-[5px] mb-8 whitespace-nowrap" aria-label="Back to Chivox MCP home">
+            <div className="relative h-[3.6rem] w-[3.6rem]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
             </div>
-            <span className="font-bold tracking-[-0.02em] text-lg leading-none flex items-baseline gap-1">
+            <span className="font-bold text-[22px] tracking-[-0.02em] leading-none flex items-center gap-0.5 whitespace-nowrap">
               <span>Chivox</span>
-              <span className="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
-                MCP
-              </span>
+              <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
             </span>
           </Link>
 

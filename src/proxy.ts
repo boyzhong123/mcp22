@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * - Keep the legacy filesystem route under `src/app/dev-en/*`, but hide it from the address bar
  *   via rewrite + redirect.
  */
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
   // Legacy → canonical (permanent redirect so bookmarks/search indexes converge)

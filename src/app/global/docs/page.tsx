@@ -2037,21 +2037,14 @@ function ChivoxMcpBrand({
   onWarm?: boolean;
 }) {
   return (
-    <span className={cn('flex items-center gap-2.5 shrink-0', className)}>
-      <span className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center shadow-sm ring-1 ring-zinc-900/10">
-        <AudioWaveform className="h-[18px] w-[18px] text-[#fbf6e9]" strokeWidth={2.3} />
-        <span
-          className={cn(
-            'absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2',
-            onWarm ? 'ring-[#fbf6e9]' : 'ring-background',
-          )}
-        />
+    <span className={cn('flex items-center gap-[5px] shrink-0 whitespace-nowrap', className)}>
+      <span className="relative h-[3.6rem] w-[3.6rem] shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
       </span>
-      <span className="font-bold tracking-[-0.02em] text-lg leading-none flex items-baseline gap-1">
+      <span className="font-bold tracking-[-0.02em] text-[22px] leading-none flex items-center gap-0.5">
         <span className={onWarm ? 'text-zinc-900' : 'text-foreground'}>Chivox</span>
-        <span className="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
-          MCP
-        </span>
+        <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
       </span>
     </span>
   );

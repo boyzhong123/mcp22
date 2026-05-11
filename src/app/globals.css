@@ -1,6 +1,20 @@
-@import "tailwindcss";
+/* Keep Tailwind's scanner scoped to the app source. Letting it auto-detect
+   from the repo root also walks local worktrees, which can stall dev builds. */
+@import "tailwindcss" source(none);
+@source "../app";
+@source "../components";
+@source "../config";
+@source "../lib";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource/noto-sans-sc/400.css";
+@import "@fontsource/noto-sans-sc/500.css";
+@import "@fontsource/noto-sans-sc/600.css";
+@import "@fontsource/noto-sans-sc/700.css";
+
+:root {
+  --font-noto-sc: "Noto Sans SC", sans-serif;
+}
 
 @custom-variant dark (&:is(.dark *));
 

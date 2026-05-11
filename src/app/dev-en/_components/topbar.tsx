@@ -6,7 +6,7 @@ import { ChevronRight, Moon, Search, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useLang } from '../_lib/use-lang';
-import { openPalette } from '../_lib/ui-store';
+import { openPalette, openTour } from '../_lib/ui-store';
 
 type Crumb = { href?: string; en: string; zh: string };
 
@@ -122,6 +122,15 @@ export function DevEnTopBar() {
         >
           {t('Docs', '文档')}
         </Link>
+        <button
+          type="button"
+          onClick={openTour}
+          className="h-8 w-8 rounded-md flex items-center justify-center text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+          aria-label={t('Replay onboarding tour', '重播新手引导')}
+          title={t('Replay tour', '重播引导')}
+        >
+          ?
+        </button>
         <ThemeToggle />
       </div>
     </div>

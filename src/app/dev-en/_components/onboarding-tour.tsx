@@ -17,6 +17,8 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '../_lib/auth-context';
 import { useLang } from '../_lib/use-lang';
 import { TOUR_STEPS, type TourStep } from '../_lib/onboarding-steps';
+import { closeTour } from '../_lib/ui-store';
+import { useUi } from '../_lib/use-ui-store';
 
 const TOUR_DONE_KEY = 'dev-en:tour-done:v1';
 const CARD_WIDTH = 320;
@@ -95,6 +97,7 @@ export function OnboardingTour() {
   const { user, clearIsNewUser } = useAuth();
   const pathname = usePathname();
   const { t } = useLang();
+  const tourOpenSignal = useUi((s) => s.tourOpen);
 
   const [active, setActive] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
@@ -102,7 +105,7 @@ export function OnboardingTour() {
   const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
   const rafRef = useRef<number | null>(null);
 
-  // Decide whether to show the tour. Runs once per mount + whenever user changes.
+  // Auto-show on first visit (no localStorage key yet).
   useEffect(() => {
     if (!user) return;
     if (!pathname.includes('/dashboard')) return;
@@ -112,6 +115,13 @@ export function OnboardingTour() {
       setStepIdx(0);
     }
   }, [user, pathname]);
+
+  // Re-open when triggered from the topbar "?" button via ui-store.
+  useEffect(() => {
+    if (!tourOpenSignal) return;
+    setStepIdx(0);
+    setActive(true);
+  }, [tourOpenSignal]);
 
   const step = TOUR_STEPS[stepIdx] as TourStep | undefined;
   const StepIcon = useMemo(() => {
@@ -172,6 +182,7 @@ export function OnboardingTour() {
   const finish = useCallback(() => {
     setActive(false);
     clearIsNewUser();
+    closeTour();
     if (user) {
       try {
         localStorage.setItem(TOUR_DONE_KEY, `${user.id}:${Date.now()}`);
@@ -224,7 +235,7 @@ export function OnboardingTour() {
       {isCenter ? (
         // No spotlight — plain backdrop that closes tour on click
         <div
-          className="fixed inset-0 z-[9998] bg-black/65"
+          className="fixed inset-0 z-[9998] bg-black/50"
           onClick={finish}
           aria-hidden="true"
         />
@@ -259,7 +270,7 @@ export function OnboardingTour() {
           <rect
             width="100%"
             height="100%"
-            fill="rgba(0,0,0,0.65)"
+            fill="rgba(0,0,0,0.50)"
             mask={svgRect ? 'url(#tour-spotlight-mask)' : undefined}
           />
           {/* Highlight ring around the target */}
@@ -284,94 +295,80 @@ export function OnboardingTour() {
         aria-modal="true"
         aria-label={t('Product tour', '产品引导')}
         style={{ ...cardStyle, zIndex: 9999, width: CARD_WIDTH }}
-        className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#111] to-[#0b0b0b] shadow-2xl shadow-black/60 p-4 space-y-3 overflow-hidden"
+        className="rounded-xl bg-white overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_12px_32px_-4px_rgba(0,0,0,0.14),0_0_0_1px_rgba(0,0,0,0.06)]"
       >
-        {/* Subtle decorative glow */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-emerald-500/15 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl"
-        />
+        {/* Emerald progress bar */}
+        <div className="h-[3px] bg-zinc-100">
+          <div
+            className="h-full bg-emerald-500 transition-all duration-300 ease-out"
+            style={{ width: `${((stepIdx + 1) / TOUR_STEPS.length) * 100}%` }}
+          />
+        </div>
 
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 mb-0.5">
-              {t('Step', '步骤')} {stepIdx + 1} / {TOUR_STEPS.length}
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06] ring-1 ring-white/10">
-                <StepIcon className="h-4 w-4 text-white/90" />
+        <div className="p-5">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
+                <StepIcon className="h-3.5 w-3.5" />
               </span>
-              <h3 className="text-[14px] font-semibold text-white leading-snug">
+              <h3 className="text-[13.5px] font-semibold text-zinc-900 leading-snug">
                 {t(step.title, step.zhTitle ?? step.title)}
               </h3>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={finish}
-            className="mt-0.5 shrink-0 text-zinc-500 hover:text-zinc-200 transition-colors"
-            aria-label={t('Close tour', '关闭引导')}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {/* Progress dots */}
-        <div className="flex items-center gap-1" aria-hidden="true">
-          {TOUR_STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1 rounded-full transition-all duration-200 ${
-                i === stepIdx ? 'w-4 bg-white' : i < stepIdx ? 'w-1 bg-white/40' : 'w-1 bg-white/15'
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Body text */}
-        <p className="text-[13px] leading-relaxed text-zinc-400">
-          {t(step.body, step.zhBody ?? step.body)}
-        </p>
-
-        {/* Action row */}
-        <div className="flex items-center justify-between pt-1">
-          <button
-            type="button"
-            onClick={finish}
-            className="text-[12px] text-zinc-600 hover:text-zinc-400 transition-colors"
-          >
-            {t('Skip tour', '跳过引导')}
-          </button>
-          <div className="flex items-center gap-2">
-            {stepIdx > 0 && (
-              <button
-                type="button"
-                onClick={prev}
-                className="flex items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[12px] text-zinc-300 hover:text-white hover:bg-white/[0.06] transition-colors"
-              >
-                <ChevronLeft className="h-3 w-3" />
-                {t('Back', '上一步')}
-              </button>
-            )}
             <button
               type="button"
-              onClick={next}
-              className="flex items-center gap-0.5 rounded-lg bg-white px-3 py-1.5 text-[12px] font-semibold text-black hover:bg-zinc-200 transition-colors"
+              onClick={finish}
+              className="shrink-0 h-6 w-6 -mt-0.5 -mr-1 rounded-md flex items-center justify-center text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+              aria-label={t('Close tour', '关闭引导')}
             >
-              {stepIdx < TOUR_STEPS.length - 1 ? (
-                <>
-                  {t('Next', '下一步')}
-                  <ChevronRight className="h-3 w-3" />
-                </>
-              ) : (
-                t('Done', '完成')
-              )}
+              <X className="h-3.5 w-3.5" />
             </button>
+          </div>
+
+          {/* Body */}
+          <p className="text-[13px] leading-[1.65] text-zinc-500 mb-4">
+            {t(step.body, step.zhBody ?? step.body)}
+          </p>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] tabular-nums text-zinc-400">
+              {stepIdx + 1} / {TOUR_STEPS.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={finish}
+                className="h-7 px-2.5 rounded-md text-[12px] text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+              >
+                {t('Skip', '跳过')}
+              </button>
+              {stepIdx > 0 && (
+                <button
+                  type="button"
+                  onClick={prev}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors"
+                  aria-label={t('Back', '上一步')}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={next}
+                className="h-7 px-3 rounded-md bg-zinc-900 text-[12px] font-medium text-white hover:bg-zinc-700 transition-colors flex items-center gap-1"
+              >
+                {stepIdx < TOUR_STEPS.length - 1 ? (
+                  <>
+                    {t('Next', '下一步')}
+                    <ChevronRight className="h-3 w-3" />
+                  </>
+                ) : (
+                  t('Done', '完成')
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

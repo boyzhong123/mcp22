@@ -1,31 +1,31 @@
-import { Geist, Geist_Mono, Noto_Sans_SC, Fraunces } from 'next/font/google';
+import localFont from 'next/font/local';
 import { RootThemeProvider } from '@/components/root-theme-provider';
 import './globals.css';
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: [
+    { path: './fonts/GeistVF.woff2', style: 'normal' },
+    { path: './fonts/GeistVF-ext.woff2', style: 'normal' },
+  ],
   variable: '--font-geist-sans',
-  subsets: ['latin'],
   display: 'swap',
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: [
+    { path: './fonts/GeistMonoVF.woff2', style: 'normal' },
+    { path: './fonts/GeistMonoVF-ext.woff2', style: 'normal' },
+  ],
   variable: '--font-geist-mono',
-  subsets: ['latin'],
   display: 'swap',
 });
 
-const notoSansSC = Noto_Sans_SC({
-  variable: '--font-noto-sc',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-});
-
-const fraunces = Fraunces({
+const fraunces = localFont({
+  src: [
+    { path: './fonts/FrauncesVF.woff2', style: 'normal' },
+    { path: './fonts/FrauncesVF-italic.woff2', style: 'italic' },
+  ],
   variable: '--font-hero-serif',
-  subsets: ['latin'],
-  style: ['normal', 'italic'],
-  axes: ['SOFT', 'opsz'],
   display: 'swap',
 });
 
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${notoSansSC.variable} ${fraunces.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} font-noto-sc h-full`}
     >
       <body className="min-h-full flex flex-col relative">
         <RootThemeProvider>{children}</RootThemeProvider>
