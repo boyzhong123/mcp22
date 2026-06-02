@@ -15,8 +15,8 @@ const TABS: SectionTab[] = [
     label: 'History',
     zhLabel: '充值记录',
     description:
-      'Every top-up and invoice in one searchable, CSV-exportable list.',
-    zhDescription: '所有充值与发票，可搜索、可导出 CSV。',
+      'Every top-up in one searchable, CSV-exportable list.',
+    zhDescription: '所有充值记录，可搜索、可导出 CSV。',
   },
   {
     href: '/dashboard/billing/rates',

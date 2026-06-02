@@ -67,8 +67,8 @@ export const TOUR_STEPS: TourStep[] = [
     icon: 'wallet',
     title: 'Billing — top up your wallet',
     zhTitle: '账单 — 充值到钱包',
-    body: 'Top up dollars into your account wallet. Higher amounts unlock bonus credits automatically. Every key spends from the same wallet after the free trial is exhausted.',
-    zhBody: '按“金额”充值到账户钱包，金额越高自动赠送越多。免费试用用完后，所有 Key 从同一钱包扣费。',
+    body: 'Top up dollars into your account wallet. Every key spends from the same wallet after the free trial is exhausted.',
+    zhBody: '按“金额”充值到账户钱包。免费试用用完后，所有 Key 从同一钱包扣费。',
   },
   {
     id: 'settings',

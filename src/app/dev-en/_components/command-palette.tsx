@@ -137,7 +137,7 @@ export function DevEnCommandPalette() {
         section: 'Navigation',
         label: t('Go to Billing · History', '前往 账单 · 充值记录'),
         icon: History,
-        keywords: 'topup receipts invoices',
+        keywords: 'topup receipts transactions',
         run: () => go('/dashboard/billing/history'),
       },
       {
@@ -371,7 +371,7 @@ export function DevEnCommandPalette() {
           onKeyDown={onKeyDown}
         >
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/25"
             onClick={closePalette}
             aria-hidden="true"
           />
@@ -496,7 +496,6 @@ export function DevEnCommandPalette() {
       <StripeCheckoutModal
         open={addCreditsOpen}
         onClose={() => setAddCreditsOpen(false)}
-        mode="add-credits"
       />
     </>
   );

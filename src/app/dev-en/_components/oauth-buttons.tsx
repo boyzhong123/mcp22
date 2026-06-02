@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../_lib/auth-context';
 import type { OAuthProvider } from '../_lib/api';
+import { useLang } from '../_lib/use-lang';
+
+const OAUTH_PENDING_TIMEOUT_MS = 15_000;
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -35,22 +38,55 @@ function GithubIcon({ className }: { className?: string }) {
   );
 }
 
-export function OAuthButtons() {
+export function OAuthButtons({ disabled = false }: { disabled?: boolean }) {
   const { startOAuth } = useAuth();
+  const { tx } = useLang();
   const [pending, setPending] = useState<OAuthProvider | null>(null);
+  const resetTimerRef = useRef<number | null>(null);
+
+  const resetPending = useCallback(() => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+    setPending(null);
+  }, []);
+
+  // OAuth uses a full-page navigation. Restore the buttons when the user comes
+  // back from a provider error, returns focus to this tab, or the outbound
+  // navigation never commits. This also covers bfcache restores, where React
+  // state survives the browser Back action.
+  useEffect(() => {
+    window.addEventListener('pageshow', resetPending);
+    window.addEventListener('focus', resetPending);
+    return () => {
+      window.removeEventListener('pageshow', resetPending);
+      window.removeEventListener('focus', resetPending);
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, [resetPending]);
 
   const handle = (provider: OAuthProvider) => {
-    if (pending) return;
+    if (pending || disabled) return;
     setPending(provider);
-    // Backend should 302 to /auth/callback?token=... after the OAuth dance.
-    window.location.assign(startOAuth(provider, '/dashboard/overview'));
+    // Full-page redirect to the backend OAuth entrypoint (required by the OAuth
+    // flow — must be a top-level navigation, not AJAX). The backend 302s back to
+    // /oauth/callback#token=...&state=... after the dance.
+    resetTimerRef.current = window.setTimeout(resetPending, OAUTH_PENDING_TIMEOUT_MS);
+    try {
+      window.location.assign(startOAuth(provider));
+    } catch {
+      resetPending();
+    }
   };
 
   return (
     <div className="space-y-2.5">
       <button
         type="button"
-        disabled={!!pending}
+        disabled={!!pending || disabled}
         onClick={() => handle('github')}
         className="w-full h-11 px-4 rounded-lg bg-zinc-900 text-white text-sm font-medium flex items-center justify-center gap-2.5 hover:bg-zinc-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
       >
@@ -59,11 +95,11 @@ export function OAuthButtons() {
         ) : (
           <GithubIcon className="h-4 w-4" />
         )}
-        Continue with GitHub
+        {tx('Continue with GitHub')}
       </button>
       <button
         type="button"
-        disabled={!!pending}
+        disabled={!!pending || disabled}
         onClick={() => handle('google')}
         className="w-full h-11 px-4 rounded-lg border border-border bg-background text-foreground text-sm font-medium flex items-center justify-center gap-2.5 hover:bg-muted/50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
       >
@@ -72,7 +108,7 @@ export function OAuthButtons() {
         ) : (
           <GoogleIcon className="h-4 w-4" />
         )}
-        Continue with Google
+        {tx('Continue with Google')}
       </button>
     </div>
   );

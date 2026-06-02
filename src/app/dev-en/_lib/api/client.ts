@@ -128,13 +128,11 @@ const bus = typeof window !== 'undefined' ? new EventTarget() : null;
 
 export type InvalidationKey =
   | 'auth'
-  | 'projects'
   | 'keys'
   | 'usage'
   | 'transactions'
   | 'spend-limit'
   | 'payment-methods'
-  | 'team'
   | 'notifications'
   | 'webhooks'
   | 'admin-users';

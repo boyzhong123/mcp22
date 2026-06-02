@@ -37,13 +37,26 @@ interface AuthContextValue {
     email: string,
     password: string,
   ) => Promise<{ ok: boolean; error?: string }>;
+  verifyRegistrationEmail: (
+    email: string,
+    code: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  resendRegistrationVerification: (
+    email: string,
+  ) => Promise<{ ok: boolean; error?: string; retryAfterSec?: number }>;
+  registerWithOtp: (
+    name: string,
+    email: string,
+    code: string,
+    termsAccepted: boolean,
+  ) => Promise<{ ok: boolean; error?: string }>;
   sendOtp: (email: string) => Promise<{ ok: boolean; error?: string; retryAfterSec?: number }>;
   verifyOtp: (
     email: string,
     code: string,
     termsAccepted?: boolean,
   ) => Promise<{ ok: boolean; error?: string; isNewUser?: boolean }>;
-  startOAuth: (provider: OAuthProvider, redirect?: string) => string;
+  startOAuth: (provider: OAuthProvider) => string;
   patchProfile: (
     patch: { name?: string; email?: string; avatar_url?: string },
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -160,9 +173,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (name: string, email: string, password: string) => {
       try {
         await authApi.register({ name, email, password });
-        const res = await authApi.login({ email, password });
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: describeError(err, 'login') };
+      }
+    },
+    [],
+  );
+
+  const verifyRegistrationEmail = useCallback(
+    async (email: string, code: string) => {
+      try {
+        const res = await authApi.verifyEmail({ email, code });
         applyLogin(res.token, res.user);
         setIsNewUser(true);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: describeError(err, 'login') };
+      }
+    },
+    [applyLogin],
+  );
+
+  const resendRegistrationVerification = useCallback(async (email: string) => {
+    try {
+      await authApi.resendVerification({ email });
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof ApiError) {
+        return { ok: false, error: describeError(err, 'login'), retryAfterSec: err.retryAfterSec };
+      }
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }, []);
+
+  const registerWithOtp = useCallback(
+    async (name: string, email: string, code: string, termsAccepted: boolean) => {
+      try {
+        const res = await authApi.otpVerify({
+          channel: 'email',
+          identifier: email,
+          code,
+          terms_accepted: termsAccepted,
+        });
+
+        setToken(res.token);
+        let u = res.user;
+        try {
+          const updated = await authApi.patchMe({ name });
+          u = (updated as unknown as { user?: ApiUser }).user ?? (updated as ApiUser);
+        } catch {
+          // Account creation already succeeded. Keep the authenticated session
+          // even if the optional profile-name update is temporarily unavailable.
+        }
+
+        applyLogin(res.token, u);
+        if (res.is_new_user) setIsNewUser(true);
         return { ok: true };
       } catch (err) {
         return { ok: false, error: describeError(err, 'login') };
@@ -202,8 +268,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyLogin],
   );
 
-  const startOAuth = useCallback((provider: OAuthProvider, redirect?: string) => {
-    return authApi.oauthStartUrl(provider, redirect);
+  const startOAuth = useCallback((provider: OAuthProvider) => {
+    // Generate a CSRF state, stash it for the callback page to verify, then
+    // return the backend start URL (the caller does a full-page redirect).
+    let state: string;
+    try {
+      state =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : Math.random().toString(36).slice(2);
+      sessionStorage.setItem('oauth_state', state);
+    } catch {
+      state = Math.random().toString(36).slice(2);
+    }
+    return authApi.oauthStartUrl(provider, state);
   }, []);
 
   const patchProfile = useCallback(
@@ -248,6 +326,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearIsNewUser,
       loginWithPassword,
       registerWithPassword,
+      verifyRegistrationEmail,
+      resendRegistrationVerification,
+      registerWithOtp,
       sendOtp,
       verifyOtp,
       startOAuth,
@@ -264,6 +345,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearIsNewUser,
       loginWithPassword,
       registerWithPassword,
+      verifyRegistrationEmail,
+      resendRegistrationVerification,
+      registerWithOtp,
       sendOtp,
       verifyOtp,
       startOAuth,

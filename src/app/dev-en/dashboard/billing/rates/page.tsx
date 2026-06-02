@@ -1,9 +1,8 @@
 'use client';
 
-import { Check, Shield, Sparkles, TrendingDown, Zap } from 'lucide-react';
+import { Check, Shield, Sparkles, TrendingDown, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  formatCalls,
   formatCents,
   getAccountBalanceCents,
   getAccountCallsThisMonth,
@@ -11,11 +10,7 @@ import {
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
-import {
-  TOPUP_TIERS,
-  callsForAmount,
-  quoteTopup,
-} from '../../../_lib/topup-bonus';
+import { TOPUP_PRESETS_CENTS, quoteTopup } from '../../../_lib/topup';
 
 const ALL_PLANS_INCLUDE = [
   { icon: Shield, text: 'Global edge delivery · TLS 1.3 encryption at rest & in flight' },
@@ -26,11 +21,8 @@ const ALL_PLANS_INCLUDE = [
 /**
  * Pricing reference page for the wallet-billing model.
  *
- * The product is now a single per-call rate ($0.001/call → 0.1¢) backed by
- * one shared wallet. The "tiers" on this page are top-up bonus tiers — bigger
- * top-ups grant a percentage bonus on top of the loaded credit. Calls/$ is
- * the headline number we compare so customers can see at a glance how much
- * cheaper a $500 top-up is than a $20 one.
+ * Every account uses one shared wallet and one flat per-call rate. A top-up
+ * loads the same dollar amount into the wallet.
  */
 export default function PricingPage() {
   const { t, tx } = useLang();
@@ -40,7 +32,6 @@ export default function PricingPage() {
 
   return (
     <div className="space-y-6">
-      {/* Pay-as-you-go hero */}
       <div className="rounded-2xl border border-border bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-emerald-500/[0.05] p-6">
         <div className="max-w-xl">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -50,48 +41,41 @@ export default function PricingPage() {
             {t('One wallet · pay only for what you ship', '一个钱包 · 用多少花多少')}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {t(
-              'Every account starts with ',
-              '每个账户开通后即获 ',
-            )}
+            {t('Every account starts with ', '每个账户开通后即获 ')}
             <strong className="text-foreground">
-              {t('900 free trial calls', '900 次免费试用')}
+              {t('600 free trial calls', '600 次免费试用')}
             </strong>
             {t(
-              ' (30/day · 900 lifetime), shared across every API key. After that, calls bill against a single account wallet at ',
-              '（每天 30 次 · 终身 900 次），所有 API Key 共享。试用用完后，所有调用统一从账户钱包按 ',
+              ' (valid for 30 days), shared across every API key. After the time window ends or the calls are used up, calls bill against a single account wallet at ',
+              '（30 天内有效），所有 API Key 共享。到期或次数用完后，所有调用统一从账户钱包按 ',
             )}
             <strong className="text-foreground">
               {t('$0.001/call', '$0.001/次')}
             </strong>
             {t(
-              ' — no subscriptions, no per-key tracking. Larger top-ups earn bigger bonuses; the table below shows what every dollar is worth.',
-              ' 计费 — 无订阅，无需逐 Key 跟踪。一次充值越多，赠送越多 — 下表展示每一美元的价值。',
+              ' — no subscriptions and no per-key billing balance.',
+              ' 计费 — 无订阅，也无需为每个 Key 单独维护余额。',
             )}
           </p>
         </div>
 
         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Mini
-            label={tx('Calls this month')}
-            value={calls.toLocaleString('en-US')}
-          />
+          <Mini label={tx('Calls this month')} value={calls.toLocaleString('en-US')} />
           <Mini label={t('Wallet balance', '钱包余额')} value={formatCents(balance)} />
           <Mini label={tx('Net cost')} value={formatCents(spend)} />
         </div>
       </div>
 
-      {/* Top-up bonus table */}
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60">
           <div className="text-sm font-semibold flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-500" />
-            {t('Top-up bonus tiers', '充值满赠档位')}
+            <Wallet className="h-4 w-4 text-emerald-500" />
+            {t('Flat usage pricing', '固定用量计费')}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {t(
-              'Pick how many dollars to load. Bigger top-ups earn a higher bonus, automatically applied at checkout. Calls per dollar shown after bonus.',
-              '充值时选择金额，金额越大赠送越多，结算时自动应用。下表“每美元调用次数”均为含赠送后的换算。',
+              'Top up any supported amount and the same amount lands in the shared wallet.',
+              '选择任一支持的充值金额，同等金额会直接进入共享钱包。',
             )}
           </p>
         </div>
@@ -99,86 +83,36 @@ export default function PricingPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left px-5 py-2.5">{t('Tier', '档位')}</th>
-                <th className="text-left px-5 py-2.5">
-                  {t('Top-up amount', '充值金额')}
-                </th>
-                <th className="text-left px-5 py-2.5">{t('Bonus', '赠送')}</th>
-                <th className="text-right px-5 py-2.5">
-                  {t('You get', '到账')}
-                </th>
-                <th className="text-right px-5 py-2.5">
-                  {t('Calls / $', '每美元调用')}
-                </th>
+                <th className="text-left px-5 py-2.5">{t('Item', '项目')}</th>
+                <th className="text-left px-5 py-2.5">{t('Rule', '规则')}</th>
+                <th className="text-right px-5 py-2.5">{t('Value', '数值')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {TOPUP_TIERS.map((tier, i) => {
-                // Use the tier's threshold as the example amount, but the
-                // first tier ("Starter", $0+) doesn't have a useful sample
-                // at $0 — show the $20 minimum instead.
-                const exampleCents = tier.minCents > 0 ? tier.minCents : 2000;
-                const quote = quoteTopup(exampleCents);
-                const baseCallsPerDollar = callsForAmount(2000) / 20;
-                const callsPerDollar = quote.estimatedCalls / (exampleCents / 100);
-                const upliftPct = baseCallsPerDollar > 0
-                  ? Math.round(((callsPerDollar - baseCallsPerDollar) / baseCallsPerDollar) * 100)
-                  : 0;
-
-                return (
-                  <tr key={i}>
-                    <td className="px-5 py-3 text-sm font-medium">
-                      <span
-                        className={cn(
-                          'inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold mr-2 bg-muted text-muted-foreground',
-                        )}
-                      >
-                        {i + 1}
-                      </span>
-                      {tier.label}
-                    </td>
-                    <td className="px-5 py-3 text-sm tabular-nums">
-                      {formatCents(exampleCents)}
-                      {i === 0 && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">
-                          {t('(min)', '（起充）')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-sm">
-                      {tier.bonusPct > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">
-                          +{Math.round(tier.bonusPct * 100)}% ·{' '}
-                          {formatCents(quote.bonusCents)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {t('No bonus', '无赠送')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right text-sm tabular-nums">
-                      <strong className="font-semibold">
-                        {formatCents(quote.totalCents)}
-                      </strong>
-                      <div className="text-[11px] text-muted-foreground">
-                        ≈ {formatCalls(quote.estimatedCalls)}{' '}
-                        {t('calls', '次')}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-right text-xs tabular-nums">
-                      <strong className="text-foreground font-semibold">
-                        {formatCalls(Math.round(callsPerDollar))}
-                      </strong>
-                      {upliftPct > 0 && (
-                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                          +{upliftPct}% {t('vs $20', '相对 $20')}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+              <tr>
+                <td className="px-5 py-3 font-medium">{t('Successful MCP call', '成功的 MCP 调用')}</td>
+                <td className="px-5 py-3 text-muted-foreground">{t('Flat rate', '固定单价')}</td>
+                <td className="px-5 py-3 text-right font-semibold tabular-nums">$0.001 / {t('call', '次')}</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-3 font-medium">{t('Minimum top-up', '最低充值')}</td>
+                <td className="px-5 py-3 text-muted-foreground">{t('Account wallet', '账户钱包')}</td>
+                <td className="px-5 py-3 text-right font-semibold tabular-nums">$20.00</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-3 font-medium">{t('Top-up options', '充值选项')}</td>
+                <td className="px-5 py-3 text-muted-foreground">{t('Preset amounts', '预设金额')}</td>
+                <td className="px-5 py-3 text-right font-semibold tabular-nums">
+                  {TOPUP_PRESETS_CENTS.map((cents) => formatCents(cents)).join(' / ')}
+                </td>
+              </tr>
+              <tr>
+                <td className="px-5 py-3 font-medium">{t('Example', '示例')}</td>
+                <td className="px-5 py-3 text-muted-foreground">{t('$50 top-up', '充值 $50')}</td>
+                <td className="px-5 py-3 text-right font-semibold tabular-nums">
+                  ≈ {quoteTopup(5000).estimatedCalls.toLocaleString('en-US')} {t('calls', '次调用')}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -186,14 +120,13 @@ export default function PricingPage() {
           <TrendingDown className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
             {t(
-              'Every key on your account spends from the same wallet. Bonus credits are non-refundable but never expire.',
-              '账户内所有 Key 共用同一钱包。赠送余额不可退款，但永不过期。',
+              'Every key on your account spends from the same wallet.',
+              '账户内所有 Key 共用同一钱包。',
             )}
           </span>
         </div>
       </div>
 
-      {/* All plans include */}
       <div className="rounded-2xl border border-border bg-background p-5">
         <div className="text-sm font-semibold">{tx('All accounts include')}</div>
         <ul className="mt-3 grid sm:grid-cols-2 gap-3">
@@ -208,7 +141,7 @@ export default function PricingPage() {
 
       <p className="text-[11px] text-muted-foreground text-center">
         {tx(
-          'Pricing subject to change with 30 days notice. Commercial terms and invoiced billing are available for annual commitments starting at $10K.',
+          'Pricing subject to change with 30 days notice. Commercial terms are available for annual commitments starting at $10K.',
         )}
       </p>
     </div>

@@ -93,6 +93,8 @@ export interface ApiKeyRecord {
   period_type?: 'daily' | 'monthly';
   total_used?: number;
   period_used?: number;
+  trial_granted_at?: string;
+  trial_expires_at?: string;
 }
 
 export interface ApiKeyUsage {
@@ -150,6 +152,8 @@ type RawApiKey = {
   period_type?: 'daily' | 'monthly';
   total_used?: number;
   period_used?: number;
+  trial_granted_at?: string;
+  trial_expires_at?: string;
 };
 
 export function maskApiKey(key: string): string {
@@ -174,6 +178,8 @@ function normalizeKey(raw: RawApiKey): ApiKeyRecord {
     period_type: pt,
     total_used: raw.total_used,
     period_used: raw.period_used,
+    trial_granted_at: raw.trial_granted_at,
+    trial_expires_at: raw.trial_expires_at,
   };
 }
 
@@ -184,8 +190,8 @@ export async function listKeys(): Promise<ApiKeyRecord[]> {
 
 export async function createKey(params: { name: string }): Promise<ApiKeyRecord> {
   // Quota is auto-assigned by the backend:
-  //   first key  -> total_limit=900, period_limit=30, period_type=daily
-  //   later keys -> all zero (no quota; needs admin to allocate)
+  //   first key  -> signup trial package (e.g. total_limit=300 + trial_expires_at)
+  //   later keys -> no standalone quota; they share the account wallet/trial
   const data = await request<{ api_key: RawApiKey & { limit?: { total_limit: number; period_limit: number; period_type: 'daily' | 'monthly' } } }>(
     '/keys',
     { method: 'POST', body: params },

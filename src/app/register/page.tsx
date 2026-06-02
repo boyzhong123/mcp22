@@ -2,16 +2,23 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, Eye, EyeOff, KeyRound, Mail, User } from 'lucide-react';
 import { useAuth } from '../dev-en/_lib/auth-context';
 import { useLang } from '../dev-en/_lib/use-lang';
 import { OAuthButtons } from '../dev-en/_components/oauth-buttons';
 import { AntiBot } from '../dev-en/_components/anti-bot';
+import { LegalAgreementCheckbox } from '../dev-en/_components/legal-agreement-checkbox';
+import { OtpInput } from '../dev-en/_components/otp-input';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { user, registerWithPassword } = useAuth();
+  const {
+    user,
+    registerWithPassword,
+    verifyRegistrationEmail,
+    resendRegistrationVerification,
+  } = useAuth();
   const { t, tx } = useLang();
 
   const [name, setName] = useState('');
@@ -19,43 +26,117 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [antiBotOk, setAntiBotOk] = useState(false);
-  const [terms, setTerms] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) router.replace('/dashboard/overview');
   }, [user, router]);
+
+  // The error banner sits at the top of a long form; bring it into view so a
+  // validation message triggered from the bottom button isn't missed.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [error]);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setInterval(() => setCooldown((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldown]);
 
   const identifier = email.trim();
   const trimmedName = name.trim();
   const identifierValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
   const passwordValid = password.length >= 6;
   const passwordsMatch = password === confirmPassword;
-  const confirmTouched = confirmPassword.length > 0;
-  const canSubmit =
-    trimmedName.length > 0 &&
-    identifierValid &&
-    passwordValid &&
-    passwordsMatch &&
-    confirmTouched &&
-    antiBotOk &&
-    terms &&
-    !submitting;
+  const codeValid = /^\d{6}$/.test(code);
+  // The button stays clickable; on submit we surface the first unmet step in
+  // the top error banner so "Create account" is never a silent dead end.
+  const disabledReason = (() => {
+    if (!antiBotOk) return t('Complete the human verification above.', '请先完成上方的人机验证。');
+    if (!termsAccepted)
+      return t(
+        'Tick the box to accept the Terms and Privacy Policy.',
+        '请勾选同意《服务条款》与《隐私政策》。',
+      );
+    if (!codeSent)
+      return t(
+        'Fill in the details above, then tap “Send code”.',
+        '请先填好上方信息并点击「发送验证码」。',
+      );
+    if (!codeValid) return t('Enter the 6-digit verification code.', '请输入 6 位验证码。');
+    return null;
+  })();
+
+  const handleSendCode = async () => {
+    setError(null);
+    setInfo(null);
+    if (trimmedName.length === 0) {
+      setError(t('Please enter your name.', '请输入姓名。'));
+      return;
+    }
+    if (!identifierValid) {
+      setError(t('Please enter a valid email address.', '请输入有效的邮箱地址。'));
+      return;
+    }
+    if (!passwordValid) {
+      setError(t('Password must be at least 6 characters.', '密码至少需要 6 位。'));
+      return;
+    }
+    if (!passwordsMatch) {
+      setError(t('The two passwords do not match.', '两次输入的密码不一致。'));
+      return;
+    }
+    if (!antiBotOk) {
+      setError(t('Please complete the verification first.', '请先完成人机验证。'));
+      return;
+    }
+    if (!termsAccepted) {
+      setError(
+        t(
+          'Please accept the Terms of Service and Privacy Policy to continue.',
+          '请先勾选同意《服务条款》与《隐私政策》。',
+        ),
+      );
+      return;
+    }
+    setSendingCode(true);
+    const res = codeSent
+      ? await resendRegistrationVerification(identifier)
+      : await registerWithPassword(trimmedName, identifier, password);
+    setSendingCode(false);
+    if (!res.ok) {
+      setError(res.error ?? t('Failed to send code.', '发送验证码失败。'));
+      if ('retryAfterSec' in res && typeof res.retryAfterSec === 'number') {
+        setCooldown(res.retryAfterSec);
+      }
+      return;
+    }
+    setCodeSent(true);
+    setCooldown(60);
+    setInfo(t(`A verification code was sent to ${identifier}.`, `验证码已发送至 ${identifier}。`));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!passwordsMatch) {
-      setError(t('Passwords do not match.', '两次输入的密码不一致。'));
+    setInfo(null);
+    if (disabledReason) {
+      setError(disabledReason);
       return;
     }
-    if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const res = await registerWithPassword(trimmedName, identifier, password);
+      const res = await verifyRegistrationEmail(identifier, code);
       if (!res.ok) {
         setError(res.error ?? t('Registration failed. Please try again.', '注册失败，请重试。'));
         return;
@@ -111,7 +192,7 @@ export default function RegisterPage() {
               {[
                 { t: 'Starter key with free monthly quota', d: 'Try every tool with no credit card up front' },
                 { t: 'Pay-as-you-go after that', d: 'Per-1K-call pricing with automatic volume discounts' },
-                { t: 'Bring your team', d: 'Invite teammates with role-based access' },
+                { t: 'Shared account wallet', d: 'Top up once and use credits across every key' },
               ].map((f) => (
                 <li key={f.t} className="flex items-start gap-3">
                   <div className="mt-0.5 h-5 w-5 rounded-md border border-white/10 bg-white/[0.04] flex items-center justify-center shrink-0">
@@ -152,6 +233,21 @@ export default function RegisterPage() {
 
           <OAuthButtons />
 
+          <p className="mt-2 text-[10px] text-center text-muted-foreground leading-relaxed">
+            {t(
+              'By continuing with GitHub or Google, you agree to our ',
+              '使用 GitHub 或 Google 继续即表示您同意我们的',
+            )}
+            <Link href="/legal/terms" target="_blank" className="underline underline-offset-2">
+              {t('Terms of Service', '《服务条款》')}
+            </Link>
+            {t(' and ', ' 与 ')}
+            <Link href="/legal/privacy" target="_blank" className="underline underline-offset-2">
+              {t('Privacy Policy', '《隐私政策》')}
+            </Link>
+            {t('.', '。')}
+          </p>
+
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border/60" />
@@ -164,8 +260,16 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <div className="mb-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs px-3 py-2">
+            <div
+              ref={errorRef}
+              className="mb-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs px-3 py-2"
+            >
               {error}
+            </div>
+          )}
+          {info && (
+            <div className="mb-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300/40 text-emerald-700 dark:text-emerald-300 text-xs px-3 py-2">
+              {info}
             </div>
           )}
 
@@ -181,8 +285,9 @@ export default function RegisterPage() {
                   autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  disabled={codeSent}
                   placeholder="Jane Doe"
-                  className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40"
+                  className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -200,9 +305,11 @@ export default function RegisterPage() {
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setError(null);
+                    setInfo(null);
                   }}
+                  disabled={codeSent}
                   placeholder="you@example.com"
-                  className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40"
+                  className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -217,15 +324,20 @@ export default function RegisterPage() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={tx('At least 6 characters')}
-                  className="w-full h-10 pl-9 pr-10 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError(null);
+                  }}
+                  disabled={codeSent}
+                  placeholder={t('At least 6 characters', '至少 6 位')}
+                  className="w-full h-10 pl-9 pr-10 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  disabled={codeSent}
                   aria-label={showPassword ? tx('Hide password') : tx('Show password')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -234,63 +346,80 @@ export default function RegisterPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                {tx('Confirm password')}
+                {t('Confirm password', '确认密码')}
               </label>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder={tx('Re-enter your password')}
-                  className={`w-full h-10 pl-9 pr-10 text-sm rounded-lg border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 transition-all placeholder:text-muted-foreground/40 ${
-                    confirmTouched && !passwordsMatch
-                      ? 'border-destructive/60 focus:border-destructive'
-                      : 'border-border focus:border-foreground/30'
-                  }`}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setError(null);
+                  }}
+                  disabled={codeSent}
+                  placeholder={t('Re-enter your password', '再次输入密码')}
+                  className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((v) => !v)}
-                  aria-label={showConfirmPassword ? tx('Hide password') : tx('Show password')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
               </div>
-              {confirmTouched && !passwordsMatch && (
-                <p className="mt-1.5 text-[11px] text-destructive">
-                  {t('Passwords do not match.', '两次输入的密码不一致。')}
+              {confirmPassword.length > 0 && !passwordsMatch && (
+                <p className="mt-1 text-[11px] text-red-500">
+                  {t('Passwords do not match.', '两次密码不一致。')}
                 </p>
               )}
             </div>
 
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                {tx('Verification code')}
+              </label>
+              <OtpInput
+                value={code}
+                onChange={setCode}
+                disabled={submitting || sendingCode || !codeSent}
+                ariaLabel={tx('Verification code')}
+              />
+              <div className="mt-2 flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">
+                  {codeSent
+                    ? t(`Sent to ${identifier}`, `已发送至 ${identifier}`)
+                    : t(
+                        'Enter the email above and request a code.',
+                        '输入上方邮箱后获取验证码。',
+                      )}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={cooldown > 0 || submitting || sendingCode}
+                  className="inline-flex items-center gap-1.5 font-medium text-foreground hover:underline disabled:text-muted-foreground/60 disabled:no-underline disabled:cursor-not-allowed"
+                >
+                  {sendingCode && (
+                    <span className="h-3 w-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  )}
+                  {sendingCode
+                    ? t('Sending…', '发送中…')
+                    : cooldown > 0
+                      ? t(`Resend in ${cooldown}s`, `${cooldown} 秒后重发`)
+                      : codeSent
+                        ? tx('Resend code')
+                        : tx('Send code')}
+                </button>
+              </div>
+            </div>
+
             <AntiBot verified={antiBotOk} onVerifiedChange={setAntiBotOk} />
 
-            <label className="flex items-start gap-2 text-[11px] text-muted-foreground leading-relaxed">
-              <input
-                type="checkbox"
-                checked={terms}
-                onChange={(e) => setTerms(e.target.checked)}
-                className="mt-0.5 h-3.5 w-3.5 rounded border-border"
-              />
-              <span>
-                {t('I agree to the ', '我同意')}
-                <a className="underline underline-offset-2 hover:text-foreground" href="#">
-                  {tx('Terms of Service')}
-                </a>
-                {t(' and ', ' 和 ')}
-                <a className="underline underline-offset-2 hover:text-foreground" href="#">
-                  {tx('Privacy Policy')}
-                </a>
-                {t('.', '。')}
-              </span>
-            </label>
+            <LegalAgreementCheckbox
+              checked={termsAccepted}
+              onChange={setTermsAccepted}
+              id="register-legal-agreement"
+            />
 
             <button
               type="submit"
-              disabled={!canSubmit}
+              disabled={submitting}
               className="group w-full h-10 text-sm font-semibold rounded-lg bg-foreground text-background hover:brightness-110 active:brightness-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (

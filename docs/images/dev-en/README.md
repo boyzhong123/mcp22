@@ -23,7 +23,6 @@
 | `billing-page.png` | §5.2 · §5.3 | Billing 主页：Monthly spend cap 编辑器 + Payment methods 列表 |
 | `recharge-history.png` | §5.5–5.6 | 充值历史表格（含 Download PDF 图标） |
 | `usage-page.png` | §4 Usage | 用量页：主图 + 日/月切换 + project/key 过滤 + 右上 Export CSV |
-| `team-page.png` | §6 Team | Team 成员列表 + Role 下拉 + Invite 弹窗 |
 | `settings-notifications.png` | §7 Notifications | Settings 页 Notifications 区域（7 个 toggle） |
 
 ## 语言

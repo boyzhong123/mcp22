@@ -291,6 +291,80 @@
   }
 }
 
+/* ── Brand loader ───────────────────────────────────────────────────────────
+   The Chivox mark (two overlapping circles) in motion. The dots blend with
+   `multiply` inside an isolated stacking context so blue × pink reproduces the
+   logo's navy intersection regardless of page background. */
+.brand-loader {
+  display: inline-flex;
+  position: relative;
+}
+.brand-loader__pair {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Isolate so the dots blend with each other, not with the page background. */
+  isolation: isolate;
+  transform-origin: 50% 50%;
+  animation: brand-loader-spin 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.brand-loader__dot {
+  position: absolute;
+  top: 50%;
+  width: 62%;
+  height: 62%;
+  border-radius: 9999px;
+  mix-blend-mode: multiply;
+  transform: translateY(-50%);
+  animation: brand-loader-breathe 1.15s ease-in-out infinite;
+}
+.brand-loader__dot--blue {
+  left: 4%;
+  background: #1d72e8;
+}
+.brand-loader__dot--pink {
+  right: 4%;
+  background: #f01681;
+  animation-delay: -0.575s; /* counter-phase the breathing */
+}
+/* In dark mode `multiply` would crush the dots against a dark backdrop, but the
+   isolated stacking context keeps the backdrop transparent, so colours hold.
+   `screen` reads brighter on dark surfaces for the non-overlap regions. */
+.dark .brand-loader__dot {
+  mix-blend-mode: screen;
+}
+.dark .brand-loader__dot--blue {
+  background: #3b8bff;
+}
+.dark .brand-loader__dot--pink {
+  background: #ff4d97;
+}
+
+@keyframes brand-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes brand-loader-breathe {
+  0%,
+  100% {
+    transform: translateY(-50%) scale(0.9);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-loader__pair {
+    animation-duration: 2.4s;
+    animation-timing-function: linear;
+  }
+  .brand-loader__dot {
+    animation: none;
+  }
+}
+
 @keyframes arrow-down {
   0% {
     opacity: 0;

@@ -10,8 +10,8 @@ import {
   BarChart3,
   Bell,
   BookOpen,
-  Calendar,
   CheckCircle2,
+  Clock,
   CreditCard,
   Gauge,
   Key,
@@ -33,46 +33,38 @@ import {
   getAccountSpendThisMonthCents,
   getAccountTrialRemaining,
   getKeyMonthlyCalls,
-  getKeyUsageSummary,
+  getKeyMonthlySpendCents,
   getSpendLimit,
   getTransactions,
-  getTrial,
   getWallet,
   isAccountLowBalance,
   keyLast4,
-  listPaidKeys,
+  listKeys,
   type AccountLowBalanceAlert,
   type AccountTrialRemaining,
   type AccountWallet,
   type ApiKey,
   type Transaction,
-  type TrialAllowance,
+  TRIAL_DEFAULT_TOTAL,
+  TRIAL_DEFAULT_VALID_DAYS,
 } from '../../_lib/mock-store';
+import { rankActiveKeysThisMonth } from '../../_lib/overview-key-ranking.mjs';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
-import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { StatCard } from '../../_components/stat-card';
 import { useLang } from '../../_lib/use-lang';
 
 const DEFAULT_WALLET: AccountWallet = {
   paidCreditsCents: 0,
   paidCreditsUsedCents: 0,
-  bonusReceivedCents: 0,
-};
-
-const DEFAULT_TRIAL: TrialAllowance = {
-  dailyLimit: 30,
-  dailyUsed: 0,
-  dailyResetAt: new Date().toISOString(),
-  totalLimit: 900,
-  totalUsed: 0,
 };
 
 const DEFAULT_TRIAL_REMAINING: AccountTrialRemaining = {
-  dailyLeft: 30,
-  totalLeft: 900,
-  dailyExhausted: false,
+  totalLeft: TRIAL_DEFAULT_TOTAL,
   totalExhausted: false,
+  expired: false,
+  expiresAt: new Date(Date.now() + TRIAL_DEFAULT_VALID_DAYS * 86400000).toISOString(),
+  daysLeft: TRIAL_DEFAULT_VALID_DAYS,
 };
 
 const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
@@ -87,14 +79,13 @@ export default function OverviewPage() {
   const spend = useMockStore(getAccountSpendThisMonthCents, 0);
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
   const balanceCents = useMockStore(getAccountBalanceCents, 0);
-  const trial = useMockStore(getTrial, DEFAULT_TRIAL);
   const trialRemaining = useMockStore(
     getAccountTrialRemaining,
     DEFAULT_TRIAL_REMAINING,
   );
   const accountAlert = useMockStore(getAccountAlert, DEFAULT_ACCOUNT_ALERT);
   const lowBalance = useMockStore(isAccountLowBalance, false);
-  const paidKeys = useMockStore(listPaidKeys, [] as ApiKey[]);
+  const keys = useMockStore(listKeys, [] as ApiKey[]);
   const transactions = useMockStore(getTransactions, [] as Transaction[]);
   const spendLimit = useMockStore(getSpendLimit, {
     monthlyCapCents: 5000_00,
@@ -108,12 +99,15 @@ export default function OverviewPage() {
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
   const openAddCredits = () => setAddCreditsOpen(true);
 
-  const activePaidKeys = paidKeys.filter((k) => k.status === 'active');
+  const activeKeys = keys.filter((k) => k.status === 'active');
   // Only top-ups in the "近期充值" sidebar — `card-added` rows aren't
   // financial activity, they cluttered the list and the section title
-  // now reads as money-in only.
+  // now reads as money-in only. `failed` top-ups never landed, so they're
+  // dropped entirely; `pending` ones are kept but rendered distinctly (a
+  // pending badge + muted amount) so they don't read as money already in
+  // the wallet.
   const recent = transactions
-    .filter((tr) => tr.kind === 'credit-topup')
+    .filter((tr) => tr.kind === 'credit-topup' && tr.status !== 'failed')
     .slice(0, 5);
 
   // We keep the raw percent (uncapped) so the KPI card reads correct when
@@ -129,11 +123,21 @@ export default function OverviewPage() {
     : 0;
   const limitUsedPct = Math.min(100, limitUsedPctRaw);
 
-  // Rank paid keys by lifetime call volume for the "most active" section.
-  const rankedPaidKeys = activePaidKeys
-    .map((k) => ({ key: k, summary: getKeyUsageSummary(k.id) }))
-    .sort((a, b) => b.summary.calls - a.summary.calls)
-    .slice(0, 3);
+  // Trial KPI tile derivations.
+  const trialPct = Math.max(
+    0,
+    Math.min(100, (trialRemaining.totalLeft / TRIAL_DEFAULT_TOTAL) * 100),
+  );
+  const trialExpiryLabel = new Date(trialRemaining.expiresAt).toLocaleDateString(
+    lang === 'zh' ? 'zh-CN' : 'en-US',
+    { month: 'short', day: 'numeric' },
+  );
+
+  const rankedKeys = rankActiveKeysThisMonth(keys, getKeyMonthlyCalls);
+  // "Top keys this month" should only list keys that actually saw traffic —
+  // a key with 0 calls isn't "active". We still surface the three distinct
+  // states below: no keys at all, keys-but-no-usage, and real usage.
+  const usedKeys = rankedKeys.filter(({ monthCalls }) => monthCalls > 0);
 
   return (
     <div className="space-y-6" translate="no" lang="en">
@@ -169,32 +173,55 @@ export default function OverviewPage() {
         trialRemaining={trialRemaining}
         accountAlert={accountAlert}
         lowBalance={lowBalance}
-        activePaidKeys={activePaidKeys}
+        activeKeys={activeKeys}
         callsThisMonth={calls}
         callsLimit={monthlyCallCap ?? 0}
         limitUsedPctRaw={limitUsedPctRaw}
         onAddCredits={openAddCredits}
       />
 
-      {/* Account wallet hero — promoted above the KPI strip so the
-           "where am I in money + trial?" question is answered first.
-           The KPI strip below is now activity-focused (spend / calls /
-           cap progress), no longer duplicating balance & trial. */}
-      <AccountWalletStrip onAddCredits={openAddCredits} />
-
-      {/* KPI row · activity & cap progress.
-           Trio is intentionally money-out + usage; balance and trial are
-           already the headline of the wallet hero above. Cap-progress
-           tile collapses to "Set limit" CTA when no monthly call cap is
-           configured. */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Unified KPI grid — wallet, trial and this-month activity in one
+           consistent set of tiles. The rich wallet/trial hero lives on the
+           API Keys page (where "all keys share this wallet/trial" is the
+           point); the overview keeps a lighter dashboard summary so the two
+           pages don't read as duplicates. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          icon={Wallet}
+          label={t('Wallet balance', '钱包余额')}
+          value={formatCents(balanceCents)}
+          sub={t(
+            `${formatCents(wallet.paidCreditsUsedCents)} spent · ${formatCents(wallet.paidCreditsCents)} topped up`,
+            `已用 ${formatCents(wallet.paidCreditsUsedCents)} · 累计充值 ${formatCents(wallet.paidCreditsCents)}`,
+          )}
+          onClick={openAddCredits}
+          cta={tx('Add credits')}
+        />
+        <StatCard
+          icon={Sparkles}
+          tone="emerald"
+          label={t('Free trial', '免费试用')}
+          value={`${formatCalls(trialRemaining.totalLeft)} / ${formatCalls(TRIAL_DEFAULT_TOTAL)}`}
+          sub={
+            trialRemaining.totalExhausted
+              ? trialRemaining.expired
+                ? t('Trial expired', '试用已过期')
+                : t('Trial used up', '试用次数已用完')
+              : t(
+                  `${trialRemaining.daysLeft} days left · valid to ${trialExpiryLabel}`,
+                  `剩余 ${trialRemaining.daysLeft} 天 · 有效期至 ${trialExpiryLabel}`,
+                )
+          }
+          progressPct={trialPct}
+          progressColor={trialPct <= 10 ? 'bg-amber-500' : 'bg-emerald-500'}
+        />
         <StatCard
           icon={Receipt}
           label={t('Spent this month', '本月消费')}
           value={formatCents(spend)}
           sub={t(
-            `${formatCalls(calls)} calls · ${activePaidKeys.length} active key${activePaidKeys.length === 1 ? '' : 's'}`,
-            `${formatCalls(calls)} 次调用 · ${activePaidKeys.length} 把活跃 Key`,
+            `${formatCalls(calls)} calls · ${activeKeys.length} active key${activeKeys.length === 1 ? '' : 's'}`,
+            `${formatCalls(calls)} 次调用 · ${activeKeys.length} 把活跃 Key`,
           )}
           href="/dashboard/billing"
           cta={t('View billing', '查看账单')}
@@ -203,41 +230,31 @@ export default function OverviewPage() {
           icon={Activity}
           label={t('Calls this month', '本月调用')}
           value={formatCalls(calls)}
-          sub={t(
-            `Across ${activePaidKeys.length} key${activePaidKeys.length === 1 ? '' : 's'} on this account`,
-            `账户内 ${activePaidKeys.length} 把 Key`,
-          )}
-          href="/dashboard/usage"
-          cta={t('View usage', '查看用量')}
-        />
-        <StatCard
-          icon={Gauge}
-          label={t('Monthly call cap', '月度调用上限')}
-          value={hasSpendLimit ? `${limitUsedPct.toFixed(1)}%` : t('Not set', '未配置')}
           sub={
             hasSpendLimit
-              ? `${formatCalls(calls)} / ${formatCalls(monthlyCallCap ?? 0)}`
-              : t('Set one to throttle traffic', '设置后可限流')
+              ? t(
+                  `${formatCalls(calls)} / ${formatCalls(monthlyCallCap ?? 0)} of monthly cap`,
+                  `${formatCalls(calls)} / ${formatCalls(monthlyCallCap ?? 0)}（月度上限）`,
+                )
+              : t('No monthly cap set', '未设置月度上限')
           }
-          href="/dashboard/limits"
-          cta={hasSpendLimit ? t('Adjust', '调整') : t('Set limit', '设置上限')}
-          progressPct={hasSpendLimit ? limitUsedPct : 0}
+          href={hasSpendLimit ? '/dashboard/usage' : '/dashboard/limits'}
+          cta={hasSpendLimit ? t('View usage', '查看用量') : t('Set limit', '设置上限')}
+          progressPct={hasSpendLimit ? limitUsedPct : undefined}
           progressColor={
-            !hasSpendLimit
-              ? 'bg-muted-foreground/20'
-              : limitUsedPct >= 90
-                ? 'bg-red-500'
-                : limitUsedPct >= 75
-                  ? 'bg-amber-500'
-                  : 'bg-foreground'
+            limitUsedPct >= 90
+              ? 'bg-red-500'
+              : limitUsedPct >= 75
+                ? 'bg-amber-500'
+                : 'bg-foreground'
           }
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Paid keys list — wallet model removes per-key balance bars; we
+        {/* Active keys list — wallet model removes per-key balance bars; we
              now show how much each key is consuming this month vs its own
-             monthlyCallCap (if any) so multi-tenant teams can see hot keys
+             monthlyCallCap (if any) so accounts can see hot keys
              at a glance without duplicating the wallet info above. */}
         <div className="lg:col-span-2 rounded-xl border border-border bg-background p-5">
           <div className="flex items-center justify-between mb-4">
@@ -260,7 +277,7 @@ export default function OverviewPage() {
             </Link>
           </div>
 
-          {rankedPaidKeys.length === 0 ? (
+          {rankedKeys.length === 0 ? (
             <div className="text-center py-10 rounded-lg border border-dashed border-border">
               <Key className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm font-medium">{tx('No keys yet')}</p>
@@ -277,10 +294,29 @@ export default function OverviewPage() {
                 {tx('Create a key')} <ArrowUpRight className="h-3 w-3" />
               </Link>
             </div>
+          ) : usedKeys.length === 0 ? (
+            <div className="text-center py-10 rounded-lg border border-dashed border-border">
+              <Activity className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm font-medium">
+                {t('No calls yet this month', '本月还没有调用')}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t(
+                  'Make your first request with one of your keys — usage shows up here.',
+                  '用你的任一 Key 发起第一次请求，调用量会显示在这里。',
+                )}
+              </p>
+              <Link
+                href="/global/docs?from=dev"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-foreground hover:underline underline-offset-4"
+              >
+                {t('Quick start', '快速入门')} <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
           ) : (
             <ul className="space-y-3">
-              {rankedPaidKeys.map(({ key }) => {
-                const monthCalls = getKeyMonthlyCalls(key.id);
+              {usedKeys.map(({ key, monthCalls }) => {
+                const monthSpend = getKeyMonthlySpendCents(key.id);
                 const cap = key.monthlyCallCap ?? null;
                 const capUsedPct = cap && cap > 0
                   ? Math.min(100, (monthCalls / cap) * 100)
@@ -305,13 +341,18 @@ export default function OverviewPage() {
                           </span>
                         )}
                       </div>
-                      <div className="text-sm font-semibold tabular-nums shrink-0">
-                        {formatCalls(monthCalls)}
-                        {cap !== null && cap > 0 && (
-                          <span className="text-muted-foreground font-normal">
-                            {' / '}{formatCalls(cap)}
-                          </span>
-                        )}
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-semibold tabular-nums">
+                          {formatCalls(monthCalls)}
+                          {cap !== null && cap > 0 && (
+                            <span className="text-muted-foreground font-normal">
+                              {' / '}{formatCalls(cap)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+                          {formatCents(monthSpend)} {t('this month', '本月')}
+                        </div>
                       </div>
                     </div>
                     {capUsedPct !== null ? (
@@ -361,19 +402,19 @@ export default function OverviewPage() {
           ) : (
             <ul className="space-y-3">
               {recent.map((tr) => {
-                const isCard = tr.kind === 'card-added';
+                const isPending = tr.status === 'pending';
                 return (
                   <li key={tr.id} className="flex items-center gap-3">
                     <div
                       className={cn(
                         'h-7 w-7 shrink-0 rounded-md flex items-center justify-center',
-                        isCard
-                          ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20'
+                        isPending
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                           : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
                       )}
                     >
-                      {isCard ? (
-                        <CreditCard className="h-3.5 w-3.5" />
+                      {isPending ? (
+                        <Clock className="h-3.5 w-3.5" />
                       ) : (
                         <CheckCircle2 className="h-3.5 w-3.5" />
                       )}
@@ -382,15 +423,23 @@ export default function OverviewPage() {
                       <p className="text-xs font-medium truncate">
                         {tr.description}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                         {formatDate(tr.createdAt)}
+                        {isPending && (
+                          <span className="inline-flex items-center rounded px-1.5 py-px text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            {t('Pending', '待处理')}
+                          </span>
+                        )}
                       </p>
                     </div>
-                    {!isCard && (
-                      <span className="text-xs font-semibold tabular-nums">
-                        +{formatCents(tr.amountCents)}
-                      </span>
-                    )}
+                    <span
+                      className={cn(
+                        'text-xs font-semibold tabular-nums',
+                        isPending && 'text-muted-foreground font-normal',
+                      )}
+                    >
+                      {isPending ? formatCents(tr.amountCents) : `+${formatCents(tr.amountCents)}`}
+                    </span>
                   </li>
                 );
               })}
@@ -405,7 +454,10 @@ export default function OverviewPage() {
           <div>
             <h2 className="text-sm font-semibold">{tx('Quick actions')}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {tx('Common next steps for pay-as-you-go teams.')}
+              {t(
+                'Common next steps for pay-as-you-go accounts.',
+                '按量计费账户的常见后续操作。',
+              )}
             </p>
           </div>
           <Sparkles className="h-4 w-4 text-muted-foreground" />
@@ -415,8 +467,8 @@ export default function OverviewPage() {
             href="/dashboard/keys"
             title={tx('Create key')}
             desc={t(
-              'Spin up a new API key under any project.',
-              '在任意项目下新建 API Key。',
+              'Spin up a new API key for this account.',
+              '为当前账户新建 API Key。',
             )}
             icon={Key}
           />
@@ -424,8 +476,8 @@ export default function OverviewPage() {
             onClick={openAddCredits}
             title={tx('Add credits')}
             desc={t(
-              'Top up the account wallet. Bonus credits at $50+.',
-              '为账户钱包充值。$50 起赠额外余额。',
+              'Top up the shared account wallet.',
+              '为账户共享钱包充值。',
             )}
             icon={Wallet}
           />
@@ -459,7 +511,7 @@ export default function OverviewPage() {
             >
               {tx('pay-as-you-go pricing')}
             </Link>{' '}
-            {tx('— top-up bonuses apply automatically.')}
+            {t('— flat usage pricing.', '— 固定用量计费。')}
           </span>
         </div>
         <Link
@@ -473,7 +525,6 @@ export default function OverviewPage() {
       <StripeCheckoutModal
         open={addCreditsOpen}
         onClose={() => setAddCreditsOpen(false)}
-        mode="add-credits"
       />
     </div>
   );
@@ -508,7 +559,7 @@ interface AlertInputs {
   trialRemaining: AccountTrialRemaining;
   accountAlert: AccountLowBalanceAlert;
   lowBalance: boolean;
-  activePaidKeys: ApiKey[];
+  activeKeys: ApiKey[];
   callsThisMonth: number;
   callsLimit: number;
   limitUsedPctRaw: number;
@@ -525,7 +576,7 @@ interface AlertInputs {
  *   - wallet-empty            wallet at $0 AND trial gone (full block)
  *   - trial-exhausted         trial gone but wallet still has runway
  *   - wallet-low              under user-configured low-balance threshold
- *   - trial-daily-hit         today's trial cap consumed (resets at UTC mid)
+ *   - trial-expired           signup trial window elapsed
  *   - spend-cap-hit / -near   account monthly call cap
  *   - key-monthly-cap-near    any single key approaching its own cap
  */
@@ -536,7 +587,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     trialRemaining,
     accountAlert,
     lowBalance,
-    activePaidKeys,
+    activeKeys,
     callsThisMonth,
     callsLimit,
     limitUsedPctRaw,
@@ -574,14 +625,17 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
   // failing INSUFFICIENT_CREDITS. This is the single most important
   // signal under the wallet model.
   if (balanceCents === 0 && trialRemaining.totalExhausted) {
+    const reason = trialRemaining.expired
+      ? t('the signup trial window has expired', '注册试用已过期')
+      : t('the signup trial calls are spent', '注册试用次数已用完');
     rows.push({
       id: 'wallet-empty',
       severity: 'critical',
       icon: AlertTriangle,
       title: t('Account out of credit', '账户余额已耗尽'),
       desc: t(
-        'Wallet is $0 and the 900 trial calls are spent. Every key returns INSUFFICIENT_CREDITS until you top up.',
-        '钱包余额为 $0，900 次试用配额也已用完。所有 Key 都会返回 INSUFFICIENT_CREDITS，请充值。',
+        `Wallet is $0 and ${reason}. Every key returns INSUFFICIENT_CREDITS until you top up.`,
+        `钱包余额为 $0，且${reason}。所有 Key 都会返回 INSUFFICIENT_CREDITS，请充值。`,
       ),
       actions: [
         { label: tx('Add credits'), onClick: onAddCredits, primary: true },
@@ -597,14 +651,19 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     balanceCents > 0 &&
     !(balanceCents === 0)
   ) {
+    const reason = trialRemaining.expired
+      ? t('The signup trial window has expired', '注册试用已过期')
+      : t('The signup trial calls are all spent', '注册试用次数已用完');
     rows.push({
       id: 'trial-exhausted',
       severity: 'warning',
       icon: Sparkles,
-      title: t('Free trial exhausted', '免费试用已用完'),
+      title: trialRemaining.expired
+        ? t('Free trial expired', '免费试用已过期')
+        : t('Free trial exhausted', '免费试用已用完'),
       desc: t(
-        `The 900 trial calls are all spent. From here on calls draw from your wallet (${formatCents(balanceCents)} left).`,
-        `900 次试用配额已用完。后续调用从钱包扣费（剩余 ${formatCents(balanceCents)}）。`,
+        `${reason}. From here on calls draw from your wallet (${formatCents(balanceCents)} left).`,
+        `${reason}。后续调用从钱包扣费（剩余 ${formatCents(balanceCents)}）。`,
       ),
       actions: [
         { label: tx('Add credits'), onClick: onAddCredits, primary: true },
@@ -635,28 +694,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     });
   }
 
-  // 5 ── Today's trial cap hit but lifetime trial isn't gone yet. Calls
-  // resume at next UTC midnight; until then they fall to wallet (if any).
-  if (
-    trialRemaining.dailyExhausted &&
-    !trialRemaining.totalExhausted
-  ) {
-    rows.push({
-      id: 'trial-daily-hit',
-      severity: 'warning',
-      icon: Calendar,
-      title: t('Today\'s trial cap hit', '今日试用额度已用完'),
-      desc: t(
-        `Trial allowance resets at next UTC midnight. ${balanceCents > 0 ? `Calls today now bill from your wallet (${formatCents(balanceCents)} left).` : 'With no wallet balance, calls will be rejected until reset — top up to keep things running.'}`,
-        `试用额度将在下一 UTC 0 点重置。${balanceCents > 0 ? `今日剩余调用会从钱包扣费（余额 ${formatCents(balanceCents)}）。` : '钱包为空，重置前调用将被拒绝 — 请充值以恢复服务。'}`,
-      ),
-      actions: balanceCents > 0
-        ? [{ label: tx('Open billing'), href: '/dashboard/billing' }]
-        : [{ label: tx('Add credits'), onClick: onAddCredits, primary: true }],
-    });
-  }
-
-  // 6 ── Account spend cap approaching (≥ 90%). KPI tile already turns
+  // 5 ── Account spend cap approaching (≥ 90%). KPI tile already turns
   // amber at 75%; we only banner at 90% to avoid noise.
   if (limitUsedPctRaw >= 90 && limitUsedPctRaw < 100) {
     rows.push({
@@ -681,10 +719,10 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     });
   }
 
-  // 7 ── Per-key monthly cap approaching. Surfaced as a single rolled-up
+  // 6 ── Per-key monthly cap approaching. Surfaced as a single rolled-up
   // alert listing the worst offender — the Keys page has the per-key
   // breakdown.
-  const keysNearCap = activePaidKeys
+  const keysNearCap = activeKeys
     .map((k) => ({
       key: k,
       cap: k.monthlyCallCap,

@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  ArrowUpRight,
   CreditCard,
   HelpCircle,
-  Plus,
   ReceiptText,
   Sparkles,
   Wallet,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import {
   formatCalls,
   formatCents,
@@ -22,16 +21,13 @@ import {
   getUsage,
   getWallet,
   listPaidKeys,
-  listProjects,
   type AccountWallet,
   type ApiKey,
-  type Project,
   type Transaction,
   type UsagePoint,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
-import { ManageSavedCardsModal } from '../../_components/manage-saved-cards-modal';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { useLang } from '../../_lib/use-lang';
@@ -39,27 +35,11 @@ import { useLang } from '../../_lib/use-lang';
 const DEFAULT_WALLET: AccountWallet = {
   paidCreditsCents: 0,
   paidCreditsUsedCents: 0,
-  bonusReceivedCents: 0,
 };
-type Period = 7 | 14 | 28 | 90;
-const PERIODS: Period[] = [7, 14, 28, 90];
-
-// Distinct palette for project series. Intentionally different enough from the
-// Usage page's model palette so the two pages don't feel like the same chart
-// with a different label.
-const PROJECT_PALETTE = [
-  '#2563eb', // blue-600
-  '#db2777', // pink-600
-  '#16a34a', // green-600
-  '#ea580c', // orange-600
-  '#7c3aed', // violet-600
-  '#0891b2', // cyan-600
-];
 
 export default function BillingPage() {
   const { t, tx } = useLang();
   const usage = useMockStore(getUsage, [] as UsagePoint[]);
-  const projects = useMockStore(listProjects, [] as Project[]);
   // Starter keys are excluded from every view on this page — the freebie
   // has no balance and no billable spend, so mixing it in with paid keys
   // only confuses totals and charts. The starter gets its own dedicated
@@ -71,24 +51,7 @@ export default function BillingPage() {
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
   const balanceCents = useMockStore(getAccountBalanceCents, 0);
 
-  const [period, setPeriod] = useState<Period>(28);
-  const [projectFilter, setProjectFilter] = useState<string>('all');
-  const [keyFilter, setKeyFilter] = useState<string>('all');
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
-  const [manageCardsOpen, setManageCardsOpen] = useState(false);
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-
-  const scopedKeys = useMemo(
-    () => (projectFilter === 'all' ? keys : keys.filter((k) => k.projectId === projectFilter)),
-    [keys, projectFilter],
-  );
-
-  const handleProjectChange = (next: string) => {
-    setProjectFilter(next);
-    if (next === 'all') return;
-    const stillValid = keys.some((k) => k.id === keyFilter && k.projectId === next);
-    if (!stillValid) setKeyFilter('all');
-  };
 
   // Legacy deep-link: `/dashboard/billing?edit=spend-limit` used to
   // open the inline cap modal. The cap UI now lives at /dashboard/limits,
@@ -99,68 +62,6 @@ export default function BillingPage() {
     if (params.get('edit') !== 'spend-limit') return;
     window.location.replace('/dashboard/limits');
   }, []);
-
-
-  // Colour by project (by order in the projects list, stable across renders).
-  const projectColorMap = useMemo(() => {
-    const m = new Map<string, string>();
-    projects.forEach((p, i) => m.set(p.id, PROJECT_PALETTE[i % PROJECT_PALETTE.length]));
-    return m;
-  }, [projects]);
-
-  // Pre-index: keyId → projectId (used to attribute usage rows to projects).
-  const keyProjectIndex = useMemo(() => {
-    const m = new Map<string, string>();
-    keys.forEach((k) => m.set(k.id, k.projectId));
-    return m;
-  }, [keys]);
-
-  // Stacked "Spend by project" dataset. Deliberately stacked by project (not
-  // model) to visually differentiate this chart from the Usage page's
-  // "Calls by model" stack — same shape, completely different slice.
-  const stackedData = useMemo(() => {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const days: {
-      date: string;
-      perProject: Record<string, number>;
-      total: number;
-    }[] = [];
-    for (let i = period - 1; i >= 0; i--) {
-      const d = new Date(today.getTime() - i * 86400000);
-      const date = d.toISOString().slice(0, 10);
-      const perProject: Record<string, number> = {};
-      for (const p of projects) perProject[p.id] = 0;
-      const pts = usage.filter((p) => {
-        if (p.date !== date) return false;
-        if (keyFilter !== 'all' && p.keyId !== keyFilter) return false;
-        const pid = keyProjectIndex.get(p.keyId);
-        if (!pid) return false;
-        if (projectFilter !== 'all' && pid !== projectFilter) return false;
-        return true;
-      });
-      let total = 0;
-      for (const p of pts) {
-        const pid = keyProjectIndex.get(p.keyId);
-        if (!pid) continue;
-        perProject[pid] = (perProject[pid] ?? 0) + p.costCents;
-        total += p.costCents;
-      }
-      days.push({ date, perProject, total });
-    }
-    return days;
-  }, [usage, projects, period, keyFilter, projectFilter, keyProjectIndex]);
-
-  const periodTotalCost = stackedData.reduce((acc, d) => acc + d.total, 0);
-  const maxDay = Math.max(1, ...stackedData.map((d) => d.total));
-
-  const chartWidth = 720;
-  const chartHeight = 220;
-  const pad = { top: 10, right: 20, bottom: 24, left: 44 };
-  const innerW = chartWidth - pad.left - pad.right;
-  const innerH = chartHeight - pad.top - pad.bottom;
-  const barW = Math.max(3, (innerW / stackedData.length) * 0.72);
-  const slot = innerW / stackedData.length;
 
   // Per-key spend this month (month-to-date), for the Credit balances table.
   // We slice the usage array down to current-month rows once and tally.
@@ -228,10 +129,13 @@ export default function BillingPage() {
         <button
           type="button"
           onClick={openAddCredits}
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110 shadow-sm"
+          className="group inline-flex h-10 items-center gap-2 rounded-xl border border-[#4fc9a3]/25 bg-gradient-to-r from-[#10233f] via-[#123047] to-[#153d4c] px-2.5 pr-3.5 text-sm font-semibold text-white shadow-[0_9px_20px_-11px_rgba(13,86,91,0.9)] transition-all hover:-translate-y-px hover:border-[#72dbbd]/45 hover:from-[#132b4b] hover:via-[#15384f] hover:to-[#174b54] hover:shadow-[0_13px_24px_-12px_rgba(24,131,120,0.85)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ed7b2]/55 focus-visible:ring-offset-2"
         >
-          <Plus className="h-4 w-4" />
-          {t('Add credits', '充值')}
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#5ed7b2]/18 text-[#9aefd5] ring-1 ring-[#8be4c9]/30 transition-colors group-hover:bg-[#5ed7b2]/25">
+            <Wallet className="h-3.5 w-3.5" strokeWidth={2.5} />
+          </span>
+          <span>{t('Add credits', '充值')}</span>
+          <ArrowUpRight className="h-3.5 w-3.5 text-[#a8ead7]/75 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#c4f4e6]" />
         </button>
       </div>
 
@@ -247,17 +151,10 @@ export default function BillingPage() {
           icon={Wallet}
           label={t('Account balance', '账户余额')}
           value={formatCents(balanceCents)}
-          sub={
-            wallet.bonusReceivedCents > 0
-              ? t(
-                  `Includes +${formatCents(wallet.bonusReceivedCents)} bonus to date`,
-                  `含累计赠送 +${formatCents(wallet.bonusReceivedCents)}`,
-                )
-              : t(
-                  'Shared by every key on this account',
-                  '所有 Key 共享同一余额',
-                )
-          }
+          sub={t(
+            'Shared by every key on this account',
+            '所有 Key 共享同一余额',
+          )}
         />
         <StatCard
           icon={ReceiptText}
@@ -272,257 +169,13 @@ export default function BillingPage() {
           icon={CreditCard}
           label={t('Lifetime topped up', '累计充值')}
           value={formatCents(wallet.paidCreditsCents)}
-          sub={
-            wallet.bonusReceivedCents > 0
-              ? t(
-                  `+${formatCents(wallet.bonusReceivedCents)} bonus credits earned`,
-                  `获赠 +${formatCents(wallet.bonusReceivedCents)} 额度`,
-                )
-              : t('No bonus credits yet', '暂无赠送额度')
-          }
+          sub={t(
+            'Total loaded into the shared wallet',
+            '累计充值到共享钱包的金额',
+          )}
         />
       </div>
 
-
-      {/* Spend-by-project chart */}
-      <div className="rounded-2xl border border-border bg-background p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t(
-                `Daily spend by project (${period} days)`,
-                `按项目的每日消费(${period} 天)`,
-              )}
-            </div>
-            <div className="mt-2 flex items-baseline gap-4 flex-wrap">
-              <div className="text-2xl font-semibold tabular-nums">
-                {formatCents(periodTotalCost)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t('Net spend in selected period.', '选定时段的实际支出。')}
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center rounded-lg border border-border bg-background overflow-hidden">
-              {PERIODS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPeriod(p)}
-                  className={cn(
-                    'h-8 px-2.5 text-xs font-medium transition-colors',
-                    period === p
-                      ? 'bg-foreground text-background'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {p}{t('d', '天')}
-                </button>
-              ))}
-            </div>
-
-            <FilterSelect
-              value={projectFilter}
-              onChange={handleProjectChange}
-              options={[
-                { value: 'all', label: tx('All projects') },
-                ...projects.map((p) => ({ value: p.id, label: p.name })),
-              ]}
-            />
-
-            <FilterSelect
-              value={keyFilter}
-              onChange={setKeyFilter}
-              options={[
-                {
-                  value: 'all',
-                  label:
-                    projectFilter === 'all'
-                      ? tx('All keys')
-                      : t(
-                          `All keys in ${projects.find((p) => p.id === projectFilter)?.name ?? 'project'}`,
-                          `${projects.find((p) => p.id === projectFilter)?.name ?? '项目'} 的全部 key`,
-                        ),
-                },
-                ...scopedKeys.map((k) => ({
-                  value: k.id,
-                  label: `${k.name} · ${k.maskedSecret.slice(-8)}`,
-                })),
-              ]}
-            />
-
-          </div>
-        </div>
-
-        {/* Chart. Outer wrapper owns the tooltip so it can paint above the
-            SVG without being clipped — the inner wrapper's `overflow-x: auto`
-            (for horizontal scroll on narrow screens) implicitly clips the
-            y-axis too. */}
-        <div className="mt-4 relative">
-          <div className="overflow-x-auto">
-            <svg
-              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              className="w-full min-w-[600px]"
-              onMouseLeave={() => setHoverIdx(null)}
-            >
-              {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-                <g key={t}>
-                  <line
-                    x1={pad.left}
-                    x2={chartWidth - pad.right}
-                    y1={pad.top + innerH - innerH * t}
-                    y2={pad.top + innerH - innerH * t}
-                    stroke="currentColor"
-                    strokeOpacity={0.08}
-                  />
-                  <text
-                    x={pad.left - 6}
-                    y={pad.top + innerH - innerH * t}
-                    fontSize={9}
-                    textAnchor="end"
-                    dominantBaseline="middle"
-                    fill="currentColor"
-                    fillOpacity={0.5}
-                  >
-                    {formatCents(maxDay * t)}
-                  </text>
-                </g>
-              ))}
-
-              {stackedData.map((d, i) => {
-                const x = pad.left + i * slot + (slot - barW) / 2;
-                let yCursor = pad.top + innerH;
-                const segments: { projectId: string; y: number; h: number; color: string }[] = [];
-                projects.forEach((p) => {
-                  const v = d.perProject[p.id] ?? 0;
-                  if (v <= 0) return;
-                  const h = (v / maxDay) * innerH;
-                  yCursor -= h;
-                  segments.push({
-                    projectId: p.id,
-                    y: yCursor,
-                    h,
-                    color: projectColorMap.get(p.id) ?? '#6366f1',
-                  });
-                });
-                return (
-                  <g key={d.date} onMouseEnter={() => setHoverIdx(i)}>
-                    {segments.map((s) => (
-                      <rect
-                        key={s.projectId}
-                        x={x}
-                        y={s.y}
-                        width={barW}
-                        height={Math.max(s.h, 0.5)}
-                        fill={s.color}
-                        opacity={0.95}
-                        rx={1}
-                      />
-                    ))}
-                    <rect
-                      x={pad.left + i * slot}
-                      y={pad.top}
-                      width={slot}
-                      height={innerH}
-                      fill="transparent"
-                    />
-                  </g>
-                );
-              })}
-
-              {stackedData.length > 0 && (
-                <>
-                  {[0, Math.floor(stackedData.length / 2), stackedData.length - 1].map((idx) => {
-                    const d = stackedData[idx];
-                    const x = pad.left + idx * slot + slot / 2;
-                    return (
-                      <text
-                        key={idx}
-                        x={x}
-                        y={chartHeight - 6}
-                        fontSize={9}
-                        textAnchor="middle"
-                        fill="currentColor"
-                        fillOpacity={0.5}
-                      >
-                        {d.date.slice(5)}
-                      </text>
-                    );
-                  })}
-                </>
-              )}
-            </svg>
-          </div>
-          {hoverIdx !== null &&
-            stackedData[hoverIdx] &&
-            (() => {
-              const d = stackedData[hoverIdx];
-              const centerPctX = ((pad.left + hoverIdx * slot + slot / 2) / chartWidth) * 100;
-              const barTopPctY =
-                ((pad.top + innerH - (d.total / maxDay) * innerH) / chartHeight) * 100;
-              const flipBelow = barTopPctY < 35;
-              const rows = projects
-                .filter((p) => (d.perProject[p.id] ?? 0) > 0)
-                .map((p) => ({
-                  project: p.name,
-                  costCents: d.perProject[p.id],
-                  color: projectColorMap.get(p.id) ?? '#6366f1',
-                }));
-              return (
-                <div
-                  className="pointer-events-none absolute bg-popover text-popover-foreground border border-border shadow-lg rounded-lg px-3 py-2 text-[11px] min-w-[200px] max-w-[260px] z-10"
-                  style={{
-                    left: `${centerPctX}%`,
-                    top: flipBelow ? `calc(${barTopPctY}% + 12px)` : `${barTopPctY}%`,
-                    transform: flipBelow
-                      ? 'translate(-50%, 0)'
-                      : 'translate(-50%, calc(-100% - 8px))',
-                  }}
-                >
-                  <div className="font-semibold mb-1.5">{d.date}</div>
-                  {rows.length === 0 ? (
-                    <div className="text-muted-foreground">{tx('No spend')}</div>
-                  ) : (
-                    <>
-                      {rows.map((r) => (
-                        <div key={r.project} className="flex items-center gap-2 py-0.5">
-                          <span
-                            className="h-2 w-2 rounded-full shrink-0"
-                            style={{ backgroundColor: r.color }}
-                          />
-                          <span className="flex-1 truncate">{r.project}</span>
-                          <span className="tabular-nums">{formatCents(r.costCents)}</span>
-                        </div>
-                      ))}
-                      <div className="h-px bg-border my-1.5" />
-                      <div className="flex items-center justify-between py-0.5 font-semibold">
-                        <span>{tx('Total')}</span>
-                        <span className="tabular-nums">{formatCents(d.total)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-        </div>
-
-        {/* Project legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          {projects.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
-            >
-              <span
-                className="h-2 w-2 rounded-sm"
-                style={{ backgroundColor: projectColorMap.get(p.id) }}
-              />
-              {p.name}
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Per-key spend breakdown — pure money view. Cap-related chrome
            (progress bars, /limit suffixes, per-key spend caps subtext)
@@ -558,7 +211,6 @@ export default function BillingPage() {
         ) : (
           <ul className="divide-y divide-border">
             {sortedKeys.map((k) => {
-              const project = projects.find((p) => p.id === k.projectId);
               const monthCalls = callsByKeyThisMonth.get(k.id) ?? 0;
               const monthSpend = spendByKeyThisMonth.get(k.id) ?? 0;
               const revoked = k.status === 'revoked';
@@ -568,28 +220,17 @@ export default function BillingPage() {
                   key={k.id}
                   className="px-5 py-3 flex flex-wrap items-center gap-3"
                 >
-                  <div className="flex-1 min-w-[180px]">
-                    <div className="text-sm font-medium flex items-center gap-2">
-                      <span className="truncate">{k.name}</span>
-                      {revoked && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
-                          {tx('Revoked')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                      {project && (
-                        <>
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ backgroundColor: projectColorMap.get(project.id) }}
-                          />
-                          <span>{project.name}</span>
-                          <span className="text-border">·</span>
-                        </>
-                      )}
-                      <span className="font-mono">{k.maskedSecret.slice(-12)}</span>
-                    </div>
+                  <div className="flex-1 min-w-[140px] text-sm font-medium flex items-center gap-2">
+                    <span className="truncate">{k.name}</span>
+                    {revoked && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
+                        {tx('Revoked')}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="min-w-[120px] font-mono text-[11px] text-muted-foreground truncate">
+                    {k.maskedSecret.slice(-12)}
                   </div>
 
                   <div className="min-w-[120px] text-right">
@@ -667,83 +308,16 @@ export default function BillingPage() {
         )}
       </div>
 
-      {/* Account-level management: deliberately slim. Saved cards live behind
-          a modal, not a big card, because net-new cards are added inside the
-          top-up flow and this module is only for cleanup. */}
-      <div className="rounded-xl border border-border bg-muted/20 px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <CreditCard className="h-3.5 w-3.5" />
-          <span>
-            {tx('Saved cards auto-fill at checkout. New cards are added during a top-up.')}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setManageCardsOpen(true)}
-          className="text-xs font-medium text-foreground hover:underline underline-offset-2"
-        >
-          {tx('Manage saved cards')} →
-        </button>
-      </div>
-
       <p className="text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1.5">
         <HelpCircle className="h-3 w-3 mt-0.5 shrink-0" />
-        {tx('Invoices are emailed to the receipt email on your account. Billing currency is USD. Taxes collected via Stripe Tax where applicable.')}
+        {tx('Payment receipts are emailed to the receipt email on your account. Billing currency is USD.')}
       </p>
 
       {/* Modals */}
       <StripeCheckoutModal
         open={addCreditsOpen}
         onClose={() => setAddCreditsOpen(false)}
-        mode="add-credits"
       />
-
-      <ManageSavedCardsModal
-        open={manageCardsOpen}
-        onClose={() => setManageCardsOpen(false)}
-      />
-    </div>
-  );
-}
-
-/**
- * Compact dropdown used in the cost chart's filter bar (project / key / model).
- * Styled as a chip with truncation so several filters can fit in one row.
- */
-function FilterSelect({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 pl-3 pr-8 text-xs font-medium rounded-lg border border-border bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-ring/20 max-w-[180px] truncate"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <svg
-        className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
     </div>
   );
 }

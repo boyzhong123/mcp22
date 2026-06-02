@@ -6,7 +6,6 @@ import {
   CreditCard,
   DollarSign,
   Lock,
-  Mail,
   Rss,
   TrendingDown,
   Wallet,
@@ -27,9 +26,7 @@ import { useLang } from '../../_lib/use-lang';
 const DEFAULT_NOTIF: NotificationSettings = {
   weeklyUsageReport: true,
   paymentReceipts: true,
-  invoiceReady: true,
   spendLimitAlerts: true,
-  lowBalanceAlertsMaster: true,
   productUpdates: false,
   securityAlerts: true,
 };
@@ -82,21 +79,11 @@ export default function SettingsPage() {
             icon={CreditCard}
             label={t('Payment receipts', '付款回执')}
             desc={t(
-              'Sent every time a top-up succeeds. Includes the invoice PDF.',
-              '每次充值成功后发送，附发票 PDF。',
+              'Sent every time a top-up succeeds.',
+              '每次充值成功后发送。',
             )}
             on={notif.paymentReceipts}
             onChange={(v) => patch({ paymentReceipts: v })}
-          />
-          <Toggle
-            icon={Mail}
-            label={t('Monthly invoice ready', '月度发票就绪')}
-            desc={t(
-              'First of every month, a combined invoice for the previous month.',
-              '每月 1 日收到上月合并发票。',
-            )}
-            on={notif.invoiceReady}
-            onChange={(v) => patch({ invoiceReady: v })}
           />
           <Toggle
             icon={DollarSign}
@@ -107,19 +94,6 @@ export default function SettingsPage() {
             )}
             on={notif.spendLimitAlerts}
             onChange={(v) => patch({ spendLimitAlerts: v })}
-          />
-          <Toggle
-            icon={Bell}
-            label={t(
-              'Low-balance email (master)',
-              '余额不足邮件（总开关）',
-            )}
-            desc={t(
-              'Master switch for the account-level low-balance alert configured above. Off here mutes the email; the in-app banner still shows.',
-              '总开关关闭后将不再发送上方账户级余额不足邮件，但应用内提示仍会显示。',
-            )}
-            on={notif.lowBalanceAlertsMaster}
-            onChange={(v) => patch({ lowBalanceAlertsMaster: v })}
           />
           <Toggle
             icon={Rss}
@@ -211,8 +185,8 @@ function AccountAlertSection({
             </label>
             <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
               {t(
-                'Common picks: $5 (heads-up), $20 (refill soon), $50 (paid-team default).',
-                '常用值：$5（提前预警）、$20（尽快充值）、$50（团队付费默认）。',
+                'Common picks: $5 (heads-up), $20 (refill soon), $50 (paid account default).',
+                '常用值：$5（提前预警）、$20（尽快充值）、$50（付费账户默认）。',
               )}
             </p>
           </div>

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { BrandLoader } from './brand-loader';
 import { useMockAuth, type MockUser } from '../_lib/mock-auth';
 import { useLang } from '../_lib/use-lang';
 import { openPalette, toggleSidebar } from '../_lib/ui-store';
@@ -68,7 +69,15 @@ export function DevEnSidebar() {
   const { user, logout } = useMockAuth();
   const { t } = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Track the link the user just clicked so we can swap its icon for the
+  // brand loader until the new route commits. Cleared whenever the pathname
+  // settles (navigation done) below.
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const collapsed = useUi((s) => s.sidebarCollapsed);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   // ⌘B toggles the sidebar (Linear / Notion convention). We attach the
   // listener once at mount — keyboard shortcut conflicts get adjudicated
@@ -100,9 +109,21 @@ export function DevEnSidebar() {
         <Menu className="h-4 w-4" />
       </button>
 
+      {/* Navigation loading hint — appears the instant a section is clicked and
+          clears when the new route commits (pendingHref resets on pathname
+          change). A small centered card with our brand mark, not a full-screen
+          mask: the page stays visible and interactive underneath. */}
+      {pendingHref && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+          <div className="rounded-2xl border border-border bg-background/95 shadow-xl px-8 py-6 animate-in fade-in zoom-in-95 duration-150">
+            <BrandLoader size={48} label={t('Loading…', '加载中…')} />
+          </div>
+        </div>
+      )}
+
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 z-40 bg-black/25"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -221,7 +242,10 @@ export function DevEnSidebar() {
                 item={item}
                 isActive={isActiveHref(pathname, item.href)}
                 collapsed={collapsed}
-                onNavigate={() => setMobileOpen(false)}
+                onNavigate={() => {
+                  setMobileOpen(false);
+                  if (!isActiveHref(pathname, item.href)) setPendingHref(item.href);
+                }}
                 label={t(item.label, item.zhLabel)}
               />
             ))}
@@ -244,7 +268,10 @@ export function DevEnSidebar() {
               isActive={false}
               collapsed={collapsed}
               label={t('API Docs', 'API 文档')}
-              onNavigate={() => setMobileOpen(false)}
+              onNavigate={() => {
+                setMobileOpen(false);
+                setPendingHref('/global/docs?from=dev');
+              }}
             />
           </div>
         </nav>

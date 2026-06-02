@@ -1,83 +1,50 @@
-import { buildUrl, invalidate, request } from './client';
+import { invalidate, request } from './client';
 import type {
-  PaymentMethod,
+  AccountBalance,
+  AccountLimits,
+  BillingSummary,
   PricingInfo,
-  SpendLimit,
+  TopupOrder,
   Transaction,
   TransactionListResponse,
 } from './types';
 
+// doc §5.1
+export function balance(): Promise<AccountBalance> {
+  return request<AccountBalance>('/billing/balance');
+}
+
+// doc §5.2
 export function pricing(): Promise<PricingInfo> {
   return request<PricingInfo>('/billing/pricing');
 }
 
-export function getSpendLimit(): Promise<SpendLimit> {
-  return request<SpendLimit>('/billing/spend-limit');
+// doc §5.10
+export function summary(): Promise<BillingSummary> {
+  return request<BillingSummary>('/billing/summary');
 }
 
-export async function setSpendLimit(patch: {
-  monthly_limit_cents?: number;
-  alert_threshold_pct?: number;
-}): Promise<SpendLimit> {
-  const data = await request<SpendLimit>('/billing/spend-limit', { method: 'PUT', body: patch });
+// doc §5.8 — account-level four-axis limits.
+export function getLimits(): Promise<AccountLimits> {
+  return request<AccountLimits>('/billing/limits');
+}
+
+// doc §5.9 — all fields optional; only the ones sent are updated.
+export async function setLimits(patch: Partial<AccountLimits>): Promise<AccountLimits> {
+  const data = await request<AccountLimits>('/billing/limits', { method: 'PUT', body: patch });
   invalidate('spend-limit');
   return data;
 }
 
-export function listPaymentMethods(): Promise<PaymentMethod[]> {
-  return request<PaymentMethod[]>('/billing/payment-methods');
+// doc §5.3 — create a PayPal order; returns the PayPal order id + our
+// transaction id. The browser then drives buyer approval via the PayPal SDK.
+export function createTopupOrder(params: { amount_cents: number }): Promise<TopupOrder> {
+  return request<TopupOrder>('/billing/topups/order', { method: 'POST', body: params });
 }
 
-export function createSetupIntent(): Promise<{ client_secret: string; setup_intent_id: string }> {
-  return request<{ client_secret: string; setup_intent_id: string }>(
-    '/billing/payment-methods/setup-intent',
-    { method: 'POST' },
-  );
-}
-
-export async function confirmSetup(params: {
-  setup_intent_id: string;
-  make_default?: boolean;
-}): Promise<PaymentMethod> {
-  const data = await request<PaymentMethod>('/billing/payment-methods/confirm', {
-    method: 'POST',
-    body: params,
-  });
-  invalidate('payment-methods');
-  return data;
-}
-
-export async function setDefaultPaymentMethod(id: number): Promise<void> {
-  await request<{ message: string }>(`/billing/payment-methods/${id}/default`, { method: 'POST' });
-  invalidate('payment-methods');
-}
-
-export async function deletePaymentMethod(id: number): Promise<void> {
-  await request<unknown>(`/billing/payment-methods/${id}`, { method: 'DELETE' });
-  invalidate('payment-methods');
-}
-
-export interface TopupIntentParams {
-  key_id: number;
-  amount_cents: number;
-  method: string; // 'card'
-  payment_method_id?: number;
-  country?: string;
-  save_payment_method?: boolean;
-}
-
-export function createTopupIntent(
-  params: TopupIntentParams,
-): Promise<{ client_secret: string; payment_intent_id: string; transaction_id: number }> {
-  return request<{
-    client_secret: string;
-    payment_intent_id: string;
-    transaction_id: number;
-  }>('/billing/topups/intent', { method: 'POST', body: params });
-}
-
-export async function confirmTopup(transactionId: number): Promise<Transaction> {
-  const data = await request<Transaction>(`/billing/topups/${transactionId}/confirm`, {
+// doc §5.4 — capture an approved order by our transaction id.
+export async function captureTopup(transactionId: number): Promise<Transaction> {
+  const data = await request<Transaction>(`/billing/topups/${transactionId}/capture`, {
     method: 'POST',
   });
   invalidate('transactions');
@@ -85,10 +52,10 @@ export async function confirmTopup(transactionId: number): Promise<Transaction> 
   return data;
 }
 
+// doc §5.5
 export interface TransactionsQuery {
   page?: number;
   page_size?: number;
-  key_id?: number;
   kind?: string;
   from?: string;
   to?: string;
@@ -98,12 +65,7 @@ export function listTransactions(q: TransactionsQuery = {}): Promise<Transaction
   return request<TransactionListResponse>('/billing/transactions', { query: q });
 }
 
-export async function downloadInvoice(invoiceNumber: string): Promise<{ blob: Blob; filename: string }> {
-  const blob = await request<Blob>(`/billing/invoices/${invoiceNumber}`, { asBlob: true });
-  const filename = invoiceNumber.endsWith('.pdf') ? invoiceNumber : `${invoiceNumber}.pdf`;
-  return { blob, filename };
-}
-
-export function invoiceUrl(invoiceNumber: string): string {
-  return buildUrl(`/billing/invoices/${invoiceNumber}`);
+// doc §5.6
+export function transactionDetail(id: number): Promise<Transaction> {
+  return request<Transaction>(`/billing/transactions/${id}`);
 }

@@ -3,16 +3,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Download } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  BarChart3,
+  ChevronDown,
+  Download,
+  LayoutGrid,
+} from 'lucide-react';
+import { UsageActivityHeatmap } from '../../_components/usage-activity-heatmap';
 import { cn } from '@/lib/utils';
 import {
   formatCents,
   getUsage,
   keyLast4,
   listKeys,
-  listProjects,
   type ApiKey,
-  type Project,
   type UsagePoint,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
@@ -38,11 +45,9 @@ export default function UsagePage() {
   const { t, tx } = useLang();
   const usage = useMockStore(getUsage, [] as UsagePoint[]);
   const keys = useMockStore(listKeys, [] as ApiKey[]);
-  const projects = useMockStore(listProjects, [] as Project[]);
   const searchParams = useSearchParams();
 
   const [period, setPeriod] = useState<Period>(28);
-  const [projectFilter, setProjectFilter] = useState<string>('all');
   const [keyFilter, setKeyFilter] = useState<string>('all');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   // Chart Y-axis dimension toggle: stack daily *calls* (count) or daily
@@ -50,6 +55,7 @@ export default function UsagePage() {
   // mapping so users can flip between them mid-investigation without
   // losing context.
   const [chartMetric, setChartMetric] = useState<'calls' | 'cost'>('calls');
+  const [chartView, setChartView] = useState<'bars' | 'heatmap'>('bars');
   // Per-key breakdown table sort. `column` selects which numeric column
   // drives the order; `dir` toggles ascending/descending. Default is
   // calls-desc, matching the natural "biggest spender first" expectation.
@@ -68,28 +74,17 @@ export default function UsagePage() {
     // filter alone so the page doesn't render an empty state for a stale id.
     if (keys.some((k) => k.id === kid)) {
       setKeyFilter(kid);
-      const k = keys.find((kk) => kk.id === kid);
-      if (k) setProjectFilter(k.projectId);
     }
   }, [searchParams, keys]);
-
-  const filteredKeys = useMemo(
-    () =>
-      projectFilter === 'all'
-        ? keys
-        : keys.filter((k) => k.projectId === projectFilter),
-    [keys, projectFilter],
-  );
 
   const filteredUsage = useMemo(() => {
     return usage.filter((p) => {
       const key = keys.find((k) => k.id === p.keyId);
       if (!key) return false;
-      if (projectFilter !== 'all' && key.projectId !== projectFilter) return false;
       if (keyFilter !== 'all' && p.keyId !== keyFilter) return false;
       return true;
     });
-  }, [usage, keys, projectFilter, keyFilter]);
+  }, [usage, keys, keyFilter]);
 
   // Keys that actually show up in the filtered window, sorted by total
   // calls desc. We use this list both for the stack order (largest on
@@ -217,8 +212,8 @@ export default function UsagePage() {
         <h1 className="text-2xl font-semibold tracking-[-0.02em]">{t('Usage', '用量')}</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {t(
-            'Operational view — MCP call volume sliced by project and key. For spend, credits, and payment head to ',
-            '运营视角 — 按项目、Key 切分的 MCP 调用量。消费、余额、付款请前往 ',
+            'Operational view — MCP call volume sliced by key. For spend, credits, and payment head to ',
+            '运营视角 — 按 Key 切分的 MCP 调用量。消费、余额、付款请前往 ',
           )}
           <Link
             href="/dashboard/billing"
@@ -233,24 +228,12 @@ export default function UsagePage() {
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
         <FilterSelect
-          label={tx('Project')}
-          value={projectFilter}
-          onChange={(v) => {
-            setProjectFilter(v);
-            setKeyFilter('all');
-          }}
-          options={[
-            { value: 'all', label: tx('All projects') },
-            ...projects.map((p) => ({ value: p.id, label: p.name })),
-          ]}
-        />
-        <FilterSelect
           label={tx('Key')}
           value={keyFilter}
           onChange={setKeyFilter}
           options={[
             { value: 'all', label: tx('All keys') },
-            ...filteredKeys.map((k) => ({
+            ...keys.map((k) => ({
               value: k.id,
               label: `${k.name} · ${keyLast4(k.secret)}`,
             })),
@@ -280,9 +263,7 @@ export default function UsagePage() {
               exportUsageCsv({
                 rows: filteredUsage,
                 keys,
-                projects,
                 period,
-                projectFilter,
                 keyFilter,
               })
             }
@@ -313,52 +294,98 @@ export default function UsagePage() {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {isCostMetric
-                ? t('Daily spend by key', '按 KEY 查看每日花费')
-                : t('Daily calls by key', '按 KEY 查看每日调用')}
+              {chartView === 'heatmap'
+                ? isCostMetric
+                  ? t('Daily spend', '每日花费')
+                  : t('Daily calls', '每日调用')
+                : isCostMetric
+                  ? t('Daily spend by key', '按 KEY 查看每日花费')
+                  : t('Daily calls by key', '按 KEY 查看每日调用')}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
-              {isCostMetric
-                ? t(
-                    `${formatCents(kpiTotalCost)} spend · last ${period} days`,
-                    `过去 ${period} 天 · 共花费 ${formatCents(kpiTotalCost)}`,
-                  )
-                : t(
-                    `${kpiTotalCalls.toLocaleString('en-US')} calls · last ${period} days`,
-                    `过去 ${period} 天 · ${kpiTotalCalls.toLocaleString('en-US')} 次调用`,
-                  )}
+              {chartView === 'heatmap'
+                ? isCostMetric
+                  ? t(
+                      `${formatCents(kpiTotalCost)} spend · ${period} days · one square per day`,
+                      `过去 ${period} 天 · 共花费 ${formatCents(kpiTotalCost)} · 每格一天`,
+                    )
+                  : t(
+                      `${kpiTotalCalls.toLocaleString('en-US')} calls · ${period} days · one square per day`,
+                      `过去 ${period} 天 · ${kpiTotalCalls.toLocaleString('en-US')} 次调用 · 每格一天`,
+                    )
+                : isCostMetric
+                  ? t(
+                      `${formatCents(kpiTotalCost)} spend · last ${period} days`,
+                      `过去 ${period} 天 · 共花费 ${formatCents(kpiTotalCost)}`,
+                    )
+                  : t(
+                      `${kpiTotalCalls.toLocaleString('en-US')} calls · last ${period} days`,
+                      `过去 ${period} 天 · ${kpiTotalCalls.toLocaleString('en-US')} 次调用`,
+                    )}
             </div>
           </div>
-          {/* Metric toggle — segmented control. Sits next to the legend
-              so the chart's two "what am I looking at?" controls live
-              together. */}
-          <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5 text-[11px] font-medium">
-            <button
-              type="button"
-              onClick={() => setChartMetric('calls')}
-              className={cn(
-                'h-6 px-2.5 rounded-md transition-colors',
-                !isCostMetric
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t('Calls', '次数')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartMetric('cost')}
-              className={cn(
-                'h-6 px-2.5 rounded-md transition-colors',
-                isCostMetric
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t('Spend', '金额')}
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Chart type: stacked bars vs GitHub-style activity heatmap */}
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5 text-[11px] font-medium">
+              <button
+                type="button"
+                onClick={() => setChartView('bars')}
+                className={cn(
+                  'inline-flex items-center gap-1 h-6 px-2 rounded-md transition-colors',
+                  chartView === 'bars'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                title={t('Bar chart', '柱状图')}
+              >
+                <BarChart3 className="h-3 w-3" />
+                {t('Bars', '柱状')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartView('heatmap')}
+                className={cn(
+                  'inline-flex items-center gap-1 h-6 px-2 rounded-md transition-colors',
+                  chartView === 'heatmap'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                title={t('Activity heatmap', '活动热图')}
+              >
+                <LayoutGrid className="h-3 w-3" />
+                {t('Heatmap', '热图')}
+              </button>
+            </div>
+            {/* Metric toggle — calls vs spend; shared by both chart types */}
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5 text-[11px] font-medium">
+              <button
+                type="button"
+                onClick={() => setChartMetric('calls')}
+                className={cn(
+                  'h-6 px-2.5 rounded-md transition-colors',
+                  !isCostMetric
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t('Calls', '次数')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMetric('cost')}
+                className={cn(
+                  'h-6 px-2.5 rounded-md transition-colors',
+                  isCostMetric
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t('Spend', '金额')}
+              </button>
+            </div>
           </div>
         </div>
+        {chartView === 'bars' && (
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
           {activeKeys.map((k) => (
             <div key={k.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -370,9 +397,24 @@ export default function UsagePage() {
             </div>
           ))}
         </div>
+        )}
 
-        {/* See billing/page.tsx for the rationale: outer wrapper owns the
-            tooltip (overflow: visible), inner wrapper owns horizontal scroll. */}
+        {chartView === 'heatmap' ? (
+          <div className="mt-4">
+            <UsageActivityHeatmap
+              days={stackedData.map((d) => ({
+                date: d.date,
+                value: dayTotal(d),
+              }))}
+              formatValue={formatTooltipValue}
+              metricLabel={
+                isCostMetric ? t('spent', '消费') : t('calls', '次调用')
+              }
+            />
+          </div>
+        ) : (
+        /* See billing/page.tsx for the rationale: outer wrapper owns the
+            tooltip (overflow: visible), inner wrapper owns horizontal scroll. */
         <div className="mt-4 relative">
           <div className="overflow-x-auto">
             <svg
@@ -531,6 +573,7 @@ export default function UsagePage() {
             })()
           )}
         </div>
+        )}
       </div>
 
       {/* Per-key breakdown */}
@@ -545,8 +588,8 @@ export default function UsagePage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/30">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-5 py-2.5 font-semibold">{tx('Name')}</th>
                 <th className="text-left px-5 py-2.5 font-semibold">{tx('Key')}</th>
-                <th className="text-left px-5 py-2.5 font-semibold">{tx('Project')}</th>
                 <th className="text-right px-5 py-2.5 font-semibold">
                   <SortHeader
                     label={tx('Calls')}
@@ -573,29 +616,18 @@ export default function UsagePage() {
                   </td>
                 </tr>
               ) : (
-                perKeyBreakdown.map((row) => {
-                  const proj = projects.find((p) => p.id === row.key!.projectId);
-                  return (
-                    <tr key={row.key!.id}>
-                      <td className="px-5 py-3">
-                        <div className="text-sm font-medium">{row.key!.name}</div>
-                        <div className="font-mono text-[11px] text-muted-foreground">
-                          {keyLast4(row.key!.secret)}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="text-xs font-medium truncate">{proj?.name ?? '—'}</div>
-                        <div className="font-mono text-[11px] text-muted-foreground">
-                          {proj?.slug}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-right tabular-nums">
-                        {row.calls.toLocaleString('en-US')}
-                      </td>
-                      <td className="px-5 py-3 text-right tabular-nums">{formatCents(row.cost)}</td>
-                    </tr>
-                  );
-                })
+                perKeyBreakdown.map((row) => (
+                  <tr key={row.key!.id}>
+                    <td className="px-5 py-3 text-sm font-medium">{row.key!.name}</td>
+                    <td className="px-5 py-3 font-mono text-[11px] text-muted-foreground">
+                      {keyLast4(row.key!.secret)}
+                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums">
+                      {row.calls.toLocaleString('en-US')}
+                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums">{formatCents(row.cost)}</td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -705,26 +737,21 @@ function Kpi({
 
 /**
  * CSV export — reflects current filter state. Emits a header row + one row
- * per usage point, with project/key metadata joined in for readability. We
+ * per usage point, with key metadata joined in for readability. We
  * RFC 4180-escape every cell (double any quotes, wrap anything with comma /
  * newline / quote in quotes) to avoid Excel corruption.
  */
 function exportUsageCsv(input: {
   rows: UsagePoint[];
   keys: ApiKey[];
-  projects: Project[];
   period: Period;
-  projectFilter: string;
   keyFilter: string;
 }) {
-  const { rows, keys, projects, period, projectFilter, keyFilter } = input;
+  const { rows, keys, period, keyFilter } = input;
   const keyById = new Map(keys.map((k) => [k.id, k]));
-  const projectById = new Map(projects.map((p) => [p.id, p]));
 
   const header = [
     'date',
-    'project_id',
-    'project_name',
     'key_id',
     'key_name',
     'key_masked',
@@ -738,13 +765,10 @@ function exportUsageCsv(input: {
   const lines: string[] = [header.join(',')];
   for (const r of sorted) {
     const key = keyById.get(r.keyId);
-    const project = key ? projectById.get(key.projectId) : undefined;
     const net = r.costCents - r.savingsCents;
     lines.push(
       [
         r.date,
-        key?.projectId ?? '',
-        project?.name ?? '',
         r.keyId,
         key?.name ?? '',
         key?.maskedSecret ?? '',
@@ -761,7 +785,6 @@ function exportUsageCsv(input: {
   const today = new Date().toISOString().slice(0, 10);
   const scope = [
     `period-${period}d`,
-    projectFilter === 'all' ? 'all-projects' : projectFilter,
     keyFilter === 'all' ? 'all-keys' : keyFilter,
   ].join('_');
   const filename = `chivox-usage_${today}_${scope}.csv`;

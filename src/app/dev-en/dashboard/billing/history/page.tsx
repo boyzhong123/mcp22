@@ -1,29 +1,63 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Download, Filter, Receipt, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronRight, Filter, Receipt, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   formatCents,
   formatDate,
-  getKey,
   getTransactions,
-  listProjects,
   type Transaction,
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
-import { useMockAuth } from '../../../_lib/mock-auth';
+import { billing } from '../../../_lib/api';
+import { RechargeTrends } from '../../../_components/recharge-trends';
 
 type StatusFilter = 'all' | Transaction['status'];
 
 export default function RechargeHistoryPage() {
   const { t, tx } = useLang();
-  const { user } = useMockAuth();
   const all = useMockStore(getTransactions, [] as Transaction[]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
-  const [downloading, setDownloading] = useState<string | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedTransaction) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedTransaction(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTransaction]);
+
+  const openTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    const match = transaction.id.match(/^tx_(\d+)$/);
+    if (!match) return;
+
+    setDetailLoading(true);
+    void billing
+      .transactionDetail(Number(match[1]))
+      .then((detail) => {
+        setSelectedTransaction((current) =>
+          current?.id === transaction.id
+            ? {
+                ...current,
+                description: detail.description ?? current.description,
+                balanceBeforeCents: detail.balance_before ?? current.balanceBeforeCents,
+                balanceAfterCents: detail.balance_after ?? current.balanceAfterCents,
+              }
+            : current,
+        );
+      })
+      .catch(() => {
+        // The list payload already contains enough detail to render the drawer.
+      })
+      .finally(() => setDetailLoading(false));
+  };
 
   const filtered = useMemo(() => {
     return all
@@ -32,50 +66,29 @@ export default function RechargeHistoryPage() {
         if (!query.trim()) return true;
         const q = query.toLowerCase();
         return (
-          t.invoiceNumber.toLowerCase().includes(q) ||
-          t.last4.includes(q) ||
-          t.description.toLowerCase().includes(q)
+          t.last4.includes(q) || t.description.toLowerCase().includes(q)
         );
       });
   }, [all, query, status]);
 
-  const totalSucceeded = useMemo(
-    () =>
-      all
-        .filter((t) => t.status === 'succeeded')
-        .reduce((acc, t) => acc + t.amountCents, 0),
+  const succeeded = useMemo(
+    () => all.filter((t) => t.status === 'succeeded'),
     [all],
   );
 
-  const handleDownload = (txn: Transaction) => {
-    setDownloading(txn.id);
-    // Short artificial delay so the spinner is visible — matches how a real
-    // invoice would be generated server-side and streamed.
-    window.setTimeout(() => {
-      try {
-        const html = buildInvoiceHtml(txn, {
-          customerName: user?.name ?? 'Customer',
-          customerEmail: user?.email ?? '',
-        });
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${txn.invoiceNumber}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } finally {
-        setDownloading(null);
-      }
-    }, 600);
-  };
+  const totalSucceeded = useMemo(
+    () => succeeded.reduce((acc, t) => acc + t.amountCents, 0),
+    [succeeded],
+  );
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <SummaryCard label={tx('Total transactions')} value={all.length.toString()} />
+        <SummaryCard
+          label={tx('Total transactions')}
+          value={succeeded.length.toString()}
+          hint={tx('Succeeded only')}
+        />
         <SummaryCard
           label={tx('Total paid')}
           value={formatCents(totalSucceeded)}
@@ -85,8 +98,12 @@ export default function RechargeHistoryPage() {
           label={tx('Latest top-up')}
           value={all[0] ? formatCents(all[0].amountCents) : '—'}
           hint={all[0] ? formatDate(all[0].createdAt) : tx('No payments yet')}
+          badge={all[0] ? <StatusPill status={all[0].status} /> : undefined}
         />
       </div>
+
+      {/* Recharge trend — top-ups bucketed by day / month / year / custom range. */}
+      <RechargeTrends />
 
       <div className="rounded-xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
@@ -95,7 +112,7 @@ export default function RechargeHistoryPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={tx('Search invoice #, last 4, description…')}
+              placeholder={tx('Search last 4 or description…')}
               className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
             />
           </div>
@@ -118,13 +135,13 @@ export default function RechargeHistoryPage() {
           </div>
         </div>
 
-        <div className="hidden md:grid grid-cols-[1.2fr_1fr_0.8fr_0.8fr_0.8fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/20 border-b border-border">
-          <div>{tx('Invoice')}</div>
+        <div className="hidden md:grid grid-cols-[1.6fr_1fr_0.8fr_0.8fr_0.8fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/20 border-b border-border">
+          <div>{tx('Description')}</div>
           <div>{tx('Date')}</div>
           <div>{tx('Amount')}</div>
           <div>{tx('Method')}</div>
           <div>{tx('Status')}</div>
-          <div className="text-right">{tx('Action')}</div>
+          <div />
         </div>
 
         {filtered.length === 0 ? (
@@ -140,50 +157,42 @@ export default function RechargeHistoryPage() {
         ) : (
           <ul className="divide-y divide-border">
             {filtered.map((t) => (
-              <li
-                key={t.id}
-                className="px-5 py-3.5 md:grid md:grid-cols-[1.2fr_1fr_0.8fr_0.8fr_0.8fr_auto] md:gap-4 md:items-center flex flex-col gap-1.5"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{t.invoiceNumber}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {t.description}
-                  </p>
-                </div>
-                <div className="text-xs text-muted-foreground">{formatDate(t.createdAt)}</div>
-                <div className="text-sm font-semibold tabular-nums">
-                  {formatCents(t.amountCents)}
-                </div>
-                <div className="text-xs text-muted-foreground capitalize">
-                  {(() => {
-                    const m = methodLabel(t.method, t.last4);
-                    if (m === 'Wire transfer') return tx('Wire transfer');
-                    if (m.startsWith('Card ')) return `${tx('Card')} •••• ${t.last4}`;
-                    return m;
-                  })()}
-                </div>
-                <div>
-                  <StatusPill status={t.status} />
-                </div>
-                <div className="md:text-right">
-                  <button
-                    onClick={() => handleDownload(t)}
-                    disabled={t.status !== 'succeeded' || downloading === t.id}
-                    className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted/50 text-xs font-medium disabled:opacity-50"
-                  >
-                    {downloading === t.id ? (
-                      <span className="h-3 w-3 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-                    ) : (
-                      <Download className="h-3.5 w-3.5" />
-                    )}
-                    {tx('Invoice')}
-                  </button>
-                </div>
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => openTransaction(t)}
+                  className="w-full px-5 py-3.5 md:grid md:grid-cols-[1.6fr_1fr_0.8fr_0.8fr_0.8fr_auto] md:gap-4 md:items-center flex flex-col gap-1.5 text-left hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{t.description}</p>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{formatDate(t.createdAt)}</div>
+                  <div className="text-sm font-semibold tabular-nums">
+                    {formatCents(t.amountCents)}
+                  </div>
+                  <div className="text-xs text-muted-foreground capitalize">
+                    {(() => {
+                      const m = methodLabel(t.method, t.last4);
+                      if (m === 'Wire transfer') return tx('Wire transfer');
+                      if (m.startsWith('Card ')) return `${tx('Card')} •••• ${t.last4}`;
+                      return m;
+                    })()}
+                  </div>
+                  <div>
+                    <StatusPill status={t.status} />
+                  </div>
+                  <ChevronRight className="hidden md:block h-4 w-4 text-muted-foreground/60" />
+                </button>
               </li>
             ))}
           </ul>
         )}
       </div>
+      <TransactionDetailDrawer
+        transaction={selectedTransaction}
+        loading={detailLoading}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </div>
   );
 }
@@ -192,18 +201,139 @@ function SummaryCard({
   label,
   value,
   hint,
+  badge,
 }: {
   label: string;
   value: string;
   hint?: string;
+  badge?: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-border bg-background p-5">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <div className="text-2xl font-semibold tracking-[-0.02em] mt-2">{value}</div>
+      <div className="mt-2 flex items-center gap-2">
+        <div className="text-2xl font-semibold tracking-[-0.02em]">{value}</div>
+        {badge}
+      </div>
       {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
     </div>
   );
+}
+
+function TransactionDetailDrawer({
+  transaction,
+  loading,
+  onClose,
+}: {
+  transaction: Transaction | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const { t, tx } = useLang();
+  if (!transaction) return null;
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        aria-label={tx('Close')}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transaction-detail-title"
+        className="absolute inset-y-0 right-0 w-full max-w-md bg-background border-l border-border shadow-2xl flex flex-col"
+      >
+        <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('Billing history', '充值记录')}
+            </p>
+            <h2 id="transaction-detail-title" className="mt-1 text-lg font-semibold">
+              {t('Transaction details', '交易详情')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={tx('Close')}
+            className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <div className="rounded-xl border border-border bg-muted/20 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{t('Top-up amount', '充值金额')}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {formatCents(transaction.amountCents)}
+                </p>
+              </div>
+              <StatusPill status={transaction.status} />
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">{transaction.description}</p>
+          </div>
+
+          <div className="rounded-xl border border-border divide-y divide-border">
+            <DetailRow label={t('Payment method', '支付方式')} value={methodLabel(transaction.method, transaction.last4)} />
+            <DetailRow label={t('Transaction time', '交易时间')} value={formatDate(transaction.createdAt)} />
+            <DetailRow label={t('PayPal order ID', 'PayPal 订单号')} value={transaction.paypalOrderId ?? '—'} mono />
+            <DetailRow label={t('Transaction ID', '交易 ID')} value={transaction.id} mono />
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('Wallet balance change', '钱包余额变化')}
+            </h3>
+            <div className="rounded-xl border border-border divide-y divide-border">
+              <DetailRow
+                label={t('Balance before', '充值前余额')}
+                value={formatOptionalCents(transaction.balanceBeforeCents)}
+              />
+              <DetailRow
+                label={t('Balance after', '充值后余额')}
+                value={formatOptionalCents(transaction.balanceAfterCents)}
+              />
+            </div>
+          </div>
+
+          {loading && (
+            <p className="text-xs text-muted-foreground">
+              {t('Refreshing transaction details…', '正在刷新交易详情…')}
+            </p>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={cn('text-right font-medium break-all', mono && 'font-mono text-xs')}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function formatOptionalCents(cents?: number): string {
+  return typeof cents === 'number' ? formatCents(cents) : '—';
 }
 
 function methodLabel(method: Transaction['method'], last4: string) {
@@ -227,138 +357,6 @@ function methodLabel(method: Transaction['method'], last4: string) {
     default:
       return `Card •••• ${last4}`;
   }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/**
- * Build a self-contained HTML invoice. We ship HTML (not PDF) so the demo has
- * zero JS dependencies — the user can print-to-PDF from the browser for a
- * pixel-perfect copy, and it also previews cleanly when opened from downloads.
- */
-function buildInvoiceHtml(
-  txn: Transaction,
-  meta: { customerName: string; customerEmail: string },
-): string {
-  const projects = listProjects();
-  const project = txn.projectId ? projects.find((p) => p.id === txn.projectId) : undefined;
-  const key = txn.keyId ? getKey(txn.keyId) : undefined;
-  const issuedAt = new Date(txn.createdAt);
-  const subtotal = txn.amountCents;
-  const tax = 0;
-  const total = subtotal + tax;
-
-  const rows: Array<[string, string]> = [
-    ['Description', txn.description],
-    ['Method', methodLabel(txn.method, txn.last4)],
-    ...(project ? ([['Project', project.name]] as Array<[string, string]>) : []),
-    ...(key ? ([['API key', `${key.name} (${key.maskedSecret})`]] as Array<[string, string]>) : []),
-    ['Status', txn.status.toUpperCase()],
-  ];
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>Invoice ${escapeHtml(txn.invoiceNumber)}</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #111; margin: 0; padding: 48px; max-width: 780px; background: #fff; }
-  header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 24px; border-bottom: 2px solid #111; margin-bottom: 32px; }
-  .brand { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-  .brand small { display: block; font-size: 11px; font-weight: 400; color: #666; margin-top: 2px; letter-spacing: 0; }
-  .title { text-align: right; }
-  .title h1 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
-  .title p { margin: 4px 0 0 0; font-size: 12px; color: #666; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px; }
-  h2 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #666; margin: 0 0 8px; }
-  .block { font-size: 13px; line-height: 1.55; }
-  .block strong { display: block; font-weight: 600; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
-  table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #666; border-bottom: 1px solid #e5e5e5; padding: 8px 4px; font-weight: 600; }
-  table td { padding: 10px 4px; border-bottom: 1px solid #f2f2f2; vertical-align: top; }
-  table td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-  .totals { margin-left: auto; width: 280px; font-size: 13px; }
-  .totals div { display: flex; justify-content: space-between; padding: 6px 0; }
-  .totals .total { border-top: 2px solid #111; margin-top: 4px; padding-top: 10px; font-size: 15px; font-weight: 700; }
-  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #e5e5e5; font-size: 11px; color: #666; line-height: 1.55; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
-  .pill.succeeded { background: #e6f9ef; color: #047857; }
-  .pill.pending { background: #fef3c7; color: #92400e; }
-  .pill.failed { background: #fee2e2; color: #991b1b; }
-  @media print { body { padding: 24px; } }
-</style>
-</head>
-<body>
-  <header>
-    <div class="brand">
-      Chivox, Inc.
-      <small>383 Madison Avenue · New York, NY 10017 · United States</small>
-      <small>EIN 88-0000000 · support@chivox.com</small>
-    </div>
-    <div class="title">
-      <h1>Invoice</h1>
-      <p>${escapeHtml(txn.invoiceNumber)}</p>
-      <p>Issued ${escapeHtml(issuedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }))}</p>
-      <p><span class="pill ${txn.status}">${escapeHtml(txn.status.toUpperCase())}</span></p>
-    </div>
-  </header>
-
-  <div class="grid">
-    <div>
-      <h2>Bill to</h2>
-      <div class="block">
-        <strong>${escapeHtml(meta.customerName)}</strong>
-        ${meta.customerEmail ? escapeHtml(meta.customerEmail) : ''}
-      </div>
-    </div>
-    <div>
-      <h2>Payment details</h2>
-      <div class="block">
-        ${rows.map(([k, v]) => `<div><strong>${escapeHtml(k)}</strong>${escapeHtml(v)}</div>`).join('')}
-      </div>
-    </div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 60%">Line item</th>
-        <th style="width: 15%">Qty</th>
-        <th style="width: 25%; text-align: right">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>
-          <strong>${escapeHtml(txn.description)}</strong><br/>
-          <span style="color:#666;font-size:12px">Prepaid credits applied to ${escapeHtml(key?.name ?? 'your account')}. Unused credits carry forward.</span>
-        </td>
-        <td>1</td>
-        <td class="amount">${escapeHtml(formatCents(subtotal))}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="totals">
-    <div><span>Subtotal</span><span>${escapeHtml(formatCents(subtotal))}</span></div>
-    <div><span>Tax</span><span>${escapeHtml(formatCents(tax))}</span></div>
-    <div class="total"><span>Total paid</span><span>${escapeHtml(formatCents(total))}</span></div>
-  </div>
-
-  <footer>
-    Thank you for your business. Payment has been received in full.<br/>
-    Questions? Email <a href="mailto:billing@chivox.com">billing@chivox.com</a> and reference invoice ${escapeHtml(txn.invoiceNumber)}.
-  </footer>
-</body>
-</html>`;
 }
 
 function StatusPill({ status }: { status: Transaction['status'] }) {

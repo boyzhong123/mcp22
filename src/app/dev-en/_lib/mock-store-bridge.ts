@@ -2,29 +2,28 @@
 
 // Hydration bridge: pulls data from the real backend API (via _lib/api) and
 // pushes it into the legacy mock-store cache so the original UI components
-// (which still read via listKeys/getStarterKey/etc.) display real data.
-//
-// Fields the backend doesn't provide are filled with sensible placeholders
-// and marked with `// TODO: backend missing field` so we can wire them up
-// later without changing UI markup.
+// (which still read via listKeys/getWallet/getSpendLimit/etc.) display real
+// data. Mutations made through the legacy mock-store mutators are forwarded to
+// the real backend here; the api/* modules then `invalidate(...)` which makes
+// DataHydrator re-pull authoritative data.
 
 import {
   __markSeeded,
   __replaceCache,
   __setMutationProxy,
   maskSecret,
+  TRIAL_DEFAULT_TOTAL,
+  TRIAL_DEFAULT_VALID_DAYS,
+  type AccountLowBalanceAlert,
+  type AccountWallet,
   type ApiKey as MockApiKey,
   type Environment,
   type NotificationSettings as MockNotifications,
-  type PaymentMethod as MockPaymentMethod,
-  type Project as MockProject,
   type SpendLimit as MockSpendLimit,
-  type TeamMember as MockTeamMember,
-  type TeamRole,
   type Transaction as MockTransaction,
   type TransactionKind,
+  type TrialAllowance,
   type UsagePoint as MockUsagePoint,
-  type CardBrand,
 } from './mock-store';
 import {
   billing,
@@ -32,21 +31,20 @@ import {
   getToken,
   keys as keysApi,
   notifications as notifApi,
-  team as teamApi,
   usage as usageApi,
 } from './api';
 import type {
+  AccountLimits as RealAccountLimits,
   ApiKey as RealApiKey,
-  PaymentMethod as RealPaymentMethod,
-  SpendLimit as RealSpendLimit,
-  TeamMember as RealTeamMember,
+  BillingSummary,
+  NotificationSettings as RealNotifications,
   Transaction as RealTransaction,
+  UsagePoint as RealUsagePoint,
 } from './api';
 
 // ────────────────────────────────────────────────────────────────────────────
-// ID encoding: mock-store uses string ids ("key_xxx", "tm_xxx", "proj_xxx").
-// Real backend uses numeric ids. We encode the numeric id as `<prefix><id>`
-// so all UI string-id pathways still work; idFromMockKey() decodes back.
+// ID encoding: mock-store uses string ids ("key_xxx"); the backend uses numeric
+// ids. We encode `<prefix><id>` so the string-id UI pathways keep working.
 
 export function mockKeyId(id: number): string {
   return `key_${id}`;
@@ -55,73 +53,89 @@ export function realKeyId(mockId: string): number {
   const m = mockId.match(/^key_(\d+)$/);
   return m ? Number(m[1]) : Number(mockId);
 }
-export function mockTeamMemberId(id: number): string {
-  return `tm_${id}`;
-}
-export function realTeamMemberId(mockId: string): number {
-  const m = mockId.match(/^tm_(\d+)$/);
-  return m ? Number(m[1]) : Number(mockId);
-}
 export function mockTxId(id: number): string {
   return `tx_${id}`;
 }
-export function mockPmId(id: number): string {
-  return `pm_${id}`;
-}
-export function realPmId(mockId: string): number {
-  const m = mockId.match(/^pm_(\d+)$/);
-  return m ? Number(m[1]) : Number(mockId);
+
+// A backend cap of 0 means "unlimited"; the mock-store represents that as null.
+function capOrNull(v: number | undefined | null): number | null {
+  return typeof v === 'number' && v > 0 ? v : null;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // Mappers
 
 function mapKey(k: RealApiKey): MockApiKey {
-  const env: Environment = k.api_key?.startsWith('sk_test_') ? 'development' : 'production';
-  const totalLimit = k.total_limit ?? k.limit?.total_limit ?? 0;
-  const periodLimit = k.period_limit ?? k.limit?.period_limit ?? 0;
-  const totalUsed = k.total_used ?? 0;
-  const periodUsed = k.period_used ?? 0;
+  const env: Environment = k.env === 'development' ? 'development' : 'production';
 
-  // Heuristic: starter key has both lifetime and per-day caps (the backend
-  // seeds it with total_limit=900, period_limit=30). Paid keys may have a
-  // total_limit (their purchased calls) but no per-day cap.
-  const isStarter = k.is_starter ?? (periodLimit > 0 && totalLimit > 0);
+  // Heuristic fallback for payloads that don't expose `is_starter`: the
+  // auto-provisioned default key is still named "Starter".
+  const isStarter = k.is_starter ?? k.name.trim().toLowerCase() === 'starter';
 
   const status: 'active' | 'paused' | 'revoked' = (() => {
     if (k.status === 'paused' || k.status === 'revoked' || k.status === 'active') return k.status;
     return k.enabled === false ? 'paused' : 'active';
   })();
 
+  const limits = k.limits ?? null;
+
   return {
     id: mockKeyId(k.id),
     name: k.name,
     env,
-    // TODO: backend missing project_id on key — fall back to default project
-    projectId: k.project_id != null ? `proj_${k.project_id}` : 'proj_default',
     secret: k.api_key,
     maskedSecret: maskSecret(k.api_key || ''),
     createdAt: k.created_at,
-    // TODO: backend missing last_used_at
-    lastUsedAt: null,
+    lastUsedAt: k.last_used_at ?? null,
     status,
     isStarter,
-    spendCapCents: k.spend_cap_cents ?? null,
-    // TODO: backend missing per-key monthly_call_cap field — defaults to null.
-    monthlyCallCap: null,
-    // ── Legacy fields ──────────────────────────────────────────────
-    // The bridge still mirrors the period/total counters the backend
-    // exposes so the legacy UI columns keep displaying *something*.
-    // Net-new code should read getAccountTrialRemaining / getWallet
-    // via the account-level helpers instead.
-    freeDailyLimit: periodLimit,
-    freeDailyUsed: periodUsed,
+    spendCapCents: capOrNull(limits?.monthly_spend_cap_cents),
+    monthlyCallCap: capOrNull(limits?.monthly_call_cap),
+    dailySpendCapCents: capOrNull(limits?.daily_spend_cap_cents),
+    dailyCallCap: capOrNull(limits?.daily_call_cap),
+    // ── Legacy fields (account-wallet model) ──────────────────────────────
+    freeDailyLimit: 0,
+    freeDailyUsed: 0,
     freeDailyResetAt: new Date().toISOString().slice(0, 10),
-    freeTotalLimit: totalLimit,
-    freeTotalUsed: totalUsed,
+    freeTotalLimit: 0,
+    freeTotalUsed: k.total_used ?? 0,
     paidCreditsCents: 0,
     paidCreditsUsedCents: 0,
     lowBalanceAlert: null,
+  };
+}
+
+// The trial total isn't returned by the backend, so we keep the product
+// default (600) and derive used = total − remaining from the summary.
+function mapTrialFromSummary(summary: BillingSummary): TrialAllowance {
+  const remaining = summary.trial_active
+    ? Math.max(0, Math.min(TRIAL_DEFAULT_TOTAL, summary.trial_calls_remaining ?? 0))
+    : 0;
+  const expiresAt = summary.trial_expires_at;
+  const expiresAtMs = Date.parse(expiresAt);
+  const grantedAt = Number.isFinite(expiresAtMs)
+    ? new Date(expiresAtMs - TRIAL_DEFAULT_VALID_DAYS * 86400000).toISOString()
+    : new Date().toISOString();
+
+  return {
+    totalLimit: TRIAL_DEFAULT_TOTAL,
+    totalUsed: TRIAL_DEFAULT_TOTAL - remaining,
+    grantedAt,
+    expiresAt: expiresAt || grantedAt,
+  };
+}
+
+// Wallet balance is authoritative from `balance_mills` (1 USD = 1000 mills =
+// 100 cents). The mock wallet derives balance as paidCredits − used, so we
+// back-solve those so the difference equals the real balance while keeping
+// the cumulative top-up figure for "total recharged" displays.
+function mapWalletFromSummary(summary: BillingSummary): AccountWallet {
+  const balanceCents = Math.max(0, Math.round((summary.balance_mills ?? 0) / 10));
+  const cumulativeTopup = Math.max(0, summary.paid_credits_cents ?? 0);
+  const paidCreditsCents = Math.max(cumulativeTopup, balanceCents);
+  return {
+    paidCreditsCents,
+    paidCreditsUsedCents: paidCreditsCents - balanceCents,
   };
 }
 
@@ -130,139 +144,67 @@ function mapTransaction(t: RealTransaction): MockTransaction {
     t.status === 'succeeded' || t.status === 'pending' || t.status === 'failed'
       ? t.status
       : 'succeeded';
-  const allowedMethods: MockTransaction['method'][] = [
-    'card',
-    'apple-pay',
-    'google-pay',
-    'link',
-    'cashapp',
-    'paypal',
-    'amazon-pay',
-    'ach',
-    'wire',
-  ];
-  const method = (allowedMethods as string[]).includes(t.method)
-    ? (t.method as MockTransaction['method'])
-    : 'card';
-  const kind: TransactionKind = t.kind === 'card-added' ? 'card-added' : 'credit-topup';
-  // Calls model: surface the purchased-call count in the transaction copy
-  // when the backend reports it. Falls back to a generic "Top-up" line so
-  // historical rows (created before the migration) still render sensibly.
-  const purchasedCalls =
-    typeof (t as { calls?: number }).calls === 'number'
-      ? (t as { calls?: number }).calls
-      : undefined;
-  const description =
-    kind === 'card-added'
-      ? 'Card added'
-      : purchasedCalls && purchasedCalls > 0
-        ? `+${purchasedCalls.toLocaleString('en-US')} calls`
-        : `Top-up · ${t.last4 ?? ''}`.trim();
+  // PayPal-only billing today; default the method accordingly.
+  const method: MockTransaction['method'] = t.method === 'paypal' ? 'paypal' : 'paypal';
+  // Both backend kinds map to a wallet top-up in the UI's two-value union.
+  const kind: TransactionKind = 'credit-topup';
   return {
     id: mockTxId(t.id),
     createdAt: t.created_at,
     amountCents: t.amount_cents,
     status,
     method,
-    last4: t.last4 ?? '----',
-    description,
-    invoiceNumber: t.invoice_number ?? '',
+    last4: '----',
+    description: t.description ?? `Top-up ${(t.amount_cents / 100).toFixed(2)}`,
+    balanceBeforeCents: t.balance_before,
+    balanceAfterCents: t.balance_after,
     kind,
-    keyId: t.key_id != null ? mockKeyId(t.key_id) : undefined,
-    // TODO: backend missing project on transaction
-    projectId: undefined,
   };
 }
 
-function mapPaymentMethod(p: RealPaymentMethod): MockPaymentMethod {
-  const brand = (['visa', 'mastercard', 'amex'] as CardBrand[]).includes(p.brand as CardBrand)
-    ? (p.brand as CardBrand)
-    : 'visa';
+function mapLimits(s: RealAccountLimits): MockSpendLimit {
   return {
-    id: mockPmId(p.id),
-    brand,
-    last4: p.last4,
-    expMonth: p.exp_month,
-    expYear: p.exp_year,
-    name: p.name ?? '',
-    isDefault: p.is_default,
-    // TODO: backend missing created_at on payment method
-    createdAt: new Date().toISOString(),
-  };
-}
-
-function mapSpendLimit(s: RealSpendLimit): MockSpendLimit {
-  // Backend currently only returns a single `monthly_limit_cents`; daily
-  // / call-count caps live entirely in the demo layer for now. Backend
-  // TODO: expose `monthly_call_cap`, `daily_limit_cents`,
-  // `daily_call_cap` so the new four-axis UI is round-trippable.
-  const monthlyCents = Number.isFinite(s.monthly_limit_cents) && s.monthly_limit_cents > 0
-    ? s.monthly_limit_cents
-    : null;
-  return {
-    monthlyCapCents: monthlyCents,
-    monthlyCallCap: null,
-    dailyCapCents: null,
-    dailyCallCap: null,
+    monthlyCapCents: capOrNull(s.monthly_spend_cap_cents),
+    monthlyCallCap: capOrNull(s.monthly_call_cap),
+    dailyCapCents: capOrNull(s.daily_spend_cap_cents),
+    dailyCallCap: capOrNull(s.daily_call_cap),
     resetDay: 1,
-    warnAtPercents: [s.alert_threshold_pct ?? 80],
+    warnAtPercents: s.warn_at_percents?.length ? s.warn_at_percents : [50, 75, 90],
   };
 }
 
-function mapTeamMember(m: RealTeamMember): MockTeamMember {
-  const role: TeamRole = (['owner', 'admin', 'developer', 'viewer'] as TeamRole[]).includes(m.role)
-    ? m.role
-    : 'developer';
-  const status: 'active' | 'invited' = m.status === 'invited' ? 'invited' : 'active';
-  // Deterministic avatar seed from id so colours are stable.
-  const avatarSeed = m.id % 100;
-  return {
-    id: mockTeamMemberId(m.id),
-    name: m.name ?? m.email.split('@')[0],
-    email: m.email,
-    role,
-    status,
-    // TODO: backend missing created_at / last_active_at on team member
-    createdAt: new Date().toISOString(),
-    lastActiveAt: null,
-    avatarSeed,
-  };
-}
-
-function mapNotifications(n: Partial<{
-  weekly_usage_report: boolean;
-  payment_receipts: boolean;
-  invoice_ready: boolean;
-  spend_limit_alerts: boolean;
-  low_balance_alerts_master: boolean;
-  product_updates: boolean;
-  security_alerts: boolean;
-}>): MockNotifications {
+function mapNotifications(n: Partial<RealNotifications>): MockNotifications {
   return {
     weeklyUsageReport: !!n.weekly_usage_report,
     paymentReceipts: n.payment_receipts ?? true,
-    invoiceReady: n.invoice_ready ?? true,
     spendLimitAlerts: n.spend_limit_alerts ?? true,
-    lowBalanceAlertsMaster: n.low_balance_alerts_master ?? true,
     productUpdates: !!n.product_updates,
     securityAlerts: n.security_alerts ?? true,
   };
 }
 
-// Default project so original UI's project selector still has at least one
-// entry. TODO: backend has no projects API yet.
-const DEFAULT_PROJECT: MockProject = {
-  id: 'proj_default',
-  slug: 'default',
-  name: 'Default project',
-  createdAt: new Date(0).toISOString(),
-};
+function mapAccountAlert(n: Partial<RealNotifications>): AccountLowBalanceAlert {
+  return {
+    enabled: n.low_balance_alerts_master ?? true,
+    thresholdCents: n.low_balance_threshold_cents ?? 1000,
+  };
+}
+
+function mapUsagePoint(p: RealUsagePoint): MockUsagePoint {
+  return {
+    date: (p.date || '').slice(0, 10),
+    keyId: p.key_id != null ? mockKeyId(p.key_id) : 'key_*',
+    model: p.model || 'mcp-call',
+    calls: p.calls ?? 0,
+    costCents: p.cost_cents ?? 0,
+    savingsCents: p.savings_cents ?? 0,
+  };
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Mutation proxy: legacy mutators in mock-store fire these in addition to
-// updating the local cache. We push to the real backend in the background;
-// the underlying invalidate() call from the api/* modules triggers the
-// DataHydrator to re-pull, replacing optimistic data with authoritative.
+// updating the local cache. We push to the real backend; the underlying
+// invalidate() from the api/* modules triggers a re-pull.
 
 function safe(p: Promise<unknown>) {
   p.catch((err) => console.warn('[mock-store-bridge] mutation failed:', describeError(err)));
@@ -296,77 +238,64 @@ export function installMutationProxy(): void {
       if (!Number.isFinite(id)) return;
       safe(keysApi.remove(id));
     },
-    addKeyCreditsCents: (_mockId, _amountCents) => {
-      // Account-wallet model: top-ups are no longer per-key. The wallet
-      // lives entirely in the front-end mock store; we deliberately do
-      // NOT hit the backend here so the demo doesn't kick out an
-      // INSUFFICIENT_BACKEND error for a feature that doesn't exist
-      // server-side yet.
+    addKeyCreditsCents: () => {
+      // Account-wallet model — top-ups go through PayPal order/capture, not
+      // a per-key credit grant. No-op here.
     },
-    addKeyCalls: (_mockId, _calls) => {
-      // No-op — see comment on addKeyCreditsCents above.
+    addKeyCalls: () => {
+      // No-op — see addKeyCreditsCents.
     },
-    topupAccount: (_input) => {
-      // Account-wallet top-ups are client-only for the demo. When a real
-      // account-wallet endpoint exists we'll fire the API call here.
+    topupAccount: () => {
+      // Real top-ups are driven by the PayPal checkout (order → capture) in
+      // the billing modal, which calls billing.captureTopup directly and then
+      // invalidates. Nothing to forward here.
     },
-    updateAccountAlert: (_alert) => {
-      // Account-level low-balance alert is client-only for the demo.
-      // Future: PATCH /account/notifications.
+    updateAccountAlert: (alert) => {
+      safe(
+        notifApi.patch({
+          low_balance_alerts_master: alert.enabled,
+          low_balance_threshold_cents: alert.thresholdCents,
+        }),
+      );
     },
     updateKeySettings: (mockId, patch) => {
       const id = realKeyId(mockId);
       if (!Number.isFinite(id)) return;
-      // The backend still uses `spend_cap_cents` + the legacy
-      // `low_balance_alert` envelope. We forward only the fields the
-      // wallet model still understands; the new `monthlyCallCap` lives
-      // in the front-end demo store until the backend exposes it.
-      const apiPatch: { spend_cap_cents?: number | null } = {};
-      if (patch.spendCapCents !== undefined) apiPatch.spend_cap_cents = patch.spendCapCents;
+      // Map the mock per-key caps onto the backend's four-axis settings.
+      const apiPatch: Partial<{
+        daily_call_cap: number;
+        monthly_call_cap: number;
+        daily_spend_cap_cents: number;
+        monthly_spend_cap_cents: number;
+      }> = {};
+      if (patch.spendCapCents !== undefined) {
+        apiPatch.monthly_spend_cap_cents = patch.spendCapCents ?? 0;
+      }
+      if (patch.monthlyCallCap !== undefined) {
+        apiPatch.monthly_call_cap = patch.monthlyCallCap ?? 0;
+      }
+      if (Object.keys(apiPatch).length === 0) return;
       safe(keysApi.patchSettings(id, apiPatch));
     },
-    inviteTeamMember: (input) => {
-      safe(teamApi.invite({ email: input.email, role: input.role, name: input.name }));
-    },
-    updateTeamMemberRole: (mockId, role) => {
-      const id = realTeamMemberId(mockId);
-      if (!Number.isFinite(id)) return;
-      safe(teamApi.patchRole(id, role));
-    },
-    removeTeamMember: (mockId) => {
-      const id = realTeamMemberId(mockId);
-      if (!Number.isFinite(id)) return;
-      safe(teamApi.remove(id));
-    },
-    resendTeamInvite: (mockId) => {
-      const id = realTeamMemberId(mockId);
-      if (!Number.isFinite(id)) return;
-      safe(teamApi.resend(id));
-    },
     updateNotificationSettings: (patch) => {
-      const body: Partial<{
-        weekly_usage_report: boolean;
-        payment_receipts: boolean;
-        invoice_ready: boolean;
-        spend_limit_alerts: boolean;
-        low_balance_alerts_master: boolean;
-        product_updates: boolean;
-        security_alerts: boolean;
-      }> = {};
+      const body: Partial<RealNotifications> = {};
       if (patch.weeklyUsageReport !== undefined) body.weekly_usage_report = patch.weeklyUsageReport;
       if (patch.paymentReceipts !== undefined) body.payment_receipts = patch.paymentReceipts;
-      if (patch.invoiceReady !== undefined) body.invoice_ready = patch.invoiceReady;
       if (patch.spendLimitAlerts !== undefined) body.spend_limit_alerts = patch.spendLimitAlerts;
-      if (patch.lowBalanceAlertsMaster !== undefined) body.low_balance_alerts_master = patch.lowBalanceAlertsMaster;
       if (patch.productUpdates !== undefined) body.product_updates = patch.productUpdates;
       if (patch.securityAlerts !== undefined) body.security_alerts = patch.securityAlerts;
       safe(notifApi.patch(body));
     },
-    setSpendLimitCents: (cents, warnAtPercents) => {
+    updateAccountLimits: (limit) => {
+      // Full four-axis persistence (account-wide guardrails). null = unlimited
+      // = 0 to the backend.
       safe(
-        billing.setSpendLimit({
-          monthly_limit_cents: cents,
-          alert_threshold_pct: warnAtPercents?.[0],
+        billing.setLimits({
+          monthly_spend_cap_cents: limit.monthlyCapCents ?? 0,
+          monthly_call_cap: limit.monthlyCallCap ?? 0,
+          daily_spend_cap_cents: limit.dailyCapCents ?? 0,
+          daily_call_cap: limit.dailyCallCap ?? 0,
+          warn_at_percents: limit.warnAtPercents,
         }),
       );
     },
@@ -389,74 +318,41 @@ export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<vo
   __markSeeded(); // prevent seed fallback before first response lands
 
   try {
-    const [
-      keysRes,
-      txRes,
-      spendRes,
-      pmRes,
-      teamRes,
-      notifRes,
-      usageRes,
-    ] = await Promise.allSettled([
+    const [keysRes, txRes, limitsRes, notifRes, usageRes, summaryRes] = await Promise.allSettled([
       keysApi.list(),
       billing.listTransactions({ page: 1, page_size: 50 }),
-      billing.getSpendLimit(),
-      billing.listPaymentMethods(),
-      teamApi.list(),
+      billing.getLimits(),
       notifApi.get(),
       usageApi.points({ granularity: 'day' }),
+      billing.summary(),
     ]);
 
     const partial: Parameters<typeof __replaceCache>[0] = {};
 
     if (keysRes.status === 'fulfilled') {
       partial.keys = keysRes.value.map(mapKey);
-      // Synthesise project list from distinct project_ids on keys.
-      const seen = new Map<number, MockProject>();
-      for (const k of keysRes.value) {
-        if (k.project_id != null && !seen.has(k.project_id)) {
-          seen.set(k.project_id, {
-            id: `proj_${k.project_id}`,
-            slug: `project-${k.project_id}`,
-            name: `Project ${k.project_id}`,
-            createdAt: new Date(0).toISOString(),
-          });
-        }
-      }
-      partial.projects = seen.size > 0 ? Array.from(seen.values()) : [DEFAULT_PROJECT];
     }
     if (txRes.status === 'fulfilled') {
       partial.transactions = (txRes.value.transactions ?? []).map(mapTransaction);
     }
-    if (spendRes.status === 'fulfilled') {
-      partial.spendLimit = mapSpendLimit(spendRes.value);
-    }
-    if (pmRes.status === 'fulfilled') {
-      partial.paymentMethods = (pmRes.value ?? []).map(mapPaymentMethod);
-    }
-    if (teamRes.status === 'fulfilled') {
-      partial.teamMembers = (teamRes.value ?? []).map(mapTeamMember);
+    if (limitsRes.status === 'fulfilled') {
+      partial.spendLimit = mapLimits(limitsRes.value);
     }
     if (notifRes.status === 'fulfilled') {
       partial.notifications = mapNotifications(notifRes.value);
+      partial.accountAlert = mapAccountAlert(notifRes.value);
     }
     if (usageRes.status === 'fulfilled') {
-      // Map UsagePoint{time, calls} → MockUsagePoint{date, keyId, model, calls, costCents, savingsCents}.
-      // TODO: backend points endpoint is single-series; doesn't break down by key/model. We aggregate to one synthetic row per day.
-      partial.usage = (usageRes.value ?? []).map<MockUsagePoint>((p) => ({
-        date: p.time.slice(0, 10),
-        keyId: 'key_*',
-        model: 'mcp-call',
-        calls: p.calls,
-        costCents: 0,
-        savingsCents: 0,
-      }));
+      partial.usage = (usageRes.value ?? []).map(mapUsagePoint);
+    }
+    if (summaryRes.status === 'fulfilled') {
+      partial.trial = mapTrialFromSummary(summaryRes.value);
+      partial.wallet = mapWalletFromSummary(summaryRes.value);
     }
 
     __replaceCache(partial);
     lastHydrate = Date.now();
   } catch (err) {
-    // Silent failure — fall back to whatever's in cache. Surface in console.
     console.warn('[mock-store-bridge] hydrate failed:', describeError(err));
   } finally {
     inFlight = false;

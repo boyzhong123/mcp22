@@ -9,6 +9,7 @@ import { DevEnTopBar } from '../_components/topbar';
 import { DevEnCommandPalette } from '../_components/command-palette';
 import { DataHydrator } from '../_components/data-hydrator';
 import { OnboardingTour } from '../_components/onboarding-tour';
+import { BrandLoader } from '../_components/brand-loader';
 import { useUi } from '../_lib/use-ui-store';
 
 export default function DevEnDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +26,7 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
   if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <div className="h-6 w-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+        <BrandLoader size={40} />
       </div>
     );
   }

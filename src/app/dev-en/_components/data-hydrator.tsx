@@ -31,7 +31,6 @@ export function DataHydrator() {
         'transactions',
         'spend-limit',
         'payment-methods',
-        'team',
         'notifications',
       ] as const
     ).map((k) => onInvalidate(k, () => void hydrateFromApi()));

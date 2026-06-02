@@ -1,6 +1,6 @@
 # Chivox MCP 英文开发者控制台 —— 后端接口文档
 
-> 适用范围：`src/app/dev-en` 下的英文 2C 开发者控制台（登录、Dashboard、计费、团队、通知等全部功能）。
+> 适用范围：`src/app/dev-en` 下的英文 2C 开发者控制台（登录、Dashboard、计费、通知等全部功能）。
 > 所有字段、状态、单位均严格对应当前前端 Mock Store：`src/app/dev-en/_lib/mock-store.ts` 与 `src/app/dev-en/_lib/mock-auth.tsx`。
 > 本文可直接作为前后端对接契约 v0。
 >
@@ -19,7 +19,7 @@
 ```mermaid
 flowchart LR
   subgraph CLIENT["dev-en 前端 (Next.js)"]
-    UI["Dashboard / Keys / Billing / Team / Settings"]
+    UI["Dashboard / Keys / Billing / Settings"]
     LOGIN["/dev-en/login"]
     DOCS["/en/docs (Marketing 内站)"]
   end
@@ -29,7 +29,6 @@ flowchart LR
     KEYS["Keys & Projects<br/>/keys, /projects"]
     USAGE["Usage<br/>/usage/*"]
     BILL["Billing<br/>/billing/*"]
-    TEAM["Team<br/>/team/*"]
     NOTIF["Notifications<br/>/notifications/*"]
     HOOKS["Webhooks<br/>/webhooks/*"]
     MCP["MCP Runtime<br/>POST /v1/mcp"]
@@ -45,7 +44,6 @@ flowchart LR
   UI --> KEYS
   UI --> USAGE
   UI --> BILL
-  UI --> TEAM
   UI --> NOTIF
   UI --> HOOKS
   LOGIN --> AUTH
@@ -76,8 +74,7 @@ flowchart LR
   US["dashboard/usage"]:::page
   BL["dashboard/billing/*"]:::page
   RH["dashboard/recharge-history"]:::page
-  TM["dashboard/team"]:::page
-  ST["dashboard/settings<br/>(profile, members, notif)"]:::page
+  ST["dashboard/settings<br/>(profile, notif)"]:::page
   STR["stripe-checkout-modal.tsx<br/>(从 Keys / Billing 唤起)"]:::page
 
   A1["POST /auth/otp/send"]:::api
@@ -117,12 +114,6 @@ flowchart LR
   B10["GET /billing/transactions"]:::api
   B11["GET /billing/invoices/:n.pdf"]:::api
 
-  T1["GET /team/members"]:::api
-  T2["POST /team/members/invite"]:::api
-  T3["POST /team/members/:id/resend"]:::api
-  T4["PATCH /team/members/:id"]:::api
-  T5["DELETE /team/members/:id"]:::api
-
   N1["GET|PATCH /notifications/settings"]:::api
   H1["GET|POST|DELETE /webhooks/endpoints*"]:::api
 
@@ -132,8 +123,7 @@ flowchart LR
   US --> U1 & U2 & U3 & K1
   BL --> B1 & B2 & B3 & B4 & B5 & B6 & B7 & B10 & B11 & U2
   RH --> B10 & B11
-  TM --> T1 & T2 & T3 & T4 & T5
-  ST --> A4 & A5 & A6 & N1 & T1 & H1
+  ST --> A4 & A5 & A6 & N1 & H1
   STR --> B3 & B4 & B5 & B8 & B9
 ```
 
@@ -157,7 +147,7 @@ sequenceDiagram
   FE->>API: POST /auth/otp/verify {code, termsAccepted}
   alt 首次登录 (isNewUser=true)
     API->>API: 创建账号
-    API->>API: 创建 Starter Key (free 30/day, 900/life)
+    API->>API: 创建 Starter Key + 注册试用包 (300 calls, 14 days)
     API->>API: 初始化 NotificationSettings
   end
   API-->>FE: { token, user, isNewUser }
@@ -248,8 +238,8 @@ classDiagram
     env (dev/prod)
     isStarter
     status (active/paused/revoked)
-    freeDailyLimit / freeDailyUsed
-    freeTotalLimit / freeTotalUsed
+    trialTotalLimit / trialTotalUsed
+    trialGrantedAt / trialExpiresAt
     paidCreditsCents / paidCreditsUsedCents
     spendCapCents
     lowBalanceAlert
@@ -274,10 +264,6 @@ classDiagram
     brand / last4
     isDefault
   }
-  class TeamMember {
-    role (owner/admin/developer/viewer)
-    status (active/invited)
-  }
   class NotificationSettings {
     weeklyUsageReport
     paymentReceipts
@@ -288,7 +274,6 @@ classDiagram
 
   Account "1" --> "*" User
   Account "1" --> "*" Project
-  Account "1" --> "*" TeamMember
   Account "1" --> "1" NotificationSettings
   Account "1" --> "*" PaymentMethod
   Project "1" --> "*" ApiKey
@@ -516,7 +501,7 @@ Project { id: string; slug: string; name: string; createdAt: string }
 
 ## 3. API Keys（核心）
 
-> 账号模型两档：**Starter Key**（每账号唯一，免费额度 30/day、900/life，**可充值解除每日封顶**）+ **Paid Keys**（需充值，可设月度上限与低余额告警）。
+> 账号模型两层：**Starter Key**（每账号唯一，作为默认 key 自动创建）+ **账户级注册试用包**（默认 300 次，14 天内有效；到期或次数用完即失效）。后续调用统一走账户钱包，可设月度上限与低余额告警。
 
 ### 前端调用方速查
 
@@ -612,13 +597,18 @@ ApiKey {
   lastUsedAt: string | null
   status: 'active' | 'paused' | 'revoked'
   isStarter: boolean
-  // 免费额度（仅 starter 非 0）
+  // 兼容旧字段：当前试用包没有 daily cap，前端不再依赖这些字段
   freeDailyLimit: number
   freeDailyUsed: number
-  freeDailyResetAt: string   // UTC 日期翻转时重置
+  freeDailyResetAt: string
   freeTotalLimit: number
   freeTotalUsed: number
-  // Calls 模型：付费 key 和 starter 都基于次数池服务
+  // 账户级注册试用包（推荐后端在 account summary 或 starter key 上返回）
+  trialTotalLimit: number
+  trialTotalUsed: number
+  trialGrantedAt: string
+  trialExpiresAt: string
+  // Calls 模型：所有 key 都基于账户试用包 + 钱包服务
   // paidCredits* 已废弃（兼容期可保留，但前端不再依赖）
   spendCapCents: number | null   // 语义已切到“月度调用上限（次）”
   lowBalanceAlert: { enabled: boolean; thresholdCents: number } | null // 语义已切到“剩余次数阈值”
@@ -893,46 +883,6 @@ Transaction {
 
 ---
 
-## 6. Team（团队成员）
-
-### 前端调用方速查
-
-所有 Team 接口只有 `dashboard/team/page.tsx` 这一个调用方（Settings → Members 区是同一个页面的锚点链接）。
-
-| Endpoint | UI 触发点 |
-| --- | --- |
-| `GET /team/members` | 进入 Team 页 |
-| `POST /team/members/invite` | "Invite member / 邀请成员" 对话框的 "Send invite" |
-| `POST /team/members/:id/resend` | 每行 `invited` 状态的 "Resend" 链接 |
-| `PATCH /team/members/:id` | 每行 Role 下拉（owner 行禁用） |
-| `DELETE /team/members/:id` | 每行 ⋯ → "Remove"（owner 行禁用） |
-
-<p><img src="./images/dev-en/team-page.png" alt="Team 成员管理截图（docs/images/dev-en/team-page.png）" width="900" /></p>
-
-```ts
-TeamMember {
-  id, name, email,
-  role: 'owner'|'admin'|'developer'|'viewer',
-  status: 'active'|'invited',
-  createdAt, lastActiveAt: string|null,
-  avatarSeed: number
-}
-```
-
-- `GET /team/members` → `TeamMember[]`
-- `POST /team/members/invite`
-  ```json
-  { "email": "...", "role": "developer", "name": "optional" }
-  ```
-  幂等：同 email 已存在则返回已有成员。后端发送邀请邮件，状态 `invited`。
-- `POST /team/members/:id/resend` → 重发邀请邮件
-- `PATCH /team/members/:id` body `{ "role": "admin" }`（`owner` 不可被改）
-- `DELETE /team/members/:id`（`owner` 不可删除）
-
-权限建议：`owner/admin` 可管 members & billing；`developer` 可管 keys；`viewer` 只读。
-
----
-
 ## 7. Notifications（通知偏好）
 
 ### 前端调用方速查
@@ -1019,13 +969,13 @@ Content-Type: application/json
 
 **每次 `tools/call` 成功后，计费后端必须：**
 
-1. 如果 key 是 Starter：`freeDailyUsed++`、`freeTotalUsed++`；超 `freeDailyLimit` 当天直接 429，超 `freeTotalLimit` 永久停服（`tier=starter-exhausted`）
-2. 如果 key 是 Paid：按 `mcpCallRatePerK / 1000` 折算 cents 扣 `paidCreditsUsedCents`；扣到 0 后拒绝服务（`needs-credits`）；命中 `spendCapCents` 也拒绝
+1. 先检查账户级注册试用包：若 `now < trialExpiresAt` 且 `trialTotalUsed < trialTotalLimit`，则 `trialTotalUsed++`；否则试用包不可再用。
+2. 试用包不可用时，按 `mcpCallRatePerK / 1000` 折算 cents 扣账户钱包；扣到 0 后拒绝服务（`needs-credits`）；命中 `spendCapCents` / account cap 也拒绝
 3. 写入 `UsagePoint`（按 UTC day 聚合）
 4. 低余额告警：剩余 ≤ `lowBalanceAlert.thresholdCents` 且 24h 内未发过 → 发邮件
 5. 账号总额 `SpendLimit.monthlyCapCents` 命中 `warnAtPercents` 任一阈值 → 发邮件
 
-鉴权失败 / 余额不足时，应按 MCP 规范返回 JSON-RPC error：`initialize` 阶段拒绝用 HTTP 401/402，`tools/call` 阶段用 JSON-RPC `error.code = -32000` + `data.reason` 承载业务码（`UNAUTHENTICATED` / `INSUFFICIENT_CREDITS` / `SPEND_CAP_EXCEEDED` / `STARTER_EXHAUSTED`）。
+鉴权失败 / 余额不足时，应按 MCP 规范返回 JSON-RPC error：`initialize` 阶段拒绝用 HTTP 401/402，`tools/call` 阶段用 JSON-RPC `error.code = -32000` + `data.reason` 承载业务码（`UNAUTHENTICATED` / `INSUFFICIENT_CREDITS` / `SPEND_CAP_EXCEEDED` / `TRIAL_EXHAUSTED` / `TRIAL_EXPIRED`）。
 
 ---
 
@@ -1037,7 +987,6 @@ Content-Type: application/json
 - `credits.topped_up / credits.low_balance / credits.depleted`
 - `usage.spend_limit_warn / usage.spend_limit_hit`
 - `invoice.created / invoice.paid`
-- `team.invited / team.joined / team.role_changed / team.removed`
 
 相关 CRUD：
 
@@ -1070,8 +1019,8 @@ Overview 顶部的 "Needs attention" 区域（`src/app/dev-en/dashboard/overview
 | --- | --- | --- | --- | --- | --- |
 | 1 | `spend-cap-hit` | critical | `account.spendCentsThisMonth ≥ SpendLimit.monthlyCapCents` | 提高上限 → `PUT /billing/spend-limit` | `SPEND_CAP_EXCEEDED` |
 | 2 | `paid-zero-balance` | critical | 存在 `ApiKey.status='active' && isStarter=false && paidCreditsCents>0 && getKeyBalanceCents(k)===0` | Top up 该 key → `POST /billing/topups/intent` | `INSUFFICIENT_CREDITS` |
-| 3 | `starter-exhausted` | critical / warning | `starter.freeTotalUsed ≥ freeTotalLimit && !isStarterUpgraded(starter)`。**critical** 当且仅当账号没有任何 balance>0 的付费 key 可兜底；否则降级为 warning（业务未中断，仅提示切换示例） | 充值 Starter（解除每日封顶）或创建付费 key | `STARTER_EXHAUSTED` |
-| 4 | `starter-daily-hit` | warning | `starter.freeDailyUsed ≥ freeDailyLimit && freeTotalUsed < freeTotalLimit && !isStarterUpgraded`（UTC 零点重置） | 充值 Starter（解除每日上限）或切到付费 key | 当日 `tools/call` 返回 HTTP 429 + `tier=starter-daily` |
+| 3 | `trial-exhausted` | critical / warning | `trialTotalUsed ≥ trialTotalLimit` 或 `now ≥ trialExpiresAt`。**critical** 当且仅当账号钱包余额也为 0；否则降级为 warning（业务未中断，仅提示后续从钱包扣费） | 充值账户钱包 | `TRIAL_EXHAUSTED` / `TRIAL_EXPIRED` |
+| 4 | `wallet-low` | warning | 账户级 `lowBalanceAlert.enabled && 0 < walletBalance ≤ threshold` | Top up 钱包 | 无（只是前置提醒） |
 | 5 | `paid-low-balance` | warning | 存在 `ApiKey` 满足 `isLowBalance(k) === true`（即 `lowBalanceAlert.enabled && 0 < balance ≤ threshold`） | Top up 该 key | 无（只是前置提醒） |
 | 6 | `spend-cap-near` | warning | `spendCentsThisMonth / monthlyCapCents ∈ [0.9, 1.0)` | 调整上限 | 无 |
 | 7 | `paid-not-activated` | warning | 存在 `ApiKey.status='active' && isStarter=false && paidCreditsCents===0`；若同时触发 #2，则此项抑制避免重复 | Fund 该 key | 无（调用会命中 `INSUFFICIENT_CREDITS`，但#2 信号更准） |
@@ -1082,12 +1031,12 @@ Overview 顶部的 "Needs attention" 区域（`src/app/dev-en/dashboard/overview
 
 当 `starter.paidCreditsCents > 0`（即 `isStarterUpgraded(starter) === true`）：
 
-- **告警 #3 / #4 同时抑制**：daily cap 与 lifetime cap 都不再适用，两条告警从首页消失。
+- **告警 #3**：试用包到期或次数用完后不再恢复；如果钱包有余额则只是 warning，如果钱包为 0 则升级为 critical。
 - **首页 `StarterKeyStrip` 切换为升级态**：
   - 背景/图标从 emerald → purple；badge 从 `Free · complimentary` → `Upgraded · cap lifted`；
   - 原 `Today` / `Lifetime` 两条进度条降透明度（`opacity-60`）+ 数字 `line-through`，用于传达 "这两个数还在涨，但已经不再作为 gate"；
   - 新增一条 `Balance` 进度条，显示付费余额：`paidCreditsUsedCents / paidCreditsCents`，按 cents 格式化为 `$X.XX`，做首页的 "升级后的 Starter 其实在从 credit pool 扣费" 的视觉证据。
-- **计费端（§8.3）**：对升级后的 Starter，计费钩子应改走 Paid 分支（按 `mcpCallRatePerK` 扣 `paidCreditsUsedCents`），而不再递增 `freeDailyUsed / freeTotalUsed`。前端依然会展示这两个字段的历史值，但不再基于它们做 gate。
+- **计费端（§8.3）**：注册试用包只看 `trialTotalUsed / trialTotalLimit / trialExpiresAt`；不可用后统一走账户钱包扣费。`freeDaily* / freeTotal*` 仅兼容旧前端，不再作为 gate。
 
 <table>
 <tr>
@@ -1100,16 +1049,15 @@ Overview 顶部的 "Needs attention" 区域（`src/app/dev-en/dashboard/overview
 </tr>
 </table>
 
-#### UTC 日翻转语义（影响 #4）
+#### 试用包到期语义
 
-`ApiKey.freeDailyResetAt` 约定用 UTC 日 `YYYY-MM-DD`。后端在计费钩子（§8.3）里读 key 时必须先做翻转判断：
+`trialExpiresAt` 使用 ISO datetime（建议 UTC）。后端在计费钩子（§8.3）里判断：
 ```ts
-if (today_UTC !== key.freeDailyResetAt) {
-  key.freeDailyUsed = 0;
-  key.freeDailyResetAt = today_UTC;
-}
+const trialAvailable =
+  now < account.trialExpiresAt &&
+  account.trialTotalUsed < account.trialTotalLimit;
 ```
-前端 Overview 展示 `freeDailyUsed` 时同样按 UTC 日读数，避免东八区用户在 07:59 看到"昨天"的数。
+只要时间到期或次数用完，试用包都不可再用，不存在每日重置。
 
 ---
 
@@ -1121,7 +1069,7 @@ if (today_UTC !== key.freeDailyResetAt) {
 4. **币种**：Mock 写死 USD；如果未来要多币种，所有 `*Cents` 字段需要加 `currency` 字段。
 5. **API Key secret 回显策略**：仅在 `POST /keys` 和 `POST /keys/:id/rotate` 响应一次明文，其他读接口只返 `maskedSecret`。
 6. **Stripe 账户结构**：每个账号 = 一个 Stripe Customer；卡绑到 Customer；每次 top-up = 一个 PaymentIntent，`metadata` 中记录 `{ accountId, keyId, projectId }` 便于对账。
-7. **审计日志**：revoked key / 删除成员 / 改角色 / 修改 spend-limit 建议单独一张表，后面做 "Audit log" 页面直接可用。
+7. **审计日志**：revoked key / 修改 spend-limit 建议单独一张表，后面做 "Audit log" 页面直接可用。
 
 ---
 
@@ -1137,7 +1085,8 @@ if (today_UTC !== key.freeDailyResetAt) {
 | `STARTER_KEY_READONLY` | 409 | 对 Starter 做非法操作 |
 | `INSUFFICIENT_CREDITS` | 402 | MCP 调用时余额不足 |
 | `SPEND_CAP_EXCEEDED` | 402 | 命中月度封顶 |
-| `STARTER_EXHAUSTED` | 402 | Starter 终身额度耗尽 |
+| `TRIAL_EXHAUSTED` | 402 | 注册试用次数耗尽 |
+| `TRIAL_EXPIRED` | 402 | 注册试用已到期 |
 | `PAYMENT_FAILED` | 402 | Stripe 扣款失败 |
 | `IDEMPOTENCY_CONFLICT` | 409 | 同 key 不同 body |
 
@@ -1149,6 +1098,4 @@ if (today_UTC !== key.freeDailyResetAt) {
 - `CardBrand`：`visa` | `mastercard` | `amex`
 - `Transaction.kind`：`credit-topup` | `card-added`
 - `Transaction.method`：`card` | `apple-pay` | `google-pay` | `link` | `cashapp` | `paypal` | `amazon-pay` | `ach` | `wire`
-- `TeamRole`：`owner` | `admin` | `developer` | `viewer`
-- `TeamInviteStatus`：`active` | `invited`
 - `AuthMethod`：`email` | `google` | `github` | `microsoft`

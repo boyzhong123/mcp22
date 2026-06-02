@@ -407,11 +407,11 @@ Honest defaults. Start free with **all 16 tools unlocked** — no feature gates,
 
 <img
   src="./assets/pricing-v6-2x.png"
-  alt="Pricing: Free $0 (30 calls/day · 900 lifetime · all 16 tools) · Pay-as-you-go from $1/1K calls with auto volume discounts (−15% at 100K, −30% at 1M) · Enterprise custom for 10M+/mo, on-prem and SLA"
+  alt="Pricing: Free $0 (300 signup trial calls · valid 14 days · all 16 tools) · Pay-as-you-go from $1/1K calls with auto volume discounts (−15% at 100K, −30% at 1M) · Enterprise custom for 10M+/mo, on-prem and SLA"
   width="100%"
 />
 
-> **Free tier ≠ crippled tier.** Every starter key gets **30 calls/day · 900 calls lifetime** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. When you outgrow it, top up credits and let the volume tiers do the rest. Failed calls are never billed.
+> **Free tier ≠ crippled tier.** Every new account gets **300 signup trial calls valid for 14 days** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. The trial ends when the time window expires or the calls are used up; after that, top up credits and let the volume tiers do the rest. Failed calls are never billed.
 
 ---
 

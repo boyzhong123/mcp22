@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   BarChart3,
   Check,
-  ChevronDown,
   Copy,
   CreditCard,
   DollarSign,
@@ -25,7 +24,6 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  addProject,
   createKey,
   formatCalls,
   formatCents,
@@ -36,13 +34,11 @@ import {
   getKeyMonthlyCalls,
   keyLast4,
   listKeys,
-  listProjects,
   renameKey,
   setKeyPaused,
   setKeyPinned,
   type AccountTrialRemaining,
   type ApiKey,
-  type Project,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
@@ -52,28 +48,24 @@ import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
 
 const DEFAULT_TRIAL: AccountTrialRemaining = {
-  dailyLeft: 0,
   totalLeft: 0,
-  dailyExhausted: true,
   totalExhausted: true,
+  expired: false,
+  expiresAt: new Date().toISOString(),
+  daysLeft: 0,
 };
 
 export default function KeysPage() {
   // Wallet model: every key is equal — no Starter/Paid split — so we
   // subscribe once to the full key list and render it flat.
   const allKeys = useMockStore(listKeys, [] as ApiKey[]);
-  const projects = useMockStore(listProjects, [] as Project[]);
   const { tx, t } = useLang();
 
-  const [projectFilter, setProjectFilter] = useState<string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newProjectId, setNewProjectId] = useState<string>('');
-  const [inlineNewProject, setInlineNewProject] = useState(false);
-  const [inlineProjectName, setInlineProjectName] = useState('');
   const [justCreated, setJustCreated] = useState<ApiKey | null>(null);
   const [confirmPause, setConfirmPause] = useState<ApiKey | null>(null);
   const [rename, setRename] = useState<{ key: ApiKey; value: string } | null>(null);
@@ -85,15 +77,11 @@ export default function KeysPage() {
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
   const [settingsFor, setSettingsFor] = useState<ApiKey | null>(null);
 
-  const filteredKeys = useMemo(() => {
-    const filtered = allKeys.filter((k) => {
-      if (projectFilter !== 'all' && k.projectId !== projectFilter) return false;
-      return true;
-    });
+  const sortedKeys = useMemo(() => {
     // Pinned keys always float to the top, then revoked sinks to the
     // bottom; within each band we keep insertion order (which approximates
     // "most recently created first" because `createKey` prepends).
-    return filtered.slice().sort((a, b) => {
+    return allKeys.slice().sort((a, b) => {
       const aPin = a.pinned ? 1 : 0;
       const bPin = b.pinned ? 1 : 0;
       if (aPin !== bPin) return bPin - aPin;
@@ -102,7 +90,7 @@ export default function KeysPage() {
       if (aRev !== bRev) return aRev - bRev;
       return 0;
     });
-  }, [allKeys, projectFilter]);
+  }, [allKeys]);
 
   const copy = async (text: string, id: string) => {
     try {
@@ -118,23 +106,14 @@ export default function KeysPage() {
 
   const openCreate = () => {
     setNewName('');
-    setNewProjectId(projects[0]?.id ?? '');
-    setInlineNewProject(false);
-    setInlineProjectName('');
     setCreateOpen(true);
   };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    let projectId = newProjectId;
-    if (inlineNewProject) {
-      const p = addProject(inlineProjectName || 'New project');
-      projectId = p.id;
-    }
-    if (!projectId) return;
-    // Wallet model: env no longer asked for; createKey defaults to
-    // 'production' for back-compat with usage/billing slicing.
-    const created = createKey(newName, 'production', projectId);
+    // Wallet model: project and env are no longer asked for; createKey keeps
+    // legacy defaults internally for usage/billing compatibility.
+    const created = createKey(newName);
     setJustCreated(created);
     setCreateOpen(false);
   };
@@ -147,8 +126,8 @@ export default function KeysPage() {
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">{t('API Keys', 'API 密钥')}</h1>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
             {t(
-              'Create as many keys as you need — every key on the account shares the same free trial (30 calls/day · 900 lifetime) and wallet balance. Top up once and it unlocks every key.',
-              '按需创建任意数量的 Key — 账户内所有 Key 共享同一份免费试用额度（每日 30 次 · 终身 900 次）和钱包余额。一次充值，全部 Key 同时生效。',
+              'Create as many keys as you need — every key on the account shares the same signup trial package and wallet balance. The trial expires when its time window ends or its calls are used up.',
+              '按需创建任意数量的 Key — 账户内所有 Key 共享同一份注册试用包和钱包余额；试用包到期或次数用完即失效。',
             )}
           </p>
         </div>
@@ -173,8 +152,8 @@ export default function KeysPage() {
            makes sense to surface them right here. */}
       <AccountLimitsSummary />
 
-      {/* Trial-exhausted banner — surfaces only when both daily and
-           lifetime trial are spent AND the wallet is empty. */}
+      {/* Trial-exhausted banner — surfaces only when the trial package
+           is spent/expired AND the wallet is empty. */}
       {trial.totalExhausted && getAccountCallsRemaining() === 0 && (
         <TrialExhaustedBanner onAddCredits={() => setAddCreditsOpen(true)} />
       )}
@@ -208,27 +187,10 @@ export default function KeysPage() {
             '所有 Key 共享同一份试用额度与钱包余额。如需限流可在「设置」中为单个 Key 配置消费 / 调用上限。',
           )}
           toneClass="text-foreground"
-          action={
-            allKeys.length > 0 ? (
-              <FilterSelect
-                label={tx('Project')}
-                value={projectFilter}
-                onChange={setProjectFilter}
-                options={[
-                  { value: 'all', label: tx('All projects') },
-                  ...projects.map((p) => ({ value: p.id, label: p.name })),
-                ]}
-              />
-            ) : undefined
-          }
         />
 
         {allKeys.length === 0 ? (
           <EmptyPaidKeysState onCreate={openCreate} />
-        ) : filteredKeys.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground">
-            {t('No keys match that project filter.', '该项目下暂无 Key。')}
-          </div>
         ) : (
           <div className="rounded-xl border border-border bg-background">
             {/* The wrapper deliberately omits `overflow-hidden`: the per-row
@@ -238,11 +200,10 @@ export default function KeysPage() {
                 stays intact. */}
             <PaidTableHeader />
             <ul className="divide-y divide-border">
-              {filteredKeys.map((k) => (
+              {sortedKeys.map((k) => (
                 <PaidKeyRow
                   key={k.id}
                   apiKey={k}
-                  project={projects.find((p) => p.id === k.projectId)}
                   copy={copy}
                   copiedId={copiedId}
                   onSettings={() => setSettingsFor(k)}
@@ -276,57 +237,12 @@ export default function KeysPage() {
               />
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                {tx('Project')}
-              </label>
-              {inlineNewProject ? (
-                <div className="flex gap-2">
-                  <input
-                    autoFocus
-                    value={inlineProjectName}
-                    onChange={(e) => setInlineProjectName(e.target.value)}
-                    placeholder={tx('New project name')}
-                    className="flex-1 h-10 px-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setInlineNewProject(false)}
-                    className="h-10 px-3 rounded-lg border border-border bg-background hover:bg-muted/50 text-xs font-medium"
-                  >
-                    {tx('Cancel')}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <select
-                    value={newProjectId}
-                    onChange={(e) => setNewProjectId(e.target.value)}
-                    className="flex-1 h-10 px-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
-                  >
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setInlineNewProject(true)}
-                    className="h-10 px-3 rounded-lg border border-border bg-background hover:bg-muted/50 text-xs font-medium inline-flex items-center gap-1"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> {tx('New project')}
-                  </button>
-                </div>
-              )}
-            </div>
-
             <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
                 {t(
-                  'Every key on this account shares the same free trial (30/day · 900 lifetime) and wallet balance. You can create as many as you need — no environment or per-key billing setup required.',
-                  '账户内所有 Key 共享同一份免费试用额度（每日 30 次 · 终身 900 次）和钱包余额。可按需创建任意数量，无需选择环境或单独设置计费。',
+                  'Every key on this account shares the same signup trial package and wallet balance. You can create as many as you need — no environment or per-key billing setup required.',
+                  '账户内所有 Key 共享同一份注册试用包和钱包余额。可按需创建任意数量，无需选择环境或单独设置计费。',
                 )}
               </span>
             </div>
@@ -419,7 +335,6 @@ export default function KeysPage() {
           setAddCreditsFor(null);
           setAddCreditsOpen(false);
         }}
-        mode="add-credits"
         keyId={addCreditsFor?.id}
       />
 
@@ -461,38 +376,6 @@ function SectionHeader({
         </p>
       </div>
       {action && <div className="shrink-0">{action}</div>}
-    </div>
-  );
-}
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="relative">
-      <div className="flex items-center h-9 pl-3 pr-8 rounded-lg border border-border bg-background text-xs font-medium focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
-        <span className="text-muted-foreground mr-1.5">{label}:</span>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="appearance-none bg-transparent pr-1 outline-none"
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
     </div>
   );
 }
@@ -574,9 +457,8 @@ function NewKeyToast({
 function PaidTableHeader() {
   const { t, tx } = useLang();
   return (
-    <div className="hidden md:grid grid-cols-[1.6fr_1fr_1.1fr_1.1fr_auto] gap-5 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70 bg-gradient-to-b from-muted/60 to-muted/30 border-b border-border rounded-t-xl">
+    <div className="hidden md:grid grid-cols-[1.6fr_1.1fr_1.1fr_auto] gap-5 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70 bg-gradient-to-b from-muted/60 to-muted/30 border-b border-border rounded-t-xl">
       <div>{tx('Key')}</div>
-      <div>{tx('Project')}</div>
       <div>{t('Calls this month', '本月调用')}</div>
       <div>{tx('Limits')}</div>
       <div className="text-right pr-1">{tx('Actions')}</div>
@@ -611,7 +493,6 @@ function EmptyPaidKeysState({ onCreate }: { onCreate: () => void }) {
 
 function PaidKeyRow({
   apiKey: k,
-  project,
   copy,
   copiedId,
   onSettings,
@@ -623,7 +504,6 @@ function PaidKeyRow({
   setMenu,
 }: {
   apiKey: ApiKey;
-  project: Project | undefined;
   copy: (text: string, id: string) => Promise<void>;
   copiedId: string | null;
   onSettings: () => void;
@@ -657,7 +537,7 @@ function PaidKeyRow({
   return (
     <li
       className={cn(
-        'group relative px-5 py-3.5 md:grid md:grid-cols-[1.6fr_1fr_1.1fr_1.1fr_auto] md:gap-5 md:items-center flex flex-col gap-3 transition-colors hover:bg-muted/20',
+        'group relative px-5 py-3.5 md:grid md:grid-cols-[1.6fr_1.1fr_1.1fr_auto] md:gap-5 md:items-center flex flex-col gap-3 transition-colors hover:bg-muted/20',
         // Pinned rows get a faint amber wash and a left accent — visible
         // but never noisy enough to fight the row's own status colour.
         isPinned && !isRevoked && 'bg-amber-50/40 dark:bg-amber-500/[0.04] hover:bg-amber-50/60',
@@ -732,28 +612,9 @@ function PaidKeyRow({
               <Copy className="h-2.5 w-2.5" />
             )}
           </button>
-        </div>
-      </div>
-
-      {/* ─── Project column ───────────────────────────────────────
-           Collapsed from a 3-line stack (name / slug / date) to a
-           2-line block — slug is a fragile mono identifier most users
-           don't read repeatedly, so it tucks behind the name with a
-           subtle middot. Created-at moves to the second line as a
-           pure timestamp. */}
-      <div className="min-w-0">
-        <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="text-[12.5px] font-medium truncate">
-            {project?.name ?? '—'}
+          <span className="text-[10.5px] text-muted-foreground/70 tabular-nums ml-1.5">
+            · {formatDateShort(k.createdAt)}
           </span>
-          {project?.slug && (
-            <span className="text-[10.5px] text-muted-foreground/70 font-mono truncate">
-              · {project.slug}
-            </span>
-          )}
-        </div>
-        <div className="text-[10.5px] text-muted-foreground/80 mt-1 tabular-nums">
-          {formatDateShort(k.createdAt)}
         </div>
       </div>
 
@@ -1101,7 +962,7 @@ function Modal({
       translate="no"
       lang="en"
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/25" onClick={onClose} />
       <div className="relative w-full max-w-[440px] rounded-xl bg-background border border-border shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="text-sm font-semibold">{title}</h3>
@@ -1149,9 +1010,9 @@ function TrialExhaustedBanner({ onAddCredits }: { onAddCredits: () => void }) {
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {t(
-                'The 900 free trial calls and your wallet balance are both spent. Top up to unblock every key on your account.',
-                '900 次试用配额和钱包余额都已用完。充值后账户内所有 Key 立即恢复服务。',
+                {t(
+                'The signup trial package is no longer available and your wallet balance is spent. Top up to unblock every key on your account.',
+                '注册试用包已不可用，钱包余额也已用完。充值后账户内所有 Key 立即恢复服务。',
               )}
             </p>
           </div>

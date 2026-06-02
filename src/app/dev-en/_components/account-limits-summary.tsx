@@ -107,33 +107,56 @@ export function AccountLimitsSummary({ className }: { className?: string }) {
     );
   }
 
+  const activeCount = cells.filter((c) => c.on).length;
+
   return (
     <Link
       href="/dashboard/limits"
-      className={`group rounded-xl border border-border bg-background hover:bg-muted/20 transition-colors block ${className ?? ''}`}
+      className={`group rounded-2xl border border-border bg-card hover:border-foreground/20 hover:shadow-sm transition-all block overflow-hidden ${className ?? ''}`}
     >
-      <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-border/60">
-        <div className="flex items-center gap-2 min-w-0">
-          <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            {t('Account limits', '账户上限')}
-          </span>
+      <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold leading-tight">
+              {t('Account limits', '账户上限')}
+            </div>
+            <div className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+              {t(
+                `${activeCount} of 4 caps active`,
+                `已启用 ${activeCount} / 4 项上限`,
+              )}
+            </div>
+          </div>
         </div>
-        <span className="text-[11px] text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 shrink-0">
+        <span className="text-xs text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 shrink-0 transition-colors">
           {t('Manage', '管理')}
-          <ArrowRight className="h-3 w-3" />
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border/60">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-3 pb-3">
         {cells.map((c) => (
-          <div key={c.label} className="px-4 py-2.5">
-            <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
-              <c.icon className="h-3 w-3" />
-              {c.label}
+          <div
+            key={c.label}
+            className={`rounded-xl px-3.5 py-3 transition-colors ${
+              c.on
+                ? 'bg-muted/60 ring-1 ring-inset ring-border'
+                : 'bg-transparent'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <c.icon
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  c.on ? 'text-foreground' : 'text-muted-foreground/70'
+                }`}
+              />
+              <span className="truncate">{c.label}</span>
             </div>
             <div
-              className={`mt-0.5 text-[12.5px] font-semibold tabular-nums ${
-                c.on ? 'text-foreground' : 'text-muted-foreground'
+              className={`mt-1.5 text-sm font-semibold tabular-nums ${
+                c.on ? 'text-foreground' : 'text-muted-foreground/60'
               }`}
             >
               {c.value}

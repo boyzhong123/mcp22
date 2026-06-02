@@ -27,7 +27,6 @@ export const DICT: Record<string, string> = {
   Pricing: '价格',
   'Top-up history': '充值记录',
   'Top-ups': '充值',
-  Team: '团队',
   Settings: '设置',
   Account: '账号',
   Resources: '资源',
@@ -45,6 +44,7 @@ export const DICT: Record<string, string> = {
   'Create your developer account': '创建开发者账号',
   'Continue with GitHub': '使用 GitHub 登录',
   'Continue with Google': '使用 Google 登录',
+  'Continue with Microsoft': '使用 Microsoft 登录',
   'Continue with email': '使用邮箱登录',
   'or continue with': '或使用以下方式登录',
   Email: '邮箱',
@@ -59,6 +59,15 @@ export const DICT: Record<string, string> = {
   Code: '验证码',
   'I agree to the Terms of Service and Privacy Policy':
     '我同意《服务条款》与《隐私政策》',
+  'I have read and agree to the ': '我已阅读并同意',
+  'Please accept the Terms of Service and Privacy Policy to continue.':
+    '请先勾选同意《服务条款》与《隐私政策》。',
+  'By continuing with GitHub, Google, or Microsoft, you agree to our ':
+    '使用 GitHub、Google 或 Microsoft 继续即表示您同意我们的',
+  'Back to sign in': '返回登录',
+  'Chivox, Inc. · Chivox MCP Developer Platform': 'Chivox, Inc. · Chivox MCP 开发者平台',
+  'Last updated: ': '最后更新：',
+  Questions: '有疑问？',
   "Don't have an account?": '还没有账号？',
   'Already have an account?': '已有账号？',
   'Sign in instead': '去登录',
@@ -293,8 +302,8 @@ export const DICT: Record<string, string> = {
   'Your Starter Key': '你的入门 Key',
   'Pre-provisioned — no signup required':
     '账号预置 —— 无需手动创建',
-  'This key is free forever, but capped at 30 calls/day and 900 calls total.':
-    '此 key 永久免费，每天上限 30 次、累计上限 900 次。',
+  'This key includes a signup trial package that expires when its time window ends or its calls are used up.':
+    '此 key 可使用注册试用包；到期或次数用完即失效。',
   'Create and fund paid keys for production traffic.':
     '为生产流量创建并充值付费 key。',
 
@@ -327,15 +336,13 @@ export const DICT: Record<string, string> = {
   'Expires': '有效期至',
   'Billing address': '账单地址',
   'Tax information': '税务信息',
-  Invoice: '发票',
-  'Invoice ready': '发票可下载',
-  'Download invoice': '下载发票',
   Receipt: '收据',
   'Payment receipts': '付款收据',
   'All transactions': '全部交易',
   Transaction: '交易',
   Transactions: '交易记录',
   Method: '方式',
+  Description: '描述',
   Amount: '金额',
   Date: '日期',
   'Pricing & spend limits': '价格与消费上限',
@@ -389,6 +396,19 @@ export const DICT: Record<string, string> = {
   'Authorize with Face ID or Touch ID': '使用 Face ID 或 Touch ID 授权',
   'Pay with your Google account': '使用 Google 账号支付',
   'One-click checkout by Stripe': 'Stripe 一键结账',
+  'Pay with your PayPal balance': '使用 PayPal 余额支付',
+  'Pay with PayPal': '使用 PayPal 支付',
+  'Complete your payment securely with PayPal': '使用 PayPal 安全完成支付',
+  'Choose an option below. PayPal will open a secure checkout window for you to approve the payment.':
+    '请在下方选择支付方式。PayPal 将打开安全结账窗口，由你确认付款。',
+  'Your wallet is credited as soon as PayPal confirms the payment.':
+    'PayPal 确认付款后，余额会立即到账。',
+  'Top up via PayPal — every key shares the same wallet balance.':
+    '通过 PayPal 充值 — 所有 Key 共享同一钱包余额。',
+  'Demo checkout — PayPal only, no real charge. Taxes via Stripe Tax where applicable.':
+    '演示结账 — 仅 PayPal，不会真实扣款。税费由 Stripe Tax 按需处理。',
+  'Funds will draw from your PayPal balance. A confirmation email will be sent to your PayPal address.':
+    '将从你的 PayPal 余额扣款。确认邮件将发送至你的 PayPal 邮箱。',
   'Pay with your PayPal balance or linked card': '使用 PayPal 余额或绑定的卡支付',
   'Scan a QR code from the Cash App': '使用 Cash App 扫码支付',
   'Use addresses and cards from your Amazon account':
@@ -420,22 +440,6 @@ export const DICT: Record<string, string> = {
   'Get wire instructions': '获取电汇指引',
   'Pay by ACH': '使用 ACH 支付',
 
-  // ── Team page ──────────────────────────────────────────────────────
-  Members: '成员',
-  'Team members': '团队成员',
-  'Invite member': '邀请成员',
-  'Invite teammate': '邀请成员',
-  'Pending invites': '待接受邀请',
-  'Resend invite': '重新发送邀请',
-  'Revoke invite': '撤回邀请',
-  Role: '角色',
-  Owner: '拥有者',
-  Admin: '管理员',
-  Developer: '开发者',
-  Viewer: '只读',
-  'Last active': '最近活跃',
-  'Change role': '变更角色',
-
   // ── Settings / Notifications ───────────────────────────────────────
   'Account information': '账号信息',
   'Account info': '账号信息',
@@ -444,7 +448,6 @@ export const DICT: Record<string, string> = {
   'Member since': '注册时间',
   'Email notifications': '邮件通知',
   'Weekly usage report': '周度用量报告',
-  'Invoice ready to download': '发票可下载通知',
   'Spend limit alerts': '消费上限提醒',
   'Low-balance alerts': '低余额提醒',
   'Product updates': '产品更新',
@@ -551,12 +554,12 @@ export const DICT: Record<string, string> = {
   'Calls this month': '本月调用',
   'Current tier': '当前阶梯',
   'All accounts include': '所有账号均包含',
-  'Included with your account · 30/day · 900 lifetime':
-    '随账号自带 · 每日 30 次 · 累计 900 次',
+  'Included with your account · 600 calls · 30 days':
+    '随账号自带 · 600 次 · 30 天有效',
   Lifetime: '累计',
   'Lifetime usage per key within the current filter.':
     '当前筛选范围内每个 key 的累计用量。',
-  'Free · complimentary': '免费 · 附赠',
+  'Free · complimentary': '免费试用',
   'free starter key': '免费入门 key',
   'Custom — contact sales': '定制 —— 联系销售',
   'Contact sales →': '联系销售 →',
@@ -671,8 +674,8 @@ export const DICT: Record<string, string> = {
   'Current balance:': '当前余额：',
   Exhausted: '已用尽',
   'Your Starter key is used up': '入门 Key 已用尽',
-  'The 900 free lifetime calls on your Starter key are now spent. To keep your integrations running, fund a paid key — no subscription, just pay per 1,000 calls with volume discounts.':
-    '入门 Key 的 900 次累计免费调用已全部用完。请为付费 Key 充值以继续使用 —— 无订阅，按每 1,000 次调用计费，享阶梯折扣。',
+  'The signup trial package on your Starter key is no longer available. To keep your integrations running, fund a paid key — no subscription, just pay per 1,000 calls with volume discounts.':
+    '入门 Key 的注册试用包已不可用。请为付费 Key 充值以继续使用 —— 无订阅，按每 1,000 次调用计费。',
   "You're fine on the starter key. When you need more, create a paid key.":
     '入门 key 的额度当前足够。需要更多时再创建付费 key 即可。',
   'when you need more headroom.': '当你需要更多额度时。',
@@ -707,14 +710,13 @@ export const DICT: Record<string, string> = {
   'Copy full API key to clipboard': '复制完整 API key 到剪贴板',
   "Copy it now — for security, we won't show it in full again.":
     '请立即复制 —— 出于安全考虑，我们不会再次完整显示。',
-  'Search invoice #, last 4, description…': '搜索发票号、后 4 位、描述…',
+  'Search last 4 or description…': '搜索后 4 位或描述…',
   'Succeeded only': '仅显示成功',
   'View full history': '查看完整历史',
   'Review billing': '查看账单',
   'Read the docs': '查看文档',
   'MCP spec, quickstarts, error codes.': 'MCP 规范、快速入门、错误码。',
   'Need to review rates? Check': '需要查看价格？请访问',
-  'Common next steps for pay-as-you-go teams.': '按量计费团队的常见后续操作。',
 
   // Misc UI
   Action: '操作',
@@ -733,8 +735,8 @@ export const DICT: Record<string, string> = {
   'paid keys': '付费 key',
   'Spend limits are enforced with up to 10 minutes of latency; small overages may occur. Counters reset at 12:00 AM on the 1st of each month (Pacific time).':
     '消费上限的生效延迟最多 10 分钟，可能出现少量超额。每月 1 号太平洋时间 0 点重置计数。',
-  'Invoices are emailed to the receipt email on your account. Billing currency is USD. Taxes collected via Stripe Tax where applicable.':
-    '发票会发送到你账号上的收据邮箱。结算货币为 USD。税费由 Stripe Tax 按需代征。',
+  'Payment receipts are emailed to the receipt email on your account. Billing currency is USD.':
+    '付款回执会发送到账号收据邮箱。结算货币为 USD。',
   'Your card was declined. Please try a different card.':
     '你的银行卡被拒绝。请尝试其他银行卡。',
   'Choose a project and key, then pay': '选择项目与 key，再支付',
@@ -753,17 +755,11 @@ export const DICT: Record<string, string> = {
   'See total calls this month, account alerts, recent activity, and quick links to common actions.':
     '查看本月累计调用次数、账号告警、最近动态，以及常用操作的快捷入口。',
   'API Keys — create & manage keys': 'API 密钥 — 创建与管理 Key',
-  'Your Starter key is free (30 calls/day, 900 lifetime). Create paid keys for production traffic and set per-key call limits.':
-    '免费 Starter Key（每日 30 次，终身 900 次）。创建付费 Key 用于生产流量，支持独立设置用量上限。',
+  'Your Starter key includes a time-limited signup trial. Create paid keys for production traffic and set per-key call limits.':
+    'Starter Key 包含限时注册试用。创建付费 Key 用于生产流量，支持独立设置用量上限。',
   'Usage — call charts & breakdowns': '用量 — 调用趋势与明细',
   'View daily call charts, filter by key or date range, and track error rates and latency over time.':
     '查看每日调用曲线，可按 Key 或时间段过滤，跟踪错误率与延迟趋势。',
-  'Billing — top up calls & invoices': '账单 — 充值次数与发票',
-  'Top up API calls with tiered pricing: 1k+ calls saves 25%, 10k+ saves 50%. View transaction history and download invoices.':
-    '按阶梯价充值次数：满 1,000 次省 25%，满 10,000 次省 50%。查看充值记录并下载发票。',
-  'Settings — team, profile & notifications': '设置 — 团队、资料与通知',
-  'Invite teammates, update your profile and avatar, manage notification preferences and webhook endpoints.':
-    '邀请团队成员、更新个人资料与头像、管理通知偏好和 Webhook 端点。',
   'API Docs — MCP spec & quickstart': 'API 文档 — MCP 规范与快速上手',
   'Full MCP spec, quickstart guides, error code reference, and SDK examples. Opens in the same tab with a back button.':
     '完整 MCP 规范、快速上手指南、错误码参考与 SDK 示例，点左上角返回键回到控制台。',

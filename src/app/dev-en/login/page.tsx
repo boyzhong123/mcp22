@@ -8,23 +8,18 @@ import { useAuth } from '../_lib/auth-context';
 import { useLang } from '../_lib/use-lang';
 import { OAuthButtons } from '../_components/oauth-buttons';
 import { AntiBot } from '../_components/anti-bot';
-import { OtpInput } from '../_components/otp-input';
-
-type Mode = 'password' | 'otp';
+import { LegalAgreementCheckbox } from '../_components/legal-agreement-checkbox';
 
 export default function DevEnLoginPage() {
   const router = useRouter();
-  const { user, loginWithPassword, sendOtp, verifyOtp, loginAsDemo } = useAuth();
+  const { user, loginWithPassword, loginAsDemo } = useAuth();
   const { t, tx } = useLang();
 
-  const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [code, setCode] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const [antiBotOk, setAntiBotOk] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -33,54 +28,35 @@ export default function DevEnLoginPage() {
     if (user) router.replace('/dashboard/overview');
   }, [user, router]);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = window.setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
-    return () => window.clearInterval(t);
-  }, [cooldown]);
-
   const identifier = email.trim();
   const identifierValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-  const codeValid = /^\d{6}$/.test(code);
   const passwordValid = password.length >= 6;
 
-  const canSubmitOtp = codeSent && identifierValid && codeValid && antiBotOk && !submitting;
-  const canSubmitPassword = identifierValid && passwordValid && antiBotOk && !submitting;
-
-  const handleSendCode = async () => {
-    setError(null);
-    setInfo(null);
-    if (!identifierValid) {
-      setError(t('Please enter a valid email address.', '请输入有效的邮箱地址。'));
-      return;
-    }
-    setSubmitting(true);
-    const res = await sendOtp(identifier);
-    setSubmitting(false);
-    if (!res.ok) {
-      setError(res.error ?? t('Failed to send code.', '发送验证码失败。'));
-      if (res.retryAfterSec) setCooldown(res.retryAfterSec);
-      return;
-    }
-    setCodeSent(true);
-    setCooldown(60);
-    setInfo(t(`A verification code was sent to ${identifier}.`, `验证码已发送至 ${identifier}。`));
-  };
+  // The button stays clickable; on submit we surface the first unmet step in
+  // the top error banner so the user knows exactly what's blocking sign-in.
+  const disabledReason = (() => {
+    if (!identifierValid) return t('Enter a valid email address.', '请输入有效的邮箱地址。');
+    if (!passwordValid) return t('Password must be at least 6 characters.', '密码至少需要 6 位。');
+    if (!antiBotOk) return t('Complete the human verification above.', '请先完成上方的人机验证。');
+    if (!termsAccepted)
+      return t(
+        'Tick the box to accept the Terms and Privacy Policy.',
+        '请勾选同意《服务条款》与《隐私政策》。',
+      );
+    return null;
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    if (disabledReason) {
+      setError(disabledReason);
+      return;
+    }
     setSubmitting(true);
     try {
-      let res: { ok: boolean; error?: string };
-      if (mode === 'otp') {
-        if (!canSubmitOtp) return;
-        res = await verifyOtp(identifier, code);
-      } else {
-        if (!canSubmitPassword) return;
-        res = await loginWithPassword(identifier, password);
-      }
+      const res = await loginWithPassword(identifier, password);
       if (!res.ok) {
         setError(res.error ?? t('Sign-in failed. Please try again.', '登录失败，请重试。'));
         return;
@@ -193,6 +169,21 @@ export default function DevEnLoginPage() {
 
           <OAuthButtons />
 
+          <p className="mt-2 text-[10px] text-center text-muted-foreground leading-relaxed">
+            {t(
+              'By continuing with GitHub or Google, you agree to our ',
+              '使用 GitHub 或 Google 继续即表示您同意我们的',
+            )}
+            <Link href="/legal/terms" target="_blank" className="underline underline-offset-2">
+              {t('Terms of Service', '《服务条款》')}
+            </Link>
+            {t(' and ', ' 与 ')}
+            <Link href="/legal/privacy" target="_blank" className="underline underline-offset-2">
+              {t('Privacy Policy', '《隐私政策》')}
+            </Link>
+            {t('.', '。')}
+          </p>
+
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border/60" />
@@ -236,72 +227,50 @@ export default function DevEnLoginPage() {
               </div>
             </div>
 
-            {mode === 'password' ? (
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground">
                   {tx('Password')}
                 </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={tx('Your password')}
-                    className="w-full h-10 pl-9 pr-10 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? tx('Hide password') : tx('Show password')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+                <Link
+                  href="/forgot-password"
+                  className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline underline-offset-4"
+                >
+                  {t('Forgot password?', '忘记密码？')}
+                </Link>
               </div>
-            ) : (
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {tx('Verification code')}
-                </label>
-                <OtpInput
-                  value={code}
-                  onChange={setCode}
-                  disabled={submitting}
-                  ariaLabel={tx('Verification code')}
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={tx('Your password')}
+                  className="w-full h-10 pl-9 pr-10 text-sm rounded-lg border border-border bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30 transition-all placeholder:text-muted-foreground/40"
                 />
-                <div className="mt-2 flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">
-                    {codeSent
-                      ? t(`Sent to ${identifier}`, `已发送至 ${identifier}`)
-                      : t(
-                          'Enter the email above and request a code.',
-                          '输入上方邮箱后获取验证码。',
-                        )}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleSendCode}
-                    disabled={cooldown > 0 || !identifierValid || submitting}
-                    className="font-medium text-foreground hover:underline disabled:text-muted-foreground/60 disabled:no-underline disabled:cursor-not-allowed"
-                  >
-                    {cooldown > 0
-                      ? t(`Resend in ${cooldown}s`, `${cooldown} 秒后重发`)
-                      : codeSent
-                        ? tx('Resend code')
-                        : tx('Send code')}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? tx('Hide password') : tx('Show password')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-            )}
+            </div>
 
             <AntiBot verified={antiBotOk} onVerifiedChange={setAntiBotOk} />
 
+            <LegalAgreementCheckbox
+              checked={termsAccepted}
+              onChange={setTermsAccepted}
+              id="login-legal-agreement"
+            />
+
             <button
               type="submit"
-              disabled={mode === 'otp' ? !canSubmitOtp : !canSubmitPassword}
+              disabled={submitting}
               className="group w-full h-10 text-sm font-semibold rounded-lg bg-foreground text-background hover:brightness-110 active:brightness-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (
@@ -316,24 +285,6 @@ export default function DevEnLoginPage() {
                 </>
               )}
             </button>
-
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === 'password' ? 'otp' : 'password');
-                  setError(null);
-                  setInfo(null);
-                  setCode('');
-                  setPassword('');
-                }}
-                className="text-[12px] font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
-              >
-                {mode === 'password'
-                  ? t('Sign in with a one-time code instead', '改用邮箱验证码登录')
-                  : t('Sign in with a password instead', '改用密码登录')}
-              </button>
-            </div>
           </form>
 
           <p className="text-xs text-center text-muted-foreground mt-6">

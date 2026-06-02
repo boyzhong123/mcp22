@@ -1,0 +1,1756 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chivox MCP 海外开发者门户 · API 对接差异看板</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #06090d;
+        --panel: rgba(15, 23, 32, 0.84);
+        --panel-strong: #101923;
+        --panel-soft: rgba(20, 31, 43, 0.72);
+        --line: rgba(148, 163, 184, 0.18);
+        --line-strong: rgba(148, 163, 184, 0.32);
+        --text: #eef5f7;
+        --muted: #95a7b4;
+        --faint: #6e8190;
+        --brand: #64e4bd;
+        --brand-soft: rgba(52, 211, 153, 0.14);
+        --blue: #7cc5ff;
+        --blue-soft: rgba(59, 130, 246, 0.14);
+        --amber: #ffd166;
+        --amber-soft: rgba(245, 158, 11, 0.14);
+        --red: #ff8989;
+        --red-soft: rgba(239, 68, 68, 0.15);
+        --purple: #c4a7ff;
+        --purple-soft: rgba(139, 92, 246, 0.15);
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.34);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 12% -10%, rgba(45, 212, 191, 0.16), transparent 28rem),
+          radial-gradient(circle at 90% 8%, rgba(59, 130, 246, 0.13), transparent 30rem),
+          var(--bg);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "Noto Sans SC", sans-serif;
+        line-height: 1.55;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      code {
+        color: #c7f9eb;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.9em;
+      }
+
+      .shell {
+        width: min(1500px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 30px 0 70px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 30px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-weight: 750;
+        letter-spacing: -0.04em;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border: 1px solid rgba(100, 228, 189, 0.46);
+        border-radius: 13px;
+        background: rgba(100, 228, 189, 0.1);
+        color: var(--brand);
+        font-size: 18px;
+      }
+
+      .brand em {
+        color: var(--brand);
+        font-style: normal;
+      }
+
+      .date {
+        color: var(--faint);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+        gap: 22px;
+        margin-bottom: 26px;
+      }
+
+      .hero-main,
+      .hero-side,
+      .section {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: linear-gradient(145deg, rgba(16, 25, 35, 0.94), rgba(10, 16, 23, 0.82));
+        box-shadow: var(--shadow);
+      }
+
+      .hero-main {
+        padding: 30px;
+      }
+
+      .hero-side {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 24px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--brand);
+        font-size: 11px;
+        font-weight: 760;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 22px;
+        height: 1px;
+        background: var(--brand);
+        content: "";
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin-top: 17px;
+        font-size: clamp(30px, 4vw, 52px);
+        line-height: 1.07;
+        letter-spacing: -0.055em;
+      }
+
+      .hero-copy {
+        max-width: 760px;
+        margin-top: 17px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .scope-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 21px;
+        padding: 12px 14px;
+        border: 1px solid rgba(124, 197, 255, 0.22);
+        border-radius: 13px;
+        background: var(--blue-soft);
+        color: #cae9ff;
+        font-size: 13px;
+      }
+
+      .scope-note strong {
+        color: var(--blue);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .stat {
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .stat-value {
+        font-size: 29px;
+        font-weight: 760;
+        letter-spacing: -0.05em;
+      }
+
+      .stat-label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .side-note {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .section {
+        margin-top: 22px;
+        padding: 22px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      h2 {
+        font-size: 21px;
+        letter-spacing: -0.035em;
+      }
+
+      .section-desc {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .shot {
+        overflow: hidden;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: #080d12;
+        color: inherit;
+        text-align: left;
+        transition: 160ms ease;
+      }
+
+      .shot:hover {
+        border-color: rgba(100, 228, 189, 0.6);
+        transform: translateY(-3px);
+      }
+
+      .shot-image {
+        width: 100%;
+        height: 168px;
+        object-fit: cover;
+        object-position: top;
+        border-bottom: 1px solid var(--line);
+        display: block;
+      }
+
+      .shot-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 11px 12px;
+        font-size: 13px;
+        font-weight: 680;
+      }
+
+      .shot-label span:last-child {
+        color: var(--brand);
+        font-size: 11px;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .toolbar-group {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .toolbar-label {
+        min-width: 54px;
+        color: var(--faint);
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .filter {
+        padding: 7px 11px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.025);
+        color: var(--muted);
+        font-size: 12px;
+        transition: 140ms ease;
+      }
+
+      .filter:hover,
+      .filter.active {
+        border-color: rgba(100, 228, 189, 0.55);
+        background: var(--brand-soft);
+        color: #d8fff4;
+      }
+
+      .search {
+        min-width: 230px;
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.025);
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      .search:focus {
+        border-color: rgba(124, 197, 255, 0.65);
+      }
+
+      .matrix-layout {
+        display: grid;
+        grid-template-columns: 184px minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+      }
+
+      .matrix-main {
+        min-width: 0;
+      }
+
+      .page-nav {
+        position: sticky;
+        top: 14px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: rgba(2, 6, 10, 0.32);
+      }
+
+      .page-nav-title {
+        margin: 2px 4px 9px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .page-nav-list {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .page-nav-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 9px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: left;
+        transition: 140ms ease;
+      }
+
+      .page-nav-btn:hover {
+        background: rgba(255, 255, 255, 0.035);
+        color: var(--text);
+      }
+
+      .page-nav-btn.active {
+        border-color: rgba(100, 228, 189, 0.34);
+        background: var(--brand-soft);
+        color: #d8fff4;
+      }
+
+      .page-nav-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--faint);
+        font-size: 10px;
+      }
+
+      .page-nav-btn.active .page-nav-count {
+        background: rgba(100, 228, 189, 0.13);
+        color: var(--brand);
+      }
+
+      .table-wrap {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+      }
+
+      table {
+        width: 100%;
+        min-width: 1180px;
+        border-collapse: collapse;
+        background: rgba(2, 6, 10, 0.24);
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #111b25;
+        color: #b9c7d1;
+        font-size: 11px;
+        font-weight: 760;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      td {
+        color: #cfdae1;
+        font-size: 13px;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.018);
+      }
+
+      .module {
+        color: #ffffff;
+        font-weight: 720;
+      }
+
+      .page {
+        color: var(--muted);
+      }
+
+      .endpoint {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 760;
+        white-space: nowrap;
+      }
+
+      .badge::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        content: "";
+      }
+
+      .ok {
+        color: var(--brand);
+        background: var(--brand-soft);
+      }
+
+      .partial {
+        color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .missing {
+        color: var(--red);
+        background: var(--red-soft);
+      }
+
+      .optional {
+        color: var(--purple);
+        background: var(--purple-soft);
+      }
+
+      .detail-btn {
+        padding: 6px 9px;
+        border: 1px solid rgba(124, 197, 255, 0.32);
+        border-radius: 9px;
+        background: var(--blue-soft);
+        color: #cceaff;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .detail-btn:hover {
+        border-color: var(--blue);
+      }
+
+      .fulfilled {
+        color: var(--faint);
+        font-size: 12px;
+      }
+
+      .owner-tag {
+        display: inline-flex;
+        padding: 4px 7px;
+        border: 1px solid rgba(124, 197, 255, 0.24);
+        border-radius: 999px;
+        background: var(--blue-soft);
+        color: #cceaff;
+        font-size: 11px;
+        font-weight: 720;
+        white-space: nowrap;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .card {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.022);
+      }
+
+      .card h3 {
+        font-size: 15px;
+        letter-spacing: -0.02em;
+      }
+
+      .card p {
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+
+      .chip {
+        display: inline-block;
+        padding: 4px 7px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.16);
+        color: #c9f7ea;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
+      }
+
+      .priority {
+        display: inline-flex;
+        margin-bottom: 9px;
+        padding: 3px 7px;
+        border-radius: 999px;
+        color: var(--amber);
+        background: var(--amber-soft);
+        font-size: 10px;
+        font-weight: 780;
+        letter-spacing: 0.08em;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .extra {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .extra + .extra {
+        margin-top: 9px;
+      }
+
+      .extra strong {
+        display: block;
+        color: #ffffff;
+        font-size: 13px;
+      }
+
+      .extra small {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .extra-action {
+        color: #c7f9eb;
+        font-size: 12px;
+      }
+
+      .callout {
+        padding: 16px;
+        border: 1px solid rgba(100, 228, 189, 0.25);
+        border-radius: 15px;
+        background: var(--brand-soft);
+        color: #d6fff4;
+        font-size: 13px;
+      }
+
+      .callout strong {
+        color: var(--brand);
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(8px);
+      }
+
+      .modal.open {
+        display: flex;
+      }
+
+      .modal-card {
+        width: min(1120px, 100%);
+        max-height: min(760px, calc(100vh - 36px));
+        overflow: auto;
+        border: 1px solid var(--line-strong);
+        border-radius: 18px;
+        background: #0c141d;
+        box-shadow: var(--shadow);
+      }
+
+      .modal-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(12, 20, 29, 0.96);
+      }
+
+      .modal-title {
+        margin-top: 8px;
+        font-size: 21px;
+        letter-spacing: -0.035em;
+      }
+
+      .close {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+      }
+
+      .modal-body {
+        padding: 18px;
+      }
+
+      .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .modal-box {
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.022);
+      }
+
+      .modal-box h3 {
+        color: #ffffff;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .modal-box p {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .field-table-wrap {
+        overflow: auto;
+        margin-top: 9px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+      }
+
+      .field-table {
+        min-width: 580px;
+        background: rgba(2, 6, 10, 0.2);
+      }
+
+      .field-table th,
+      .field-table td {
+        padding: 9px 11px;
+        font-size: 12px;
+      }
+
+      .field-table th {
+        position: static;
+      }
+
+      .field-state {
+        color: var(--amber);
+        white-space: nowrap;
+      }
+
+      .visual-note {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .annotated-shot {
+        position: relative;
+        overflow: hidden;
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: #05090d;
+      }
+
+      .annotated-shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .annotation {
+        position: absolute;
+        border: 3px solid #ff5f68;
+        border-radius: 8px;
+        background: rgba(255, 95, 104, 0.08);
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.42), 0 0 18px rgba(255, 95, 104, 0.34);
+      }
+
+      .annotation-label {
+        position: absolute;
+        top: -27px;
+        left: -3px;
+        display: inline-flex;
+        align-items: center;
+        min-height: 23px;
+        padding: 3px 7px;
+        border-radius: 7px 7px 7px 0;
+        background: #e74751;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 780;
+        line-height: 1.25;
+        white-space: nowrap;
+      }
+
+      .annotation-label.inside {
+        top: 3px;
+        left: 3px;
+        border-radius: 6px;
+      }
+
+      .no-visual {
+        margin-top: 10px;
+        padding: 14px;
+        border: 1px dashed rgba(124, 197, 255, 0.28);
+        border-radius: 11px;
+        background: var(--blue-soft);
+        color: #cceaff;
+        font-size: 12px;
+      }
+
+      .wide {
+        grid-column: 1 / -1;
+      }
+
+      .lightbox-card {
+        width: min(1040px, 100%);
+        max-height: calc(100vh - 36px);
+        overflow: auto;
+        border: 1px solid var(--line-strong);
+        border-radius: 18px;
+        background: #0a1017;
+        box-shadow: var(--shadow);
+      }
+
+      .lightbox-img {
+        display: block;
+        width: 100%;
+      }
+
+      footer {
+        padding: 24px 4px 0;
+        color: var(--faint);
+        font-size: 12px;
+        text-align: center;
+      }
+
+      @media (max-width: 1050px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .matrix-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .page-nav {
+          position: static;
+          padding: 9px;
+        }
+
+        .page-nav-title {
+          margin-bottom: 7px;
+        }
+
+        .page-nav-list {
+          flex-direction: row;
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+
+        .page-nav-btn {
+          flex: 0 0 auto;
+          width: auto;
+          white-space: nowrap;
+        }
+
+        .gallery,
+        .cards {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 720px) {
+        .shell {
+          width: min(100% - 20px, 1500px);
+          padding-top: 16px;
+        }
+
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .hero-main,
+        .hero-side,
+        .section {
+          padding: 16px;
+          border-radius: 17px;
+        }
+
+        .gallery,
+        .cards,
+        .split,
+        .modal-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .extra {
+          grid-template-columns: 1fr;
+        }
+
+        .shot-image {
+          height: 205px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">C</span>
+          <span>Chivox<em>MCP</em> · 海外开发者门户</span>
+        </div>
+        <div class="date">API GAP REVIEW · 2026-06-01</div>
+      </header>
+
+      <section class="hero">
+        <div class="hero-main">
+          <div class="eyebrow">Control Plane API Review</div>
+          <h1>海外开发者页面与后端接口对接差异看板</h1>
+          <p class="hero-copy">
+            基于最新后端文档和当前前端代码逐项验收页面完成度。已经搭建完成的页面标记为已满足；真实 API 适配、回调契约和后端确认项统一放在技术联调清单中。
+          </p>
+          <div class="scope-note">
+            <strong>范围说明</strong>
+            <span>只核对国外开发者门户的控制面接口。按要求不参考 MCP Runtime、Internal 和 Admin 接口。</span>
+          </div>
+        </div>
+        <aside class="hero-side">
+          <div>
+            <div class="eyebrow">Quick Count</div>
+            <p class="side-note" style="margin-top: 12px">
+              按前端页面验收口径，本轮明确需求已经满足。Webhook 管理页仍作为可选补充项。
+            </p>
+          </div>
+          <div class="stats" id="stats"></div>
+        </aside>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>页面截图</h2>
+            <p class="section-desc">真实演示账号页面。点击图片可查看完整长图。</p>
+          </div>
+        </div>
+        <div class="gallery" id="gallery"></div>
+      </section>
+
+      <section class="section" id="matrix">
+        <div class="section-head">
+          <div>
+            <h2>页面需求与后端接口对应表</h2>
+            <p class="section-desc">按页面分区查看前端完成度。接口联调与后端确认项统一放在下方技术清单。</p>
+          </div>
+        </div>
+        <div class="matrix-layout">
+          <aside class="page-nav" aria-label="页面分区">
+            <div class="page-nav-title">页面分区</div>
+            <div class="page-nav-list" id="pageNav"></div>
+          </aside>
+          <div class="matrix-main">
+            <div class="toolbar">
+              <div class="toolbar-group">
+                <span class="toolbar-label">状态</span>
+                <button class="filter status-filter active" data-filter="all">全部</button>
+                <button class="filter status-filter" data-filter="ok">已满足</button>
+                <button class="filter status-filter" data-filter="partial">部分满足</button>
+                <button class="filter status-filter" data-filter="missing">缺失</button>
+                <button class="filter status-filter" data-filter="optional">可选 / 待决策</button>
+              </div>
+              <div class="toolbar-group">
+                <span class="toolbar-label">归属</span>
+                <button class="filter owner-filter active" data-owner="all">全部归属</button>
+                <button class="filter owner-filter" data-owner="backend">后端处理</button>
+                <button class="filter owner-filter" data-owner="frontend">前端处理</button>
+                <button class="filter owner-filter" data-owner="both">双方对齐</button>
+                <button class="filter owner-filter" data-owner="product">产品确认</button>
+                <button class="filter owner-filter" data-owner="none">无需补充</button>
+              </div>
+              <div class="toolbar-group">
+                <span class="toolbar-label">搜索</span>
+                <input class="search" id="search" placeholder="搜索页面、模块或接口，例如 billing / OAuth" />
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>模块</th>
+                    <th>页面 / 功能</th>
+                    <th>后端对应接口</th>
+                    <th>状态</th>
+                    <th>缺失归属</th>
+                    <th>结论</th>
+                    <th>详情</th>
+                  </tr>
+                </thead>
+                <tbody id="apiRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>技术联调与清理清单</h2>
+            <p class="section-desc">这些不影响“页面已搭建”的判断，但上线前仍需完成。</p>
+          </div>
+        </div>
+        <div class="cards" id="missingCards"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>后端已提供，页面可继续补充</h2>
+            <p class="section-desc">下面这些能力可以按产品优先级补成抽屉、操作入口或管理页。</p>
+          </div>
+        </div>
+        <div class="split">
+          <div id="extraPages"></div>
+          <div>
+            <div class="callout">
+              <strong>建议继续补的能力</strong><br />
+              Webhook 管理。交易详情抽屉已经补充；忘记 / 重置 / 修改密码页面也已经存在，当前任务是接通真实接口。
+            </div>
+            <div class="callout" style="margin-top: 10px; border-color: rgba(124, 197, 255, 0.25); background: var(--blue-soft)">
+              <strong style="color: var(--blue)">无需新增页面的接口</strong><br />
+              <code>POST /api/billing/webhook</code> 属于 PayPal 服务端回调；<code>GET /api/billing/summary</code> 和
+              <code>GET /api/billing/balance</code> 应直接接入 Overview / Billing，不需要新页面。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>优先级建议</h2>
+            <p class="section-desc">先统一产品口径，再接主链路，最后补完整度。</p>
+          </div>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <span class="priority">P0 · 先确认</span>
+            <h3>统一免费试用口径</h3>
+            <p>前端已经统一展示 900 次、30 天。后端仍需同步 pricing 文档示例，并建议在 summary 中增加总次数。</p>
+          </article>
+          <article class="card">
+            <span class="priority">P1 · 主链路</span>
+            <h3>迁移 Overview / Billing / Keys / Usage 适配层</h3>
+            <p>按最新 envelope、点位字段和四维 limits 接真实数据，并清理旧 spend-limit、items 和 payment-methods 读取方式。</p>
+          </article>
+          <article class="card">
+            <span class="priority">P2 · 完整度</span>
+            <h3>补账号接线与可选管理能力</h3>
+            <p>接通密码流程和 OAuth 回调契约，再按产品优先级补 Webhook 管理页。</p>
+          </article>
+        </div>
+      </section>
+
+      <footer>
+        数据来源：海外开发者门户源码、真实演示页面截图、后端提供的 <code>api.md</code>。本看板不包含 MCP Runtime。
+      </footer>
+    </div>
+
+    <div class="modal" id="detailModal" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head">
+          <div>
+            <span class="badge partial" id="modalBadge">部分满足</span>
+            <h2 class="modal-title" id="modalTitle"></h2>
+          </div>
+          <button class="close" data-close="detailModal" aria-label="关闭">×</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+    </div>
+
+    <div class="modal" id="lightbox" aria-hidden="true">
+      <div class="lightbox-card" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Page Preview</div>
+            <h2 class="modal-title" id="lightboxTitle"></h2>
+          </div>
+          <button class="close" data-close="lightbox" aria-label="关闭">×</button>
+        </div>
+        <img class="lightbox-img" id="lightboxImg" alt="" />
+      </div>
+    </div>
+
+    <script>
+      const statuses = {
+        ok: { label: "已满足", symbol: "✓" },
+        partial: { label: "部分满足", symbol: "!" },
+        missing: { label: "缺失", symbol: "×" },
+        optional: { label: "可选 / 待决策", symbol: "?" },
+      };
+
+      const imageSources = {
+        overview: "./images/dev-en/overview-alerts.png",
+        keys: "./images/dev-en/keys-page.png",
+        usage: "./images/dev-en/usage-page.png",
+        billing: "./images/dev-en/billing-page.png",
+        limits: "./images/dev-en/limits-page.png",
+        settings: "./images/dev-en/settings-notifications.png",
+        login: "./images/dev-en/login.png",
+      };
+
+      const shots = [
+        ["Overview", "钱包、试用包、关键指标与最近充值", imageSources.overview],
+        ["API Keys", "无 Project 模型的 Key 生命周期与单 Key 限额", imageSources.keys],
+        ["Usage", "按 Key 查看调用、消费与 savings", imageSources.usage],
+        ["Billing", "共享钱包、Paypal 充值与交易历史", imageSources.billing],
+        ["Limits", "账户级每日 / 每月四维限额", imageSources.limits],
+        ["Settings", "通知偏好与低余额提醒", imageSources.settings],
+        ["Login", "协议确认、密码、OTP 与 OAuth 登录入口", imageSources.login],
+      ];
+
+      const detailVisuals = {
+        "Auth|邮箱 OTP 注册": {
+          src: imageSources.login,
+          note: "前端已经完成验证码发送、倒计时、验证码输入和协议确认。仅需后端确认 OTP verify 是正式注册链路。",
+          boxes: [{ x: 18, y: 62, w: 64, h: 9, label: "OTP 注册流程 / 协议确认" }],
+        },
+        "Auth|GitHub / Google / Microsoft OAuth": {
+          src: imageSources.login,
+          note: "页面上的 OAuth 登录入口需要与后端统一回调地址和参数。",
+          boxes: [{ x: 18, y: 31, w: 64, h: 15, label: "OAuth 登录入口" }],
+        },
+        "Overview|共享钱包与试用包": {
+          src: imageSources.overview,
+          note: "billing summary 已接入部分试用字段，但总次数仍固定为 900，钱包、用量和限额仍需统一真实数据源。",
+          boxes: [
+            { x: 4, y: 15, w: 42, h: 17, label: "钱包余额 / 累计充值" },
+            { x: 49, y: 15, w: 46, h: 17, label: "试用剩余次数 / 有效期" },
+            { x: 4, y: 34, w: 91, h: 16, label: "月度消费与调用汇总" },
+          ],
+        },
+        "API Keys|Key 生命周期": {
+          src: imageSources.keys,
+          note: "Project 已移除。后端已经给出环境、最近使用时间和四维限额字段，前端适配层仍需读取。",
+          boxes: [{ x: 3, y: 23, w: 94, h: 49, label: "Key 列表字段" }],
+        },
+        "Usage|调用图表、按 Key 筛选、CSV": {
+          src: imageSources.usage,
+          note: "后端点位字段已经足够，但前端仍按旧 envelope 和旧点位结构读取。",
+          boxes: [
+            { x: 3, y: 12, w: 94, h: 15, label: "Key 筛选" },
+            { x: 3, y: 29, w: 94, h: 24, label: "调用、消费与 savings 图表" },
+          ],
+        },
+        "Billing|PayPal 钱包充值": {
+          src: imageSources.billing,
+          note: "充值按钮和钱包到账需要接入 PayPal order / capture，而不是继续使用本地模拟。",
+          boxes: [{ x: 3, y: 11, w: 94, h: 18, label: "钱包余额与充值入口" }],
+        },
+        "Billing|定价与充值档位": {
+          src: imageSources.billing,
+          note: "调用单价、最低金额和充值预设需要先统一产品口径。",
+          boxes: [{ x: 3, y: 28, w: 94, h: 23, label: "调用单价与充值预设" }],
+        },
+        "Billing|移除发票概念": {
+          src: imageSources.billing,
+          note: "交易历史、设置、Billing、Profile 和 Rates 页面中的发票入口与文案已经移除。",
+          boxes: [{ x: 3, y: 53, w: 94, h: 43, label: "交易历史：已改为普通交易记录" }],
+        },
+        "Limits|账户级四维限额": {
+          src: imageSources.limits,
+          note: "每日 / 每月、金额 / 次数四个输入项都需要后端持久化。",
+          boxes: [{ x: 3, y: 18, w: 94, h: 63, label: "账户级四维上限" }],
+        },
+        "Limits|单 Key 四维限额": {
+          src: imageSources.keys,
+          note: "Key Settings 弹窗中的四维上限需要由 PATCH /api/keys/:id/settings 持久化。",
+          boxes: [{ x: 3, y: 23, w: 94, h: 49, label: "单 Key 设置入口与限额" }],
+        },
+        "Settings|账户低余额提醒": {
+          src: imageSources.settings,
+          note: "后端已增加阈值字段，页面已收敛为单一账户级开关和阈值输入项。",
+          boxes: [{ x: 3, y: 55, w: 94, h: 26, label: "低余额提醒开关与阈值" }],
+        },
+      };
+
+      const rows = [
+        {
+          module: "Auth",
+          page: "登录 / 注册协议确认",
+          endpoints: ["前端交互", "GET /legal/terms", "GET /legal/privacy"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "登录和注册页面均已增加协议勾选；正式文案上线前仍需法务审核。",
+        },
+        {
+          module: "Auth",
+          page: "邮箱 OTP 注册",
+          endpoints: ["POST /api/auth/otp/send", "POST /api/auth/otp/verify"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "前端已完成验证码发送、重发倒计时、验证码输入和协议确认。OTP verify 是否作为正式注册链路已单列给后端确认。",
+        },
+        {
+          module: "Auth",
+          page: "GitHub / Google / Microsoft OAuth",
+          endpoints: ["GET /api/auth/oauth/:provider/start", "GET /api/auth/oauth/:provider/callback"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "登录和注册页面已展示 GitHub、Google 和 Microsoft OAuth 入口。回调契约对齐单列为技术联调项。",
+        },
+        {
+          module: "Auth",
+          page: "忘记 / 重置 / 修改密码页面",
+          endpoints: ["前端页面"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "忘记密码入口、重置密码页面和 Profile 修改密码区块均已补充。",
+        },
+        {
+          module: "Auth",
+          page: "个人资料",
+          endpoints: ["GET /api/auth/me", "PATCH /api/auth/me", "POST /api/auth/logout"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "姓名、邮箱、头像 URL 和登出均可支撑当前页面。",
+        },
+        {
+          module: "Overview",
+          page: "共享钱包、试用包与汇总字段",
+          endpoints: ["GET /api/billing/balance", "GET /api/billing/summary", "GET /api/usage/account-summary"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "页面已展示共享钱包、900 次 / 30 天试用、用量和限额维度。真实数据适配单列为技术联调项。",
+        },
+        {
+          module: "API Keys",
+          page: "移除 Project 概念",
+          endpoints: ["GET /api/keys", "POST /api/keys"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "创建 Key、列表与 Usage 筛选已移除 Project；最新后端文档也没有 Project API。",
+        },
+        {
+          module: "API Keys",
+          page: "Key 生命周期",
+          endpoints: ["GET /api/keys", "POST /api/keys", "PATCH /api/keys/:id", "POST /api/keys/:id/rotate", "POST /api/keys/:id/pause|resume|revoke", "DELETE /api/keys/:id"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "页面已提供创建、重命名、轮换、暂停、恢复、撤销、删除和 Key Settings 弹窗。真实字段适配单列为技术联调项。",
+        },
+        {
+          module: "Usage",
+          page: "调用图表、按 Key 筛选、CSV",
+          endpoints: ["GET /api/usage/points", "GET /api/usage/account-summary", "GET /api/usage/export.csv"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "页面已提供调用图表、Key 筛选、消费、savings 和 CSV 导出入口。真实点位适配单列为技术联调项。",
+        },
+        {
+          module: "Billing",
+          page: "PayPal 钱包充值",
+          endpoints: ["POST /api/billing/topups/order", "POST /api/billing/topups/:id/capture", "POST /api/billing/webhook"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "页面已采用账户共享钱包并仅展示 Paypal 充值。order / capture 接线单列为技术联调项。",
+        },
+        {
+          module: "Billing",
+          page: "免费试用定价口径",
+          endpoints: ["GET /api/billing/pricing"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "前端 Overview、Rates 和默认值均已统一展示 900 次、30 天。后端文档同步已单列为确认项。",
+        },
+        {
+          module: "Billing",
+          page: "移除保存卡入口",
+          endpoints: ["前端删减项"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "Billing 主页和充值弹窗已无保存卡管理、选卡或绑卡入口；充值方式仅展示 Paypal。",
+        },
+        {
+          module: "Billing",
+          page: "移除发票概念",
+          endpoints: ["GET /api/billing/transactions"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "交易历史已改为普通交易记录；发票搜索、列、下载按钮、通知和页面文案均已移除。",
+        },
+        {
+          module: "Billing",
+          page: "交易详情抽屉",
+          endpoints: ["GET /api/billing/transactions/:id"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "点击充值记录后从右侧打开详情抽屉，展示金额、状态、时间、PayPal 订单号和钱包余额变化。",
+        },
+        {
+          module: "Limits",
+          page: "账户级四维限额",
+          endpoints: ["GET /api/billing/limits", "PUT /api/billing/limits"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "Limits 页面已提供每日 / 每月、金额 / 次数四个独立输入项。真实接口迁移单列为技术联调项。",
+        },
+        {
+          module: "Limits",
+          page: "单 Key 四维限额",
+          endpoints: ["PATCH /api/keys/:id/settings"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "Key Settings 弹窗已提供四维上限输入项。真实接口迁移单列为技术联调项。",
+        },
+        {
+          module: "Settings",
+          page: "邮件通知偏好与低余额提醒",
+          endpoints: ["GET /api/notifications/settings", "PATCH /api/notifications/settings"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "后端已增加 low_balance_threshold_cents，前端已收敛为单一账户级开关与阈值。",
+        },
+        {
+          module: "Settings",
+          page: "移除成员邀请与角色管理",
+          endpoints: ["前端删减项"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "Team、Members 页面与接口封装已移除；后端最新文档也不包含成员管理 API。",
+        },
+        {
+          module: "Profile",
+          page: "头像上传",
+          endpoints: ["POST /api/upload/avatar", "GET /api/avatar/:id", "PATCH /api/auth/me"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "后端已提供 multipart 上传、公开读取和资料更新，前端已接入。",
+        },
+        {
+          module: "Billing",
+          page: "移除充值梯度赠送",
+          endpoints: ["前端删减项"],
+          status: "ok",
+          owner: "无需补充",
+          summary: "充值赠送金额逻辑已经移除，档位仅代表实际充值金额。",
+        },
+        {
+          module: "Webhooks",
+          page: "开发者 Webhook 管理",
+          endpoints: ["GET /api/webhooks/endpoints", "POST /api/webhooks/endpoints", "DELETE /api/webhooks/endpoints/:id", "POST /api/webhooks/endpoints/:id/test"],
+          status: "optional",
+          owner: "前端可补页面",
+          summary: "后端已经提供，当前控制台还没有管理页面。",
+          issue: "后端接口已经具备，但控制台还没有展示入口。",
+          current: "可以作为 Settings 下的新页面或区块。",
+          action: "按产品优先级补 Webhook 管理页。",
+          fields: "id、url、secret、enabled_events: string[]、created_at",
+        },
+      ];
+
+      const pageSections = [
+        ["all", "全部页面"],
+        ["Auth", "登录与账号"],
+        ["Overview", "概览"],
+        ["API Keys", "API 密钥"],
+        ["Usage", "用量"],
+        ["Billing", "账单"],
+        ["Limits", "上限"],
+        ["Settings", "设置"],
+        ["Profile", "个人资料"],
+        ["Webhooks", "Webhooks"],
+      ];
+
+      const missing = [
+        {
+          title: "统一试用额度口径",
+          priority: "P0",
+          owner: "BACKEND",
+          desc: "前端已经按 900 次、30 天展示。后端 pricing 文档仍写 600 次，summary 也缺少总次数。",
+          chips: ["trial_calls: 900", "trial_days: 30", "trial_calls_total"],
+        },
+        {
+          title: "迁移前端数据适配层",
+          priority: "P1",
+          owner: "FRONTEND",
+          desc: "Usage、Overview、账户 Limits 与 Key Limits 仍读取旧 envelope、旧路由或旧字段。",
+          chips: ["GET /usage/points", "GET/PUT /billing/limits", "ApiKey.limits", "billing summary"],
+        },
+        {
+          title: "清理旧支付接线",
+          priority: "P1",
+          owner: "FRONTEND",
+          desc: "保存卡和发票用户入口已经移除。上线前仍需清理 payment-methods 后台请求和 Stripe 遗留。",
+          chips: ["payment-methods hydration", "Stripe copy", "Paypal order / capture"],
+        },
+        {
+          title: "接通密码流程与 OAuth",
+          priority: "P1",
+          owner: "FRONTEND / BOTH",
+          desc: "密码页面已经存在但仍是模拟；OAuth callback 路径、hash 参数与 state 校验尚未按最新文档对齐。",
+          chips: ["/forgot-password", "/reset-password", "/change-password", "/oauth/callback#token"],
+        },
+        {
+          title: "确认 OTP 注册正式链路",
+          priority: "P2",
+          owner: "BACKEND",
+          desc: "前端页面和协议确认已经完成。注册页已使用 OTP verify 创建账号，仅需后端确认这是正式推荐流程。",
+          chips: ["/auth/otp/send", "/auth/otp/verify", "terms_accepted"],
+        },
+      ];
+
+      const extras = [
+        {
+          title: "Webhook 管理",
+          endpoints: ["GET/POST/DELETE /api/webhooks/endpoints*", "POST /api/webhooks/endpoints/:id/test"],
+          action: "在 Settings 下增加 Webhooks 标签页，支持创建、测试和删除。",
+        },
+      ];
+
+      function endpointHtml(items) {
+        return items.map((item) => `<code class="endpoint">${escapeHtml(item)}</code>`).join("");
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function renderStats() {
+        const order = ["ok", "partial", "missing", "optional"];
+        document.querySelector("#stats").innerHTML = order
+          .map((status) => {
+            const count = rows.filter((row) => row.status === status).length;
+            return `<div class="stat"><div class="stat-value">${count}</div><div class="stat-label">${statuses[status].label}</div></div>`;
+          })
+          .join("");
+      }
+
+      function renderGallery() {
+        document.querySelector("#gallery").innerHTML = shots
+          .map(
+            ([title, desc, src]) => `
+              <button class="shot" data-shot="${escapeHtml(src)}" data-title="${escapeHtml(title)} · ${escapeHtml(desc)}">
+                <img class="shot-image" src="${escapeHtml(src)}" alt="${escapeHtml(title)} 页面截图" />
+                <span class="shot-label"><span>${escapeHtml(title)}</span><span>查看长图 ↗</span></span>
+              </button>`,
+          )
+          .join("");
+      }
+
+      function renderPageNav() {
+        document.querySelector("#pageNav").innerHTML = pageSections
+          .map(([module, label]) => {
+            const count = module === "all" ? rows.length : rows.filter((row) => row.module === module).length;
+            return `
+              <button class="page-nav-btn${module === activeModule ? " active" : ""}" data-module="${escapeHtml(module)}">
+                <span>${escapeHtml(label)}</span>
+                <span class="page-nav-count">${count}</span>
+              </button>`;
+          })
+          .join("");
+      }
+
+      function ownerGroup(owner) {
+        if (owner.startsWith("后端")) return "backend";
+        if (owner.startsWith("前端")) return "frontend";
+        if (owner.startsWith("双方")) return "both";
+        if (owner.startsWith("产品")) return "product";
+        return "none";
+      }
+
+      function renderRows(filter = "all", query = "", module = "all", owner = "all") {
+        const normalized = query.trim().toLowerCase();
+        const visible = rows.filter((row) => {
+          const statusMatch = filter === "all" || row.status === filter;
+          const moduleMatch = module === "all" || row.module === module;
+          const ownerMatch = owner === "all" || ownerGroup(row.owner) === owner;
+          const text = [row.module, row.page, row.summary, ...row.endpoints].join(" ").toLowerCase();
+          return statusMatch && moduleMatch && ownerMatch && (!normalized || text.includes(normalized));
+        });
+        document.querySelector("#apiRows").innerHTML = visible
+          .map((row) => {
+            const index = rows.indexOf(row);
+            const detail =
+              row.status === "ok"
+                ? `<span class="fulfilled">可直接接入</span>`
+                : `<button class="detail-btn" data-row="${index}">查看详情</button>`;
+            return `
+              <tr>
+                <td><span class="module">${escapeHtml(row.module)}</span></td>
+                <td><span class="page">${escapeHtml(row.page)}</span></td>
+                <td>${endpointHtml(row.endpoints)}</td>
+                <td><span class="badge ${row.status}">${statuses[row.status].label}</span></td>
+                <td><span class="owner-tag">${escapeHtml(row.owner)}</span></td>
+                <td>${escapeHtml(row.summary)}</td>
+                <td>${detail}</td>
+              </tr>`;
+          })
+          .join("");
+      }
+
+      function renderMissing() {
+        document.querySelector("#missingCards").innerHTML = missing
+          .map(
+            (item) => `
+              <article class="card">
+                <span class="priority">${escapeHtml(item.priority)} · ${escapeHtml(item.owner)}</span>
+                <h3>${escapeHtml(item.title)}</h3>
+                <p>${escapeHtml(item.desc)}</p>
+                <div class="chips">${item.chips.map((chip) => `<span class="chip">${escapeHtml(chip)}</span>`).join("")}</div>
+              </article>`,
+          )
+          .join("");
+      }
+
+      function renderExtras() {
+        document.querySelector("#extraPages").innerHTML = extras
+          .map(
+            (item) => `
+              <article class="extra">
+                <div>
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <small>${endpointHtml(item.endpoints)}</small>
+                </div>
+                <div class="extra-action">${escapeHtml(item.action)}</div>
+              </article>`,
+          )
+          .join("");
+      }
+
+      function fieldState(row) {
+        if (row.owner.startsWith("后端")) return "后端待提供";
+        if (row.owner.startsWith("前端")) return "前端待接入";
+        if (row.owner.startsWith("双方")) return "双方需对齐";
+        if (row.owner.startsWith("产品")) return "产品待确认";
+        return "已满足";
+      }
+
+      function renderFieldTable(row) {
+        const fields = String(row.fields || "无额外字段要求")
+          .split(/[、；]/)
+          .map((field) => field.trim())
+          .filter(Boolean);
+        return `
+          <div class="field-table-wrap">
+            <table class="field-table">
+              <thead>
+                <tr><th>字段 / 参数</th><th>当前情况</th><th>处理方</th></tr>
+              </thead>
+              <tbody>
+                ${fields
+                  .map(
+                    (field) => `
+                      <tr>
+                        <td><code>${escapeHtml(field)}</code></td>
+                        <td class="field-state">${escapeHtml(fieldState(row))}</td>
+                        <td>${escapeHtml(row.owner)}</td>
+                      </tr>`,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      function renderAnnotatedVisual(row) {
+        const visual = detailVisuals[`${row.module}|${row.page}`];
+        if (!visual) {
+          const reason =
+            row.module === "Webhooks"
+              ? "当前前端还没有 Webhook 管理页面，因此没有可标注截图。"
+              : row.module === "Profile"
+                ? "当前截图集未包含个人资料页，请以验收结论为准。"
+                : "当前问题没有单独页面截图，请以字段表格和建议动作作为对接依据。";
+          return `<div class="no-visual">${escapeHtml(reason)}</div>`;
+        }
+        const boxes = visual.boxes
+          .map(
+            (box) => `
+              <span class="annotation" style="left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%">
+                <span class="annotation-label${box.y < 5 ? " inside" : ""}">${escapeHtml(box.label)}</span>
+              </span>`,
+          )
+          .join("");
+        return `
+          <p class="visual-note">${escapeHtml(visual.note)}</p>
+          <div class="annotated-shot">
+            <img src="${escapeHtml(visual.src)}" alt="${escapeHtml(row.page)} 页面标注图" />
+            ${boxes}
+          </div>`;
+      }
+
+      function openDetail(row) {
+        const status = statuses[row.status];
+        const badge = document.querySelector("#modalBadge");
+        badge.className = `badge ${row.status}`;
+        badge.textContent = status.label;
+        document.querySelector("#modalTitle").textContent = `${row.module} · ${row.page}`;
+        document.querySelector("#modalBody").innerHTML = `
+          <div class="modal-grid">
+            <section class="modal-box wide">
+              <h3>相关接口</h3>
+              <p>${endpointHtml(row.endpoints)}</p>
+            </section>
+            <section class="modal-box">
+              <h3>问题在哪里</h3>
+              <p>${escapeHtml(row.issue || row.summary)}</p>
+            </section>
+            <section class="modal-box">
+              <h3>当前页面情况</h3>
+              <p>${escapeHtml(row.current || row.summary)}</p>
+            </section>
+            <section class="modal-box wide">
+              <h3>缺失归属</h3>
+              <p><span class="owner-tag">${escapeHtml(row.owner)}</span></p>
+            </section>
+            <section class="modal-box wide">
+              <h3>页面截图与红框标注</h3>
+              ${renderAnnotatedVisual(row)}
+            </section>
+            <section class="modal-box wide">
+              <h3>建议动作</h3>
+              <p>${escapeHtml(row.action || "按当前接口直接接入。")}</p>
+            </section>
+            <section class="modal-box wide">
+              <h3>字段核对表</h3>
+              ${renderFieldTable(row)}
+            </section>
+          </div>`;
+        document.querySelector("#detailModal").classList.add("open");
+        document.querySelector("#detailModal").setAttribute("aria-hidden", "false");
+      }
+
+      function closeModal(id) {
+        const modal = document.querySelector(`#${id}`);
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden", "true");
+      }
+
+      let activeFilter = "all";
+      let activeModule = "all";
+      let activeOwner = "all";
+
+      renderStats();
+      renderGallery();
+      renderPageNav();
+      renderRows();
+      renderMissing();
+      renderExtras();
+
+      document.addEventListener("click", (event) => {
+        const pageNav = event.target.closest(".page-nav-btn");
+        if (pageNav) {
+          activeModule = pageNav.dataset.module;
+          renderPageNav();
+          renderRows(activeFilter, document.querySelector("#search").value, activeModule, activeOwner);
+          return;
+        }
+
+        const filter = event.target.closest(".status-filter");
+        if (filter) {
+          document.querySelectorAll(".status-filter").forEach((item) => item.classList.remove("active"));
+          filter.classList.add("active");
+          activeFilter = filter.dataset.filter;
+          renderRows(activeFilter, document.querySelector("#search").value, activeModule, activeOwner);
+          return;
+        }
+
+        const ownerFilter = event.target.closest(".owner-filter");
+        if (ownerFilter) {
+          document.querySelectorAll(".owner-filter").forEach((item) => item.classList.remove("active"));
+          ownerFilter.classList.add("active");
+          activeOwner = ownerFilter.dataset.owner;
+          renderRows(activeFilter, document.querySelector("#search").value, activeModule, activeOwner);
+          return;
+        }
+
+        const detail = event.target.closest(".detail-btn");
+        if (detail) {
+          openDetail(rows[Number(detail.dataset.row)]);
+          return;
+        }
+
+        const shot = event.target.closest(".shot");
+        if (shot) {
+          document.querySelector("#lightboxTitle").textContent = shot.dataset.title;
+          document.querySelector("#lightboxImg").src = shot.dataset.shot;
+          document.querySelector("#lightboxImg").alt = shot.dataset.title;
+          document.querySelector("#lightbox").classList.add("open");
+          document.querySelector("#lightbox").setAttribute("aria-hidden", "false");
+          return;
+        }
+
+        const close = event.target.closest("[data-close]");
+        if (close) {
+          closeModal(close.dataset.close);
+          return;
+        }
+
+        if (event.target.classList.contains("modal")) {
+          closeModal(event.target.id);
+        }
+      });
+
+      document.querySelector("#search").addEventListener("input", (event) => {
+        renderRows(activeFilter, event.target.value, activeModule, activeOwner);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeModal("detailModal");
+          closeModal("lightbox");
+        }
+      });
+    </script>
+  </body>
+</html>

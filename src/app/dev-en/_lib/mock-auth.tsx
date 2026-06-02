@@ -10,7 +10,7 @@
 import { type ReactNode } from 'react';
 import { useAuth } from './auth-context';
 
-export type AuthMethod = 'email' | 'google' | 'github' | 'microsoft';
+export type AuthMethod = string;
 
 export interface MockUser {
   id: string;
@@ -48,7 +48,7 @@ export function useMockAuth(): MockAuthContextType {
         name: real.user.name || real.user.email || 'Developer',
         email: real.user.email ?? '',
         avatarUrl: real.user.avatar_url ?? undefined,
-        method: 'email',
+        method: real.user.method ?? '',
         createdAt: real.user.created_at ?? new Date().toISOString(),
       }
     : null;
