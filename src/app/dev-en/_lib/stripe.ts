@@ -3,21 +3,19 @@
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 
 let cached: Promise<Stripe | null> | null = null;
+let cachedKey = '';
 
-// Lazy Stripe.js loader. Reads NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY at runtime.
-// If the env var is missing, returns null so the caller can show a helpful
-// "Stripe is not configured" message instead of crashing.
-export function getStripe(): Promise<Stripe | null> {
-  if (cached) return cached;
-  const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-  if (!pk) {
+// Lazy Stripe.js loader. Accepts the publishable key as a parameter so
+// the caller can supply it from runtime config (e.g. /api/config) instead
+// of relying on a build-time NEXT_PUBLIC_* env var.
+export function getStripe(publishableKey: string): Promise<Stripe | null> {
+  if (cached && cachedKey === publishableKey) return cached;
+  if (!publishableKey) {
     cached = Promise.resolve(null);
+    cachedKey = '';
     return cached;
   }
-  cached = loadStripe(pk);
+  cachedKey = publishableKey;
+  cached = loadStripe(publishableKey);
   return cached;
-}
-
-export function isStripeConfigured(): boolean {
-  return !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 }

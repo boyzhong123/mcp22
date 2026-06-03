@@ -3,6 +3,7 @@ import { AuthProvider } from './_lib/auth-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HtmlLangSync } from '@/components/html-lang-sync';
 import { DevEnLangToggle } from './_components/lang-toggle';
+import { PaymentConfigProvider } from './_lib/payment-config';
 
 export const metadata = {
   title: 'Chivox MCP · Developer (English preview)',
@@ -19,14 +20,16 @@ export default function DevEnLayout({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider delay={300}>
       <AuthProvider>
-        <HtmlLangSync lang="en" />
-        <div translate="no" lang="en">
-          {children}
-          {/* Dev-only EN / 中 language toggle. Shipping dev console is
-              English only — this exists purely so the developer can QA
-              content in Chinese without mentally translating. */}
-          <DevEnLangToggle />
-        </div>
+        <PaymentConfigProvider>
+          <HtmlLangSync lang="en" />
+          <div translate="no" lang="en">
+            {children}
+            {/* Dev-only EN / 中 language toggle. Shipping dev console is
+                English only — this exists purely so the developer can QA
+                content in Chinese without mentally translating. */}
+            <DevEnLangToggle />
+          </div>
+        </PaymentConfigProvider>
       </AuthProvider>
     </TooltipProvider>
   );

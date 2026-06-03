@@ -39,10 +39,7 @@ import {
 } from '../_lib/topup';
 import { billing, describeError } from '../_lib/api';
 import { hydrateFromApi } from '../_lib/mock-store-bridge';
-
-// PayPal client id is injected at build/runtime. When absent, the checkout
-// surfaces a "not configured" notice instead of a broken button.
-const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+import { usePaymentConfig } from '../_lib/payment-config';
 
 interface StripeCheckoutModalProps {
   open: boolean;
@@ -133,6 +130,7 @@ function OpenedCheckoutModal({
 }: Omit<StripeCheckoutModalProps, 'open' | 'keyId'>) {
   const { tx, t } = useLang();
   const { user } = useMockAuth();
+  const { paypalClientId } = usePaymentConfig();
   const accountBalance = useMockStore(getAccountBalanceCents, 0);
 
   // Account-wallet top-up: PayPal only (no card-on-file in this product).
@@ -814,9 +812,9 @@ function OpenedCheckoutModal({
         className="absolute inset-0 bg-black/25"
         onClick={() => !processing && onClose()}
       />
-      {PAYPAL_CLIENT_ID ? (
+      {paypalClientId ? (
         <PayPalScriptProvider
-          options={{ clientId: PAYPAL_CLIENT_ID, currency: 'USD', intent: 'capture' }}
+          options={{ clientId: paypalClientId, currency: 'USD', intent: 'capture' }}
         >
           {card}
         </PayPalScriptProvider>
@@ -843,15 +841,16 @@ function PayPalTopupButtons({
   onPaid: () => void;
 }) {
   const { t } = useLang();
+  const { paypalClientId } = usePaymentConfig();
   // Holds the backend transaction id between createOrder and onApprove.
   const txnIdRef = useRef<number | null>(null);
 
-  if (!PAYPAL_CLIENT_ID) {
+  if (!paypalClientId) {
     return (
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
         {t(
-          'PayPal is not configured. Set NEXT_PUBLIC_PAYPAL_CLIENT_ID to enable top-ups.',
-          'PayPal 未配置。请设置 NEXT_PUBLIC_PAYPAL_CLIENT_ID 后再充值。',
+          'PayPal is not configured. Set PAYPAL_CLIENT_ID to enable top-ups.',
+          'PayPal 未配置。请设置 PAYPAL_CLIENT_ID 后再充值。',
         )}
       </div>
     );
