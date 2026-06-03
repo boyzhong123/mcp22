@@ -15,13 +15,13 @@ import {
 import { UsageActivityHeatmap } from '../../_components/usage-activity-heatmap';
 import { cn } from '@/lib/utils';
 import {
-  formatCents,
   getUsage,
   keyLast4,
   listKeys,
   type ApiKey,
   type UsagePoint,
 } from '../../_lib/mock-store';
+import { formatMills } from '../../_lib/format';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { useLang } from '../../_lib/use-lang';
 
@@ -116,8 +116,8 @@ export default function UsagePage() {
       perKey: Record<string, number>;
       perKeyCost: Record<string, number>;
       totalCalls: number;
-      totalCostCents: number;
-      totalSavingsCents: number;
+      totalCostMills: number;
+      totalSavingsMills: number;
     }[] = [];
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(today.getTime() - i * 86400000);
@@ -125,30 +125,30 @@ export default function UsagePage() {
       const perKey: Record<string, number> = {};
       const perKeyCost: Record<string, number> = {};
       let totalCalls = 0;
-      let totalCostCents = 0;
-      let totalSavingsCents = 0;
+      let totalCostMills = 0;
+      let totalSavingsMills = 0;
       for (const p of filteredUsage.filter((x) => x.date === date)) {
         perKey[p.keyId] = (perKey[p.keyId] ?? 0) + p.calls;
-        perKeyCost[p.keyId] = (perKeyCost[p.keyId] ?? 0) + p.costCents;
+        perKeyCost[p.keyId] = (perKeyCost[p.keyId] ?? 0) + p.costMills;
         totalCalls += p.calls;
-        totalCostCents += p.costCents;
-        totalSavingsCents += p.savingsCents;
+        totalCostMills += p.costMills;
+        totalSavingsMills += p.savingsMills;
       }
-      days.push({ date, perKey, perKeyCost, totalCalls, totalCostCents, totalSavingsCents });
+      days.push({ date, perKey, perKeyCost, totalCalls, totalCostMills, totalSavingsMills });
     }
     return days;
   }, [filteredUsage, period]);
 
   const kpiTotalCalls = stackedData.reduce((a, d) => a + d.totalCalls, 0);
-  const kpiTotalCost = stackedData.reduce((a, d) => a + d.totalCostCents, 0);
-  const kpiTotalSavings = stackedData.reduce((a, d) => a + d.totalSavingsCents, 0);
+  const kpiTotalCost = stackedData.reduce((a, d) => a + d.totalCostMills, 0);
+  const kpiTotalSavings = stackedData.reduce((a, d) => a + d.totalSavingsMills, 0);
   const kpiAvgPerDay = Math.round(kpiTotalCalls / Math.max(1, stackedData.length));
   const peakDay = stackedData.reduce(
     (acc, d) => (d.totalCalls > acc.totalCalls ? d : acc),
     stackedData[0] ?? { date: '—', totalCalls: 0 },
   );
   const maxDay = Math.max(1, ...stackedData.map((d) => d.totalCalls));
-  const maxDayCost = Math.max(1, ...stackedData.map((d) => d.totalCostCents));
+  const maxDayCost = Math.max(1, ...stackedData.map((d) => d.totalCostMills));
 
   // Helpers: pick the right per-key value getter and the right axis
   // formatter based on the active metric. Centralised so the rendering
@@ -156,21 +156,21 @@ export default function UsagePage() {
   const isCostMetric = chartMetric === 'cost';
   const yMax = isCostMetric ? maxDayCost : maxDay;
   const dayTotal = (d: (typeof stackedData)[number]) =>
-    isCostMetric ? d.totalCostCents : d.totalCalls;
+    isCostMetric ? d.totalCostMills : d.totalCalls;
   const dayPerKey = (d: (typeof stackedData)[number], keyId: string) =>
     isCostMetric ? (d.perKeyCost[keyId] ?? 0) : (d.perKey[keyId] ?? 0);
   const formatAxis = (v: number) =>
-    isCostMetric ? formatCents(Math.round(v)) : Math.round(v).toLocaleString('en-US');
+    isCostMetric ? formatMills(Math.round(v)) : Math.round(v).toLocaleString('en-US');
   const formatTooltipValue = (v: number) =>
-    isCostMetric ? formatCents(v) : v.toLocaleString('en-US');
+    isCostMetric ? formatMills(v) : v.toLocaleString('en-US');
 
   const perKeyBreakdown = useMemo(() => {
     const map = new Map<string, { calls: number; cost: number; savings: number }>();
     for (const p of filteredUsage) {
       const d = map.get(p.keyId) ?? { calls: 0, cost: 0, savings: 0 };
       d.calls += p.calls;
-      d.cost += p.costCents;
-      d.savings += p.savingsCents;
+      d.cost += p.costMills;
+      d.savings += p.savingsMills;
       map.set(p.keyId, d);
     }
     return Array.from(map.entries())
@@ -280,7 +280,7 @@ export default function UsagePage() {
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Kpi label={tx('Total calls')} value={kpiTotalCalls.toLocaleString('en-US')} />
-        <Kpi label={tx('Net cost')} value={formatCents(kpiTotalCost)} />
+        <Kpi label={tx('Net cost')} value={formatMills(kpiTotalCost)} />
         <Kpi label={tx('Avg / day')} value={kpiAvgPerDay.toLocaleString('en-US')} />
         <Kpi
           label={tx('Peak day')}
@@ -306,8 +306,8 @@ export default function UsagePage() {
               {chartView === 'heatmap'
                 ? isCostMetric
                   ? t(
-                      `${formatCents(kpiTotalCost)} spend · ${period} days · one square per day`,
-                      `过去 ${period} 天 · 共花费 ${formatCents(kpiTotalCost)} · 每格一天`,
+                      `${formatMills(kpiTotalCost)} spend · ${period} days · one square per day`,
+                      `过去 ${period} 天 · 共花费 ${formatMills(kpiTotalCost)} · 每格一天`,
                     )
                   : t(
                       `${kpiTotalCalls.toLocaleString('en-US')} calls · ${period} days · one square per day`,
@@ -315,8 +315,8 @@ export default function UsagePage() {
                     )
                 : isCostMetric
                   ? t(
-                      `${formatCents(kpiTotalCost)} spend · last ${period} days`,
-                      `过去 ${period} 天 · 共花费 ${formatCents(kpiTotalCost)}`,
+                      `${formatMills(kpiTotalCost)} spend · last ${period} days`,
+                      `过去 ${period} 天 · 共花费 ${formatMills(kpiTotalCost)}`,
                     )
                   : t(
                       `${kpiTotalCalls.toLocaleString('en-US')} calls · last ${period} days`,
@@ -563,7 +563,7 @@ export default function UsagePage() {
                         <span className="tabular-nums">
                           {isCostMetric
                             ? d.totalCalls.toLocaleString('en-US')
-                            : formatCents(d.totalCostCents)}
+                            : formatMills(d.totalCostMills)}
                         </span>
                       </div>
                     </>
@@ -625,7 +625,7 @@ export default function UsagePage() {
                     <td className="px-5 py-3 text-right tabular-nums">
                       {row.calls.toLocaleString('en-US')}
                     </td>
-                    <td className="px-5 py-3 text-right tabular-nums">{formatCents(row.cost)}</td>
+                    <td className="px-5 py-3 text-right tabular-nums">{formatMills(row.cost)}</td>
                   </tr>
                 ))
               )}
@@ -756,16 +756,16 @@ function exportUsageCsv(input: {
     'key_name',
     'key_masked',
     'calls',
-    'cost_cents',
-    'savings_cents',
-    'net_cost_cents',
+    'cost_mills',
+    'savings_mills',
+    'net_cost_mills',
   ];
 
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const lines: string[] = [header.join(',')];
   for (const r of sorted) {
     const key = keyById.get(r.keyId);
-    const net = r.costCents - r.savingsCents;
+    const net = r.costMills - r.savingsMills;
     lines.push(
       [
         r.date,
@@ -773,8 +773,8 @@ function exportUsageCsv(input: {
         key?.name ?? '',
         key?.maskedSecret ?? '',
         String(r.calls),
-        String(r.costCents),
-        String(r.savingsCents),
+        String(r.costMills),
+        String(r.savingsMills),
         String(net),
       ]
         .map(csvEscape)

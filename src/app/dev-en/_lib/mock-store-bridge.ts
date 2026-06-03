@@ -89,9 +89,9 @@ function mapKey(k: RealApiKey): MockApiKey {
     lastUsedAt: k.last_used_at ?? null,
     status,
     isStarter,
-    spendCapCents: capOrNull(limits?.monthly_spend_cap_cents),
+    spendCapCents: capOrNull(limits?.monthly_spend_cap_mills != null ? Math.round(limits.monthly_spend_cap_mills / 10) : undefined),
     monthlyCallCap: capOrNull(limits?.monthly_call_cap),
-    dailySpendCapCents: capOrNull(limits?.daily_spend_cap_cents),
+    dailySpendCapCents: capOrNull(limits?.daily_spend_cap_mills != null ? Math.round(limits.daily_spend_cap_mills / 10) : undefined),
     dailyCallCap: capOrNull(limits?.daily_call_cap),
     // ── Legacy fields (account-wallet model) ──────────────────────────────
     freeDailyLimit: 0,
@@ -131,7 +131,7 @@ function mapTrialFromSummary(summary: BillingSummary): TrialAllowance {
 // the cumulative top-up figure for "total recharged" displays.
 function mapWalletFromSummary(summary: BillingSummary): AccountWallet {
   const balanceCents = Math.max(0, Math.round((summary.balance_mills ?? 0) / 10));
-  const cumulativeTopup = Math.max(0, summary.paid_credits_cents ?? 0);
+  const cumulativeTopup = Math.max(0, Math.round((summary.paid_credits_mills ?? 0) / 10));
   const paidCreditsCents = Math.max(cumulativeTopup, balanceCents);
   return {
     paidCreditsCents,
@@ -164,9 +164,9 @@ function mapTransaction(t: RealTransaction): MockTransaction {
 
 function mapLimits(s: RealAccountLimits): MockSpendLimit {
   return {
-    monthlyCapCents: capOrNull(s.monthly_spend_cap_cents),
+    monthlyCapCents: capOrNull(s.monthly_spend_cap_mills != null ? Math.round(s.monthly_spend_cap_mills / 10) : undefined),
     monthlyCallCap: capOrNull(s.monthly_call_cap),
-    dailyCapCents: capOrNull(s.daily_spend_cap_cents),
+    dailyCapCents: capOrNull(s.daily_spend_cap_mills != null ? Math.round(s.daily_spend_cap_mills / 10) : undefined),
     dailyCallCap: capOrNull(s.daily_call_cap),
     resetDay: 1,
     warnAtPercents: s.warn_at_percents?.length ? s.warn_at_percents : [50, 75, 90],
@@ -196,8 +196,8 @@ function mapUsagePoint(p: RealUsagePoint): MockUsagePoint {
     keyId: p.key_id != null ? mockKeyId(p.key_id) : 'key_*',
     model: p.model || 'mcp-call',
     calls: p.calls ?? 0,
-    costCents: p.cost_cents ?? 0,
-    savingsCents: p.savings_cents ?? 0,
+    costMills: p.cost_mills ?? 0,
+    savingsMills: p.savings_mills ?? 0,
   };
 }
 
@@ -265,14 +265,20 @@ export function installMutationProxy(): void {
       const apiPatch: Partial<{
         daily_call_cap: number;
         monthly_call_cap: number;
-        daily_spend_cap_cents: number;
-        monthly_spend_cap_cents: number;
+        daily_spend_cap_mills: number;
+        monthly_spend_cap_mills: number;
       }> = {};
       if (patch.spendCapCents !== undefined) {
-        apiPatch.monthly_spend_cap_cents = patch.spendCapCents ?? 0;
+        apiPatch.monthly_spend_cap_mills = (patch.spendCapCents ?? 0) * 10;
       }
       if (patch.monthlyCallCap !== undefined) {
         apiPatch.monthly_call_cap = patch.monthlyCallCap ?? 0;
+      }
+      if (patch.dailySpendCapCents !== undefined) {
+        apiPatch.daily_spend_cap_mills = (patch.dailySpendCapCents ?? 0) * 10;
+      }
+      if (patch.dailyCallCap !== undefined) {
+        apiPatch.daily_call_cap = patch.dailyCallCap ?? 0;
       }
       if (Object.keys(apiPatch).length === 0) return;
       safe(keysApi.patchSettings(id, apiPatch));
@@ -291,9 +297,9 @@ export function installMutationProxy(): void {
       // = 0 to the backend.
       safe(
         billing.setLimits({
-          monthly_spend_cap_cents: limit.monthlyCapCents ?? 0,
+          monthly_spend_cap_mills: (limit.monthlyCapCents ?? 0) * 10,
           monthly_call_cap: limit.monthlyCallCap ?? 0,
-          daily_spend_cap_cents: limit.dailyCapCents ?? 0,
+          daily_spend_cap_mills: (limit.dailyCapCents ?? 0) * 10,
           daily_call_cap: limit.dailyCallCap ?? 0,
           warn_at_percents: limit.warnAtPercents,
         }),

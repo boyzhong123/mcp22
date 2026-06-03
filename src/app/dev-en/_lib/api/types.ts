@@ -24,8 +24,8 @@ export interface ApiUser {
 export interface KeyLimits {
   daily_call_cap: number; // 0 = unlimited
   monthly_call_cap: number; // 0 = unlimited
-  daily_spend_cap_cents: number; // 0 = unlimited
-  monthly_spend_cap_cents: number; // 0 = unlimited
+  daily_spend_cap_mills: number; // 0 = unlimited
+  monthly_spend_cap_mills: number; // 0 = unlimited
 }
 
 export interface ApiKey {
@@ -55,9 +55,9 @@ export interface ApiKeyUsage {
 // doc §3.14 GET /keys/:id/usage/summary
 export interface ApiKeyUsageSummary {
   calls: number;
-  cost_cents: number;
-  savings_cents: number;
-  avg_daily_net_cents: number;
+  cost_mills: number;
+  savings_mills: number;
+  avg_daily_net_mills: number;
   days_with_usage: number;
 }
 
@@ -71,8 +71,8 @@ export interface UsagePoint {
   date: string; // ISO 8601, day precision
   model: string; // default "mcp-call"
   calls: number;
-  cost_cents: number;
-  savings_cents: number;
+  cost_mills: number;
+  savings_mills: number;
 }
 
 export interface VolumeTier {
@@ -84,8 +84,8 @@ export interface VolumeTier {
 // doc §4.2 GET /usage/account-summary
 export interface AccountSummary {
   calls_this_month: number;
-  spend_cents_this_month: number;
-  savings_cents_this_month: number;
+  spend_mills_this_month: number;
+  savings_mills_this_month: number;
   current_volume_tier: VolumeTier;
   active_keys: number;
 }
@@ -116,8 +116,8 @@ export interface PricingInfo {
 
 // doc §5.8 / §5.9 — account-level four-axis limits.
 export interface AccountLimits {
-  monthly_spend_cap_cents: number; // 0 = unlimited
-  daily_spend_cap_cents: number;
+  monthly_spend_cap_mills: number; // 0 = unlimited
+  daily_spend_cap_mills: number;
   daily_call_cap: number;
   monthly_call_cap: number;
   warn_at_percents: number[];
@@ -127,7 +127,7 @@ export interface AccountLimits {
 export interface BillingSummary {
   balance_mills: number;
   balance_usd: string;
-  month_spend_cents: number;
+  month_spend_mills: number;
   month_call_count: number;
   transaction_count_month: number;
   trial_active: boolean;
@@ -142,8 +142,8 @@ export interface BillingSummary {
   calls_to_next_tier: number;
   est_runway_days: number;
   active_keys: number;
-  paid_credits_cents: number;
-  paid_credits_used_cents: number;
+  paid_credits_mills: number;
+  paid_credits_used_mills: number;
 }
 
 export type TransactionKind = 'balance-topup' | 'credit-topup' | string;

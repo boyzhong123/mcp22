@@ -174,8 +174,8 @@ export interface UsagePoint {
   keyId: string;
   model: string;
   calls: number;
-  costCents: number;
-  savingsCents: number;
+  costMills: number;
+  savingsMills: number;
 }
 
 /**
@@ -417,6 +417,8 @@ type MutationProxy = {
     patch: {
       spendCapCents?: number | null;
       monthlyCallCap?: number | null;
+      dailySpendCapCents?: number | null;
+      dailyCallCap?: number | null;
       lowBalanceAlert?: LowBalanceAlert | null;
     },
   ) => void;
@@ -708,16 +710,16 @@ function seedIfNeeded() {
 
         const calls = Math.round(keyDailyTotal);
         if (calls <= 0) continue;
-        const grossCents = Math.round((calls / 1000) * MCP_CALL_RATE_PER_K * 100);
-        const savingsCents =
-          key.env === 'production' ? Math.round(grossCents * 0.12) : 0;
+        const grossMills = Math.round((calls / 1000) * MCP_CALL_RATE_PER_K * 1000);
+        const savingsMills =
+          key.env === 'production' ? Math.round(grossMills * 0.12) : 0;
         points.push({
           date,
           keyId: key.id,
           model: MCP_CALL_MODEL_ID,
           calls,
-          costCents: grossCents - savingsCents,
-          savingsCents,
+          costMills: grossMills - savingsMills,
+          savingsMills,
         });
       }
     }
@@ -1129,12 +1131,12 @@ export function getKeyMonthlyCalls(keyId: string): number {
     .reduce((acc, p) => acc + (p.calls ?? 0), 0);
 }
 
-/** Net spend (cents, after discounts) for one key in the current UTC month. */
-export function getKeyMonthlySpendCents(keyId: string): number {
+/** Net spend (mills, after discounts) for one key in the current UTC month. */
+export function getKeyMonthlySpendMills(keyId: string): number {
   const ym = new Date().toISOString().slice(0, 7);
   return getUsage()
     .filter((p) => p.keyId === keyId && p.date.startsWith(ym))
-    .reduce((acc, p) => acc + (p.costCents ?? 0), 0);
+    .reduce((acc, p) => acc + (p.costMills ?? 0), 0);
 }
 
 // ─── Derived helpers ────────────────────────────────────────────────────────
@@ -1272,16 +1274,16 @@ export function listPaidKeys(): ApiKey[] {
 
 export interface KeyUsageSummary {
   calls: number;
-  costCents: number;
-  savingsCents: number;
+  costMills: number;
+  savingsMills: number;
 }
 
 export function getKeyUsageSummary(keyId: string): KeyUsageSummary {
   const points = getUsage().filter((p) => p.keyId === keyId);
   return {
     calls: points.reduce((acc, p) => acc + (p.calls ?? 0), 0),
-    costCents: points.reduce((acc, p) => acc + (p.costCents ?? 0), 0),
-    savingsCents: points.reduce((acc, p) => acc + (p.savingsCents ?? 0), 0),
+    costMills: points.reduce((acc, p) => acc + (p.costMills ?? 0), 0),
+    savingsMills: points.reduce((acc, p) => acc + (p.savingsMills ?? 0), 0),
   };
 }
 
@@ -1290,40 +1292,40 @@ export const KEY_BURN_WINDOW_DAYS = 28;
 
 /**
  * Net spend (after volume discounts) for one key in the last `windowDays` UTC
- * days. Smoothed daily burn = netCents / windowDays.
+ * days. Smoothed daily burn = netMills / windowDays.
  */
 export function getKeyNetBurnLastDays(
   keyId: string,
   windowDays: number,
-): { netCents: number; calls: number; daysWithUsage: number } {
+): { netMills: number; calls: number; daysWithUsage: number } {
   seedIfNeeded();
   const usage = getUsage().filter((p) => p.keyId === keyId);
   const cutoff = new Date();
   cutoff.setUTCDate(cutoff.getUTCDate() - windowDays);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   const recent = usage.filter((p) => p.date >= cutoffStr);
-  let netCents = 0;
+  let netMills = 0;
   let calls = 0;
   const daySet = new Set<string>();
   for (const p of recent) {
-    netCents += (p.costCents ?? 0) - (p.savingsCents ?? 0);
+    netMills += (p.costMills ?? 0) - (p.savingsMills ?? 0);
     calls += p.calls ?? 0;
-    if ((p.calls ?? 0) > 0 || (p.costCents ?? 0) > 0) daySet.add(p.date);
+    if ((p.calls ?? 0) > 0 || (p.costMills ?? 0) > 0) daySet.add(p.date);
   }
-  return { netCents, calls, daysWithUsage: daySet.size };
+  return { netMills, calls, daysWithUsage: daySet.size };
 }
 
 export interface KeyCreditRunwayEstimate {
   windowDays: number;
-  avgDailyNetCents: number;
-  balanceAfterCents: number;
+  avgDailyNetMills: number;
+  balanceAfterMills: number;
   estimatedDays: number | null;
   estimatedCallsAtPace: number | null;
   confidence: 'high' | 'low' | 'none';
 }
 
 /**
- * How long `balanceAfterCents` might last given this key's recent burn rate.
+ * How long the account balance might last given this key's recent burn rate.
  * Uses smoothed daily net spend over {@link KEY_BURN_WINDOW_DAYS}. When there
  * is no meaningful spend in the window, `estimatedDays` is null.
  */
@@ -1332,40 +1334,41 @@ export function estimateKeyCreditRunway(
   additionalCents: number,
 ): KeyCreditRunwayEstimate {
   const windowDays = KEY_BURN_WINDOW_DAYS;
-  const { netCents, calls, daysWithUsage } = getKeyNetBurnLastDays(
+  const { netMills, calls, daysWithUsage } = getKeyNetBurnLastDays(
     keyId,
     windowDays,
   );
   // Wallet model: runway is funded by the **account** balance (any key
   // can deplete it). The keyId remains in the signature so the burn rate
   // is still computed per-key, but the dollar pool is shared.
+  // Balance is in cents; convert to mills for comparison.
   const remaining = getAccountBalanceCents();
-  const balanceAfterCents = remaining + Math.max(0, additionalCents);
+  const balanceAfterMills = (remaining + Math.max(0, additionalCents)) * 10;
 
-  const avgDailyNetCents = netCents / windowDays;
+  const avgDailyNetMills = netMills / windowDays;
 
   let estimatedDays: number | null = null;
-  if (avgDailyNetCents >= 1) {
-    estimatedDays = balanceAfterCents / avgDailyNetCents;
+  if (avgDailyNetMills >= 1) {
+    estimatedDays = balanceAfterMills / avgDailyNetMills;
   }
 
   let estimatedCallsAtPace: number | null = null;
-  if (calls > 0 && netCents > 0) {
-    const avgNetPerCall = netCents / calls;
+  if (calls > 0 && netMills > 0) {
+    const avgNetPerCall = netMills / calls;
     if (avgNetPerCall >= 0.01) {
-      estimatedCallsAtPace = Math.floor(balanceAfterCents / avgNetPerCall);
+      estimatedCallsAtPace = Math.floor(balanceAfterMills / avgNetPerCall);
     }
   }
 
   let confidence: 'high' | 'low' | 'none' = 'none';
-  if (avgDailyNetCents >= 1) {
+  if (avgDailyNetMills >= 1) {
     confidence = daysWithUsage >= 10 ? 'high' : 'low';
   }
 
   return {
     windowDays,
-    avgDailyNetCents,
-    balanceAfterCents,
+    avgDailyNetMills,
+    balanceAfterMills,
     estimatedDays,
     estimatedCallsAtPace,
     confidence,
@@ -1393,18 +1396,18 @@ export function getAccountCallsToday(): number {
     .reduce((acc, p) => acc + (p.calls ?? 0), 0);
 }
 
-export function getAccountSpendThisMonthCents(): number {
+export function getAccountSpendThisMonthMills(): number {
   const yyyymm = new Date().toISOString().slice(0, 7);
   return getUsage()
     .filter((p) => p.date?.startsWith(yyyymm))
-    .reduce((acc, p) => acc + (p.costCents ?? 0), 0);
+    .reduce((acc, p) => acc + (p.costMills ?? 0), 0);
 }
 
-export function getAccountSavingsThisMonthCents(): number {
+export function getAccountSavingsThisMonthMills(): number {
   const yyyymm = new Date().toISOString().slice(0, 7);
   return getUsage()
     .filter((p) => p.date?.startsWith(yyyymm))
-    .reduce((acc, p) => acc + (p.savingsCents ?? 0), 0);
+    .reduce((acc, p) => acc + (p.savingsMills ?? 0), 0);
 }
 
 export function getCurrentVolumeTier(): VolumeTier {

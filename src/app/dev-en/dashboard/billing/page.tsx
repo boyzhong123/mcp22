@@ -15,7 +15,7 @@ import {
   formatCents,
   getAccountBalanceCents,
   getAccountCallsThisMonth,
-  getAccountSpendThisMonthCents,
+  getAccountSpendThisMonthMills,
   getKeyMonthlyCalls,
   getTransactions,
   getUsage,
@@ -27,6 +27,7 @@ import {
   type UsagePoint,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
+import { formatMills } from '../../_lib/format';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
@@ -46,7 +47,7 @@ export default function BillingPage() {
   // card on the API Keys page.
   const keys = useMockStore(listPaidKeys, [] as ApiKey[]);
   const transactions = useMockStore(getTransactions, [] as Transaction[]);
-  const spendThisMonth = useMockStore(getAccountSpendThisMonthCents, 0);
+  const spendThisMonth = useMockStore(getAccountSpendThisMonthMills, 0);
   const callsThisMonth = useMockStore(getAccountCallsThisMonth, 0);
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
   const balanceCents = useMockStore(getAccountBalanceCents, 0);
@@ -71,7 +72,7 @@ export default function BillingPage() {
     const m = new Map<string, number>();
     for (const p of usage) {
       if (!p.date.startsWith(ym)) continue;
-      m.set(p.keyId, (m.get(p.keyId) ?? 0) + p.costCents);
+      m.set(p.keyId, (m.get(p.keyId) ?? 0) + p.costMills);
     }
     return m;
   }, [usage]);
@@ -159,7 +160,7 @@ export default function BillingPage() {
         <StatCard
           icon={ReceiptText}
           label={t('Spent this month', '本月消费')}
-          value={formatCents(spendThisMonth)}
+          value={formatMills(spendThisMonth)}
           sub={t(
             `${formatCalls(callsThisMonth)} calls billed`,
             `产生 ${formatCalls(callsThisMonth)} 次调用`,
@@ -235,7 +236,7 @@ export default function BillingPage() {
 
                   <div className="min-w-[120px] text-right">
                     <div className="text-sm font-semibold tabular-nums">
-                      {formatCents(monthSpend)}
+                      {formatMills(monthSpend)}
                     </div>
                     <div className="text-[11px] text-muted-foreground">
                       {tx('Spend MTD')}

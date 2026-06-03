@@ -30,10 +30,10 @@ import {
   getAccountAlert,
   getAccountBalanceCents,
   getAccountCallsThisMonth,
-  getAccountSpendThisMonthCents,
+  getAccountSpendThisMonthMills,
   getAccountTrialRemaining,
   getKeyMonthlyCalls,
-  getKeyMonthlySpendCents,
+  getKeyMonthlySpendMills,
   getSpendLimit,
   getTransactions,
   getWallet,
@@ -53,6 +53,7 @@ import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { StatCard } from '../../_components/stat-card';
 import { useLang } from '../../_lib/use-lang';
+import { formatMills } from '../../_lib/format';
 
 const DEFAULT_WALLET: AccountWallet = {
   paidCreditsCents: 0,
@@ -76,7 +77,7 @@ export default function OverviewPage() {
   const { user } = useMockAuth();
   const { t, tx, lang } = useLang();
   const calls = useMockStore(getAccountCallsThisMonth, 0);
-  const spend = useMockStore(getAccountSpendThisMonthCents, 0);
+  const spend = useMockStore(getAccountSpendThisMonthMills, 0);
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
   const balanceCents = useMockStore(getAccountBalanceCents, 0);
   const trialRemaining = useMockStore(
@@ -218,7 +219,7 @@ export default function OverviewPage() {
         <StatCard
           icon={Receipt}
           label={t('Spent this month', '本月消费')}
-          value={formatCents(spend)}
+          value={formatMills(spend)}
           sub={t(
             `${formatCalls(calls)} calls · ${activeKeys.length} active key${activeKeys.length === 1 ? '' : 's'}`,
             `${formatCalls(calls)} 次调用 · ${activeKeys.length} 把活跃 Key`,
@@ -316,7 +317,7 @@ export default function OverviewPage() {
           ) : (
             <ul className="space-y-3">
               {usedKeys.map(({ key, monthCalls }) => {
-                const monthSpend = getKeyMonthlySpendCents(key.id);
+                const monthSpend = getKeyMonthlySpendMills(key.id);
                 const cap = key.monthlyCallCap ?? null;
                 const capUsedPct = cap && cap > 0
                   ? Math.min(100, (monthCalls / cap) * 100)
@@ -351,7 +352,7 @@ export default function OverviewPage() {
                           )}
                         </div>
                         <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
-                          {formatCents(monthSpend)} {t('this month', '本月')}
+                          {formatMills(monthSpend)} {t('this month', '本月')}
                         </div>
                       </div>
                     </div>

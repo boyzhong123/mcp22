@@ -11,6 +11,16 @@ export function formatCents(cents: number | null | undefined, locale = 'en-US'):
   }).format(v);
 }
 
+export function formatMills(mills: number | null | undefined, locale = 'en-US'): string {
+  if (mills == null) return '—';
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(mills / 1000);
+}
+
 export function formatNumber(n: number | null | undefined, locale = 'en-US'): string {
   if (n == null) return '—';
   return new Intl.NumberFormat(locale).format(n);

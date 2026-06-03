@@ -6,9 +6,10 @@ import {
   formatCents,
   getAccountBalanceCents,
   getAccountCallsThisMonth,
-  getAccountSpendThisMonthCents,
+  getAccountSpendThisMonthMills,
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
+import { formatMills } from '../../../_lib/format';
 import { useLang } from '../../../_lib/use-lang';
 import { TOPUP_PRESETS_CENTS, quoteTopup } from '../../../_lib/topup';
 
@@ -27,7 +28,7 @@ const ALL_PLANS_INCLUDE = [
 export default function PricingPage() {
   const { t, tx } = useLang();
   const calls = useMockStore(getAccountCallsThisMonth, 0);
-  const spend = useMockStore(getAccountSpendThisMonthCents, 0);
+  const spend = useMockStore(getAccountSpendThisMonthMills, 0);
   const balance = useMockStore(getAccountBalanceCents, 0);
 
   return (
@@ -62,7 +63,7 @@ export default function PricingPage() {
         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
           <Mini label={tx('Calls this month')} value={calls.toLocaleString('en-US')} />
           <Mini label={t('Wallet balance', '钱包余额')} value={formatCents(balance)} />
-          <Mini label={tx('Net cost')} value={formatCents(spend)} />
+          <Mini label={tx('Net cost')} value={formatMills(spend)} />
         </div>
       </div>
 
