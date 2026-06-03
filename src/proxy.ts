@@ -42,5 +42,8 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dev-en/:path*', '/dashboard/:path*'],
+  // Do not match `/dev-en/dashboard/*`: `/dashboard/*` rewrites there as the
+  // internal route target. Matching it again re-applies the legacy redirect
+  // and creates a `/dashboard/*` -> `/dev-en/dashboard/*` -> `/dashboard/*` loop.
+  matcher: ['/dev-en', '/dev-en/login/:path*', '/dashboard/:path*'],
 };

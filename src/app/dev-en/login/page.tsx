@@ -31,6 +31,9 @@ export default function DevEnLoginPage() {
   const identifier = email.trim();
   const identifierValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
   const passwordValid = password.length >= 6;
+  const forgotPasswordHref = identifier
+    ? `/forgot-password?email=${encodeURIComponent(identifier)}`
+    : '/forgot-password';
 
   // The button stays clickable; on submit we surface the first unmet step in
   // the top error banner so the user knows exactly what's blocking sign-in.
@@ -233,7 +236,7 @@ export default function DevEnLoginPage() {
                   {tx('Password')}
                 </label>
                 <Link
-                  href="/forgot-password"
+                  href={forgotPasswordHref}
                   className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline underline-offset-4"
                 >
                   {t('Forgot password?', '忘记密码？')}

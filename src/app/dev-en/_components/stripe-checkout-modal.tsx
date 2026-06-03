@@ -849,8 +849,8 @@ function PayPalTopupButtons({
     return (
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
         {t(
-          'PayPal is not configured. Set PAYPAL_CLIENT_ID to enable top-ups.',
-          'PayPal 未配置。请设置 PAYPAL_CLIENT_ID 后再充值。',
+          'PayPal is not configured. Set NEXT_PUBLIC_PAYPAL_CLIENT_ID to enable top-ups.',
+          'PayPal 未配置。请设置 NEXT_PUBLIC_PAYPAL_CLIENT_ID 后再充值。',
         )}
       </div>
     );

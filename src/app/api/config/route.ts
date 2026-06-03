@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
  */
 export function GET() {
   return NextResponse.json({
-    paypalClientId: process.env.PAYPAL_CLIENT_ID ?? '',
+    paypalClientId:
+      process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? process.env.PAYPAL_CLIENT_ID ?? '',
     stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '',
   });
 }

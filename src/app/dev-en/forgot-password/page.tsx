@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, KeyRound, Mail, ShieldCheck } from 'lucide-react';
 import { useLang } from '../_lib/use-lang';
 import { AntiBot } from '../_components/anti-bot';
@@ -16,11 +16,20 @@ import { auth, describeError } from '../_lib/api';
 type Step = 'request' | 'reset' | 'done';
 
 export default function DevEnForgotPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordContent />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, tx } = useLang();
 
   const [step, setStep] = useState<Step>('request');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => searchParams.get('email')?.trim() ?? '');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
