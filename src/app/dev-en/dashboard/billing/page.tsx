@@ -20,7 +20,7 @@ import {
   getTransactions,
   getUsage,
   getWallet,
-  listPaidKeys,
+  listKeys,
   type AccountWallet,
   type ApiKey,
   type Transaction,
@@ -41,11 +41,7 @@ const DEFAULT_WALLET: AccountWallet = {
 export default function BillingPage() {
   const { t, tx } = useLang();
   const usage = useMockStore(getUsage, [] as UsagePoint[]);
-  // Starter keys are excluded from every view on this page — the freebie
-  // has no balance and no billable spend, so mixing it in with paid keys
-  // only confuses totals and charts. The starter gets its own dedicated
-  // card on the API Keys page.
-  const keys = useMockStore(listPaidKeys, [] as ApiKey[]);
+  const keys = useMockStore(listKeys, [] as ApiKey[]);
   const transactions = useMockStore(getTransactions, [] as Transaction[]);
   const spendThisMonth = useMockStore(getAccountSpendThisMonthMills, 0);
   const callsThisMonth = useMockStore(getAccountCallsThisMonth, 0);

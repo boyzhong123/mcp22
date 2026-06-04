@@ -50,3 +50,5 @@ next-env.d.ts
 
 # Locally uploaded media (handled by backend in production)
 /public/uploads/
+
+/dist
