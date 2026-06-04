@@ -638,10 +638,10 @@ function OnThisPage({
           Drop a line — engineers read every message.
         </p>
         <a
-          href="mailto:BD@chivox.com"
+          href="mailto:ming.zhao@chivox.com"
           className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-emerald-800 hover:text-emerald-900"
         >
-          BD@chivox.com
+          ming.zhao@chivox.com
           <ArrowUpRight className="h-3 w-3" />
         </a>
       </div>
@@ -658,8 +658,8 @@ function OnThisPage({
  *  doc sites never drift on URLs / tool names / limits).
  * ──────────────────────────────────────────────────────────────── */
 
-const MCP_HTTP_URL = 'https://mcp.cloud.chivox.com';
-const UPLOAD_URL = 'https://your-audio-host.com/upload';
+const MCP_HTTP_URL = 'https://mcp-global.cloud.chivox.com';
+const FC_HTTP_URL = 'https://fc-global.cloud.chivox.com';
 
 const TOOLS_EN: [string, string, string][] = [
   ['en_word_eval', 'Word scoring', 'Single-word pronunciation'],
@@ -814,7 +814,8 @@ sudo pacman -S sox`}
             code={`{
   "name": "chivox-speech-eval",
   "type": "streamable-http",
-  "url": "${MCP_HTTP_URL}"
+  "url": "${MCP_HTTP_URL}",
+  "headers": { "Authorization": "Bearer <your_api_key>" }
 }`}
           />
           <p className="text-[13px] text-zinc-600">
@@ -834,18 +835,15 @@ sudo pacman -S sox`}
             code={`import { McpClient } from '@modelcontextprotocol/sdk';
 
 const mcp = new McpClient({ name: 'chivox' });
-await mcp.connectHttp('${MCP_HTTP_URL}');
+await mcp.connectHttp('${MCP_HTTP_URL}', {
+  headers: { Authorization: 'Bearer <your_api_key>' },
+});
 
-// Upload a file first, then evaluate by audioId:
-const { audioId } = await fetch('${UPLOAD_URL}', {
-  method: 'POST',
-  body: wavBuffer,
-  headers: { 'Content-Type': 'audio/wav' },
-}).then(r => r.json());
-
+// Pass audio inline — a public URL or Base64, no upload step:
 const result = await mcp.callTool('en_sentence_eval', {
-  audioId,
   ref_text: 'I think therefore I am',
+  audio_url: 'https://example.com/audio/sentence.mp3',
+  // or: audio_base64: wavBuffer.toString('base64'),
 });
 
 console.log(result.overall);              // 85
@@ -865,11 +863,16 @@ console.log(result.details[0].phone);     // [{ phoneme: 'θ', score: 91 }, ...]
 
         <h3 id="authentication">Authentication</h3>
         <p>
-          The hosted URL <code>{MCP_HTTP_URL}</code> is open for evaluation; for
-          production traffic, every call is authenticated with an API key. The
-          local proxy and framework integrations read them from environment
-          variables.
+          Every request to <code>{MCP_HTTP_URL}</code> must carry an API key in
+          the <code>Authorization</code> header — there is no anonymous access.
+          The local proxy and framework integrations read the key from
+          environment variables.
         </p>
+        <Code
+          language="bash"
+          filename="Authorization header (sent on every request)"
+          code={`Authorization: Bearer <your_api_key>`}
+        />
         <ParamTable
           rows={[
             [
@@ -881,8 +884,8 @@ console.log(result.details[0].phone);     // [{ phoneme: 'θ', score: 91 }, ...]
             [
               'MCP_API_KEY',
               'string',
-              'optional',
-              'Bearer token when your deployment enforces auth.',
+              'required',
+              'Sent as Authorization: Bearer <key> on every upstream call.',
             ],
             [
               'MCP_TIMEOUT_MS',
@@ -894,7 +897,7 @@ console.log(result.details[0].phone);     // [{ phoneme: 'θ', score: 91 }, ...]
         />
         <Callout icon={Lightbulb} tone="emerald" title="Key rotation">
           Keys can be rotated at any time from the{' '}
-          <a href="https://mcp.cloud.chivox.com" target="_blank" rel="noreferrer">
+          <a href="https://mcp-global.cloud.chivox.com" target="_blank" rel="noreferrer">
             dashboard
           </a>
           . Expect a few seconds of propagation to the edge. Old keys continue
@@ -919,7 +922,8 @@ console.log(result.details[0].phone);     // [{ phoneme: 'θ', score: 91 }, ...]
           code={`{
   "name": "chivox-speech-eval",
   "type": "streamable-http",
-  "url": "${MCP_HTTP_URL}"
+  "url": "${MCP_HTTP_URL}",
+  "headers": { "Authorization": "Bearer <your_api_key>" }
 }`}
         />
         <Callout icon={Lightbulb} tone="amber" title="No microphone over HTTP">
@@ -981,7 +985,8 @@ MCP_REMOTE_URL=${MCP_HTTP_URL} npx chivox-local-mcp`}
   "mcpServers": {
     "chivox-speech-eval": {
       "type": "streamable-http",
-      "url": "${MCP_HTTP_URL}"
+      "url": "${MCP_HTTP_URL}",
+      "headers": { "Authorization": "Bearer <your_api_key>" }
     }
   }
 }`}
@@ -1005,13 +1010,15 @@ client = MultiServerMCPClient({
     "chivox": {
         "transport": "streamable_http",
         "url": "${MCP_HTTP_URL}",
+        "headers": {"Authorization": "Bearer <your_api_key>"},
     }
 })
 tools = await client.get_tools()
 
 agent = create_react_agent("openai:gpt-4o-mini", tools)
-result = await agent.ainvoke({"messages":
-    [("user", "Score audioId=abc123, ref: I think therefore I am")]})
+result = await agent.ainvoke({"messages": [("user",
+    "Score https://example.com/audio/sentence.mp3, "
+    "ref: I think therefore I am")]})
 print(result["messages"][-1].content)`}
         />
         <Code
@@ -1023,7 +1030,12 @@ import { openai } from '@ai-sdk/openai';
 
 const mcp = new MCPClient({
   servers: {
-    chivox: { url: new URL('${MCP_HTTP_URL}') },
+    chivox: {
+      url: new URL('${MCP_HTTP_URL}'),
+      requestInit: {
+        headers: { Authorization: 'Bearer <your_api_key>' },
+      },
+    },
   },
 });
 
@@ -1042,7 +1054,10 @@ from agents import Agent, Runner
 from agents.mcp import MCPServerStreamableHttp
 
 chivox = MCPServerStreamableHttp(
-    params={"url": "${MCP_HTTP_URL}"},
+    params={
+        "url": "${MCP_HTTP_URL}",
+        "headers": {"Authorization": "Bearer <your_api_key>"},
+    },
     name="chivox-speech-eval",
 )
 
@@ -1052,7 +1067,10 @@ async with chivox:
         instructions="Professional speaking coach",
         mcp_servers=[chivox],
     )
-    r = await Runner.run(agent, "Score audioId=abc123")
+    r = await Runner.run(
+        agent,
+        "Score https://example.com/audio/sentence.mp3, ref: I think therefore I am",
+    )
     print(r.final_output)`}
         />
         <p className="text-[13px] text-zinc-600">
@@ -1157,12 +1175,13 @@ async with chivox:
           </div>
           <div className="rounded-xl border border-zinc-300/60 bg-white/60 p-4">
             <div className="flex items-center gap-2 mb-2 text-[13px] font-semibold">
-              <Terminal className="h-4 w-4 text-emerald-700" /> File upload
+              <Terminal className="h-4 w-4 text-emerald-700" /> Inline audio
             </div>
             <p className="text-[13px] text-zinc-700 leading-relaxed">
-              POST a clip to <code>{UPLOAD_URL}</code> (local path, Base64, or
-              URL), get an <code>audioId</code> back, then call any scoring
-              tool with it. Perfect for batch jobs and async pipelines.
+              Pass a finished clip straight into the tool call as{' '}
+              <code>audio_base64</code> or a public <code>audio_url</code> — no
+              upload step or <code>audioId</code> round-trip. Perfect for batch
+              jobs and async pipelines.
             </p>
           </div>
         </div>
@@ -1398,20 +1417,19 @@ Keep responses under 90 words. Do not repeat the raw scores verbatim.`}
 
         <h2 id="endpoints">Endpoints</h2>
         <p>
-          All hosted under <code>mcp.cloud.chivox.com</code>. MCP and
-          function-calling (<code>cvx_fc</code>) coexist — pick one per
-          session, not per request.
+          MCP mode lives under <code>{MCP_HTTP_URL.replace('https://', '')}</code>;
+          function-calling (<code>cvx_fc</code>) under{' '}
+          <code>{FC_HTTP_URL.replace('https://', '')}</code>. The two coexist —
+          pick one per session, not per request.
         </p>
         <ParamTable
-          head={['Path', 'Method', 'Purpose']}
+          head={['Host', 'Path', 'Method', 'Purpose']}
           rows={[
-            ['/upload', 'POST', 'Audio upload (returns audioId for file evaluation).'],
-            ['/mcp', 'POST', 'MCP mode · JSON-RPC over Streamable HTTP.'],
-            ['/ws/audio/{session_id}', 'WS', 'MCP mode · streaming audio WebSocket.'],
-            ['/v1/functions', 'GET', 'Function-calling · list all scoring functions.'],
-            ['/v1/call', 'POST', 'Function-calling · one-shot eval / create stream session / fetch result.'],
-            ['/ws/eval/{session_id}', 'WS', 'Function-calling · streaming audio WebSocket.'],
-            ['/health', 'GET', 'Health check (no auth, safe for probes).'],
+            ['mcp-global', '/ (root)', 'POST', 'MCP mode · JSON-RPC 2.0 over Streamable HTTP (initialize · tools/list · tools/call).'],
+            ['mcp-global', '/ws/audio/{session_id}', 'WS', 'MCP mode · streaming audio WebSocket (URL returned by create_stream_session).'],
+            ['fc-global', '/v1/functions', 'GET', 'Function-calling · list all scoring functions.'],
+            ['fc-global', '/v1/call', 'POST', 'Function-calling · one-shot eval · start_stream_eval · get_stream_result.'],
+            ['fc-global', '/ws/eval/{session_id}', 'WS', 'Function-calling · streaming audio WebSocket (URL returned by start_stream_eval).'],
           ]}
         />
 
@@ -1420,7 +1438,7 @@ Keep responses under 90 words. Do not repeat the raw scores verbatim.`}
           These defaults describe <strong>technical</strong> guardrails on the
           hosted endpoint. Billing quotas (trial credits, concurrency tiers,
           call volume) are a separate dimension documented on the{' '}
-          <a href="https://mcp.cloud.chivox.com" target="_blank" rel="noreferrer">
+          <a href="https://mcp-global.cloud.chivox.com" target="_blank" rel="noreferrer">
             dashboard
           </a>
           .
@@ -1449,7 +1467,7 @@ Keep responses under 90 words. Do not repeat the raw scores verbatim.`}
           <li>TLS 1.3 on every hop. Keys are hashed at rest.</li>
           <li>
             GDPR &amp; CCPA DSRs honoured within 10 business days — email{' '}
-            <a href="mailto:BD@chivox.com">BD@chivox.com</a>.
+            <a href="mailto:ming.zhao@chivox.com">ming.zhao@chivox.com</a>.
           </li>
         </ul>
 
@@ -1971,10 +1989,10 @@ function DocsFooter() {
             Live demo
           </Link>
           <a
-            href="mailto:BD@chivox.com"
+            href="mailto:ming.zhao@chivox.com"
             className="hover:text-zinc-900 transition-colors"
           >
-            BD@chivox.com
+            ming.zhao@chivox.com
           </a>
           <a
             href="https://github.com/boyzhong123/mcp22"

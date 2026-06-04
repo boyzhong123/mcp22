@@ -731,11 +731,11 @@ export function TopNav() {
                         </div>
                         <div className="text-[13.5px]">
                           <a
-                            href="mailto:BD@chivox.com?subject=Chivox%20MCP%20inquiry"
+                            href="mailto:ming.zhao@chivox.com?subject=Chivox%20MCP%20inquiry"
                             className="inline-flex items-center gap-2 text-zinc-900 hover:text-emerald-700 transition-colors"
                           >
                             <Mail className="h-3.5 w-3.5 text-emerald-600" />
-                            <span className="font-medium">BD@chivox.com</span>
+                            <span className="font-medium">ming.zhao@chivox.com</span>
                             <span className="text-muted-foreground">
                               · developer &amp; enterprise inquiries
                             </span>
@@ -1024,11 +1024,11 @@ export function ContactSection() {
                 </div>
                 <div className="text-[13.5px]">
                   <a
-                    href="mailto:BD@chivox.com?subject=Chivox%20MCP%20inquiry"
+                    href="mailto:ming.zhao@chivox.com?subject=Chivox%20MCP%20inquiry"
                     className="inline-flex items-center gap-2 text-zinc-900 hover:text-emerald-700 transition-colors"
                   >
                     <Mail className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="font-medium">BD@chivox.com</span>
+                    <span className="font-medium">ming.zhao@chivox.com</span>
                     <span className="text-muted-foreground">
                       · developer &amp; enterprise inquiries
                     </span>
@@ -1099,10 +1099,10 @@ function GlobalContactForm() {
         <p className="text-[14px] text-muted-foreground leading-relaxed max-w-sm mb-6">
           We&rsquo;ll get back within one business day. For anything urgent, email{' '}
           <a
-            href="mailto:BD@chivox.com"
+            href="mailto:ming.zhao@chivox.com"
             className="text-emerald-700 underline underline-offset-2 hover:no-underline"
           >
-            BD@chivox.com
+            ming.zhao@chivox.com
           </a>{' '}
           directly.
         </p>
@@ -1292,7 +1292,7 @@ function FooterSubscribePill() {
     const body = encodeURIComponent(
       `Please add this address to the Chivox MCP product-update mailing list:\n\n${v}\n`,
     );
-    window.location.href = `mailto:BD@chivox.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:ming.zhao@chivox.com?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -1398,7 +1398,7 @@ export function SiteFooter() {
 
             <p className="text-[11.5px] text-zinc-600 leading-relaxed max-w-md">
               Product-update sign-up: enter your work email and tap the arrow — your mail app opens
-              with a short note to <span className="font-medium text-zinc-700">BD@chivox.com</span>{' '}
+              with a short note to <span className="font-medium text-zinc-700">ming.zhao@chivox.com</span>{' '}
               so we can add you to the list. No spam. Unsubscribe anytime by replying.
             </p>
           </div>
@@ -1443,7 +1443,7 @@ export function SiteFooter() {
               </li>
               <li>
                 <a
-                  href="mailto:BD@chivox.com?subject=Chivox%20MCP%20inquiry"
+                  href="mailto:ming.zhao@chivox.com?subject=Chivox%20MCP%20inquiry"
                   className="hover:text-zinc-900 transition-colors"
                 >
                   Contact sales

@@ -19,13 +19,13 @@
 // ============================================================
 
 /** MCP Streamable HTTP 服务地址（LLM / MCP 客户端连的远程地址） */
-export const PUBLIC_MCP_URL = 'https://mcp.cloud.chivox.com';
+export const PUBLIC_MCP_URL = 'https://mcp-global.cloud.chivox.com';
 
 /** Function Calling REST / WebSocket 服务地址 */
-export const PUBLIC_FC_URL = 'https://fc.cloud.chivox.com';
+export const PUBLIC_FC_URL = 'https://fc-global.cloud.chivox.com';
 
 /** Function Calling WebSocket 地址（wss） */
-export const PUBLIC_FC_WS_URL = 'wss://fc.cloud.chivox.com';
+export const PUBLIC_FC_WS_URL = 'wss://fc-global.cloud.chivox.com';
 
 /**
  * 文档里示例的"音频上传"地址。

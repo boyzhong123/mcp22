@@ -31,7 +31,7 @@ import { useLang } from '../_lib/use-lang';
  */
 
 const SUPPORT_EMAIL = 'support@chivox.com';
-const SALES_EMAIL = 'BD@chivox.com';
+const SALES_EMAIL = 'ming.zhao@chivox.com';
 
 export function DevEnContactWidget() {
   const { t } = useLang();
@@ -135,6 +135,7 @@ export function DevEnContactWidget() {
 
       <button
         type="button"
+        data-tour="contact-launcher"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? t('Close contact', '关闭联系我们') : t('Contact us', '联系我们')}

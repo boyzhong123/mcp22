@@ -6,14 +6,18 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  Gauge,
   KeyRound,
   LayoutDashboard,
+  LifeBuoy,
   Settings,
   Sparkles,
   Wallet,
   X,
 } from 'lucide-react';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
 import { useAuth } from '../_lib/auth-context';
 import { useLang } from '../_lib/use-lang';
 import { TOUR_STEPS, type TourStep } from '../_lib/onboarding-steps';
@@ -21,7 +25,8 @@ import { closeTour } from '../_lib/ui-store';
 import { useUi } from '../_lib/use-ui-store';
 
 const TOUR_DONE_KEY = 'dev-en:tour-done:v1';
-const CARD_WIDTH = 320;
+const CARD_WIDTH = 336;
+const CARD_HEIGHT_ESTIMATE = 360;
 const PAD = 10; // padding around highlighted element
 
 interface TargetRect {
@@ -54,7 +59,7 @@ function computeCardPosition(
   const { top, left, width, height } = rect;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const cardH = 240; // rough estimate
+  const cardH = CARD_HEIGHT_ESTIMATE;
 
   // Space available on each side
   const spaceRight = vw - (left + width + PAD);
@@ -134,10 +139,14 @@ export function OnboardingTour() {
         return BarChart3;
       case 'wallet':
         return Wallet;
+      case 'gauge':
+        return Gauge;
       case 'settings':
         return Settings;
       case 'book':
         return BookOpen;
+      case 'lifebuoy':
+        return LifeBuoy;
       case 'sparkles':
       default:
         return Sparkles;
@@ -273,7 +282,8 @@ export function OnboardingTour() {
             fill="rgba(0,0,0,0.50)"
             mask={svgRect ? 'url(#tour-spotlight-mask)' : undefined}
           />
-          {/* Highlight ring around the target */}
+          {/* Highlight ring around the target — emerald to match the
+              console's accent and the Contact launcher. */}
           {svgRect && (
             <rect
               x={svgRect.x}
@@ -282,8 +292,8 @@ export function OnboardingTour() {
               height={svgRect.h}
               rx={8}
               fill="transparent"
-              stroke="rgba(255,255,255,0.25)"
-              strokeWidth="1.5"
+              stroke="rgba(16,185,129,0.65)"
+              strokeWidth="2"
             />
           )}
         </svg>
@@ -295,52 +305,81 @@ export function OnboardingTour() {
         aria-modal="true"
         aria-label={t('Product tour', '产品引导')}
         style={{ ...cardStyle, zIndex: 9999, width: CARD_WIDTH }}
-        className="rounded-xl bg-white overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_12px_32px_-4px_rgba(0,0,0,0.14),0_0_0_1px_rgba(0,0,0,0.06)]"
+        className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl shadow-black/[0.18] dark:shadow-black/60 ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 duration-200"
       >
-        {/* Emerald progress bar */}
-        <div className="h-[3px] bg-zinc-100">
+        {/* Progress bar — emerald→teal gradient, matching the console accent */}
+        <div className="h-[3px] bg-muted">
           <div
-            className="h-full bg-emerald-500 transition-all duration-300 ease-out"
+            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300 ease-out"
             style={{ width: `${((stepIdx + 1) / TOUR_STEPS.length) * 100}%` }}
           />
         </div>
 
-        <div className="p-5">
+        {/* Themed illustration strip. All nine small assets stay mounted so
+            step changes are instant and fade cleanly without a loading flash. */}
+        <div className="relative h-24 overflow-hidden border-b border-emerald-950/[0.06] bg-[#f0f8f4] dark:border-white/[0.06] dark:bg-emerald-950/35">
+          {TOUR_STEPS.map((tourStep, i) => (
+            <Image
+              key={tourStep.id}
+              src={`/onboarding-tour/${tourStep.id}.webp`}
+              alt=""
+              fill
+              sizes={`${CARD_WIDTH}px`}
+              unoptimized
+              className={cn(
+                'object-cover transition-opacity duration-300 ease-out dark:brightness-[0.72] dark:saturate-[0.85]',
+                i === stepIdx ? 'opacity-100' : 'opacity-0',
+              )}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={finish}
+            className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg border border-black/[0.06] bg-white/85 text-zinc-500 shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-zinc-900 dark:border-white/10 dark:bg-black/45 dark:text-zinc-300 dark:hover:bg-black/60 dark:hover:text-white"
+            aria-label={t('Close tour', '关闭引导')}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="p-5 pt-4">
           {/* Header */}
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
-                <StepIcon className="h-3.5 w-3.5" />
-              </span>
-              <h3 className="text-[13.5px] font-semibold text-zinc-900 leading-snug">
-                {t(step.title, step.zhTitle ?? step.title)}
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={finish}
-              className="shrink-0 h-6 w-6 -mt-0.5 -mr-1 rounded-md flex items-center justify-center text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
-              aria-label={t('Close tour', '关闭引导')}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+          <div className="mb-2.5 flex min-w-0 items-center gap-2.5">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-600 ring-1 ring-emerald-500/10 dark:text-emerald-400">
+              <StepIcon className="h-[18px] w-[18px]" />
+            </span>
+            <h3 className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+              {t(step.title, step.zhTitle ?? step.title)}
+            </h3>
           </div>
 
           {/* Body */}
-          <p className="text-[13px] leading-[1.65] text-zinc-500 mb-4">
+          <p className="mb-4 text-[13px] leading-[1.65] text-muted-foreground">
             {t(step.body, step.zhBody ?? step.body)}
           </p>
 
           {/* Footer */}
           <div className="flex items-center justify-between">
-            <span className="text-[11px] tabular-nums text-zinc-400">
-              {stepIdx + 1} / {TOUR_STEPS.length}
-            </span>
+            <div className="flex items-center gap-1.5" aria-hidden>
+              {TOUR_STEPS.map((s, i) => (
+                <span
+                  key={s.id}
+                  className={cn(
+                    'h-1.5 rounded-full transition-all duration-300',
+                    i === stepIdx
+                      ? 'w-4 bg-emerald-500'
+                      : i < stepIdx
+                        ? 'w-1.5 bg-emerald-500/40'
+                        : 'w-1.5 bg-muted-foreground/25',
+                  )}
+                />
+              ))}
+            </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={finish}
-                className="h-7 px-2.5 rounded-md text-[12px] text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+                className="h-7 rounded-md px-2.5 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 {t('Skip', '跳过')}
               </button>
@@ -348,7 +387,7 @@ export function OnboardingTour() {
                 <button
                   type="button"
                   onClick={prev}
-                  className="h-7 w-7 rounded-md flex items-center justify-center text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label={t('Back', '上一步')}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
@@ -357,7 +396,7 @@ export function OnboardingTour() {
               <button
                 type="button"
                 onClick={next}
-                className="h-7 px-3 rounded-md bg-zinc-900 text-[12px] font-medium text-white hover:bg-zinc-700 transition-colors flex items-center gap-1"
+                className="flex h-7 items-center gap-1 rounded-md bg-foreground px-3 text-[12px] font-medium text-background transition-opacity hover:opacity-90"
               >
                 {stepIdx < TOUR_STEPS.length - 1 ? (
                   <>
@@ -371,6 +410,40 @@ export function OnboardingTour() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Persistent controls stay in one place while the tour card moves
+          between highlighted targets. */}
+      <div
+        role="navigation"
+        aria-label={t('Persistent tour controls', '固定引导导航')}
+        className="fixed bottom-4 left-1/2 z-[10000] flex w-[min(calc(100vw-24px),440px)] -translate-x-1/2 items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 text-card-foreground shadow-2xl shadow-black/20 ring-1 ring-black/[0.03] backdrop-blur-xl dark:shadow-black/60"
+      >
+        <button
+          type="button"
+          onClick={prev}
+          disabled={stepIdx === 0}
+          className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-background"
+        >
+          <ChevronLeft className="h-4 w-4 shrink-0" />
+          {t('Back', '上一步')}
+        </button>
+
+        <div
+          className="min-w-[52px] text-center text-[11px] font-medium tabular-nums text-muted-foreground"
+          aria-live="polite"
+        >
+          {stepIdx + 1} / {TOUR_STEPS.length}
+        </div>
+
+        <button
+          type="button"
+          onClick={next}
+          className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground px-3 text-[13px] font-medium text-background shadow-sm transition-opacity hover:opacity-90"
+        >
+          {stepIdx < TOUR_STEPS.length - 1 ? t('Next', '下一步') : t('Done', '完成')}
+          {stepIdx < TOUR_STEPS.length - 1 && <ChevronRight className="h-4 w-4 shrink-0" />}
+        </button>
       </div>
     </>
   );

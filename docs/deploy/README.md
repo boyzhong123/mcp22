@@ -56,7 +56,7 @@ cat > .env <<'EOF'
 API_BASE_URL=https://fc.cloud.chivox.com/api
 SMTP_HOST=smtp.qiye.163.com
 SMTP_PORT=465
-SMTP_USER=BD@chivox.com
+SMTP_USER=ming.zhao@chivox.com
 SMTP_PASS_B64=<base64 后的授权码>
 EOF
 
@@ -85,7 +85,7 @@ cat > .env <<'EOF'
 API_BASE_URL=https://fc.cloud.chivox.com/api
 SMTP_HOST=smtp.qiye.163.com
 SMTP_PORT=465
-SMTP_USER=BD@chivox.com
+SMTP_USER=ming.zhao@chivox.com
 SMTP_PASS_B64=<base64 授权码>
 EOF
 

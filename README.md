@@ -467,7 +467,7 @@ Yes. Set `X-Chivox-Engine` to a pinned tag (e.g. `en-2024.11`); otherwise you au
 <div align="center">
   <a href="https://github.com/boyzhong123/mcp22"><b>⭐ Star on GitHub</b></a> &nbsp;·&nbsp;
   <a href="https://github.com/boyzhong123/mcp22/issues/new"><b>🐞 Open an issue</b></a> &nbsp;·&nbsp;
-  <a href="mailto:BD@chivox.com"><b>✉️ BD@chivox.com</b></a>
+  <a href="mailto:ming.zhao@chivox.com"><b>✉️ ming.zhao@chivox.com</b></a>
 </div>
 ## 🤝 Contributing
 

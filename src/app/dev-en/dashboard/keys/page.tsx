@@ -31,7 +31,9 @@ import {
   getAccountCallsRemaining,
   getAccountTrialRemaining,
   getBillingTier,
+  getFullSecret,
   getKeyMonthlyCalls,
+  isFullSecret,
   keyLast4,
   listKeys,
   renameKey,
@@ -94,10 +96,23 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  const copy = async (id: string) => {
+  // Copy the *full* plaintext secret to the clipboard. We never copy the masked
+  // form: prefer the secret carried on the row, then the locally-retained
+  // plaintext vault (kept from create/rotate), and only as a last resort ask the
+  // backend to reveal it. If none yields plaintext we bail rather than copy stars.
+  const copy = async (secret: string | undefined, id: string) => {
+    let full = isFullSecret(secret) ? secret : getFullSecret(id);
+    if (!isFullSecret(full)) {
+      try {
+        const revealed = await keysApi.reveal(realKeyId(id));
+        if (isFullSecret(revealed)) full = revealed;
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!isFullSecret(full)) return;
     try {
-      const fullSecret = await keysApi.reveal(realKeyId(id));
-      await navigator.clipboard.writeText(fullSecret);
+      await navigator.clipboard.writeText(full);
       setCopiedId(id);
       window.setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
     } catch {
@@ -507,7 +522,7 @@ function PaidKeyRow({
   setMenu,
 }: {
   apiKey: ApiKey;
-  copy: (id: string) => Promise<void>;
+  copy: (secret: string, id: string) => Promise<void>;
   copiedId: string | null;
   onSettings: () => void;
   /** Open the confirm-disable modal. */
@@ -604,7 +619,7 @@ function PaidKeyRow({
             sk_…{keyLast4(k.secret)}
           </code>
           <button
-            onClick={() => copy(k.id)}
+            onClick={() => copy(k.secret, k.id)}
             disabled={isRevoked}
             className="h-5 w-5 rounded hover:bg-muted/60 flex items-center justify-center text-muted-foreground/80 hover:text-foreground disabled:opacity-40"
             title={tx('Copy full secret')}
