@@ -31,9 +31,7 @@ import {
   getAccountCallsRemaining,
   getAccountTrialRemaining,
   getBillingTier,
-  getFullSecret,
   getKeyMonthlyCalls,
-  isFullSecret,
   keyLast4,
   listKeys,
   renameKey,
@@ -48,8 +46,6 @@ import { KeySettingsModal } from '../../_components/key-settings-modal';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
-import { keys as keysApi } from '../../_lib/api';
-import { realKeyId } from '../../_lib/mock-store-bridge';
 
 const DEFAULT_TRIAL: AccountTrialRemaining = {
   totalLeft: 0,
@@ -96,23 +92,12 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  // Copy the *full* plaintext secret to the clipboard. We never copy the masked
-  // form: prefer the secret carried on the row, then the locally-retained
-  // plaintext vault (kept from create/rotate), and only as a last resort ask the
-  // backend to reveal it. If none yields plaintext we bail rather than copy stars.
+  // The backend returns the full plaintext key; the row only renders it masked.
+  // Copy puts that full secret on the clipboard.
   const copy = async (secret: string | undefined, id: string) => {
-    let full = isFullSecret(secret) ? secret : getFullSecret(id);
-    if (!isFullSecret(full)) {
-      try {
-        const revealed = await keysApi.reveal(realKeyId(id));
-        if (isFullSecret(revealed)) full = revealed;
-      } catch {
-        /* ignore */
-      }
-    }
-    if (!isFullSecret(full)) return;
+    if (!secret) return;
     try {
-      await navigator.clipboard.writeText(full);
+      await navigator.clipboard.writeText(secret);
       setCopiedId(id);
       window.setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
     } catch {

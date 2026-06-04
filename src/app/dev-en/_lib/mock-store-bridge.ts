@@ -11,9 +11,7 @@ import {
   __markSeeded,
   __replaceCache,
   __setMutationProxy,
-  getFullSecret,
   maskSecret,
-  rememberFullSecret,
   TRIAL_DEFAULT_TOTAL,
   TRIAL_DEFAULT_VALID_DAYS,
   type AccountLowBalanceAlert,
@@ -81,12 +79,9 @@ function mapKey(k: RealApiKey): MockApiKey {
 
   const limits = k.limits ?? null;
 
-  // The list endpoint masks `api_key`. If we captured this key's plaintext
-  // earlier (on create / rotate, stashed in the local vault), surface that as
-  // the secret so the copy button can yield the full key; the render still
-  // shows the masked form.
-  const retained = getFullSecret(mockKeyId(k.id));
-  const secret = retained ?? k.api_key ?? '';
+  // The backend returns the full plaintext key in `api_key`; we keep it as the
+  // secret (used by the copy button) and only mask it for display.
+  const secret = k.api_key ?? '';
 
   return {
     id: mockKeyId(k.id),
@@ -221,14 +216,7 @@ function safe(p: Promise<unknown>) {
 
 export function installMutationProxy(): void {
   __setMutationProxy({
-    createKey: (name) =>
-      safe(
-        keysApi.create({ name }).then((created) => {
-          // Backend returns the plaintext exactly once — stash it so the list's
-          // copy button keeps yielding the full secret after hydration masks it.
-          rememberFullSecret(mockKeyId(created.id), created.api_key);
-        }),
-      ),
+    createKey: (name) => safe(keysApi.create({ name })),
     renameKey: (mockId, name) => {
       const id = realKeyId(mockId);
       if (!Number.isFinite(id)) return;
@@ -237,11 +225,7 @@ export function installMutationProxy(): void {
     rotateKeySecret: (mockId) => {
       const id = realKeyId(mockId);
       if (!Number.isFinite(id)) return;
-      safe(
-        keysApi.rotate(id).then((rotated) => {
-          rememberFullSecret(mockKeyId(rotated.id), rotated.api_key);
-        }),
-      );
+      safe(keysApi.rotate(id));
     },
     setKeyPaused: (mockId, paused) => {
       const id = realKeyId(mockId);

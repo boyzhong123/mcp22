@@ -500,42 +500,6 @@ export function keyLast4(secret: string): string {
   return '...' + secret.slice(-4);
 }
 
-// ─── Full-secret vault ────────────────────────────────────────────────────────
-// The backend only returns a key's plaintext once (on create / rotate); every
-// read endpoint masks it. To let the user copy the *full* secret from the keys
-// list at any time, we stash the plaintext client-side at the moment we have it
-// and read from here on copy. The masked form is still what we render.
-const FULL_SECRETS_KEY = 'dev-en:full-secrets';
-
-// A "full" secret is the unmasked plaintext — masked forms carry the bullet
-// glyph used by maskSecret().
-export function isFullSecret(secret: string | null | undefined): secret is string {
-  return !!secret && secret.length > 12 && !secret.includes('•');
-}
-
-export function rememberFullSecret(keyId: string, secret: string | null | undefined): void {
-  if (!isBrowser() || !keyId || !isFullSecret(secret)) return;
-  const map = read<Record<string, string>>(FULL_SECRETS_KEY, {});
-  if (map[keyId] === secret) return;
-  map[keyId] = secret;
-  write(FULL_SECRETS_KEY, map);
-}
-
-export function getFullSecret(keyId: string): string | null {
-  if (!isBrowser() || !keyId) return null;
-  const map = read<Record<string, string>>(FULL_SECRETS_KEY, {});
-  const s = map[keyId];
-  return isFullSecret(s) ? s : null;
-}
-
-export function forgetFullSecret(keyId: string): void {
-  if (!isBrowser() || !keyId) return;
-  const map = read<Record<string, string>>(FULL_SECRETS_KEY, {});
-  if (!(keyId in map)) return;
-  delete map[keyId];
-  write(FULL_SECRETS_KEY, map);
-}
-
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -666,9 +630,6 @@ function seedIfNeeded() {
     ];
     write(STORAGE.keys, seeded);
     cache.keys = seeded;
-    // Retain each demo key's plaintext so the list's copy button yields the
-    // full secret (not the masked render).
-    seeded.forEach((k) => rememberFullSecret(k.id, k.secret));
   } else {
     cache.keys = existingKeys;
   }
@@ -1500,7 +1461,6 @@ export function createKey(
   const next = [newKey, ...(cache.keys ?? [])];
   cache.keys = next;
   write(STORAGE.keys, next);
-  rememberFullSecret(newKey.id, secret);
   notify();
   mutationProxy.createKey?.(newKey.name);
   return newKey;
@@ -1533,7 +1493,6 @@ export function rotateKeySecret(id: string): ApiKey | undefined {
   });
   cache.keys = next;
   write(STORAGE.keys, next);
-  if (updated) rememberFullSecret(updated.id, updated.secret);
   notify();
   mutationProxy.rotateKeySecret?.(id);
   return updated;
@@ -1639,7 +1598,6 @@ export function deleteKey(id: string): void {
   const next = (cache.keys ?? []).filter((k) => !(k.id === id && !k.isStarter));
   cache.keys = next;
   write(STORAGE.keys, next);
-  forgetFullSecret(id);
   notify();
   mutationProxy.deleteKey?.(id);
 }
