@@ -309,7 +309,9 @@ export const VOLUME_TIERS: VolumeTier[] = [
 // v15: removed retired billing metadata and aligned demo transactions with PayPal-only.
 // v16: added transaction detail fields for the billing history drawer.
 // v17: signup trial corrected to 600 calls valid for 30 days.
-const SCHEMA_VERSION = 17;
+// v18: purge stale masked keys cached from a previous backend hydration so
+// demo reseeds with full-plaintext mock keys (copy must yield plaintext).
+const SCHEMA_VERSION = 18;
 const SCHEMA_KEY = 'dev-en:schema-version';
 
 const STORAGE = {

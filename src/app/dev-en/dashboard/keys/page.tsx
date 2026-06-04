@@ -46,6 +46,8 @@ import { KeySettingsModal } from '../../_components/key-settings-modal';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
+import { keys as keysApi } from '../../_lib/api';
+import { realKeyId } from '../../_lib/mock-store-bridge';
 
 const DEFAULT_TRIAL: AccountTrialRemaining = {
   totalLeft: 0,
@@ -92,12 +94,24 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  // The backend returns the full plaintext key; the row only renders it masked.
-  // Copy puts that full secret on the clipboard.
+  // Copy the full plaintext key to the clipboard.
+  //  - Real backend: the list masks the secret (e.g. "sk-df08...04a4"), so we
+  //    fetch the plaintext from GET /keys/:id/reveal.
+  //  - Demo / freshly-created key: the secret is already full plaintext, so we
+  //    copy it directly without a round-trip.
   const copy = async (secret: string | undefined, id: string) => {
-    if (!secret) return;
+    const looksFull = !!secret && secret.length >= 30 && !/[.•*…]/.test(secret);
+    let full = looksFull ? (secret as string) : '';
+    if (!full) {
+      try {
+        full = await keysApi.reveal(realKeyId(id));
+      } catch {
+        return;
+      }
+    }
+    if (!full) return;
     try {
-      await navigator.clipboard.writeText(secret);
+      await navigator.clipboard.writeText(full);
       setCopiedId(id);
       window.setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
     } catch {
