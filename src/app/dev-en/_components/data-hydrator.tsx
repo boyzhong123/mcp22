@@ -10,21 +10,26 @@ import { hydrateFromApi, installMutationProxy } from '../_lib/mock-store-bridge'
 // any domain dispatches an `invalidate(...)` event (e.g. after creating a key
 // or topping up). The original UI components don't need to change.
 export function DataHydrator() {
-  const { user, loading } = useAuth();
+  const { user, loading, isDemo } = useAuth();
 
+  // Demo mode is a self-contained showcase: it runs purely on the built-in
+  // mock data (whose keys carry full plaintext secrets) and never touches the
+  // backend. Skipping hydration/mutation-forwarding keeps it that way — local
+  // mock mutators still work because they fall back to a no-op proxy.
   useEffect(() => {
+    if (loading || isDemo) return;
     installMutationProxy();
-  }, []);
+  }, [loading, isDemo]);
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading || !user || isDemo) return;
     void hydrateFromApi({ force: true }).then(() => {
       void ensureStarterKey(user.id);
     });
-  }, [user, loading]);
+  }, [user, loading, isDemo]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isDemo) return;
     const keys = (
       [
         'keys',
@@ -35,7 +40,7 @@ export function DataHydrator() {
       ] as const
     ).map((k) => onInvalidate(k, () => void hydrateFromApi()));
     return () => keys.forEach((off) => off());
-  }, [user]);
+  }, [user, isDemo]);
 
   return null;
 }
