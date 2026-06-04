@@ -46,9 +46,6 @@ import { KeySettingsModal } from '../../_components/key-settings-modal';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
-import { useAuth } from '../../_lib/auth-context';
-import { keys as keysApi } from '../../_lib/api';
-import { realKeyId } from '../../_lib/mock-store-bridge';
 
 const DEFAULT_TRIAL: AccountTrialRemaining = {
   totalLeft: 0,
@@ -63,7 +60,6 @@ export default function KeysPage() {
   // subscribe once to the full key list and render it flat.
   const allKeys = useMockStore(listKeys, [] as ApiKey[]);
   const { tx, t } = useLang();
-  const { isDemo } = useAuth();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -96,29 +92,12 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  // Copy the key to the clipboard. The list only carries a masked secret
-  // (e.g. "sk-ffbd...736e"), so for those we fetch the plaintext from the
-  // backend reveal endpoint. A value already in full plaintext (demo seed /
-  // freshly-created key) is copied directly. If reveal is unavailable (demo /
-  // offline), we fall back to whatever secret we have so the button still
-  // gives feedback rather than silently doing nothing.
+  // The backend returns the full plaintext key; the row only renders it masked.
+  // Copy puts that full secret on the clipboard.
   const copy = async (secret: string | undefined, id: string) => {
-    const looksFull = !!secret && secret.length >= 30 && !/[.•*…]/.test(secret);
-    let full = looksFull ? (secret as string) : '';
-    // In demo mode there is no backend, so skip the reveal round-trip (it would
-    // just time out and stall the button) and copy the local value directly.
-    if (!full && !isDemo) {
-      try {
-        const revealed = await keysApi.reveal(realKeyId(id));
-        if (revealed) full = revealed;
-      } catch {
-        /* reveal unavailable (offline) — fall back below */
-      }
-    }
-    if (!full) full = secret ?? '';
-    if (!full) return;
+    if (!secret) return;
     try {
-      await navigator.clipboard.writeText(full);
+      await navigator.clipboard.writeText(secret);
       setCopiedId(id);
       window.setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
     } catch {
