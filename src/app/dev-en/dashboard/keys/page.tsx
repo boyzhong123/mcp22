@@ -46,6 +46,7 @@ import { KeySettingsModal } from '../../_components/key-settings-modal';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
+import { useAuth } from '../../_lib/auth-context';
 import { keys as keysApi } from '../../_lib/api';
 import { realKeyId } from '../../_lib/mock-store-bridge';
 
@@ -62,6 +63,7 @@ export default function KeysPage() {
   // subscribe once to the full key list and render it flat.
   const allKeys = useMockStore(listKeys, [] as ApiKey[]);
   const { tx, t } = useLang();
+  const { isDemo } = useAuth();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -94,20 +96,26 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  // The keys list only carries the masked secret (e.g. "sk-ffbd...736e"), so to
-  // copy the real key we fetch the plaintext from the backend reveal endpoint.
-  // A freshly-created key already hands us the full plaintext, so we use that
-  // directly and skip the round-trip.
+  // Copy the key to the clipboard. The list only carries a masked secret
+  // (e.g. "sk-ffbd...736e"), so for those we fetch the plaintext from the
+  // backend reveal endpoint. A value already in full plaintext (demo seed /
+  // freshly-created key) is copied directly. If reveal is unavailable (demo /
+  // offline), we fall back to whatever secret we have so the button still
+  // gives feedback rather than silently doing nothing.
   const copy = async (secret: string | undefined, id: string) => {
     const looksFull = !!secret && secret.length >= 30 && !/[.•*…]/.test(secret);
     let full = looksFull ? (secret as string) : '';
-    if (!full) {
+    // In demo mode there is no backend, so skip the reveal round-trip (it would
+    // just time out and stall the button) and copy the local value directly.
+    if (!full && !isDemo) {
       try {
-        full = await keysApi.reveal(realKeyId(id));
+        const revealed = await keysApi.reveal(realKeyId(id));
+        if (revealed) full = revealed;
       } catch {
-        return;
+        /* reveal unavailable (offline) — fall back below */
       }
     }
+    if (!full) full = secret ?? '';
     if (!full) return;
     try {
       await navigator.clipboard.writeText(full);
