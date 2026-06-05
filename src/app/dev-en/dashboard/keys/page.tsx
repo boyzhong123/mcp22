@@ -94,12 +94,13 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  // Copy the full plaintext key to the clipboard via the reveal endpoint.
+  // Copy the full plaintext key via the reveal endpoint.
   const copy = async (_secret: string | undefined, id: string) => {
     let full: string;
     try {
       full = await keysApi.reveal(realKeyId(id));
-    } catch {
+    } catch (err) {
+      console.error('[keys] reveal failed for', id, err);
       return;
     }
     if (!full) return;
