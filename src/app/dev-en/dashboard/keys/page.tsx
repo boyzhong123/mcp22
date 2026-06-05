@@ -110,12 +110,24 @@ export default function KeysPage() {
       }
     }
     if (!full) return;
-    try {
-      await navigator.clipboard.writeText(full);
+    let ok = false;
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(full); ok = true; } catch { /* secure-context only */ }
+    }
+    if (!ok) {
+      // Fallback for HTTP (non-localhost) where Clipboard API is unavailable.
+      const ta = document.createElement('textarea');
+      ta.value = full;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { ok = document.execCommand('copy'); } catch { /* noop */ }
+      document.body.removeChild(ta);
+    }
+    if (ok) {
       setCopiedId(id);
       window.setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
-    } catch {
-      /* ignore */
     }
   };
 
