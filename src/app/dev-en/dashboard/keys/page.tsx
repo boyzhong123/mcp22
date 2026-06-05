@@ -94,20 +94,13 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  // Copy the full plaintext key to the clipboard.
-  //  - Real backend: the list masks the secret (e.g. "sk-df08...04a4"), so we
-  //    fetch the plaintext from GET /keys/:id/reveal.
-  //  - Demo / freshly-created key: the secret is already full plaintext, so we
-  //    copy it directly without a round-trip.
-  const copy = async (secret: string | undefined, id: string) => {
-    const looksFull = !!secret && secret.length >= 30 && !/[.•*…]/.test(secret);
-    let full = looksFull ? (secret as string) : '';
-    if (!full) {
-      try {
-        full = await keysApi.reveal(realKeyId(id));
-      } catch {
-        return;
-      }
+  // Copy the full plaintext key to the clipboard via the reveal endpoint.
+  const copy = async (_secret: string | undefined, id: string) => {
+    let full: string;
+    try {
+      full = await keysApi.reveal(realKeyId(id));
+    } catch {
+      return;
     }
     if (!full) return;
     let ok = false;
@@ -115,7 +108,6 @@ export default function KeysPage() {
       try { await navigator.clipboard.writeText(full); ok = true; } catch { /* secure-context only */ }
     }
     if (!ok) {
-      // Fallback for HTTP (non-localhost) where Clipboard API is unavailable.
       const ta = document.createElement('textarea');
       ta.value = full;
       ta.style.position = 'fixed';
