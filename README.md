@@ -1,9 +1,8 @@
 <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
   <img
     src="./assets/hero-v16-2x.png"
-    srcset="./assets/hero-v16-2x.png 2x"
     alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo."
-    width="100%"
+    width="1100"
   />
 </a>
 
@@ -22,7 +21,7 @@
 
 <br/>
 
-<img src="./assets/stats-v16-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="100%"/>
+<img src="./assets/stats-v15-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="1100"/>
 
 </div>
 
@@ -52,8 +51,15 @@
 
 Hosted endpoint: **`https://mcp-global.cloud.chivox.com`** · every request needs `Authorization: Bearer <api_key>`. [Get a key →](https://api-portal.cloud.chivox.com)
 
-<details open>
-<summary><b>Cursor</b> &nbsp;<sub>(zero install)</sub></summary>
+| Client | Setup |
+|--------|-------|
+| [**Cursor**](#cursor-zero-install) | `~/.cursor/mcp.json` — IDE MCP, zero install |
+| [**LangChain**](#langchain) | LangGraph ReAct agent + MCP adapter |
+| [**OpenAI Agents SDK**](#openai-agents-sdk) | `agents.mcp.MCPServerStreamableHttp` |
+| [**Claude Desktop**](#claude-desktop) | Local proxy for mic streaming |
+| [**Raw MCP SDK**](#raw-mcp-sdk) | Direct `mcp` Python client |
+
+### Cursor _(zero install)_
 
 ```json
 // ~/.cursor/mcp.json
@@ -68,10 +74,7 @@ Hosted endpoint: **`https://mcp-global.cloud.chivox.com`** · every request need
 }
 ```
 
-</details>
-
-<details>
-<summary><b>🐍 LangChain</b></summary>
+### LangChain
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -93,10 +96,7 @@ result = await agent.ainvoke({"messages": [(
 )]})
 ```
 
-</details>
-
-<details>
-<summary><b>OpenAI Agents SDK</b></summary>
+### OpenAI Agents SDK
 
 ```python
 from agents import Agent, Runner
@@ -123,10 +123,7 @@ async with chivox:
     print(r.final_output)
 ```
 
-</details>
-
-<details>
-<summary><b>Claude Desktop</b> &nbsp;<sub>(mic streaming via local proxy)</sub></summary>
+### Claude Desktop _(mic streaming via local proxy)_
 
 ```bash
 npm install -g chivox-local-mcp
@@ -147,10 +144,7 @@ npm install -g chivox-local-mcp
 }
 ```
 
-</details>
-
-<details>
-<summary><b>🐍 Raw MCP SDK</b></summary>
+### Raw MCP SDK
 
 ```python
 import asyncio
@@ -173,8 +167,6 @@ async def main():
 asyncio.run(main())
 ```
 
-</details>
-
 > More clients (Claude Code, Windsurf, Zed, Mastra, function-calling mode) → [docs → Clients](https://api-portal.cloud.chivox.com/docs)
 
 ---
@@ -184,7 +176,7 @@ asyncio.run(main())
 > **Rule of thumb** — use **Whisper** to know *what* was said; use **Chivox** to know *how well*. They stack.
 
 <p align="center">
-  <img src="./assets/compare-v15-2x.png" alt="Comparison: Chivox MCP vs Whisper, ElevenLabs, Azure Pronunciation" width="100%" />
+  <img src="./assets/compare-v15-2x.png" alt="Comparison: Chivox MCP vs Whisper, ElevenLabs, Azure Pronunciation" width="1100" />
 </p>
 
 ---
@@ -224,7 +216,7 @@ On English mispronunciations, `phoneme_error: { expected, actual }` is included.
 Pipe that JSON straight into any chat model with a one-line system prompt — *"You are a warm pronunciation coach. Diagnose, then drill."* — and you get a real lesson back. **No fine-tuning. No audio understanding. Just `chat.completion`.**
 
 <p align="center">
-  <img src="./assets/coach-v15-2x.png" alt="Coach demo: Chivox JSON in, warm LLM feedback and drill out" width="100%" />
+  <img src="./assets/coach-v15-2x.png" alt="Coach demo: Chivox JSON in, warm LLM feedback and drill out" width="1100" />
 </p>
 
 > **Why this works** — the LLM never "heard" the audio. The JSON *names* the problem in fields it already understands (`dp_type: "mispron"`, `phoneme_error.actual`, `tone_ref` vs `tone_detected`), so a vanilla `chat.completion` can diagnose like a human teacher.
@@ -248,7 +240,7 @@ Pipe that JSON straight into any chat model with a one-line system prompt — *"
 There are **30M+** foreigners and 2nd-gen diaspora learning Mandarin worldwide — and **zero** English-speaking platforms that can actually hear the difference between `mā / má / mǎ / mà`. Chivox's Chinese engine is trained on the same data powering China's Putonghua proficiency exam (普通话水平测试).
 
 <p align="center">
-  <img src="./assets/mandarin-v15-2x.png" alt="Mandarin tutor: tone-aware feedback with chat demo and tone analysis" width="100%" />
+  <img src="./assets/mandarin-v15-2x.png" alt="Mandarin tutor: tone-aware feedback with chat demo and tone analysis" width="1100" />
 </p>
 
 ---
@@ -266,7 +258,7 @@ Same engine powering China's national Putonghua exam — aligned to **IELTS · T
 ## 🛠️ Tools catalog
 
 <p align="center">
-  <img src="./assets/tools-v15-2x.png" alt="16 tools: 10 English + 6 Mandarin" width="100%" />
+  <img src="./assets/tools-v15-2x.png" alt="16 tools: 10 English + 6 Mandarin" width="1100" />
 </p>
 
 **Inline audio:** pass `audio_url` or `audio_base64` in the tool call — no upload round-trip. **Formats:** mp3 · wav · ogg · m4a · aac · pcm. [Per-tool notes →](https://api-portal.cloud.chivox.com/docs)
@@ -278,7 +270,7 @@ Same engine powering China's national Putonghua exam — aligned to **IELTS · T
 Two ways to feed audio — **same result shape**, different UX. Function-calling fallback: `fc-global.cloud.chivox.com`.
 
 <p align="center">
-  <img src="./assets/transport-v15-2x.png" alt="Dual transport: streaming mic vs inline audio" width="100%" />
+  <img src="./assets/transport-v15-2x.png" alt="Dual transport: streaming mic vs inline audio" width="1100" />
 </p>
 
 ---
