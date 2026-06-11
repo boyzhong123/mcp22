@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; font-family: Inter, system-ui, sans-serif; color: #0f172a; }
+  #wrap {
+    width: 720px; padding: 10px;
+    display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 10px;
+    border: 1px solid #fecaca; border-radius: 12px; background: linear-gradient(180deg, #fff7f7, #fff);
+  }
+  .kicker { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #b91c1c; }
+  h3 { margin: 4px 0 6px; font-size: 15px; line-height: 1.25; }
+  p { margin: 0 0 8px; font-size: 11px; line-height: 1.5; color: #475569; }
+  ul { margin: 0; padding-left: 16px; font-size: 11px; line-height: 1.45; color: #1e293b; }
+  li { margin-bottom: 4px; }
+  .demo {
+    border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; padding: 10px;
+  }
+  .char { font-size: 42px; font-weight: 800; text-align: center; line-height: 1; }
+  .pinyin { text-align: center; font-size: 11px; color: #64748b; margin: 4px 0 8px; }
+  .row { display: grid; grid-template-columns: 34px 1fr 28px; gap: 6px; align-items: center; margin-bottom: 5px; font-size: 10px; }
+  .bar { height: 6px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
+  .bar span { display: block; height: 100%; background: #ef4444; border-radius: 999px; }
+  .bar.good span { background: #10b981; }
+  .verdict { margin-top: 8px; font-size: 9.5px; color: #64748b; font-family: "JetBrains Mono", monospace; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div>
+    <span class="kicker">Mandarin tonal scoring</span>
+    <h3>Sandhi-aware tone verdicts</h3>
+    <p>Each syllable gets <code>tone_ref</code> and <code>tone_detected</code>. T3+T3→T2+T3 marked <code>dp_type: normal</code> — your LLM never second-guesses legitimate sandhi.</p>
+    <ul>
+      <li><b>6 Mandarin tools</b> including <code>cn_aitalk_eval</code></li>
+      <li><b>Neutral tone</b> and erhua handled natively</li>
+      <li><b>Standard Pǔtōnghuà</b> rubric</li>
+    </ul>
+  </div>
+  <div class="demo">
+    <div class="char">好</div>
+    <div class="pinyin">hǎo · tone_ref: 3</div>
+    <div class="row"><span>T1</span><div class="bar"><span style="width:5%"></span></div><span>5%</span></div>
+    <div class="row"><span>T2</span><div class="bar"><span style="width:10%"></span></div><span>10%</span></div>
+    <div class="row"><span>T3</span><div class="bar"><span style="width:28%"></span></div><span>28%</span></div>
+    <div class="row"><span>T4</span><div class="bar good"><span style="width:52%"></span></div><span>52%</span></div>
+    <div class="verdict">tone_detected: 4 · sandhi · dp_type: normal</div>
+  </div>
+</div>
+</body>
+</html>

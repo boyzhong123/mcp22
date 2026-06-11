@@ -4,10 +4,10 @@ import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const html = path.join(__dirname, 'stats.html');
-const out = path.join(__dirname, '..', 'assets', 'stats-v6-2x.png');
+const out = path.join(__dirname, '..', 'assets', 'stats-v10-2x.png');
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1024, height: 140 }, deviceScaleFactor: 2 });
+const ctx = await browser.newContext({ viewport: { width: 1100, height: 130 }, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
 await page.goto('file://' + html);
 await page.waitForLoadState('networkidle');

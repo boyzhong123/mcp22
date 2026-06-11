@@ -76,33 +76,33 @@
         <tr>
           <th class="col-label">&nbsp;</th>
           <th class="col-stream">
-            <span class="pill"><span class="icon">🎙️</span>Streaming</span>
+            <span class="pill"><span class="icon">🎙️</span>Streaming mic</span>
           </th>
           <th class="col-batch">
-            <span class="pill"><span class="icon">📁</span>Batch file</span>
+            <span class="pill"><span class="icon">📁</span>Inline audio</span>
           </th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td>Best for</td>
-          <td>Live coaching, classroom shadowing, real-time</td>
-          <td>UGC QA, recorded lessons, bulk jobs</td>
+          <td>Live tutoring UX — audio flows while the user speaks</td>
+          <td>Batch jobs — finished clip in one tool call</td>
         </tr>
         <tr>
-          <td>Transport</td>
-          <td>WebSocket — <span class="hl">30-50% lower latency</span></td>
-          <td>HTTP upload (URL / base64 / file path)</td>
+          <td>MCP path</td>
+          <td><code>/ws/audio/{session_id}</code></td>
+          <td><code>POST /</code> Streamable HTTP · <code>tools/call</code></td>
         </tr>
         <tr>
           <td>Input</td>
-          <td>PCM 16k/16-bit/mono chunks (200&nbsp;ms)</td>
-          <td>mp3 · wav · ogg · m4a · aac · pcm</td>
+          <td>WebSocket audio stream · intermediate frames</td>
+          <td><code>audio_url</code> or <code>audio_base64</code></td>
         </tr>
         <tr>
-          <td>Reconnect</td>
-          <td>60&nbsp;s <code>resume_token</code></td>
-          <td><span class="muted">n/a</span></td>
+          <td>Session</td>
+          <td>60&nbsp;s idle timeout · <code>resume_token</code></td>
+          <td><span class="muted">stateless per call</span></td>
         </tr>
       </tbody>
     </table>

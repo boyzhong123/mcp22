@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; font-family: Inter, system-ui, sans-serif; color: #0f172a; }
+  #wrap {
+    width: 720px;
+    padding: 10px 10px 8px;
+    display: grid;
+    grid-template-columns: 1fr 28px 1fr 28px 1fr;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .stage {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 11px;
+    background: #fff;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .stage.s1 { border-top: 3px solid #6366f1; }
+  .stage.s2 { border-top: 3px solid #0ea5e9; }
+  .stage.s3 { border-top: 3px solid #10b981; }
+  .head { display: flex; align-items: center; gap: 8px; }
+  .num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+  }
+  .s1 .num { background: linear-gradient(135deg, #6366f1, #0ea5e9); }
+  .s2 .num { background: linear-gradient(135deg, #0ea5e9, #10b981); }
+  .s3 .num { background: linear-gradient(135deg, #10b981, #fbbf24); color: #1f2328; }
+  .title { font-size: 13px; font-weight: 800; }
+  .who {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #64748b; font-family: "JetBrains Mono", monospace;
+  }
+  .payload {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9.5px; line-height: 1.45;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 7px 8px; color: #334155;
+  }
+  .c { color: #94a3b8; }
+  .k { color: #7c3aed; }
+  .s { color: #059669; }
+  .desc { margin: 0; font-size: 10.5px; line-height: 1.45; color: #475569; }
+  .arrow { display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 18px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="stage s1">
+    <div class="head"><span class="num">01</span><span class="title">MCP · assess</span></div>
+    <span class="who">chivox engine</span>
+    <div class="payload"><span class="c">// structured_json</span><br>{ "overall": 72, "phone": [{ "phoneme": "ɹ", "dp_type": "mispron" }] }</div>
+    <p class="desc">Phoneme-level <code>details[].phone[]</code> — same shape every tool.</p>
+  </div>
+  <div class="arrow">›</div>
+  <div class="stage s2">
+    <div class="head"><span class="num">02</span><span class="title">LLM · feedback</span></div>
+    <span class="who">chat.completion #1</span>
+    <div class="payload"><span class="c">// natural_language</span><br>"Fluency is great — but /θ/ and /r/ keep mixing up."</div>
+    <p class="desc">Groups errors by <code>dp_type</code>, explains why, prioritizes severity.</p>
+  </div>
+  <div class="arrow">›</div>
+  <div class="stage s3">
+    <div class="head"><span class="num">03</span><span class="title">LLM · drill</span></div>
+    <span class="who">chat.completion #2</span>
+    <div class="payload"><span class="c">// practice_loop</span><br>"Read 3×: Thirty-three thieves…" 🎯 /θ/×6</div>
+    <p class="desc">Auto-generates tongue twisters and minimal-pair drills.</p>
+  </div>
+</div>
+</body>
+</html>

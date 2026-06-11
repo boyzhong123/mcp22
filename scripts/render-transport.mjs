@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const html = path.join(__dirname, 'transport.html');
-const out = path.join(__dirname, '..', 'assets', 'transport-v1-2x.png');
+const out = path.join(__dirname, '..', 'assets', 'transport-v3-2x.png');
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1024, height: 560 }, deviceScaleFactor: 2 });

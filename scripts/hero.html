@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  #wrap {
+    width: 1100px;
+    padding: 24px 28px 20px;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    background:
+      radial-gradient(900px 520px at 88% -8%, rgba(253,230,138,0.35) 0%, transparent 55%),
+      radial-gradient(700px 480px at 6% 28%, rgba(209,250,229,0.45) 0%, transparent 55%),
+      #fbfaf7;
+    position: relative;
+    overflow: hidden;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 36px;
+    align-items: center;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(15,23,42,0.08);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #047857;
+    margin-bottom: 18px;
+  }
+  .eyebrow .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
+  }
+  .brand {
+    font-size: 46px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin: 0 0 18px;
+  }
+  .brand .mcp { color: #0d9488; }
+  .h1 {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin: 0 0 8px;
+  }
+  .h1 .hl {
+    background: linear-gradient(100deg, rgba(167,243,208,0.75), rgba(52,211,153,0.55));
+    padding: 0 6px 2px;
+    border-radius: 4px;
+  }
+  .h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+    margin: 0 0 14px;
+    color: #1e293b;
+  }
+  .h2 .hl {
+    background: linear-gradient(100deg, rgba(167,243,208,0.6), rgba(52,211,153,0.4));
+    padding: 0 5px 2px;
+    border-radius: 4px;
+  }
+  .sub {
+    font-size: 15px;
+    color: #64748b;
+    line-height: 1.5;
+    margin: 0 0 20px;
+    max-width: 520px;
+  }
+  .trial-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #047857;
+    margin-bottom: 22px;
+  }
+  .terminal {
+    border-radius: 14px;
+    overflow: hidden;
+    background: #0f172a;
+    box-shadow: 0 24px 48px -28px rgba(15,23,42,0.55);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .term-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #1e293b;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots span { width: 10px; height: 10px; border-radius: 50%; }
+  .dots span:nth-child(1) { background: #f87171; }
+  .dots span:nth-child(2) { background: #fbbf24; }
+  .dots span:nth-child(3) { background: #34d399; }
+  .term-title {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: #94a3b8;
+    flex: 1;
+    text-align: center;
+  }
+  .term-pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #34d399;
+    background: rgba(52,211,153,0.12);
+    border: 1px solid rgba(52,211,153,0.25);
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .term-body {
+    padding: 16px 18px 18px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #e2e8f0;
+  }
+  .term-body .prompt { color: #34d399; }
+  .term-body .cmd { color: #cbd5e1; }
+  .term-body .str { color: #7dd3fc; }
+  .term-body .num { color: #fbbf24; }
+  .term-body .ok { color: #34d399; font-weight: 600; }
+  .demo {
+    position: relative;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(15,23,42,0.08);
+    box-shadow: 0 28px 60px -32px rgba(15,23,42,0.28);
+    padding: 22px 24px 24px;
+    backdrop-filter: blur(12px);
+  }
+  .demo-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .demo-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #047857;
+  }
+  .demo-live .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
+  }
+  .demo-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 14px;
+    align-items: center;
+  }
+  .wave {
+    height: 56px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #dbeafe 0%, #3b82f6 18%, #60a5fa 22%, #dbeafe 28%, #3b82f6 42%, #93c5fd 48%, #dbeafe 55%, #2563eb 68%, #dbeafe 100%);
+    opacity: 0.85;
+  }
+  .char-card {
+    text-align: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    min-width: 120px;
+  }
+  .char-card .hanzi {
+    font-size: 42px;
+    font-weight: 700;
+    color: #dc2626;
+    line-height: 1;
+  }
+  .char-card .meta {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
+  }
+  .ear {
+    text-align: center;
+    padding: 10px;
+  }
+  .ear-icon {
+    width: 52px; height: 52px;
+    margin: 0 auto 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fff7ed, #ffedd5);
+    border: 2px solid #fb923c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+  }
+  .ear-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #ea580c;
+    letter-spacing: 0.04em;
+  }
+  .json-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .json-tag {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+  }
+  .json-tag b { color: #0f172a; }
+  .play {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: rgba(15,23,42,0.55);
+    border: 2px solid rgba(255,255,255,0.35);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 12px 32px -8px rgba(15,23,42,0.4);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .play::after {
+    content: '';
+    margin-left: 4px;
+    border-style: solid;
+    border-width: 12px 0 12px 20px;
+    border-color: transparent transparent transparent #fff;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="grid">
+    <div class="left">
+      <div class="eyebrow"><span class="dot"></span> Since 2011 · MCP-native</div>
+      <h1 class="brand">Chivox <span class="mcp">MCP</span></h1>
+      <p class="h1">Give your LLM <span class="hl">ears.</span></p>
+      <p class="h2">Ship a <span class="hl">Mandarin tutor</span> or <span class="hl">IELTS coach</span> in a weekend.</p>
+      <p class="sub">Phoneme-level speech assessment, delivered as MCP tools your agent can call directly.</p>
+      <div class="trial-badge">✦ 600 free calls on signup · no card required</div>
+      <div class="terminal">
+        <div class="term-bar">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <span class="term-title">try.sh</span>
+          <span class="term-pill">no signup</span>
+        </div>
+        <div class="term-body">
+          <div><span class="prompt">$</span> <span class="cmd">en_sentence_eval ref_text=</span><span class="str">"I think therefore I am"</span></div>
+          <div>&nbsp;&nbsp;<span class="cmd">audio_url=</span><span class="str">https://…/sentence.mp3</span></div>
+          <div style="margin-top:10px"><span class="ok">200</span> <span class="cmd">←</span> <span class="cmd">{"overall":</span><span class="num">85</span><span class="cmd">,"phone":[{"</span><span class="str">phoneme</span><span class="cmd">":"</span><span class="str">θ</span><span class="cmd">","</span><span class="str">score</span><span class="cmd">":</span><span class="num">91</span><span class="cmd">}]}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="demo-head">
+        <span class="demo-live"><span class="pulse"></span> Live · MCP demo</span>
+        <span>en_sentence_eval</span>
+      </div>
+      <div class="demo-flow">
+        <div class="wave"></div>
+        <div class="char-card">
+          <div class="hanzi">好</div>
+          <div class="meta">pinyin: hǎo<br/>tone 3 · erhua · sandhi</div>
+        </div>
+        <div class="ear">
+          <div class="ear-icon">👂</div>
+          <div class="ear-label">LLM · hears</div>
+        </div>
+      </div>
+      <div class="json-tags">
+        <span class="json-tag">"overall": <b>85</b></span>
+        <span class="json-tag">"phone": <b>[…]</b></span>
+        <span class="json-tag">"dp_type": <b>"normal"</b></span>
+        <span class="json-tag">"tone_ref": <b>3</b></span>
+      </div>
+      <div class="play"></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

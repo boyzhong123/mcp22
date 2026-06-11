@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const html = path.join(__dirname, 'community.html');
-const out = path.join(__dirname, '..', 'assets', 'community-v1-2x.png');
+const out = path.join(__dirname, '..', 'assets', 'community-v4-2x.png');
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1024, height: 220 }, deviceScaleFactor: 2 });

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>README preview · Chivox MCP</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 64px;
+    background: #fff; color: #1f2328;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px; line-height: 1.5;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .banner {
+    position: sticky; top: 0; z-index: 10;
+    margin: -24px -16px 20px; padding: 10px 16px;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid #d0d7de;
+    font-size: 13px; color: #656d76;
+  }
+  .banner b { color: #1f2328; }
+  img { max-width: 100%; height: auto; display: block; }
+  .center { text-align: center; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 12px 0; }
+  .badges img { display: inline-block; margin: 0; }
+  blockquote {
+    margin: 16px 0; padding: 0 1em; color: #656d76;
+    border-left: 0.25em solid #d0d7de;
+  }
+  h2 { margin: 28px 0 12px; padding-bottom: 0.3em; border-bottom: 1px solid #d8dee4; font-size: 1.5em; }
+  p { margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 14px; }
+  th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }
+  th { background: #f6f8fa; font-weight: 600; }
+  td.ours { background: #dafbe1; font-weight: 600; }
+  .img-720 { width: 720px; max-width: 100%; margin: 0 auto; }
+  hr { border: 0; border-top: 1px solid #d8dee4; margin: 24px 0; }
+  details { margin: 8px 0; border: 1px solid #d0d7de; border-radius: 6px; padding: 8px 12px; }
+  summary { cursor: pointer; font-weight: 600; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  pre { background: #f6f8fa; padding: 12px; border-radius: 6px; overflow: auto; }
+</style>
+</head>
+<body>
+<div class="banner"><b>README preview</b> — GitHub content width ~980px · images match current <code>README.md</code></div>
+<div class="wrap">
+
+  <a href="#"><img src="../assets/hero-v13-2x.png" alt="hero" width="100%" /></a>
+
+  <div class="center">
+    <div class="badges">
+      <img src="https://img.shields.io/badge/📖_Full_docs-api--portal.cloud.chivox.com-2563EB?style=for-the-badge" alt="" />
+      <img src="https://img.shields.io/badge/▶_Quickstart_in_60s-1a7f37?style=for-the-badge" alt="" />
+    </div>
+    <div class="badges">
+      <img src="https://img.shields.io/badge/MCP-ready-10B981?style=flat-square" alt="" />
+      <img src="https://img.shields.io/badge/tools-16_(10_EN_+_6_中文)-7C3AED?style=flat-square" alt="" />
+      <img src="https://img.shields.io/badge/host-mcp--global.cloud.chivox.com-111827?style=flat-square" alt="" />
+    </div>
+    <img src="../assets/stats-v10-2x.png" alt="stats" width="100%" />
+  </div>
+
+  <blockquote><b>TL;DR</b> — LLMs can't hear audio. <b>Chivox MCP</b> scores pronunciation at the phoneme level…</blockquote>
+
+  <hr />
+  <h2>🎯 Is this for you?</h2>
+  <div class="center"><img class="img-720" src="../assets/fit-v8-2x.png" alt="fit" width="720" /></div>
+  <blockquote>Most production teams run <b>Whisper + Chivox together</b>…</blockquote>
+
+  <hr />
+  <h2>⚖️ How it compares</h2>
+  <table>
+    <thead><tr><th></th><th>Whisper / Deepgram</th><th>ElevenLabs</th><th>Azure</th><th>Chivox MCP</th></tr></thead>
+    <tbody>
+      <tr><td>What it does</td><td>audio → text</td><td>text → audio</td><td>scores EN only</td><td class="ours">scores EN + 中文</td></tr>
+      <tr><td>Per-phoneme IPA</td><td>—</td><td>—</td><td>✓</td><td class="ours">✓</td></tr>
+      <tr><td>Mandarin tones + sandhi</td><td>—</td><td>—</td><td>basic</td><td class="ours">✓ native</td></tr>
+      <tr><td>MCP-native · 16 tools</td><td>—</td><td>—</td><td>—</td><td class="ours">✓</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+  <h2>🔁 The three-stage loop</h2>
+  <div class="center"><img class="img-720" src="../assets/loop-v8-2x.png" alt="loop" width="720" /></div>
+
+  <hr />
+  <h2>🏮 Mandarin</h2>
+  <div class="center"><img class="img-720" src="../assets/mandarin-v8-2x.png" alt="mandarin" width="720" /></div>
+
+  <hr />
+  <h2>🇬🇧 English</h2>
+  <div class="center"><img class="img-720" src="../assets/english-v8-2x.png" alt="english" width="720" /></div>
+
+  <hr />
+  <h2>🔌 Dual transport</h2>
+  <table>
+    <thead><tr><th></th><th>Streaming mic</th><th>Inline audio</th></tr></thead>
+    <tbody>
+      <tr><td>Best for</td><td>Live tutoring UX</td><td>Batch jobs</td></tr>
+      <tr><td>MCP path</td><td><code>/ws/audio/{session_id}</code></td><td><code>POST /</code> · <code>tools/call</code></td></tr>
+      <tr><td>Input</td><td>WebSocket stream</td><td><code>audio_url</code> or <code>audio_base64</code></td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+  <h2>💎 Why developers ship</h2>
+  <div class="center"><img class="img-720" src="../assets/pillars-v8-2x.png" alt="pillars" width="720" /></div>
+
+  <hr />
+  <h2>💳 Pricing</h2>
+  <div class="center"><img class="img-720" src="../assets/pricing-v10-2x.png" alt="pricing" width="720" /></div>
+
+  <hr />
+  <h2>🤝 Star us · say hi</h2>
+  <div class="center"><img class="img-720" src="../assets/community-v4-2x.png" alt="community" width="720" /></div>
+
+</div>
+</body>
+</html>

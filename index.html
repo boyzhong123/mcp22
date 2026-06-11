@@ -1179,7 +1179,7 @@
           <span class="label">try.sh <span class="badge">no signup</span></span>
           <button class="copy" onclick="copyCurl(this)" aria-label="Copy">Copy</button>
         </div>
-        <div class="cmd" id="heroCurlBody"><span class="prompt">$</span><span class="k">curl</span> speech-eval.site/mcp/try -d <span class="s">'{"ref":"你好","url":"…"}'</span></div>
+        <div class="cmd" id="heroCurlBody"><span class="prompt">$</span> en_sentence_eval <span class="k">ref_text=</span><span class="s">"I think therefore I am"</span> <span class="k">audio_url=</span><span class="s">https://…/sentence.mp3</span></div>
         <div class="resp"><span class="status">200</span><span class="arrow">←</span><span class="j-punct">{</span><span class="j-key">"overall"</span><span class="j-punct">:</span><span class="j-num">82</span><span class="j-punct">,</span> <span class="j-key">"tones"</span><span class="j-punct">:</span><span class="j-punct">[</span><span class="j-num">3</span><span class="j-punct">,</span><span class="j-num">3</span><span class="j-punct">]</span><span class="j-punct">,</span> <span class="j-key">"verdict"</span><span class="j-punct">:</span><span class="j-str">"native-like"</span><span class="j-punct">}</span></div>
       </div>
 
@@ -1314,15 +1314,15 @@
 
 <div class="stats-block">
 <div class="stats-row">
-  <div class="stat"><div class="v">9.2B+</div><div class="k">Evals / year</div></div>
-  <div class="stat"><div class="v">185</div><div class="k">Countries</div></div>
-  <div class="stat"><div class="v">95%+</div><div class="k">Human agreement</div></div>
-  <div class="stat"><div class="v">&lt;200ms</div><div class="k">P99 first token</div></div>
+  <div class="stat"><div class="v">16</div><div class="k">Tools · 10 EN + 6 中文</div></div>
+  <div class="stat"><div class="v">1 shape</div><div class="k">Same JSON every tool</div></div>
+  <div class="stat"><div class="v">Sandhi</div><div class="k">Tone-aware Mandarin</div></div>
+  <div class="stat"><div class="v">MCP + FC</div><div class="k">HTTP or WebSocket</div></div>
 </div>
 </div>
 
 <blockquote>
-  <b>TL;DR</b> — LLMs can't hear audio. Chivox MCP gives them ears: one tool call returns <code>overall / accuracy / fluency / phonemes[]</code> — a structured JSON your model can reason over directly. No SDK wrapping, no feature extraction, no glue code.
+  <b>TL;DR</b> — LLMs can't hear audio. Chivox MCP scores pronunciation at the phoneme level and returns <code>overall / accuracy / pron / fluency / details[].phone[]</code> — a stable JSON shape your model can reason over. Not STT. Not a Whisper wrapper.
 </blockquote>
 
 <div class="is-for-you">
@@ -1379,8 +1379,8 @@
   <span class="tok-s">"mcpServers"</span>: {
     <span class="tok-s">"chivox"</span>: {
       <span class="tok-s">"type"</span>: <span class="tok-s">"streamable-http"</span>,
-      <span class="tok-s">"url"</span>:  <span class="tok-s">"https://speech-eval.site/mcp"</span>,
-      <span class="tok-s">"env"</span>:  { <span class="tok-s">"CHIVOX_API_KEY"</span>: <span class="tok-s">"sk_live_…"</span> }
+      <span class="tok-s">"url"</span>: <span class="tok-s">"https://mcp-global.cloud.chivox.com"</span>,
+      <span class="tok-s">"headers"</span>: { <span class="tok-s">"Authorization"</span>: <span class="tok-s">"Bearer &lt;your_api_key&gt;"</span> }
     }
   }
 }</code></pre>
@@ -1391,9 +1391,11 @@
 <pre><code>{
   <span class="tok-s">"mcpServers"</span>: {
     <span class="tok-s">"chivox"</span>: {
-      <span class="tok-s">"command"</span>: <span class="tok-s">"npx"</span>,
-      <span class="tok-s">"args"</span>: [<span class="tok-s">"-y"</span>, <span class="tok-s">"@chivox/mcp"</span>],
-      <span class="tok-s">"env"</span>: { <span class="tok-s">"CHIVOX_API_KEY"</span>: <span class="tok-s">"sk_live_…"</span> }
+      <span class="tok-s">"command"</span>: <span class="tok-s">"chivox-local-mcp"</span>,
+      <span class="tok-s">"env"</span>: {
+        <span class="tok-s">"MCP_REMOTE_URL"</span>: <span class="tok-s">"https://mcp-global.cloud.chivox.com"</span>,
+        <span class="tok-s">"MCP_API_KEY"</span>: <span class="tok-s">"&lt;your_api_key&gt;"</span>
+      }
     }
   }
 }</code></pre>
@@ -1406,7 +1408,7 @@
 <span class="tok-k">const</span> chivox = <span class="tok-k">await</span> Client.<span class="tok-f">connect</span>({ name: <span class="tok-s">'chivox'</span> });
 
 <span class="tok-k">const</span> result = <span class="tok-k">await</span> chivox.<span class="tok-f">callTool</span>(<span class="tok-s">'en_sentence_eval'</span>, {
-  reference_text: <span class="tok-s">'The weather is gorgeous today.'</span>,
+  ref_text: <span class="tok-s">'The weather is gorgeous today.'</span>,
   audio_url:      <span class="tok-s">'https://demo.com/take-01.mp3'</span>,
 });
 
@@ -1422,13 +1424,13 @@ console.<span class="tok-f">log</span>(result.details);   <span class="tok-c">//
 
 <span class="tok-k">async def</span> <span class="tok-f">main</span>():
     <span class="tok-k">async with</span> streamablehttp_client(
-        <span class="tok-s">"https://speech-eval.site/mcp"</span>,
+        <span class="tok-s">"https://mcp-global.cloud.chivox.com"</span>,
         headers={<span class="tok-s">"Authorization"</span>: <span class="tok-s">"Bearer $CHIVOX_API_KEY"</span>},
     ) <span class="tok-k">as</span> (r, w, _):
         <span class="tok-k">async with</span> ClientSession(r, w) <span class="tok-k">as</span> s:
             <span class="tok-k">await</span> s.initialize()
             out = <span class="tok-k">await</span> s.call_tool(<span class="tok-s">"en_sentence_eval"</span>, {
-                <span class="tok-s">"reference_text"</span>: <span class="tok-s">"The weather is gorgeous today."</span>,
+                <span class="tok-s">"ref_text"</span>: <span class="tok-s">"The weather is gorgeous today."</span>,
                 <span class="tok-s">"audio_url"</span>:      <span class="tok-s">"https://demo.com/take-01.mp3"</span>,
             })
             <span class="tok-f">print</span>(out)
@@ -1439,12 +1441,12 @@ asyncio.<span class="tok-f">run</span>(main())</code></pre>
   <div class="panel" data-qs="curl">
     <div class="filename">bash · instant try (no signup)</div>
 <pre><code><span class="tok-c"># 1. Hello world — get a score in one call</span>
-<span class="tok-f">curl</span> https://speech-eval.site/mcp/try \
+<span class="tok-f">curl</span> https://mcp-global.cloud.chivox.com/try \
   -H <span class="tok-s">"Content-Type: application/json"</span> \
   -d <span class="tok-s">'{"ref_text":"你好","audio_url":"https://demo.chivox.com/nihao.mp3"}'</span>
 
 <span class="tok-c"># 2. Production REST (cvx_fc) — for stacks that can't host an MCP SDK</span>
-<span class="tok-f">curl</span> -X POST https://speech-eval.site/v1/call \
+<span class="tok-f">curl</span> -X POST https://fc-global.cloud.chivox.com/v1/call \
   -H <span class="tok-s">"Authorization: Bearer $CHIVOX_API_KEY"</span> \
   -d <span class="tok-s">'{
     "name": "cn_sentence_eval",
@@ -1461,7 +1463,7 @@ asyncio.<span class="tok-f">run</span>(main())</code></pre>
 client = MultiServerMCPClient({
     <span class="tok-s">"chivox"</span>: {
         <span class="tok-s">"transport"</span>: <span class="tok-s">"streamable_http"</span>,
-        <span class="tok-s">"url"</span>: <span class="tok-s">"https://speech-eval.site/mcp"</span>,
+        <span class="tok-s">"url"</span>: <span class="tok-s">"https://mcp-global.cloud.chivox.com"</span>,
         <span class="tok-s">"headers"</span>: {<span class="tok-s">"Authorization"</span>: <span class="tok-s">"Bearer $CHIVOX_API_KEY"</span>},
     }
 })
@@ -1480,7 +1482,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
 <span class="tok-k">from</span> agents.mcp <span class="tok-k">import</span> MCPServerStreamableHttp
 
 <span class="tok-k">async with</span> MCPServerStreamableHttp(
-    params={<span class="tok-s">"url"</span>: <span class="tok-s">"https://speech-eval.site/mcp"</span>,
+    params={<span class="tok-s">"url"</span>: <span class="tok-s">"https://mcp-global.cloud.chivox.com"</span>,
             <span class="tok-s">"headers"</span>: {<span class="tok-s">"Authorization"</span>: <span class="tok-s">"Bearer $KEY"</span>}},
 ) <span class="tok-k">as</span> chivox:
     coach = Agent(
@@ -1623,7 +1625,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
     <div class="payload"><span class="tok-c">// structured_json</span>
 <span class="tok-p">{</span> <span class="tok-s">"overall"</span>: <span class="tok-n">72</span>,
   <span class="tok-s">"dp_type"</span>: <span class="tok-s">"mispron"</span>,
-  <span class="tok-s">"phonemes"</span>: [ <span class="tok-s">"ɹ"</span>, <span class="tok-s">"ɪ"</span>, … ] <span class="tok-p">}</span></div>
+  <span class="tok-s">"phone"</span>: [{ <span class="tok-s">"phoneme"</span>: <span class="tok-s">"ɹ"</span>, <span class="tok-s">"dp_type"</span>: <span class="tok-s">"mispron"</span> }] <span class="tok-p">}</span></div>
     <p class="desc">Scores word-by-word &amp; phoneme-by-phoneme. 20+ fields: accuracy · fluency · rhythm · stress · tone · timestamps.</p>
   </div>
 
@@ -1929,7 +1931,7 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
 </div>
 
 <p class="micro" style="margin-top:16px">
-  Plus: <b>realtime + batch</b> modes · <b>TLS 1.2+ · ISO 27001</b> · on-prem SKUs · per-phoneme ms timestamps for jump-to-playback · ephemeral audio (destroyed post-scoring).
+  Plus: <b>streaming + inline</b> modes · <b>TLS 1.3</b> · audio processed and dropped · on-prem for enterprise · JSON retained 30 days.
 </p>
 
 <hr/>
@@ -2009,30 +2011,6 @@ agent = create_react_agent(ChatOpenAI(model=<span class="tok-s">"gpt-4o"</span>)
   <summary>Can I pin to a specific engine version?</summary>
   <p>Yes. Set <code>X-Chivox-Engine</code> to a pinned tag (e.g. <code>en-2024.11</code>); otherwise you auto-follow the stable channel.</p>
 </details>
-
-<hr/>
-
-<h2>🤝 Contributing</h2>
-
-<p>Issues and PRs welcome. For substantive features, open a design issue first. Small doc / example fixes can go straight to PR.</p>
-
-<pre><code><span class="tok-f">git</span> clone https://github.com/chivox/chivox-mcp.git
-<span class="tok-f">cd</span> chivox-mcp
-<span class="tok-f">pnpm</span> install
-<span class="tok-f">pnpm</span> test</code></pre>
-
-<p>See <a href="#">CONTRIBUTING.md</a> for coding style, release flow, and the commit-message convention (conventional commits).</p>
-
-<hr/>
-
-<h2>📜 License</h2>
-
-<p>Apache-2.0 © 2026 <a href="#">Suzhou Chivox Information Technology Co., Ltd.</a></p>
-
-<p class="centered micro" style="margin-top:32px">
-  Made by <b>Chivox</b> · Since 2011 in speech AI<br/>
-  <a href="#">Chivox MCP</a>
-</p>
 
 <!-- ═══════════════════ END MARKDOWN ════════════════════════ -->
       </article>

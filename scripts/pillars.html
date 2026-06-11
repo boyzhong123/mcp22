@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; font-family: Inter, system-ui, sans-serif; color: #0f172a; }
+  #wrap { width: 720px; padding: 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .card {
+    border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 9px 8px; background: #fff;
+    display: flex; flex-direction: column; gap: 4px; min-height: 0;
+  }
+  .card::before { content: ""; height: 3px; border-radius: 999px; margin-bottom: 2px; }
+  .c1::before { background: #f97316; }
+  .c2::before { background: #2563eb; }
+  .c3::before { background: #7c3aed; }
+  .c4::before { background: #059669; }
+  .ico { font-size: 16px; line-height: 1; }
+  h4 { margin: 0; font-size: 11.5px; line-height: 1.25; }
+  p { margin: 0; font-size: 9.5px; line-height: 1.4; color: #64748b; flex: 1; }
+  .badge {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 6px; border-radius: 999px; align-self: flex-start;
+  }
+  .c1 .badge { background: #ffedd5; color: #c2410c; }
+  .c2 .badge { background: #dbeafe; color: #1d4ed8; }
+  .c3 .badge { background: #ede9fe; color: #6d28d9; }
+  .c4 .badge { background: #d1fae5; color: #047857; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="card c1">
+    <span class="ico">🏮</span>
+    <h4>Mandarin depth</h4>
+    <p>Tones, sandhi, neutral tone — native scoring.</p>
+    <span class="badge">10 EN + 6 中文</span>
+  </div>
+  <div class="card c2">
+    <span class="ico">⚡</span>
+    <h4>Drop-in MCP</h4>
+    <p>One streamable-http block. 16 tools auto-discovered.</p>
+    <span class="badge">30 seconds</span>
+  </div>
+  <div class="card c3">
+    <span class="ico">📊</span>
+    <h4>LLM-native JSON</h4>
+    <p><code>details[].phone[]</code> stable across tools.</p>
+    <span class="badge">Same shape</span>
+  </div>
+  <div class="card c4">
+    <span class="ico">🇬🇧</span>
+    <h4>Exam-grade EN</h4>
+    <p>IELTS · TOEFL aligned phoneme rubrics.</p>
+    <span class="badge">en-US/GB/AU</span>
+  </div>
+</div>
+</body>
+</html>
