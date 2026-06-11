@@ -23,18 +23,28 @@ import {
   addTransaction,
   formatCents,
   getAccountBalanceCents,
+  getAccountCallsThisMonth,
   topupAccount,
   type CardBrand,
   type PaymentMethod,
   type Transaction,
 } from '../_lib/mock-store';
+import { PricingTierLadder } from './pricing-tier-ladder';
 import { useMockStore } from '../_lib/use-mock-store';
 import { useMockAuth } from '../_lib/mock-auth';
 import { useLang } from '../_lib/use-lang';
-import { formatCalls } from '../_lib/pricing';
 import {
+  MIN_TOPUP_CENTS,
+  PRICING_TIERS,
   TOPUP_PRESETS_CENTS,
+  formatCallsAtCurrentTierCompact,
+  formatCallsAtTier,
+  formatCallsRange,
+  formatCallsRangeCompact,
+  formatUnitDollars,
+  getTierIndexForMonthlyCalls,
   quoteTopup,
+  tierVolumeLabel,
   type TopupQuote,
 } from '../_lib/topup';
 import { billing, describeError } from '../_lib/api';
@@ -132,6 +142,8 @@ function OpenedCheckoutModal({
   const { user } = useMockAuth();
   const { paypalClientId } = usePaymentConfig();
   const accountBalance = useMockStore(getAccountBalanceCents, 0);
+  const callsThisMonth = useMockStore(getAccountCallsThisMonth, 0);
+  const currentTierIndex = getTierIndexForMonthlyCalls(callsThisMonth);
 
   // Account-wallet top-up: PayPal only (no card-on-file in this product).
   const [method] = useState<MethodKey>('paypal');
@@ -203,9 +215,6 @@ function OpenedCheckoutModal({
     () => quoteTopup(effectiveCents),
     [effectiveCents],
   );
-  // Calls credited if this top-up succeeds — wallet-converted at the
-  // standard per-call rate, so the user sees the value at a glance.
-  const effectiveCalls = quote.estimatedCalls;
   const taxCents = 0;
   // What the user actually pays.
   const totalCents = effectiveCents + taxCents;
@@ -227,10 +236,9 @@ function OpenedCheckoutModal({
   const nameValid = cardName.trim().length > 1;
   const newCardValid = cardValid && expiryValid && cvcValid && nameValid;
   const linkCodeValid = linkStep === 'code-sent' && /^\d{6}$/.test(linkCode);
-  // Account-wallet model: top-up just needs a positive dollar amount.
-  // $20 minimum keeps things sensible (matches the lowest preset chip).
-  const TOPUP_MIN_CENTS = 2000;
-  const amountValid = effectiveCents >= TOPUP_MIN_CENTS;
+  // Account-wallet model: top-up just needs a positive dollar amount above
+  // the published $10 minimum (matches the lowest preset chip).
+  const amountValid = effectiveCents >= MIN_TOPUP_CENTS;
   // No per-key key selection in the wallet model.
   const keyValid = true;
 
@@ -289,7 +297,7 @@ function OpenedCheckoutModal({
     const balanceAfterCents = getAccountBalanceCents();
 
     const baseLabel = formatCents(quote.baseCents);
-    const callsLabel = formatCalls(quote.estimatedCalls);
+    const callsLabel = formatCallsRange(quote.baseCents);
     const baseDesc = `${t('Top-up', '充值')} ${baseLabel} · ≈${callsLabel} ${t('calls', '次')}`;
 
     const txn = addTransaction({
@@ -414,7 +422,7 @@ function OpenedCheckoutModal({
             <p className="text-sm text-muted-foreground">
               {method === 'wire'
                 ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Credits will land in your wallet once funds arrive (usually 1–3 business days).', '。款项到账后将立即入账(通常 1–3 个工作日)。')}`
-                : `+${formatCents(quote.totalCents)} ${t('credit added to your wallet', '已入账钱包')}. ≈${formatCalls(effectiveCalls)} ${t('calls.', '次调用。')} ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
+                : `+${formatCents(quote.totalCents)} ${t('credit added to your wallet', '已入账钱包')}. ≈${formatCallsRange(quote.totalCents)} ${t('calls.', '次调用。')} ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
             </p>
           </div>
         ) : (
@@ -447,6 +455,12 @@ function OpenedCheckoutModal({
                  and we show how many calls land. */}
             {step === 1 && (
               <section className="space-y-3">
+                <PricingTierLadder
+                  callsThisMonth={callsThisMonth}
+                  variant="compact"
+                  showFooter={false}
+                />
+
                 <div className="flex items-baseline justify-between gap-2">
                   <SectionLabel>{t('How much to top up?', '充值多少？')}</SectionLabel>
                   <div className="text-[11px] text-muted-foreground">
@@ -485,7 +499,7 @@ function OpenedCheckoutModal({
                             selected ? 'text-zinc-300' : 'text-muted-foreground',
                           )}
                         >
-                          ≈ {formatCalls(quoteTopup(p).estimatedCalls)} {t('calls', '次调用')}
+                          {formatCallsAtCurrentTierCompact(p, callsThisMonth)}
                         </span>
                         {p === 5000 && (
                           <span
@@ -532,8 +546,13 @@ function OpenedCheckoutModal({
                   </div>
                 </div>
 
-                {/* Live quote — total credit + calls estimate. */}
-                <TopupQuoteSummary quote={quote} minCents={TOPUP_MIN_CENTS} />
+                {/* Live quote — credit + per-tier call breakdown. */}
+                <TopupQuoteSummary
+                  quote={quote}
+                  minCents={MIN_TOPUP_CENTS}
+                  callsThisMonth={callsThisMonth}
+                  currentTierIndex={currentTierIndex}
+                />
               </section>
             )}
 
@@ -700,7 +719,7 @@ function OpenedCheckoutModal({
                         {t('Estimated calls', '约可调用')}
                       </div>
                       <div className="text-sm font-bold tabular-nums text-indigo-800">
-                        {formatCalls(quote.estimatedCalls)}
+                        ≈ {formatCallsRangeCompact(quote.totalCents)}
                       </div>
                     </div>
                   </div>
@@ -748,7 +767,7 @@ function OpenedCheckoutModal({
                       {t('Continue', '下一步')} · {formatCents(totalCents || 0)}
                     </span>
                     <span className="text-[11px] font-normal opacity-85 tabular-nums">
-                      ≈ {formatCalls(effectiveCalls)} {t('calls', '次调用')}
+                      {formatCallsAtCurrentTierCompact(effectiveCents, callsThisMonth)}
                     </span>
                   </span>
                   <ChevronRight className="h-4 w-4" />
@@ -910,7 +929,7 @@ function StepIndicator({
 }) {
   const { t } = useLang();
   const items: { idx: 1 | 2; label: string }[] = [
-    { idx: 1, label: t('Choose calls', '选择次数') },
+    { idx: 1, label: t('Choose amount', '选择金额') },
     { idx: 2, label: t('Payment', '支付方式') },
   ];
   return (
@@ -1000,7 +1019,7 @@ function Step2Recap({
         <div className="text-sm font-semibold tabular-nums leading-tight mt-0.5">
           {formatCents(quote.totalCents)}{' '}
           <span className="text-muted-foreground font-normal text-[11px]">
-            ≈ {formatCalls(quote.estimatedCalls)} {t('calls', '次')}
+            ≈ {formatCallsRangeCompact(quote.totalCents)} {t('calls', '次')}
           </span>
         </div>
       </div>
@@ -1025,14 +1044,20 @@ function Step2Recap({
 }
 
 /**
- * Live quote panel — total credit + estimated calls.
+ * Live quote panel — credit total plus a per-tier call breakdown so the
+ * stepped pricing is visible at the moment of purchase, not just as a
+ * min–max range.
  */
 function TopupQuoteSummary({
   quote,
   minCents,
+  callsThisMonth,
+  currentTierIndex,
 }: {
   quote: TopupQuote;
   minCents: number;
+  callsThisMonth: number;
+  currentTierIndex: number;
 }) {
   const { t } = useLang();
   if (quote.baseCents <= 0) {
@@ -1053,30 +1078,76 @@ function TopupQuoteSummary({
     );
   }
   return (
-    <div className="rounded-lg border border-border bg-background px-3 py-2.5 space-y-1.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11px] text-muted-foreground">
-          {t('Top-up', '充值')}
-        </span>
-        <span className="text-sm font-semibold tabular-nums">
-          {formatCents(quote.baseCents)}
-        </span>
+    <div className="rounded-lg border border-border bg-background overflow-hidden">
+      <div className="px-3 py-2.5 space-y-1.5 border-b border-border/70">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            {t('Top-up', '充值')}
+          </span>
+          <span className="text-sm font-semibold tabular-nums">
+            {formatCents(quote.baseCents)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[11px] text-foreground font-medium">
+            {t('Credit added', '入账总额')}
+          </span>
+          <span className="text-base font-bold tabular-nums">
+            {formatCents(quote.totalCents)}
+          </span>
+        </div>
       </div>
-      <div className="h-px bg-border" />
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11px] text-foreground font-medium">
-          {t('Credit added', '入账总额')}
-        </span>
-        <span className="text-base font-bold tabular-nums">
-          {formatCents(quote.totalCents)}
-        </span>
-      </div>
-      <div className="text-[11px] text-muted-foreground tabular-nums">
-        ≈{' '}
-        <strong className="text-foreground">
-          {formatCalls(quote.estimatedCalls)}
-        </strong>{' '}
-        {t('calls at $0.001/call', '次调用（$0.001/次）')}
+
+      <div className="px-3 py-2 bg-muted/15">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+          {t('Calls by tier', '各档位可调用')}
+        </div>
+        <div className="space-y-1">
+          {PRICING_TIERS.map((tier, i) => {
+            const active = i === currentTierIndex;
+            const calls = formatCallsAtTier(quote.totalCents, i);
+            return (
+              <div
+                key={String(tier.upToPerMonth)}
+                className={cn(
+                  'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-md px-2 py-1 tabular-nums',
+                  active && 'bg-emerald-500/10 ring-1 ring-emerald-500/20',
+                )}
+              >
+                <span
+                  className={cn(
+                    'text-[10px] truncate',
+                    active ? 'font-semibold text-emerald-800 dark:text-emerald-300' : 'text-muted-foreground',
+                  )}
+                >
+                  {tierVolumeLabel(i, t)}
+                </span>
+                <span
+                  className={cn(
+                    'text-[10px] font-medium',
+                    active ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
+                  )}
+                >
+                  {formatUnitDollars(tier.unitCents)}
+                </span>
+                <span
+                  className={cn(
+                    'text-[11px] font-semibold text-right',
+                    active ? 'text-emerald-800 dark:text-emerald-300' : 'text-foreground',
+                  )}
+                >
+                  {calls} {t('calls', '次')}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+          {t(
+            `Based on ${callsThisMonth.toLocaleString('en-US')} calls this month — you pay ${formatUnitDollars(PRICING_TIERS[currentTierIndex]?.unitCents ?? 0)} per call right now.`,
+            `本月已调用 ${callsThisMonth.toLocaleString('en-US')} 次 — 你当前按 ${formatUnitDollars(PRICING_TIERS[currentTierIndex]?.unitCents ?? 0)}/次 计费。`,
+          )}
+        </p>
       </div>
     </div>
   );

@@ -23,8 +23,8 @@ const TABS: SectionTab[] = [
     label: 'Rates',
     zhLabel: '费率',
     description:
-      'Pay-as-you-go per 1,000 calls. Volume discounts apply automatically.',
-    zhDescription: '按每 1000 次调用计费。批量折扣自动应用。',
+      'Tiered per-call pricing by monthly usage — $0.007 down to $0.005/call.',
+    zhDescription: '按月用量阶梯计价 — $0.007 起，最低 $0.005/次。',
   },
 ];
 

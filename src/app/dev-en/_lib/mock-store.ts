@@ -274,11 +274,13 @@ export interface VolumeTier {
 }
 
 // ─── Pricing (static) ───────────────────────────────────────────────────────
-// We bill per successful MCP tool call — one flat base rate, no model tiers.
-// The `MODELS` array is intentionally a single entry so any lingering
-// per-model plumbing (UsagePoint.model, CSV export) keeps working while the
-// UI surfaces a single "MCP call" dimension.
-export const MCP_CALL_RATE_PER_K = 1.0; // USD per 1,000 successful calls
+// We bill per successful MCP tool call. The published rate is tiered by
+// monthly volume ($0.007 → $0.006 → $0.005/call, see `topup.ts`); local
+// estimates here use the conservative entry-tier rate so "calls remaining"
+// never over-promises. The `MODELS` array is intentionally a single entry so
+// any lingering per-model plumbing (UsagePoint.model, CSV export) keeps
+// working while the UI surfaces a single "MCP call" dimension.
+export const MCP_CALL_RATE_PER_K = 7.0; // USD per 1,000 calls at the entry tier ($0.007/call)
 export const MCP_CALL_MODEL_ID = 'mcp-call';
 
 export const MODELS: Model[] = [
@@ -1089,7 +1091,7 @@ export function getAccountTrialRemaining(): AccountTrialRemaining {
 
 /** USD cost per 1 call (mirror of MCP_CALL_RATE_PER_K but per-call). */
 export const MCP_CALL_RATE_PER_CALL_DOLLARS = MCP_CALL_RATE_PER_K / 1000;
-/** USD cents per 1 call. Default: $0.001 → 0.1 cent. */
+/** USD cents per 1 call at the entry tier: $0.007 → 0.7 cent. */
 export const MCP_CALL_RATE_PER_CALL_CENTS = MCP_CALL_RATE_PER_CALL_DOLLARS * 100;
 
 /**

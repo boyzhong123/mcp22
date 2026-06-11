@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, Shield, Sparkles, TrendingDown, Wallet } from 'lucide-react';
+import { PricingTierLadder } from '../../../_components/pricing-tier-ladder';
 import { cn } from '@/lib/utils';
 import {
   formatCents,
@@ -11,7 +12,16 @@ import {
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { formatMills } from '../../../_lib/format';
 import { useLang } from '../../../_lib/use-lang';
-import { TOPUP_PRESETS_CENTS, quoteTopup } from '../../../_lib/topup';
+import {
+  BASE_UNIT_CENTS,
+  BEST_UNIT_CENTS,
+  MIN_TOPUP_CENTS,
+  TOPUP_PRESETS_CENTS,
+  TRIAL_CALLS,
+  TRIAL_VALID_DAYS,
+  formatCallsRange,
+  formatUnitDollars,
+} from '../../../_lib/topup';
 
 const ALL_PLANS_INCLUDE = [
   { icon: Shield, text: 'Global edge delivery · TLS 1.3 encryption at rest & in flight' },
@@ -22,8 +32,9 @@ const ALL_PLANS_INCLUDE = [
 /**
  * Pricing reference page for the wallet-billing model.
  *
- * Every account uses one shared wallet and one flat per-call rate. A top-up
- * loads the same dollar amount into the wallet.
+ * Every account uses one shared wallet; the per-call rate is tiered by
+ * monthly call volume (see `_lib/topup.ts`). A top-up loads the same dollar
+ * amount into the wallet.
  */
 export default function PricingPage() {
   const { t, tx } = useLang();
@@ -44,14 +55,20 @@ export default function PricingPage() {
           <p className="text-sm text-muted-foreground mt-1">
             {t('Every account starts with ', '每个账户开通后即获 ')}
             <strong className="text-foreground">
-              {t('600 free trial calls', '600 次免费试用')}
+              {t(
+                `${TRIAL_CALLS} free trial calls`,
+                `${TRIAL_CALLS} 次免费试用`,
+              )}
             </strong>
             {t(
-              ' (valid for 30 days), shared across every API key. After the time window ends or the calls are used up, calls bill against a single account wallet at ',
-              '（30 天内有效），所有 API Key 共享。到期或次数用完后，所有调用统一从账户钱包按 ',
+              ` (valid for ${TRIAL_VALID_DAYS} days), shared across every API key. After the time window ends or the calls are used up, calls bill against a single account wallet at `,
+              `（${TRIAL_VALID_DAYS} 天内有效），所有 API Key 共享。到期或次数用完后，所有调用统一从账户钱包按 `,
             )}
             <strong className="text-foreground">
-              {t('$0.001/call', '$0.001/次')}
+              {t(
+                `${formatUnitDollars(BEST_UNIT_CENTS)}–${formatUnitDollars(BASE_UNIT_CENTS)}/call (tiered by monthly usage)`,
+                `${formatUnitDollars(BEST_UNIT_CENTS)}–${formatUnitDollars(BASE_UNIT_CENTS)}/次（按月用量阶梯）`,
+              )}
             </strong>
             {t(
               ' — no subscriptions and no per-key billing balance.',
@@ -67,11 +84,23 @@ export default function PricingPage() {
         </div>
       </div>
 
+      <PricingTierLadder
+        variant="card"
+        callsThisMonth={calls}
+        className="rounded-2xl"
+      />
+      <p className="text-[11px] text-muted-foreground leading-relaxed -mt-3 px-1">
+        {t(
+          'Only successful calls are billed — failed calls are free.',
+          '仅对成功调用计费 — 失败的调用不收费。',
+        )}
+      </p>
+
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60">
           <div className="text-sm font-semibold flex items-center gap-2">
             <Wallet className="h-4 w-4 text-emerald-500" />
-            {t('Flat usage pricing', '固定用量计费')}
+            {t('Top-up rules', '充值规则')}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {t(
@@ -91,14 +120,11 @@ export default function PricingPage() {
             </thead>
             <tbody className="divide-y divide-border">
               <tr>
-                <td className="px-5 py-3 font-medium">{t('Successful MCP call', '成功的 MCP 调用')}</td>
-                <td className="px-5 py-3 text-muted-foreground">{t('Flat rate', '固定单价')}</td>
-                <td className="px-5 py-3 text-right font-semibold tabular-nums">$0.001 / {t('call', '次')}</td>
-              </tr>
-              <tr>
                 <td className="px-5 py-3 font-medium">{t('Minimum top-up', '最低充值')}</td>
                 <td className="px-5 py-3 text-muted-foreground">{t('Account wallet', '账户钱包')}</td>
-                <td className="px-5 py-3 text-right font-semibold tabular-nums">$20.00</td>
+                <td className="px-5 py-3 text-right font-semibold tabular-nums">
+                  {formatCents(MIN_TOPUP_CENTS)}
+                </td>
               </tr>
               <tr>
                 <td className="px-5 py-3 font-medium">{t('Top-up options', '充值选项')}</td>
@@ -111,14 +137,14 @@ export default function PricingPage() {
                 <td className="px-5 py-3 font-medium">{t('Example', '示例')}</td>
                 <td className="px-5 py-3 text-muted-foreground">{t('$50 top-up', '充值 $50')}</td>
                 <td className="px-5 py-3 text-right font-semibold tabular-nums">
-                  ≈ {quoteTopup(5000).estimatedCalls.toLocaleString('en-US')} {t('calls', '次调用')}
+                  ≈ {formatCallsRange(5000)} {t('calls', '次调用')}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
         <div className="px-5 py-3 border-t border-border/60 bg-muted/20 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1.5">
-          <TrendingDown className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <Wallet className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
             {t(
               'Every key on your account spends from the same wallet.',

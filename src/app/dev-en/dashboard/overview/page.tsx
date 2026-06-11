@@ -512,7 +512,7 @@ export default function OverviewPage() {
             >
               {tx('pay-as-you-go pricing')}
             </Link>{' '}
-            {t('— flat usage pricing.', '— 固定用量计费。')}
+            {t('— tiered by monthly usage.', '— 按月用量阶梯计价。')}
           </span>
         </div>
         <Link
