@@ -21,7 +21,7 @@
 
 <br/>
 
-<img src="./assets/stats-v15-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="1100"/>
+<img src="./assets/stats-v16-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="1100"/>
 
 </div>
 
