@@ -1,7 +1,7 @@
 <p align="center">
   <a href="./assets/chivox-mcp.mp4" title="▶ Play product demo">
     <img
-      src="./assets/hero-v20-2x.png"
+      src="./assets/hero-v19-2x.png"
       alt="Chivox MCP — Give your LLM ears. Click anywhere to watch the product demo."
       width="720"
     />
@@ -34,8 +34,6 @@
 > **TL;DR** — LLMs can't hear audio. **Chivox MCP** is a hosted MCP server that scores pronunciation at the phoneme level — Mandarin tones included. One `tools/call` returns `overall / accuracy / pron / fluency / details[].phone[]` (pronunciation, fluency, per-phoneme breakdown) in a stable JSON shape your model can reason over. Not STT. Not a Whisper wrapper.
 
 > 📖 **Canonical reference:** [api-portal.cloud.chivox.com/docs](https://api-portal.cloud.chivox.com/docs) — endpoints, tool catalog, response fields, limits, and client configs.
-
-> 🛠️ **Running this website repo locally?** See [`docs/deploy/README.md`](./docs/deploy/README.md) or paste [`docs/deploy/quickstart-prompt.md`](./docs/deploy/quickstart-prompt.md) into your agent.
 
 ---
 
