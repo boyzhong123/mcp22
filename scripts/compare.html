@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; font-family: Inter, system-ui, sans-serif; color: #0f172a; }
+  #wrap { width: 1100px; padding: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+  thead th {
+    text-align: left; padding: 12px 14px; background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 11px;
+    letter-spacing: 0.04em; text-transform: uppercase; color: #64748b;
+  }
+  thead th.ours { background: #ecfdf5; color: #047857; }
+  tbody td { padding: 11px 14px; border-top: 1px solid #e2e8f0; vertical-align: middle; }
+  tbody td:first-child { color: #475569; font-weight: 600; background: #fafbfc; width: 180px; }
+  td.ours { background: #f0fdf4; font-weight: 700; color: #047857; }
+  .yes { color: #16a34a; font-weight: 700; }
+  .no { color: #dc2626; font-weight: 700; }
+  .mid { color: #d97706; font-weight: 600; font-size: 12px; }
+  code { font-family: ui-monospace, monospace; font-size: 12px; background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Whisper / Deepgram</th>
+        <th>ElevenLabs</th>
+        <th>Azure Pronunciation</th>
+        <th class="ours">Chivox MCP</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>What it does</td>
+        <td>audio → text</td>
+        <td>text → audio</td>
+        <td>scores EN only</td>
+        <td class="ours">scores EN + 中文</td>
+      </tr>
+      <tr>
+        <td>Per-phoneme IPA scores</td>
+        <td class="no">—</td>
+        <td class="no">—</td>
+        <td class="yes">✓</td>
+        <td class="ours">✓</td>
+      </tr>
+      <tr>
+        <td>Mandarin tones + sandhi</td>
+        <td class="no">—</td>
+        <td class="no">—</td>
+        <td class="mid">basic</td>
+        <td class="ours">✓ native</td>
+      </tr>
+      <tr>
+        <td><code>phoneme_error</code> for drills</td>
+        <td class="no">—</td>
+        <td class="no">—</td>
+        <td class="no">—</td>
+        <td class="ours">✓</td>
+      </tr>
+      <tr>
+        <td>MCP-native · 16 tools</td>
+        <td class="no">—</td>
+        <td class="no">—</td>
+        <td class="no">—</td>
+        <td class="ours">✓</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

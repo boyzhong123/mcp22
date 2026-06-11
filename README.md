@@ -1,7 +1,7 @@
 <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
   <img
-    src="./assets/hero-v14-2x.png"
-    srcset="./assets/hero-v14-2x.png 2x"
+    src="./assets/hero-v15-2x.png"
+    srcset="./assets/hero-v15-2x.png 2x"
     alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo."
     width="100%"
   />
@@ -22,7 +22,7 @@
 
 <br/>
 
-<img src="./assets/stats-v10-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="100%"/>
+<img src="./assets/stats-v15-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="100%"/>
 
 </div>
 
@@ -41,7 +41,7 @@
 ## 🎯 Is this for you?
 
 <p align="center">
-  <img src="./assets/fit-v8-2x.png" alt="Is this for you? fit check" width="720" />
+  <img src="./assets/fit-v15-2x.png" alt="Is this for you? fit check" width="720" />
 </p>
 
 > Most production teams run **Whisper + Chivox together**: Whisper to transcribe what was said, Chivox to score how well. They don't compete.
@@ -183,13 +183,9 @@ asyncio.run(main())
 
 > **Rule of thumb** — use **Whisper** to know *what* was said; use **Chivox** to know *how well*. They stack.
 
-| | Whisper / Deepgram | ElevenLabs | Azure Pronunciation | **Chivox MCP** |
-| --- | --- | --- | --- | --- |
-| What it does | audio → text | text → audio | scores EN only | **scores EN + 中文** |
-| Per-phoneme IPA scores | — | — | ✓ | **✓** |
-| Mandarin tones + sandhi | — | — | basic | **✓ native** |
-| `phoneme_error` for drills | — | — | — | **✓** |
-| MCP-native · 16 tools | — | — | — | **✓** |
+<p align="center">
+  <img src="./assets/compare-v15-2x.png" alt="Comparison: Chivox MCP vs Whisper, ElevenLabs, Azure Pronunciation" width="100%" />
+</p>
 
 ---
 
@@ -227,52 +223,9 @@ On English mispronunciations, `phoneme_error: { expected, actual }` is included.
 
 Pipe that JSON straight into any chat model with a one-line system prompt — *"You are a warm pronunciation coach. Diagnose, then drill."* — and you get a real lesson back. **No fine-tuning. No audio understanding. Just `chat.completion`.**
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-**🎤 Learner says**
-
-> *"I want to record a record."*
-> &nbsp;
-> ⏱ 1.8 s · 🎚 SNR 22 dB
-
-**📊 Chivox MCP returns**
-
-```json
-{
-  "overall": 72,
-  "details": [{
-    "char": "record", "score": 58,
-    "phone": [
-      { "phoneme": "ɹ", "score": 45, "dp_type": "mispron",
-        "phoneme_error": { "expected": "/ɹ/", "actual": "/l/" } }
-    ]
-  }]
-}
-```
-
-</td>
-<td width="50%" valign="top">
-
-**🧠 GPT-4o / Claude / Qwen replies**
-
-> 🎯 **Score 72** — nice rhythm, but *record* tripped you up.
->
-> **What happened**
-> - Your **`ɹ`** scored 45 — tongue touched the roof (sounds like an *L*). Keep it floating.
-> - You said **`RE-cord`** (the noun). The verb wants stress on syllable 2: **`re-CORD`**.
->
-> **🔁 30-second drill** — say each 3×:
-> 1. *I want to re-CORD a RE-cord.*
-> 2. *I rarely read raw research.* (`ɹ` loaded)
-> 3. *Re-CORD, not RE-cord.* (stress flip)
->
-> Want me to listen to your next take? 🎙
-
-</td>
-</tr>
-</table>
+<p align="center">
+  <img src="./assets/coach-v15-2x.png" alt="Coach demo: Chivox JSON in, warm LLM feedback and drill out" width="100%" />
+</p>
 
 > **Why this works** — the LLM never "heard" the audio. The JSON *names* the problem in fields it already understands (`dp_type: "mispron"`, `phoneme_error.actual`, `tone_ref` vs `tone_detected`), so a vanilla `chat.completion` can diagnose like a human teacher.
 
@@ -283,7 +236,7 @@ Pipe that JSON straight into any chat model with a one-line system prompt — *"
 🎤 **Input:** 1-minute learner recording → **Output:** warm feedback + targeted drill, end-to-end in &lt; 1.6 seconds.
 
 <p align="center">
-  <img src="./assets/loop-v8-2x.png" alt="Three-stage loop: assess → diagnose → drill" width="720" />
+  <img src="./assets/loop-v15-2x.png" alt="Three-stage loop: assess → diagnose → drill" width="720" />
 </p>
 
 <div align="center"><sub>Compatible with <b>GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwen · GLM</b> — any model that speaks function calling.</sub></div>
@@ -295,7 +248,7 @@ Pipe that JSON straight into any chat model with a one-line system prompt — *"
 There are **30M+** foreigners and 2nd-gen diaspora learning Mandarin worldwide — and **zero** English-speaking platforms that can actually hear the difference between `mā / má / mǎ / mà`. Chivox's Chinese engine is trained on the same data powering China's Putonghua proficiency exam (普通话水平测试).
 
 <p align="center">
-  <img src="./assets/mandarin-v8-2x.png" alt="Mandarin: tone_ref, tone_detected, sandhi-aware dp_type" width="720" />
+  <img src="./assets/mandarin-v15-2x.png" alt="Mandarin tutor: tone-aware feedback with chat demo and tone analysis" width="100%" />
 </p>
 
 ---
@@ -305,44 +258,16 @@ There are **30M+** foreigners and 2nd-gen diaspora learning Mandarin worldwide �
 Same engine powering China's national Putonghua exam — aligned to **IELTS · TOEFL · K-12 gaokao · Cambridge YLE** for English. Same MCP endpoints, same 20+ fields. Just a different `ref_text` and `accent`.
 
 <p align="center">
-  <img src="./assets/english-v8-2x.png" alt="English: IPA phonemes, phoneme_error, en-US/GB/AU" width="720" />
+  <img src="./assets/english-v15-2x.png" alt="English: IPA phonemes, phoneme_error, en-US/GB/AU" width="720" />
 </p>
 
 ---
 
 ## 🛠️ Tools catalog
 
-<details>
-<summary><b>English (10 tools)</b></summary>
-
-| Tool                      | Purpose                                      | Modes          |
-| ------------------------- | -------------------------------------------- | -------------- |
-| `en_word_eval`            | Single-word pronunciation                    | inline · stream |
-| `en_word_correction`      | Omissions, extras, wrong phones              | inline          |
-| `en_vocab_eval`           | Multiple words in one clip                   | inline          |
-| `en_sentence_eval`        | Sentence accuracy + fluency                  | inline · stream |
-| `en_sentence_correction`  | Per-word feedback                            | inline          |
-| `en_paragraph_eval`       | Long-passage read-aloud                      | inline · stream |
-| `en_phonics_eval`         | Letter-to-sound rules                        | inline          |
-| `en_choice_eval`          | Oral multiple choice                         | inline          |
-| `en_semi_open_eval`       | Scenario speaking                            | inline · stream |
-| `en_realtime_eval`        | Realtime read-aloud                          | stream          |
-
-</details>
-
-<details>
-<summary><b>Mandarin Chinese (6 tools)</b></summary>
-
-| Tool                   | Purpose                        | Modes          |
-| ---------------------- | ------------------------------ | -------------- |
-| `cn_word_raw_eval`     | Hanzi pronunciation            | inline · stream |
-| `cn_word_pinyin_eval`  | Pinyin + tone scoring          | inline          |
-| `cn_sentence_eval`     | Short utterances               | inline · stream |
-| `cn_paragraph_eval`    | Long text                      | inline          |
-| `cn_rec_eval`          | Constrained recognition        | inline          |
-| `cn_aitalk_eval`       | Open-ended dialog evaluation   | stream          |
-
-</details>
+<p align="center">
+  <img src="./assets/tools-v15-2x.png" alt="16 tools: 10 English + 6 Mandarin" width="100%" />
+</p>
 
 **Inline audio:** pass `audio_url` or `audio_base64` in the tool call — no upload round-trip. **Formats:** mp3 · wav · ogg · m4a · aac · pcm. [Per-tool notes →](https://api-portal.cloud.chivox.com/docs)
 
@@ -352,19 +277,16 @@ Same engine powering China's national Putonghua exam — aligned to **IELTS · T
 
 Two ways to feed audio — **same result shape**, different UX. Function-calling fallback: `fc-global.cloud.chivox.com`.
 
-| | **Streaming mic** | **Inline audio** |
-| --- | --- | --- |
-| Best for | Live tutoring — audio flows while the user speaks | Batch jobs — finished clip in one tool call |
-| MCP path | `/ws/audio/{session_id}` | `POST /` Streamable HTTP · `tools/call` |
-| Input | WebSocket audio stream | `audio_url` or `audio_base64` |
-| Session | 60 s idle timeout · `resume_token` | Stateless per call |
+<p align="center">
+  <img src="./assets/transport-v15-2x.png" alt="Dual transport: streaming mic vs inline audio" width="100%" />
+</p>
 
 ---
 
 ## 💎 Why developers ship with Chivox MCP
 
 <p align="center">
-  <img src="./assets/pillars-v8-2x.png" alt="Four pillars: Mandarin depth · Drop-in MCP · LLM-native JSON · Exam-grade English" width="720" />
+  <img src="./assets/pillars-v15-2x.png" alt="Four pillars: Mandarin depth · Drop-in MCP · LLM-native JSON · Exam-grade English" width="720" />
 </p>
 
 Plus: **streaming + inline** modes · **TLS 1.3** on every hop · audio processed and dropped (JSON retained 30 days) · on-prem available for enterprise · [limits & privacy →](https://api-portal.cloud.chivox.com/docs)
@@ -376,7 +298,7 @@ Plus: **streaming + inline** modes · **TLS 1.3** on every hop · audio processe
 Honest defaults. Start with **600 free calls** (30 days) and **all 16 tools unlocked** — no feature gates, no card. When you need more, pay per successful call at **tiered rates** — the more you ship, the cheaper each call gets.
 
 <p align="center">
-  <img src="./assets/pricing-v10-2x.png" alt="Pricing: Free trial · Pay as you go tiered · Enterprise custom" width="720" />
+  <img src="./assets/pricing-v15-2x.png" alt="Pricing: Free trial · Pay as you go tiered · Enterprise custom" width="720" />
 </p>
 
 > **Free tier ≠ crippled tier.** Every new account gets **600 free calls valid for 30 days** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. After the trial window or when calls are used up, top up from **$10** and let the **volume tiers** do the rest. Failed calls are never billed.
@@ -427,7 +349,7 @@ For quick demos, yes — but production traffic should flow through your backend
 <p align="center">
   <a href="https://github.com/boyzhong123/mcp22">
     <img
-      src="./assets/community-v4-2x.png"
+      src="./assets/community-v15-2x.png"
       alt="Friendly hello from the Chivox team — drop a star on GitHub, open an issue and we usually reply the same day."
       width="720"
     />

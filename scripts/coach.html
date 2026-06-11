@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; font-family: Inter, system-ui, sans-serif; color: #0f172a; }
+  #wrap {
+    width: 1100px; padding: 10px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    background: linear-gradient(180deg, #f8fafc, #fff);
+    border: 1px solid #e2e8f0; border-radius: 14px;
+  }
+  .panel {
+    border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;
+    padding: 12px 14px;
+  }
+  .head { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+  .left .head { color: #2563eb; }
+  .right .head { color: #7c3aed; }
+  .quote {
+    font-size: 13px; font-style: italic; color: #334155;
+    padding: 8px 10px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px;
+  }
+  .meta { font-size: 10px; color: #94a3b8; margin-bottom: 10px; }
+  pre {
+    margin: 0; padding: 10px; border-radius: 8px; background: #0f172a; color: #e2e8f0;
+    font-family: "JetBrains Mono", monospace; font-size: 9.5px; line-height: 1.55;
+    overflow: hidden;
+  }
+  .k { color: #7dd3fc; } .n { color: #fbbf24; } .s { color: #86efac; }
+  .reply { font-size: 11.5px; line-height: 1.55; color: #334155; }
+  .reply b { color: #0f172a; }
+  .reply ul { margin: 6px 0; padding-left: 18px; }
+  .reply li { margin-bottom: 4px; }
+  .score { font-size: 13px; font-weight: 700; color: #047857; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="panel left">
+    <div class="head">🎤 Learner says</div>
+    <div class="quote">"I want to record a record."</div>
+    <div class="meta">⏱ 1.8 s · 🎚 SNR 22 dB</div>
+    <div class="head" style="color:#059669;margin-top:4px">📊 Chivox MCP returns</div>
+    <pre>{
+  <span class="k">"overall"</span>: <span class="n">72</span>,
+  <span class="k">"details"</span>: [{
+    <span class="k">"char"</span>: <span class="s">"record"</span>, <span class="k">"score"</span>: <span class="n">58</span>,
+    <span class="k">"phone"</span>: [{
+      <span class="k">"phoneme"</span>: <span class="s">"ɹ"</span>, <span class="k">"score"</span>: <span class="n">45</span>,
+      <span class="k">"dp_type"</span>: <span class="s">"mispron"</span>,
+      <span class="k">"phoneme_error"</span>: { <span class="k">"expected"</span>: <span class="s">"/ɹ/"</span>, <span class="k">"actual"</span>: <span class="s">"/l/"</span> }
+    }]
+  }]
+}</pre>
+  </div>
+  <div class="panel right">
+    <div class="head">🧠 GPT-4o / Claude / Qwen replies</div>
+    <div class="reply">
+      <div class="score">🎯 Score 72 — nice rhythm, but <i>record</i> tripped you up.</div>
+      <b>What happened</b>
+      <ul>
+        <li>Your <b>ɹ</b> scored 45 — tongue touched the roof (sounds like an <i>L</i>). Keep it floating.</li>
+        <li>You said <b>RE-cord</b> (noun). The verb wants stress on syllable 2: <b>re-CORD</b>.</li>
+      </ul>
+      <b>🔁 30-second drill</b> — say each 3×:
+      <ol style="margin:6px 0;padding-left:18px">
+        <li><i>I want to re-CORD a RE-cord.</i></li>
+        <li><i>I rarely read raw research.</i> (ɹ loaded)</li>
+        <li><i>Re-CORD, not RE-cord.</i> (stress flip)</li>
+      </ol>
+      Want me to listen to your next take? 🎙
+    </div>
+  </div>
+</div>
+</body>
+</html>
