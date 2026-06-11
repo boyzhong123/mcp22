@@ -7,7 +7,7 @@ const assets = path.join(__dirname, '..', 'assets');
 
 const JOBS = [
   { html: 'hero.html', selector: '#wrap', out: 'hero-v15-2x.png', width: 1100 },
-  { html: 'stats.html', selector: '#row', out: 'stats-v15-2x.png', width: 1100 },
+  { html: 'stats.html', selector: '#row', out: 'stats-v18-2x.png', width: 1100 },
   { html: 'fit.html', selector: '#wrap', out: 'fit-v15-2x.png', width: 720 },
   { html: 'compare.html', selector: '#wrap', out: 'compare-v15-2x.png', width: 1100 },
   { html: 'coach.html', selector: '#wrap', out: 'coach-v15-2x.png', width: 1100 },
