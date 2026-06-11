@@ -1,10 +1,12 @@
-<a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
-  <img
-    src="./assets/hero-v17-2x.png"
-    alt="Chivox MCP — Give your LLM ears. Ship a Mandarin tutor or IELTS coach in a weekend. Click to play the 15s demo."
-    width="1100"
-  />
-</a>
+<p align="center">
+  <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
+    <img
+      src="./assets/hero-v20-2x.png"
+      alt="Chivox MCP — Give your LLM ears. Click anywhere to watch the 15s demo."
+      width="1100"
+    />
+  </a>
+</p>
 
 <div align="center">
 
@@ -25,11 +27,11 @@
 
 </div>
 
-**On this page:** [Fit check](#-is-this-for-you) · [Quickstart](#-quickstart) · [Compare](#️-how-it-compares) · [Response JSON](#-what-the-llm-actually-sees) · [Coach loop](#-the-three-stage-loop) · [Tools](#️-tools-catalog) · [Transport](#-dual-transport) · [Pricing](#-pricing) · [FAQ](#-faq)
+**On this page:** [Fit check](#-is-this-for-you) · [Quickstart](#-quickstart) · [Compare](#️-how-it-compares) · [FAQ](#-faq) · [Response JSON](#-what-the-llm-actually-sees) · [Coach loop](#-the-three-stage-loop) · [Tools](#️-tools-catalog) · [Transport](#-dual-transport) · [Pricing](#-pricing)
 
 ---
 
-> **TL;DR** — LLMs can't hear audio. **Chivox MCP** is a hosted MCP server that scores pronunciation at the phoneme level — Mandarin tones included. One `tools/call` returns `overall / accuracy / pron / fluency / details[].phone[]` in a stable JSON shape your model can reason over. Not STT. Not a Whisper wrapper.
+> **TL;DR** — LLMs can't hear audio. **Chivox MCP** is a hosted MCP server that scores pronunciation at the phoneme level — Mandarin tones included. One `tools/call` returns `overall / accuracy / pron / fluency / details[].phone[]` (pronunciation, fluency, per-phoneme breakdown) in a stable JSON shape your model can reason over. Not STT. Not a Whisper wrapper.
 
 > 📖 **Canonical reference:** [api-portal.cloud.chivox.com/docs](https://api-portal.cloud.chivox.com/docs) — endpoints, tool catalog, response fields, limits, and client configs.
 
@@ -181,6 +183,30 @@ asyncio.run(main())
 
 ---
 
+## ❓ FAQ
+
+### Is this just another wrapper around Whisper?
+
+No. Whisper transcribes; Chivox scores. The engine is trained on exam-graded samples and returns phoneme-level `details[].phone[]` — not a transcript. Most teams run both.
+
+### Does it work offline / on-device?
+
+The hosted MCP server needs outbound access to the scoring engine. For air-gapped deployments, contact us — we ship an on-prem container for enterprise customers.
+
+### What about dialects and accents?
+
+Mandarin targets standard Pǔtōnghuà with sandhi-aware tone verdicts. English supports en-US, en-GB, and en-AU rubrics via locale parameters on the relevant tools.
+
+### Which LLMs work out of the box?
+
+Any model with OpenAI-style function calling: GPT-4o / 5.x, Claude Sonnet / Opus, Gemini, DeepSeek, GLM, Kimi, Doubao, Qwen. Tool schemas are forwarded verbatim.
+
+### Can I use this in a browser?
+
+For quick demos, yes — but production traffic should flow through your backend so the API key stays server-side. [Privacy notes →](https://api-portal.cloud.chivox.com/docs)
+
+---
+
 ## 🧠 What the LLM actually sees
 
 Every tool returns the **same top-level shape** — switch locale or granularity with zero schema work. Example for *"hello"*:
@@ -207,7 +233,7 @@ Every tool returns the **same top-level shape** — switch locale or granularity
 }
 ```
 
-On English mispronunciations, `phoneme_error: { expected, actual }` is included. Mandarin adds `tone_ref` / `tone_detected` with sandhi-aware `dp_type` verdicts. [Full field list →](https://api-portal.cloud.chivox.com/docs)
+For English mispronunciations, `phoneme_error: { expected, actual }` is included. Mandarin adds `tone_ref` / `tone_detected` with sandhi-aware `dp_type` verdicts. [Full field list →](https://api-portal.cloud.chivox.com/docs)
 
 ---
 
@@ -231,13 +257,13 @@ Pipe that JSON straight into any chat model with a one-line system prompt — *"
   <img src="./assets/loop-v17-2x.png" alt="Three-stage loop: assess → diagnose → drill" width="720" />
 </p>
 
-<div align="center"><sub>Compatible with <b>GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwen · GLM</b> — any model that speaks function calling.</sub></div>
+<div align="center"><sub>Compatible with <b>GPT · Claude · Gemini · DeepSeek · Llama · Mistral · Qwen · GLM</b> — any model with tool / function-calling support.</sub></div>
 
 ---
 
-## 🏮 The moat: a tireless Beijing-accent tutor
+## 🏮 The moat: a tireless Mandarin tutor
 
-There are **30M+** foreigners and 2nd-gen diaspora learning Mandarin worldwide — and **zero** English-speaking platforms that can actually hear the difference between `mā / má / mǎ / mà`. Chivox's Chinese engine is trained on the same data powering China's Putonghua proficiency exam (普通话水平测试).
+**30M+** learners worldwide study Mandarin — including heritage speakers and adult beginners — yet few platforms score tone errors (`mā / má / mǎ / mà`) at the phoneme level in English. Chivox's Chinese engine is trained on the same data that powers China's Putonghua Proficiency Test (普通话水平测试, PSC).
 
 <p align="center">
   <img src="./assets/mandarin-v17-2x.png" alt="Mandarin tutor: tone-aware feedback with chat demo and tone analysis" width="1100" />
@@ -247,7 +273,7 @@ There are **30M+** foreigners and 2nd-gen diaspora learning Mandarin worldwide �
 
 ## 🇬🇧 And yes — exam-grade English too
 
-Same engine powering China's national Putonghua exam — aligned to **IELTS · TOEFL · K-12 gaokao · Cambridge YLE** for English. Same MCP endpoints, same 20+ fields. Just a different `ref_text` and `accent`.
+Exam-grade rubrics on the same MCP endpoints: **IELTS · TOEFL · Cambridge YLE · K-12 reading assessments** for English, plus PSC-aligned Mandarin scoring. Same JSON shape, 20+ scoring dimensions — just change `ref_text` and `accent`.
 
 <p align="center">
   <img src="./assets/english-v17-2x.png" alt="English: IPA phonemes, phoneme_error, en-US/GB/AU" width="720" />
@@ -281,7 +307,7 @@ Two ways to feed audio — **same result shape**, different UX. Function-calling
   <img src="./assets/pillars-v17-2x.png" alt="Four pillars: Mandarin depth · Drop-in MCP · LLM-native JSON · Exam-grade English" width="720" />
 </p>
 
-Plus: **streaming + inline** modes · **TLS 1.3** on every hop · audio processed and dropped (JSON retained 30 days) · on-prem available for enterprise · [limits & privacy →](https://api-portal.cloud.chivox.com/docs)
+Plus: **streaming + inline** modes · **TLS 1.3** end-to-end · audio discarded after scoring (JSON retained 30 days) · on-prem available for enterprise · [limits & privacy →](https://api-portal.cloud.chivox.com/docs)
 
 ---
 
@@ -294,45 +320,6 @@ Honest defaults. Start with **600 free calls** (30 days) and **all 16 tools unlo
 </p>
 
 > **Free tier ≠ crippled tier.** Every new account gets **600 free calls valid for 30 days** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. After the trial window or when calls are used up, top up from **$10** and let the **volume tiers** do the rest. Failed calls are never billed.
-
----
-
-## ❓ FAQ
-
-<details>
-<summary>Is this just another wrapper around Whisper?</summary>
-
-No. Whisper transcribes; Chivox scores. The engine is trained on exam-graded samples and returns phoneme-level `details[].phone[]` — not a transcript. Most teams run both.
-
-</details>
-
-<details>
-<summary>Does it work offline / on-device?</summary>
-
-The hosted MCP server needs outbound access to the scoring engine. For air-gapped deployments, contact us — we ship an on-prem container for enterprise customers.
-
-</details>
-
-<details>
-<summary>What about dialects and accents?</summary>
-
-Mandarin targets standard Pǔtōnghuà with sandhi-aware tone verdicts. English supports en-US, en-GB, and en-AU rubrics via locale parameters on the relevant tools.
-
-</details>
-
-<details>
-<summary>Which LLMs work out of the box?</summary>
-
-Any model with OpenAI-style function calling: GPT-4o / 5.x, Claude Sonnet / Opus, Gemini, DeepSeek, GLM, Kimi, Doubao, Qwen. Tool schemas are forwarded verbatim.
-
-</details>
-
-<details>
-<summary>Can I use this in a browser?</summary>
-
-For quick demos, yes — but production traffic should flow through your backend so the API key stays server-side. [Privacy notes →](https://api-portal.cloud.chivox.com/docs)
-
-</details>
 
 ---
 
