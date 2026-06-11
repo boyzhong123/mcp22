@@ -1,8 +1,8 @@
 <p align="center">
-  <a href="https://18ks.chivoxapp.com/doc/video20260424.mp4" title="▶ Play 15s product demo">
+  <a href="./assets/chivox-mcp.mp4" title="▶ Play product demo">
     <img
       src="./assets/hero-v20-2x.png"
-      alt="Chivox MCP — Give your LLM ears. Click anywhere to watch the 15s demo."
+      alt="Chivox MCP — Give your LLM ears. Click anywhere to watch the product demo."
       width="720"
     />
   </a>
