@@ -3,7 +3,7 @@
     <img
       src="./assets/hero-v20-2x.png"
       alt="Chivox MCP — Give your LLM ears. Click anywhere to watch the 15s demo."
-      width="1100"
+      width="720"
     />
   </a>
 </p>
@@ -23,7 +23,7 @@
 
 <br/>
 
-<img src="./assets/stats-v18-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="1100"/>
+<img src="./assets/stats-v18-2x.png" alt="16 tools · same JSON shape · sandhi-aware Mandarin · MCP + FC transport" width="720"/>
 
 </div>
 
@@ -178,7 +178,7 @@ asyncio.run(main())
 > **Rule of thumb** — use **Whisper** to know *what* was said; use **Chivox** to know *how well*. They stack.
 
 <p align="center">
-  <img src="./assets/compare-v17-2x.png" alt="Comparison: Chivox MCP vs Whisper, ElevenLabs, Azure Pronunciation" width="1100" />
+  <img src="./assets/compare-v17-2x.png" alt="Comparison: Chivox MCP vs Whisper, ElevenLabs, Azure Pronunciation" width="720" />
 </p>
 
 ---
@@ -242,7 +242,7 @@ For English mispronunciations, `phoneme_error: { expected, actual }` is included
 Pipe that JSON straight into any chat model with a one-line system prompt — *"You are a warm pronunciation coach. Diagnose, then drill."* — and you get a real lesson back. **No fine-tuning. No audio understanding. Just `chat.completion`.**
 
 <p align="center">
-  <img src="./assets/coach-v17-2x.png" alt="Coach demo: Chivox JSON in, warm LLM feedback and drill out" width="1100" />
+  <img src="./assets/coach-v17-2x.png" alt="Coach demo: Chivox JSON in, warm LLM feedback and drill out" width="720" />
 </p>
 
 > **Why this works** — the LLM never "heard" the audio. The JSON *names* the problem in fields it already understands (`dp_type: "mispron"`, `phoneme_error.actual`, `tone_ref` vs `tone_detected`), so a vanilla `chat.completion` can diagnose like a human teacher.
@@ -266,7 +266,7 @@ Pipe that JSON straight into any chat model with a one-line system prompt — *"
 **30M+** learners worldwide study Mandarin — including heritage speakers and adult beginners — yet few platforms score tone errors (`mā / má / mǎ / mà`) at the phoneme level in English. Chivox's Chinese engine is trained on the same data that powers China's Putonghua Proficiency Test (普通话水平测试, PSC).
 
 <p align="center">
-  <img src="./assets/mandarin-v17-2x.png" alt="Mandarin tutor: tone-aware feedback with chat demo and tone analysis" width="1100" />
+  <img src="./assets/mandarin-v17-2x.png" alt="Mandarin tutor: tone-aware feedback with chat demo and tone analysis" width="720" />
 </p>
 
 ---
@@ -284,7 +284,7 @@ Exam-grade rubrics on the same MCP endpoints: **IELTS · TOEFL · Cambridge YLE 
 ## 🛠️ Tools catalog
 
 <p align="center">
-  <img src="./assets/tools-v17-2x.png" alt="16 tools: 10 English + 6 Mandarin" width="1100" />
+  <img src="./assets/tools-v17-2x.png" alt="16 tools: 10 English + 6 Mandarin" width="720" />
 </p>
 
 **Inline audio:** pass `audio_url` or `audio_base64` in the tool call — no upload round-trip. **Formats:** mp3 · wav · ogg · m4a · aac · pcm. [Per-tool notes →](https://api-portal.cloud.chivox.com/docs)
@@ -296,7 +296,7 @@ Exam-grade rubrics on the same MCP endpoints: **IELTS · TOEFL · Cambridge YLE 
 Two ways to feed audio — **same result shape**, different UX. Function-calling fallback: `fc-global.cloud.chivox.com`.
 
 <p align="center">
-  <img src="./assets/transport-v17-2x.png" alt="Dual transport: streaming mic vs inline audio" width="1100" />
+  <img src="./assets/transport-v17-2x.png" alt="Dual transport: streaming mic vs inline audio" width="720" />
 </p>
 
 ---
