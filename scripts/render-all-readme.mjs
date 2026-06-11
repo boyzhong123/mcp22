@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const assets = path.join(__dirname, '..', 'assets');
 
 const JOBS = [
-  { html: 'hero.html', selector: '#wrap', out: 'hero-v13-2x.png', width: 1100 },
+  { html: 'hero.html', selector: '#wrap', out: 'hero-v14-2x.png', width: 1100 },
   { html: 'stats.html', selector: '#row', out: 'stats-v10-2x.png', width: 1100 },
   { html: 'fit.html', selector: '#wrap', out: 'fit-v8-2x.png', width: 720 },
   { html: 'loop.html', selector: '#wrap', out: 'loop-v8-2x.png', width: 720 },

@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const html = path.join(__dirname, 'hero.html');
-const out = path.join(__dirname, '..', 'assets', 'hero-v13-2x.png');
+const out = path.join(__dirname, '..', 'assets', 'hero-v14-2x.png');
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1200, height: 520 }, deviceScaleFactor: 2 });
