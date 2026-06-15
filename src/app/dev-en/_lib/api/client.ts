@@ -197,6 +197,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     headers,
     body: body !== undefined ? (rawBody ? (body as BodyInit) : JSON.stringify(body)) : undefined,
     signal,
+    cache: 'no-store',
   });
 
   if (asBlob) {

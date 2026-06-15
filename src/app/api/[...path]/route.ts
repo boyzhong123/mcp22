@@ -1,5 +1,9 @@
 import type { NextRequest } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 function getBackendBase(): string {
   // Runtime-configurable backend base URL (server-side only).
   // Example: API_BASE_URL=https://fc.cloud.chivox.com/api
@@ -52,6 +56,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       headers,
       body,
       redirect: 'manual',
+      cache: 'no-store',
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'proxy fetch failed';
@@ -66,6 +71,10 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   outHeaders.delete('connection');
   outHeaders.delete('transfer-encoding');
   outHeaders.delete('content-encoding');
+  outHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+  outHeaders.set('Pragma', 'no-cache');
+  outHeaders.set('Expires', '0');
+  outHeaders.set('Vary', 'Authorization, Cookie');
   outHeaders.set('x-chivox-proxy-target', url.toString());
 
   return new Response(res.body, {
@@ -98,4 +107,3 @@ export async function OPTIONS(req: NextRequest, ctx: { params: Promise<{ path: s
   const { path } = await ctx.params;
   return proxy(req, path);
 }
-
