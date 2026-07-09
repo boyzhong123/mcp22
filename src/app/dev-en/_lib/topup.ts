@@ -56,6 +56,23 @@ export const TOPUP_BONUS_TIERS: TopupBonusTier[] = [
   { id: 'flagship', minCents: 19_990, bonusPct: 25, presetCents: [19_990, 30_000, 50_000] },
 ];
 
+/**
+ * Fixed-price plans for the "compare packs" checkout variant.
+ * One amount per tier — no custom input.
+ */
+export interface FixedTopupPlan {
+  id: TopupBonusTier['id'];
+  amountCents: number;
+  bonusPct: number;
+  recommended?: boolean;
+}
+
+export const FIXED_TOPUP_PLANS: FixedTopupPlan[] = [
+  { id: 'standard', amountCents: 1_990, bonusPct: 5 },
+  { id: 'advanced', amountCents: 9_990, bonusPct: 15, recommended: true },
+  { id: 'flagship', amountCents: 19_990, bonusPct: 25 },
+];
+
 /** Quick-pick chip values, in cents ($10 – $500). */
 export const TOPUP_PRESETS_CENTS: number[] = [
   1000, 2000, 5000, 10000, 30000, 50000,

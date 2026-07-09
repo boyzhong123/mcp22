@@ -951,11 +951,11 @@ function StepIndicator({
 }) {
   const { t } = useLang();
   const items: { idx: 1 | 2; label: string }[] = [
-    { idx: 1, label: t('Choose amount', '选择金额') },
-    { idx: 2, label: t('Payment', '支付方式') },
+    { idx: 1, label: t('Select credits', '选择额度') },
+    { idx: 2, label: t('Checkout', '确认支付') },
   ];
   return (
-    <div className="flex items-center gap-2 -mt-1 mb-1">
+    <div className="mb-1 -mt-1 flex items-center justify-center gap-2">
       {items.map((it, i) => {
         const active = step === it.idx;
         const completed = step > it.idx;

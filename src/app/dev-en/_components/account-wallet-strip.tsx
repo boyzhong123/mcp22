@@ -159,17 +159,17 @@ export function AccountWalletStrip({
 
   // Right-zone selection:
   //  - trial active     → show trial bars
-  //  - trial done + caps configured → show usage vs configured caps
-  //  - trial done + no caps → hide right zone, wallet takes full width
-  const showTrial = !trialFinished;
+  //  - trial done + call caps configured → show usage vs configured caps
+  //  - trial done + no call caps → still show the trial panel (exhausted),
+  //    so the strip keeps its two-zone layout instead of a sparse full-width
+  //    wallet card. (Spend-only caps don't drive the usage panel.)
   const showCapPanel = trialFinished && (hasDailyLimit || hasMonthlyLimit);
-  const showRightZone = showTrial || showCapPanel;
+  const showTrial = !showCapPanel;
 
   return (
     <div
       className={cn(
-        'grid gap-3 md:gap-3',
-        showRightZone ? 'md:grid-cols-[1.05fr_1.4fr]' : 'md:grid-cols-1',
+        'grid gap-3 md:gap-3 md:grid-cols-[1.05fr_1.4fr]',
         className,
       )}
     >
@@ -252,8 +252,7 @@ export function AccountWalletStrip({
       </div>
 
       {/* ── Zone B · Trial OR account-limit usage ───────────────── */}
-      {showRightZone &&
-        (showTrial ? (
+      {showTrial ? (
           <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-white dark:bg-emerald-950/20 p-5">
             {/* Decorative底纹 — a soft emerald dot-grid that echoes the wallet
                 card's weave, keeping the two zones a matched pair. */}
@@ -367,7 +366,7 @@ export function AccountWalletStrip({
               )}
             </p>
           </div>
-        ))}
+        )}
     </div>
   );
 }

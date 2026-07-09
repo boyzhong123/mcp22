@@ -17,7 +17,6 @@ import {
   Pencil,
   Plus,
   Receipt,
-  Server,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -747,11 +746,11 @@ function OpenedCheckoutModal({
               {step === 1 && buyerMode === 'business' ? (
                 <div className="space-y-2">
                   <a
-                    href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Chivox MCP volume pricing inquiry')}`}
+                    href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Chivox MCP enterprise volume pricing')}`}
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition-colors hover:bg-emerald-700"
                   >
                     <Mail className="h-4 w-4" />
-                    {t('Get a volume quote', '获取用量报价')}
+                    {t('Contact sales', '联系销售')}
                   </a>
                   <button
                     type="button"
@@ -834,8 +833,8 @@ function OpenedCheckoutModal({
                 <Lock className="h-2.5 w-2.5" />
                 {step === 1 && buyerMode === 'business'
                   ? t(
-                      'Invoices, POs, and bank transfer available · reply within 1 business day.',
-                      '支持发票、采购单与银行转账 · 通常一个工作日内回复。',
+                      'Invoice / PO / Net terms · DPA on request · reply within 1 business day.',
+                      '发票 / 采购单 / 账期 · 可提供 DPA · 通常一个工作日内回复。',
                     )
                   : tx('Your wallet is credited as soon as PayPal confirms the payment.')}
               </p>
@@ -953,11 +952,11 @@ function StepIndicator({
 }) {
   const { t } = useLang();
   const items: { idx: 1 | 2; label: string }[] = [
-    { idx: 1, label: t('Choose amount', '选择金额') },
-    { idx: 2, label: t('Payment', '支付方式') },
+    { idx: 1, label: t('Select credits', '选择额度') },
+    { idx: 2, label: t('Checkout', '确认支付') },
   ];
   return (
-    <div className="flex items-center gap-2 -mt-1 mb-1">
+    <div className="mb-1 -mt-1 flex items-center justify-center gap-2">
       {items.map((it, i) => {
         const active = step === it.idx;
         const completed = step > it.idx;
@@ -980,7 +979,7 @@ function StepIndicator({
             >
               <span
                 className={cn(
-                  'h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums shrink-0 transition-colors',
+                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums transition-colors',
                   completed
                     ? 'bg-emerald-500 text-white'
                     : active
@@ -1088,19 +1087,19 @@ function TopupIntroPanel({
           <div className="min-w-0 flex-1 space-y-2.5">
             <div>
               <div className="text-sm font-bold tracking-tight text-foreground">
-                {t('Start free — 600 evaluations included', '免费开始 — 含 600 次评测')}
+                {t('Start free — 600 evaluations on us', '免费开始 — 送 600 次评测')}
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-sky-800/80">
                 {t(
-                  'No credit card · shared across every API key on your account',
-                  '无需信用卡 · 账户下所有 API Key 共享',
+                  'Valid for 30 days · no credit card · shared across every API key',
+                  '一个月有效 · 无需信用卡 · 账户下所有 API Key 共享',
                 )}
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold text-sky-800">
-              <IntroChip>{t('~600 word / sentence', '约 600 次字/句')}</IntroChip>
-              <IntroChip>{t('~300 paragraphs', '或 300 次段落')}</IntroChip>
-              <IntroChip>{t('Valid 30 days', '30 天有效')}</IntroChip>
+              <IntroChip>{t('≈ 600 word / sentence', '≈ 600 字/句')}</IntroChip>
+              <IntroChip>{t('≈ 300 paragraphs', '≈ 300 段落')}</IntroChip>
+              <IntroChip>{t('600 eval pts', '600 评测点')}</IntroChip>
             </div>
           </div>
         </div>
@@ -1122,8 +1121,8 @@ function TopupIntroPanel({
           <BuyerModeButton
             active={buyerMode === 'business'}
             icon={<Building2 className="h-3.5 w-3.5" />}
-            label={t('Team', '团队')}
-            hint={t('Volume & invoice', '用量包与发票')}
+            label={t('Team / Enterprise', '团队 / 企业')}
+            hint={t('Volume, invoice & SLA', '用量、发票与 SLA')}
             onClick={() => onBuyerModeChange('business')}
           />
         </div>
@@ -1134,8 +1133,8 @@ function TopupIntroPanel({
                 '选档位、按美元选金额、付款 — 评测额度即时到账。',
               )
             : t(
-                'Built for product, EdTech, and platform teams that need volume pricing, invoices, and procurement-ready billing.',
-                '面向需要用量折扣、正规发票与采购流程的产品、教育科技与平台团队。',
+                'Volume pricing with Net terms, DPA / security review, and dedicated support for procurement-ready teams.',
+                '面向需要用量定价、账期、DPA / 安全评审与专属支持的采购友好团队。',
               )}
         </p>
       </div>
@@ -1149,7 +1148,7 @@ function BusinessTopupPanel({
   onUseSelfServe: () => void;
 }) {
   const { t } = useLang();
-  const mailSubject = encodeURIComponent('Chivox MCP volume pricing inquiry');
+  const mailSubject = encodeURIComponent('Chivox MCP enterprise volume pricing');
 
   return (
     <div className="overflow-hidden rounded-xl border border-emerald-600/20 bg-gradient-to-b from-emerald-500/[0.06] to-background shadow-[0_10px_28px_-22px_rgba(5,150,105,0.55)]">
@@ -1158,15 +1157,15 @@ function BusinessTopupPanel({
           <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
               <Building2 className="h-3 w-3" />
-              {t('Recommended for teams', '团队推荐')}
+              {t('For procurement & security review', '采购与安全评审友好')}
             </div>
             <h3 className="mt-2 text-[15px] font-bold tracking-tight text-foreground">
-              {t('Volume pricing with company billing', '团队用量定价 · 对公结算')}
+              {t('Enterprise volume pricing', '企业用量定价')}
             </h3>
             <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted-foreground">
               {t(
-                'Best when monthly spend is $200+, you need invoices / POs, or custom deployment options.',
-                '适合月消耗 $200+、需要发票/采购单，或定制与私有化部署的团队。',
+                'Built for $200+/mo teams that need invoices, POs, Net terms, and a security / DPA review.',
+                '适合月消耗 $200+、需要发票 / 采购单 / 账期，以及安全与 DPA 评审的团队。',
               )}
             </p>
           </div>
@@ -1184,42 +1183,44 @@ function BusinessTopupPanel({
       <div className="grid gap-2 p-3.5 sm:grid-cols-3">
         <BusinessFeature
           icon={<Zap className="h-3.5 w-3.5" />}
-          title={t('Lower unit cost at scale', '规模用量更低单价')}
+          title={t('Volume discounts', '规模用量折扣')}
           body={t(
-            'Custom monthly evaluation pools with volume discounts — priced in clear USD / use.',
-            '定制月度评测用量包与阶梯折扣 — 按美元/次清晰计价。',
+            'Custom monthly evaluation pools with lower USD / use rates as volume grows.',
+            '定制月度评测用量包；用量越大，美元/次单价越低。',
           )}
         />
         <BusinessFeature
           icon={<Receipt className="h-3.5 w-3.5" />}
-          title={t('Invoices, POs & wire', '发票、采购单与电汇')}
+          title={t('Invoice, PO & Net terms', '发票、采购单与账期')}
           body={t(
-            'Net terms, bank transfer, and company billing for finance and procurement.',
-            '支持账期、银行转账与对公账单，方便财务与采购。',
+            'USD invoicing, purchase orders, bank transfer, and Net terms for finance and procurement.',
+            '支持美元发票、采购单 (PO)、银行转账与账期，方便财务与采购。',
           )}
         />
         <BusinessFeature
-          icon={<Server className="h-3.5 w-3.5" />}
-          title={t('Custom & private deploy', '定制与私有化')}
+          icon={<ShieldCheck className="h-3.5 w-3.5" />}
+          title={t('Security, DPA & SLA', '安全、DPA 与 SLA')}
           body={t(
-            'Private cloud or on-prem options, plus tailored models and integration support.',
-            '支持私有云 / 本地部署，以及模型定制与对接协助。',
+            'GDPR-friendly defaults, SOC 2 aligned controls, enterprise uptime SLA, and a dedicated contact.',
+            'GDPR 友好默认、SOC 2 对齐控制、企业级可用性 SLA，并配备专属对接。',
           )}
         />
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-t border-emerald-500/10 bg-emerald-500/[0.03] px-3.5 py-2.5">
-        <TrustPill>{t('USD invoicing', '美元发票')}</TrustPill>
-        <TrustPill>{t('Purchase orders', '采购单 (PO)')}</TrustPill>
-        <TrustPill>{t('Private deployment', '私有化部署')}</TrustPill>
-        <TrustPill>{t('Reply in 1 business day', '1 个工作日回复')}</TrustPill>
+        <TrustPill>{t('USD invoice', '美元发票')}</TrustPill>
+        <TrustPill>{t('Net terms / PO', '账期 / 采购单')}</TrustPill>
+        <TrustPill>{t('GDPR & DPA', 'GDPR 与 DPA')}</TrustPill>
+        <TrustPill>{t('SOC 2 aligned', 'SOC 2 对齐')}</TrustPill>
+        <TrustPill>{t('Enterprise SLA', '企业级 SLA')}</TrustPill>
+        <TrustPill>{t('Private / VPC', '私有化 / VPC')}</TrustPill>
       </div>
 
       <div className="flex flex-col gap-2.5 border-t border-emerald-500/15 bg-background/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           {t(
-            'Share expected monthly evaluations and billing needs — we reply with a quote within one business day.',
-            '告诉我们预计月评测量与开票要求，通常一个工作日内给出报价。',
+            'Share expected monthly volume plus billing and security needs — we reply within one business day.',
+            '告诉我们预计月用量，以及开票与安全需求，通常一个工作日内回复。',
           )}
         </p>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -1235,7 +1236,7 @@ function BusinessTopupPanel({
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
           >
             <Mail className="h-3.5 w-3.5" />
-            {t('Get a volume quote', '获取用量报价')}
+            {t('Contact sales', '联系销售')}
           </a>
         </div>
       </div>
@@ -1355,23 +1356,33 @@ function TieredTopupSelector({
     effectiveCents >= recommendedTier.minCents &&
     recommendedTier.bonusPct > selectedTier.bonusPct &&
     dismissedSuggestionKey !== suggestionKey;
+  const belowTierMin =
+    customAmount.trim().length > 0 &&
+    effectiveCents > 0 &&
+    effectiveCents < selectedTier.minCents;
+  const fallbackTier = belowTierMin ? getTopupBonusTier(effectiveCents) : null;
+  const canDowngradeTier =
+    belowTierMin &&
+    fallbackTier != null &&
+    effectiveCents >= fallbackTier.minCents &&
+    fallbackTier.id !== selectedTier.id;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background">
-      <div className="border-b border-border/70 bg-muted/20 px-3.5 py-2">
+      <div className="border-b border-border/70 bg-muted/20 px-3.5 py-3">
         <div className="flex items-center gap-1.5 text-sm font-semibold">
           <Zap className="h-3.5 w-3.5 text-emerald-600" />
           {t('Pick a bonus tier, then an amount', '先选档位，再选金额')}
         </div>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           {t(
-            'Wallet dollars stay visible while evaluation point bonuses and estimated evaluations update in place.',
-            '保留钱包金额，同时在同一处对比基础评测点、赠送评测点和可测次数。',
+            'Higher tiers unlock more bonus points. Expand a tier to pick an amount and see what you get.',
+            '档位越高，赠送评测点越多。点开任一档位选择金额，右侧会显示到账明细。',
           )}
         </p>
       </div>
 
-      <div className="space-y-2 p-2.5">
+      <div className="space-y-2.5 p-3">
         {TOPUP_BONUS_TIERS.map((tier) => {
           const expanded = tier.id === selectedTierId;
           const copy = topupTierCopy(tier, t);
@@ -1408,7 +1419,7 @@ function TieredTopupSelector({
                     : t(`Expand ${copy.label} to choose amount`, `展开${copy.label}并选择金额`)
                 }
                 className={cn(
-                  'flex w-full cursor-pointer flex-col gap-1.5 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30',
+                  'flex w-full cursor-pointer flex-col gap-1.5 px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30',
                   expanded ? 'bg-emerald-500/[0.035]' : 'hover:bg-emerald-500/[0.04]',
                 )}
               >
@@ -1436,15 +1447,22 @@ function TieredTopupSelector({
                       <span className="hidden rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700 sm:inline">
                         {t('Current tier', '当前档位')}
                       </span>
-                    ) : tier.id === 'advanced' ? (
+                    ) : (
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="text-[11px] font-semibold text-emerald-700">
-                          {t('More discount', '更多折扣')}
+                        <span
+                          className={cn(
+                            'text-[11px] font-semibold',
+                            tier.id === 'flagship' ? 'text-amber-800' : 'text-emerald-700',
+                          )}
+                        >
+                          {tier.id === 'flagship'
+                            ? t('Best discount', '最高折扣')
+                            : tier.id === 'advanced'
+                              ? t('More discount', '更多折扣')
+                              : t('Includes bonus', '含赠送')}
                         </span>
                         <BonusPctPill pct={tier.bonusPct} />
                       </span>
-                    ) : (
-                      <BonusPctPill pct={tier.bonusPct} />
                     )}
                     <span
                       className={cn(
@@ -1512,9 +1530,11 @@ function TieredTopupSelector({
                     <label
                       className={cn(
                         'flex h-11 items-center gap-2 rounded-xl border bg-background px-3 transition-colors',
-                        customAmount
-                          ? 'border-zinc-900 ring-1 ring-zinc-900/10'
-                          : 'border-border/80 focus-within:border-zinc-900/40',
+                        belowTierMin
+                          ? 'border-red-500 ring-1 ring-red-500/20'
+                          : customAmount
+                            ? 'border-zinc-900 ring-1 ring-zinc-900/10'
+                            : 'border-border/80 focus-within:border-zinc-900/40',
                       )}
                     >
                       <span className="text-sm font-semibold text-muted-foreground">$</span>
@@ -1527,12 +1547,47 @@ function TieredTopupSelector({
                           onCustomAmount(e.target.value.replace(/[^0-9.]/g, '').slice(0, 10));
                         }}
                         placeholder={t('Enter an amount', '输入金额')}
+                        aria-invalid={belowTierMin}
                         className="min-w-0 flex-1 bg-transparent text-sm font-semibold tabular-nums outline-none placeholder:font-normal placeholder:text-muted-foreground/70"
                       />
                       <span className="text-[10px] font-medium text-muted-foreground">USD</span>
                     </label>
 
-                    {showTierSuggestion && (
+                    {belowTierMin && (
+                      <div className="rounded-lg border border-red-500/25 bg-red-50/80 px-2.5 py-2 text-[11px] leading-relaxed text-red-800">
+                        <p className="font-semibold">
+                          {t(
+                            `${topupTierCopy(selectedTier, t).label} requires ${formatCents(selectedTier.minCents)} minimum.`,
+                            `${topupTierCopy(selectedTier, t).label}最低充值 ${formatCents(selectedTier.minCents)}。`,
+                          )}
+                        </p>
+                        <p className="mt-0.5 text-red-700/85">
+                          {canDowngradeTier && fallbackTier
+                            ? t(
+                                `Entered ${formatCents(effectiveCents)} qualifies for ${topupTierCopy(fallbackTier, t).label} (+${fallbackTier.bonusPct}%).`,
+                                `当前 ${formatCents(effectiveCents)} 可使用${topupTierCopy(fallbackTier, t).label}（+${fallbackTier.bonusPct}%）。`,
+                              )
+                            : t(
+                                `Enter at least ${formatCents(selectedTier.minCents)}, or pick a lower tier.`,
+                                `请至少输入 ${formatCents(selectedTier.minCents)}，或切换到更低档位。`,
+                              )}
+                        </p>
+                        {canDowngradeTier && fallbackTier && (
+                          <button
+                            type="button"
+                            onClick={() => onSwitchTierForCustom(fallbackTier)}
+                            className="mt-1.5 h-7 rounded-full bg-red-700 px-2.5 text-[10.5px] font-semibold text-white transition-colors hover:bg-red-800"
+                          >
+                            {t(
+                              `Switch to ${topupTierCopy(fallbackTier, t).label}`,
+                              `切换到${topupTierCopy(fallbackTier, t).label}`,
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {showTierSuggestion && !belowTierMin && (
                       <TierSuggestionCard
                         amountCents={effectiveCents}
                         currentTier={selectedTier}
@@ -1546,7 +1601,11 @@ function TieredTopupSelector({
                     )}
                   </div>
 
-                  <TierQuoteCard amountCents={effectiveCents} tier={selectedTier} />
+                  <TierQuoteCard
+                    amountCents={effectiveCents}
+                    tier={selectedTier}
+                    belowMin={belowTierMin}
+                  />
                 </div>
               )}
             </div>
@@ -1577,11 +1636,9 @@ function TierSuggestionCard({
   const recommendedDetails = buildTopupPointDetails(amountCents, recommendedTier);
   const currentPoints = Number(currentDetails.walletPoints.replace(/,/g, '')) || 0;
   const recommendedPoints = Number(recommendedDetails.walletPoints.replace(/,/g, '')) || 0;
-  const currentWords = Math.floor(currentPoints / WORD_SENTENCE_POINTS_PER_USE);
-  const recommendedWords = Math.floor(recommendedPoints / WORD_SENTENCE_POINTS_PER_USE);
-  const gainedWords = Math.max(0, recommendedWords - currentWords);
-  const maxWords = Math.max(currentWords, recommendedWords, 1);
-  const gainPct = currentWords > 0 ? Math.round((gainedWords / currentWords) * 100) : 0;
+  const gainedPoints = Math.max(0, recommendedPoints - currentPoints);
+  const maxPoints = Math.max(currentPoints, recommendedPoints, 1);
+  const gainPct = currentPoints > 0 ? Math.round((gainedPoints / currentPoints) * 100) : 0;
 
   return (
     <div className="rounded-xl border border-amber-300/70 bg-amber-50/80 px-3 py-2.5 text-amber-950">
@@ -1601,7 +1658,7 @@ function TierSuggestionCard({
           </p>
         </div>
         <div className="shrink-0 rounded-full bg-background/85 px-2 py-1 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20">
-          +{gainedWords.toLocaleString('en-US')} {t('word/sentence uses', '次字/句')}
+          +{gainedPoints.toLocaleString('en-US')} {t('eval pts', '评测点')}
           {gainPct > 0 ? ` · +${gainPct}%` : ''}
         </div>
       </div>
@@ -1609,14 +1666,14 @@ function TierSuggestionCard({
       <div className="mt-2 space-y-1.5">
         <TierComparisonBar
           label={currentCopy.label}
-          value={currentWords}
-          maxValue={maxWords}
+          value={currentPoints}
+          maxValue={maxPoints}
           muted
         />
         <TierComparisonBar
           label={recommendedCopy.label}
-          value={recommendedWords}
-          maxValue={maxWords}
+          value={recommendedPoints}
+          maxValue={maxPoints}
         />
       </div>
 
@@ -1671,7 +1728,15 @@ function TierComparisonBar({
   );
 }
 
-function TierQuoteCard({ amountCents, tier }: { amountCents: number; tier: TopupBonusTier }) {
+function TierQuoteCard({
+  amountCents,
+  tier,
+  belowMin = false,
+}: {
+  amountCents: number;
+  tier: TopupBonusTier;
+  belowMin?: boolean;
+}) {
   const { t } = useLang();
   const details = buildTopupPointDetails(amountCents, tier);
   const wordPrice = formatEvaluationUnitDollars(
@@ -1695,44 +1760,64 @@ function TierQuoteCard({ amountCents, tier }: { amountCents: number; tier: Topup
     );
   }
 
+  if (belowMin) {
+    return (
+      <div className="rounded-xl border border-dashed border-red-300/70 bg-red-50/40 px-3 py-3 text-[11px] leading-relaxed text-red-800">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-red-700/80">
+          {t('Credit quote', '额度账单')}
+        </div>
+        <p className="mt-2 font-semibold">
+          {t('Amount below this tier minimum', '金额未达到当前档位最低要求')}
+        </p>
+        <p className="mt-1 text-red-700/85">
+          {t(
+            `${topupTierCopy(tier, t).label} starts at ${formatCents(tier.minCents)}. Quote unavailable until the minimum is met.`,
+            `${topupTierCopy(tier, t).label}最低 ${formatCents(tier.minCents)}。未达标前不显示到账明细。`,
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  const wordUses = Math.floor(totalPoints / WORD_SENTENCE_POINTS_PER_USE).toLocaleString('en-US');
+  const paragraphUses = Math.floor(totalPoints / PARAGRAPH_POINTS_PER_USE).toLocaleString('en-US');
+
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-[#fcfcfb] shadow-[0_1px_0_rgba(24,24,27,0.04),0_10px_28px_-18px_rgba(24,24,27,0.35)]">
-      {/* Bill header — total first */}
-      <div className="space-y-3 px-3.5 pt-3.5 pb-3">
+    <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-background">
+      {/* Bill header — total + meta on one compact block */}
+      <div className="px-3 pt-2.5 pb-2">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
             {t('Credit quote', '额度账单')}
           </span>
           <span className="font-mono text-[10px] tabular-nums text-zinc-400">{quoteDate}</span>
         </div>
-
-        <div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[2rem] font-bold leading-none tracking-tight tabular-nums text-zinc-900">
+        <div className="mt-1.5 flex items-baseline justify-between gap-2">
+          <div className="flex items-baseline gap-1">
+            <span className="text-[1.5rem] font-bold leading-none tracking-tight tabular-nums text-zinc-900">
               {details.walletPoints}
             </span>
-            <span className="text-[13px] font-medium text-zinc-500">
+            <span className="text-[12px] font-medium text-zinc-500">
               {t('eval pts', '评测点')}
             </span>
           </div>
-          <p className="mt-1.5 text-[12px] text-zinc-500">
-            {t(`Wallet value ≈ ${formatCents(walletValueCents)}`, `等值 ≈ ${formatCents(walletValueCents)}`)}
-          </p>
+          <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
+            {t(`≈ ${formatCents(walletValueCents)}`, `≈ ${formatCents(walletValueCents)}`)}
+          </span>
         </div>
       </div>
 
-      <div className="mx-3.5 border-t border-zinc-200/80" />
+      <div className="border-t border-zinc-100" />
 
-      {/* Line items */}
-      <div className="space-y-2.5 px-3.5 py-3">
+      {/* Line items — denser invoice rows */}
+      <div className="space-y-1.5 px-3 py-2">
         <QuoteLine
           label={t('Base points', '基础评测点')}
           value={details.basePoints}
           hint={t(
-            `${formatCents(amountCents)} × ${BASE_POINTS_PER_USD} pts/$`,
-            `${formatCents(amountCents)} × ${BASE_POINTS_PER_USD} 评测点/$`,
+            `${formatCents(amountCents)} × ${BASE_POINTS_PER_USD} pts/$1`,
+            `每 $1 = ${BASE_POINTS_PER_USD} 点 · ${formatCents(amountCents)}`,
           )}
-          hintUnder="label"
         />
         <QuoteLine
           label={t(`Bonus (+${tier.bonusPct}%)`, `赠送（+${tier.bonusPct}%）`)}
@@ -1741,41 +1826,32 @@ function TierQuoteCard({ amountCents, tier }: { amountCents: number; tier: Topup
         />
       </div>
 
-      {/* Estimated usage band */}
-      <div className="mx-2.5 mb-2.5 space-y-2.5 rounded-lg bg-zinc-100/80 px-3 py-2.5">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
-          {t('Estimated usage', '预估用量')}
-        </div>
+      {/* Estimated usage — two compact rows, no nested card title bloat */}
+      <div className="mx-2 mb-2 space-y-1 rounded-lg bg-zinc-50 px-2.5 py-1.5">
         <QuoteLine
           label={t('Word / sentence', '字 / 句')}
-          value={`≈ ${Math.floor(totalPoints / WORD_SENTENCE_POINTS_PER_USE).toLocaleString('en-US')} ${t('uses', '次')}`}
+          value={`≈ ${wordUses} ${t('uses', '次')}`}
           hint={`${wordPrice}/${t('use', '次')}`}
           icon={MessageSquareText}
+          compact
         />
         <QuoteLine
           label={t('Paragraph', '段落')}
-          value={`≈ ${Math.floor(totalPoints / PARAGRAPH_POINTS_PER_USE).toLocaleString('en-US')} ${t('uses', '次')}`}
+          value={`≈ ${paragraphUses} ${t('uses', '次')}`}
           hint={`${paragraphPrice}/${t('use', '次')}`}
           icon={FileText}
+          compact
         />
       </div>
 
-      {/* Validity footer — full-bleed bill strip */}
-      <div className="flex items-start gap-2 border-t border-amber-200/60 bg-amber-50/90 px-3.5 py-2.5">
-        <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" />
-        <p className="text-[11px] leading-relaxed text-amber-950/85">
-          <span className="font-semibold">
-            {t(
-              `Credits valid for ${TRIAL_VALID_DAYS} days.`,
-              `额度自购买起 ${TRIAL_VALID_DAYS} 天内有效。`,
-            )}
-          </span>{' '}
-          <span className="text-amber-900/70">
-            {t(
-              `Unused points expire ${expiresDate}. Non-refundable.`,
-              `未用完将于 ${expiresDate} 作废，不予退款。`,
-            )}
-          </span>
+      {/* Validity footer */}
+      <div className="flex items-center gap-1.5 border-t border-amber-200/50 bg-amber-50/80 px-3 py-1.5">
+        <Clock className="h-3 w-3 shrink-0 text-amber-700" />
+        <p className="text-[10px] leading-snug text-amber-950/80">
+          {t(
+            `Valid ${TRIAL_VALID_DAYS} days · expires ${expiresDate} · non-refundable`,
+            `${TRIAL_VALID_DAYS} 天有效 · ${expiresDate} 前用完 · 过期不退`,
+          )}
         </p>
       </div>
     </div>
@@ -1786,39 +1862,40 @@ function QuoteLine({
   label,
   value,
   hint,
-  hintUnder = 'value',
   tone,
   icon: Icon,
+  compact = false,
 }: {
   label: string;
   value: string;
   hint?: string;
-  hintUnder?: 'label' | 'value';
   tone?: 'bonus';
   icon?: LucideIcon;
+  compact?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5 text-[12px] text-zinc-600">
-          {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-400" strokeWidth={1.75} />}
-          <span>{label}</span>
-        </div>
-        {hint && hintUnder === 'label' && (
-          <div className="mt-0.5 text-[10px] tabular-nums text-zinc-400">{hint}</div>
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1.5">
+        {Icon && <Icon className="h-3 w-3 shrink-0 text-zinc-400" strokeWidth={1.75} />}
+        <span className={cn('truncate text-[11px]', tone === 'bonus' ? 'text-emerald-700' : 'text-zinc-600')}>
+          {label}
+        </span>
+        {hint && !compact && (
+          <span className="truncate text-[10px] tabular-nums text-zinc-400">· {hint}</span>
         )}
       </div>
-      <div className="text-right">
-        <div
+      <div className="flex items-baseline justify-end gap-1.5 text-right">
+        <span
           className={cn(
-            'text-[13px] font-semibold tabular-nums leading-none',
+            'font-semibold tabular-nums leading-none',
+            compact ? 'text-[12px]' : 'text-[12px]',
             tone === 'bonus' ? 'text-emerald-700' : 'text-zinc-900',
           )}
         >
           {value}
-        </div>
-        {hint && hintUnder === 'value' && (
-          <div className="mt-0.5 text-[10px] tabular-nums text-zinc-400">{hint}</div>
+        </span>
+        {hint && compact && (
+          <span className="text-[10px] tabular-nums text-zinc-400">{hint}</span>
         )}
       </div>
     </div>
@@ -1862,7 +1939,7 @@ function BonusPctPill({ pct }: { pct: number }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-xs font-medium text-muted-foreground mb-2 block">
+    <label className="mb-3 block text-xs font-medium text-muted-foreground">
       {children}
     </label>
   );
