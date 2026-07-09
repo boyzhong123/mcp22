@@ -37,6 +37,25 @@ export const MIN_TOPUP_CENTS = 1_000;
 export const TRIAL_CALLS = 600;
 export const TRIAL_VALID_DAYS = 30;
 
+/** Wallet point display used on the payment page. */
+export const BASE_POINTS_PER_USD = 250;
+export const WALLET_POINTS_PER_USD = 262.5;
+export const WORD_SENTENCE_POINTS_PER_USE = 1;
+export const PARAGRAPH_POINTS_PER_USE = 2;
+
+export interface TopupBonusTier {
+  id: 'standard' | 'advanced' | 'flagship';
+  minCents: number;
+  bonusPct: number;
+  presetCents: number[];
+}
+
+export const TOPUP_BONUS_TIERS: TopupBonusTier[] = [
+  { id: 'standard', minCents: 1_990, bonusPct: 5, presetCents: [1_990, 5_000, 9_000] },
+  { id: 'advanced', minCents: 9_990, bonusPct: 15, presetCents: [9_990, 15_000, 19_000] },
+  { id: 'flagship', minCents: 19_990, bonusPct: 25, presetCents: [19_990, 30_000, 50_000] },
+];
+
 /** Quick-pick chip values, in cents ($10 – $500). */
 export const TOPUP_PRESETS_CENTS: number[] = [
   1000, 2000, 5000, 10000, 30000, 50000,
@@ -45,6 +64,88 @@ export const TOPUP_PRESETS_CENTS: number[] = [
 /** "$0.007" style formatter for a per-call unit price in cents. */
 export function formatUnitDollars(unitCents: number): string {
   return `$${(unitCents / 100).toFixed(3)}`;
+}
+
+export function formatWalletPoints(amountCents: number): string {
+  const points = getTopupPointMath(amountCents).totalPoints;
+  return points.toLocaleString('en-US', {
+    maximumFractionDigits: Number.isInteger(points) ? 0 : 1,
+  });
+}
+
+export function formatPointsPerUsd(): string {
+  return WALLET_POINTS_PER_USD.toLocaleString('en-US', {
+    maximumFractionDigits: 1,
+  });
+}
+
+export function formatEvaluationUnitDollars(
+  pointsPerUse: number,
+  pointsPerUsd = WALLET_POINTS_PER_USD,
+): string {
+  const dollars = pointsPerUse / pointsPerUsd;
+  // Up to 4 decimals; drop trailing zeros so $0.00320 → $0.0032
+  return `$${dollars.toFixed(4).replace(/\.?0+$/, '')}`;
+}
+
+export function getTopupBonusTier(amountCents: number): TopupBonusTier {
+  const safeCents = Math.max(0, Math.round(amountCents || 0));
+  return [...TOPUP_BONUS_TIERS]
+    .reverse()
+    .find((tier) => safeCents >= tier.minCents) ?? TOPUP_BONUS_TIERS[0];
+}
+
+export function getTopupPointMath(amountCents: number, tier = getTopupBonusTier(amountCents)) {
+  const safeCents = Math.max(0, Math.round(amountCents || 0));
+  const basePoints = Math.floor((safeCents / 100) * BASE_POINTS_PER_USD);
+  const bonusPoints = Math.round(basePoints * (tier.bonusPct / 100));
+  const totalPoints = basePoints + bonusPoints;
+
+  return {
+    amountCents: safeCents,
+    tier,
+    basePoints,
+    bonusPoints,
+    totalPoints,
+    pointsPerUsd: BASE_POINTS_PER_USD * (1 + tier.bonusPct / 100),
+  };
+}
+
+export interface TopupPointDetails {
+  amountCents: number;
+  walletPoints: string;
+  basePoints: string;
+  bonusPoints: string;
+  pointsPerUsd: string;
+  bonusPct: number;
+  summary: string;
+  rules: string[];
+}
+
+export function buildTopupPointDetails(
+  amountCents: number,
+  tier = getTopupBonusTier(amountCents),
+): TopupPointDetails {
+  const safeCents = Math.max(0, Math.round(amountCents || 0));
+  const math = getTopupPointMath(safeCents, tier);
+  return {
+    amountCents: safeCents,
+    walletPoints: math.totalPoints.toLocaleString('en-US'),
+    basePoints: math.basePoints.toLocaleString('en-US'),
+    bonusPoints: math.bonusPoints.toLocaleString('en-US'),
+    pointsPerUsd: math.pointsPerUsd.toLocaleString('en-US', {
+      maximumFractionDigits: Number.isInteger(math.pointsPerUsd) ? 0 : 1,
+    }),
+    bonusPct: tier.bonusPct,
+    summary: `${math.totalPoints.toLocaleString('en-US')} 评测点到账`,
+    rules: [
+      `每 $1 到账 ${math.pointsPerUsd.toLocaleString('en-US', {
+        maximumFractionDigits: Number.isInteger(math.pointsPerUsd) ? 0 : 1,
+      })} 评测点，含 ${tier.bonusPct}% 赠送评测点。`,
+      `字 / 句测评 ${WORD_SENTENCE_POINTS_PER_USE} 评测点，段落测评 ${PARAGRAPH_POINTS_PER_USE} 评测点；仅成功调用扣除。`,
+      `有效期 30 天，扣除时优先使用最早到期批次。`,
+    ],
+  };
 }
 
 export interface TopupQuote {
