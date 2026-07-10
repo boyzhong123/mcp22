@@ -54,6 +54,7 @@ import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { StatCard } from '../../_components/stat-card';
 import { useLang } from '../../_lib/use-lang';
 import { formatMills } from '../../_lib/format';
+import { formatBaseWalletPoints } from '../../_lib/topup';
 
 const DEFAULT_WALLET: AccountWallet = {
   paidCreditsCents: 0,
@@ -188,15 +189,15 @@ export default function OverviewPage() {
            pages don't read as duplicates. */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          icon={Wallet}
-          label={t('Wallet balance', '钱包余额')}
-          value={formatCents(balanceCents)}
+          icon={Sparkles}
+          label={t('Evaluation points', '评测积分')}
+          value={formatBaseWalletPoints(balanceCents)}
           sub={t(
-            `${formatCents(wallet.paidCreditsUsedCents)} spent · ${formatCents(wallet.paidCreditsCents)} topped up`,
-            `已用 ${formatCents(wallet.paidCreditsUsedCents)} · 累计充值 ${formatCents(wallet.paidCreditsCents)}`,
+            `${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} used · ${formatBaseWalletPoints(wallet.paidCreditsCents)} topped up · worth ${formatCents(balanceCents)}`,
+            `已用 ${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} · 累计获得 ${formatBaseWalletPoints(wallet.paidCreditsCents)} · 价值 ${formatCents(balanceCents)}`,
           )}
           onClick={openAddCredits}
-          cta={tx('Add credits')}
+          cta={tx('Add points')}
         />
         <StatCard
           icon={Sparkles}
@@ -396,7 +397,7 @@ export default function OverviewPage() {
           {recent.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               {t(
-                'No activity yet. Add credits to see top-ups and consumption here.',
+                'No activity yet. Add points to see top-ups and consumption here.',
                 '暂无记录。充值后将显示充值与扣费明细。',
               )}
             </p>
@@ -475,7 +476,7 @@ export default function OverviewPage() {
           />
           <QuickAction
             onClick={openAddCredits}
-            title={tx('Add credits')}
+            title={tx('Add points')}
             desc={t(
               'Top up the shared account wallet.',
               '为账户共享钱包充值。',
@@ -633,13 +634,13 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
       id: 'wallet-empty',
       severity: 'critical',
       icon: AlertTriangle,
-      title: t('Account out of credit', '账户余额已耗尽'),
+      title: t('Account out of points', '账户评测积分已耗尽'),
       desc: t(
         `Wallet is $0 and ${reason}. Every key returns INSUFFICIENT_CREDITS until you top up.`,
         `钱包余额为 $0，且${reason}。所有 Key 都会返回 INSUFFICIENT_CREDITS，请充值。`,
       ),
       actions: [
-        { label: tx('Add credits'), onClick: onAddCredits, primary: true },
+        { label: tx('Add points'), onClick: onAddCredits, primary: true },
         { label: tx('View pricing'), href: '/dashboard/billing/rates' },
       ],
     });
@@ -667,7 +668,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
         `${reason}。后续调用从钱包扣费（剩余 ${formatCents(balanceCents)}）。`,
       ),
       actions: [
-        { label: tx('Add credits'), onClick: onAddCredits, primary: true },
+        { label: tx('Add points'), onClick: onAddCredits, primary: true },
       ],
     });
   }
@@ -686,7 +687,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
         `钱包剩余 ${formatCents(balanceCents)}，已低于阈值 ${formatCents(accountAlert.thresholdCents)}。请尽快充值。`,
       ),
       actions: [
-        { label: tx('Add credits'), onClick: onAddCredits, primary: true },
+        { label: tx('Add points'), onClick: onAddCredits, primary: true },
         {
           label: tx('Adjust threshold'),
           href: '/dashboard/settings#account-alert-threshold',

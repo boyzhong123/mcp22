@@ -7,8 +7,8 @@ const TABS: SectionTab[] = [
     label: 'Overview',
     zhLabel: '概览',
     description:
-      'Money in, money out — credits remaining, spend this month, and monthly limit.',
-    zhDescription: '资金流入流出——剩余额度、本月消费、月度上限。',
+      'Money in, money out — points remaining, spend this month, and monthly limit.',
+    zhDescription: '资金流入流出——剩余评测积分、本月消费、月度上限。',
   },
   {
     href: '/dashboard/billing/history',

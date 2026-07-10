@@ -212,8 +212,8 @@ export default function UsagePage() {
         <h1 className="text-2xl font-semibold tracking-[-0.02em]">{t('Usage', '用量')}</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {t(
-            'Operational view — MCP call volume sliced by key. For spend, credits, and payment head to ',
-            '运营视角 — 按 Key 切分的 MCP 调用量。消费、余额、付款请前往 ',
+            'Operational view — MCP call volume sliced by key. For spend, points, and payment head to ',
+            '运营视角 — 按 Key 切分的 MCP 调用量。消费、评测积分、付款请前往 ',
           )}
           <Link
             href="/dashboard/billing"

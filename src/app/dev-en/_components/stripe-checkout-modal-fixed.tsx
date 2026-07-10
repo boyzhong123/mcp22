@@ -24,12 +24,15 @@ import {
   TRIAL_VALID_DAYS,
   WORD_SENTENCE_POINTS_PER_USE,
   buildTopupPointDetails,
+  formatBonusPercent,
   formatEvaluationUnitDollars,
+  getEvaluationUnitPrices,
   type FixedTopupPlan,
 } from '../_lib/topup';
 import { billing, describeError } from '../_lib/api';
 import { hydrateFromApi } from '../_lib/mock-store-bridge';
 import { usePaymentConfig } from '../_lib/payment-config';
+import { useUi } from '../_lib/use-ui-store';
 
 interface StripeCheckoutModalFixedProps {
   open: boolean;
@@ -63,6 +66,7 @@ function OpenedFixedCheckout({
   const { t, tx } = useLang();
   const { user } = useMockAuth();
   const { paypalClientId } = usePaymentConfig();
+  const sidebarCollapsed = useUi((s) => s.sidebarCollapsed);
 
   const recommended =
     FIXED_TOPUP_PLANS.find((plan) => plan.recommended) ?? FIXED_TOPUP_PLANS[1];
@@ -99,7 +103,7 @@ function OpenedFixedCheckout({
     <div className="relative flex max-h-[92vh] w-full max-w-[720px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
       <div className="flex shrink-0 items-center justify-between border-b border-border/60 bg-background px-5 py-4">
         <div className="min-w-0">
-          <div className="text-sm font-semibold">{t('Add credits', '充值')}</div>
+          <div className="text-sm font-semibold">{t('Add points', '充值')}</div>
           <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
             <Lock className="h-2.5 w-2.5 shrink-0" />
             {t(
@@ -114,7 +118,7 @@ function OpenedFixedCheckout({
               type="button"
               onClick={onSwitchVariant}
               disabled={processing}
-              className="rounded-md border border-indigo-500/30 bg-indigo-500/[0.08] px-2.5 py-1 text-[11px] font-semibold text-indigo-700 transition-colors hover:bg-indigo-500/[0.14] disabled:opacity-40"
+              className="rounded-md border border-indigo-500/30 bg-indigo-500/[0.08] px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 transition-colors hover:bg-indigo-500/[0.14] disabled:opacity-40"
             >
               {t('Switch version', '切换版本')}
             </button>
@@ -138,8 +142,8 @@ function OpenedFixedCheckout({
           </div>
           <h3 className="mb-1 text-lg font-semibold">{tx('Payment successful')}</h3>
           <p className="text-sm text-muted-foreground">
-            +{details.walletPoints} {t('eval pts', '评测点')}{' '}
-            {t('credited to your wallet.', '已入账钱包。')} {t('Charged', '扣款')}{' '}
+            +{details.walletPoints} {t('pts', '评测积分')}{' '}
+            {t('added to your wallet.', '已入账钱包。')} {t('Charged', '扣款')}{' '}
             {formatCents(selectedPlan.amountCents)}.
           </p>
         </div>
@@ -172,8 +176,8 @@ function OpenedFixedCheckout({
                   </h3>
                   <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                     {t(
-                      'Three fixed packs. Compare bonus credits and estimated usage — amounts cannot be customized.',
-                      '三档固定金额。对比赠送评测点与预估用量 — 不可自定义金额。',
+                      'Three fixed packs. Compare bonus points and estimated usage — amounts cannot be customized.',
+                      '三档固定金额。对比赠送评测积分与预估用量 — 不可自定义金额。',
                     )}
                   </p>
                 </div>
@@ -205,8 +209,14 @@ function OpenedFixedCheckout({
                         {fixedPlanCopy(selectedPlan, t).label} · {formatCents(selectedPlan.amountCents)}
                       </div>
                       <p className="mt-1 text-[11px] text-muted-foreground">
-                        {details.walletPoints} {t('eval pts', '评测点')} · +{selectedPlan.bonusPct}%{' '}
-                        {t('bonus', '赠送')} · {TRIAL_VALID_DAYS}{' '}
+                        {details.walletPoints} {t('pts', '评测积分')} ·{' '}
+                        {selectedPlan.bonusPct > 0
+                          ? t(
+                              `${formatBonusPercent(selectedPlan.bonusPct)} bonus`,
+                              `${formatBonusPercent(selectedPlan.bonusPct)} 赠送`,
+                            )
+                          : t('Base points', '基准积分')}{' '}
+                        · {TRIAL_VALID_DAYS}{' '}
                         {t('days validity', '天有效')}
                       </p>
                     </div>
@@ -218,7 +228,7 @@ function OpenedFixedCheckout({
                         setError(null);
                         setStep(1);
                       }}
-                      className="text-[11px] font-semibold text-emerald-700 hover:underline disabled:opacity-40"
+                      className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-40"
                     >
                       {t('Change', '更换')}
                     </button>
@@ -243,13 +253,13 @@ function OpenedFixedCheckout({
                       placeholder="you@example.com"
                       className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/65"
                     />
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/[0.08] text-indigo-600">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/[0.08] text-indigo-600 dark:text-indigo-400">
                       <Pencil className="h-3 w-3" />
                     </span>
                   </label>
                 </section>
 
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 text-center">
                   <div className="text-xs font-semibold">
                     {tx('Complete your payment securely with PayPal')}
                   </div>
@@ -278,7 +288,7 @@ function OpenedFixedCheckout({
                     {t('Continue', '下一步')} · {formatCents(selectedPlan.amountCents)}
                   </span>
                   <span className="text-[11px] font-normal opacity-85 tabular-nums">
-                    ≈ {details.walletPoints} {t('eval pts', '评测点')}
+                    ≈ {details.walletPoints} {t('pts', '评测积分')}
                   </span>
                 </span>
                 <ChevronRight className="h-4 w-4" />
@@ -307,7 +317,7 @@ function OpenedFixedCheckout({
                     setError(null);
                     setStep(1);
                   }}
-                  className="h-9 w-full rounded-lg border border-zinc-200/80 bg-zinc-100/80 text-xs font-medium text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-zinc-200/75 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mx-auto block h-9 w-full max-w-[750px] rounded-lg border border-border bg-muted/60 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t('Cancel payment', '取消支付')}
                 </button>
@@ -317,10 +327,10 @@ function OpenedFixedCheckout({
               <Lock className="h-2.5 w-2.5" />
               {step === 1
                 ? t(
-                    `${totalPoints.toLocaleString('en-US')} eval pts · ${TRIAL_VALID_DAYS}-day validity · non-refundable`,
-                    `${totalPoints.toLocaleString('en-US')} 评测点 · ${TRIAL_VALID_DAYS} 天有效 · 过期不退`,
+                    `${totalPoints.toLocaleString('en-US')} pts · ${TRIAL_VALID_DAYS}-day validity · non-refundable`,
+                    `${totalPoints.toLocaleString('en-US')} 评测积分 · ${TRIAL_VALID_DAYS} 天有效 · 过期不退`,
                   )
-                : tx('Your wallet is credited as soon as PayPal confirms the payment.')}
+                : tx('Points land in your wallet as soon as PayPal confirms the payment.')}
             </p>
           </div>
         </div>
@@ -329,7 +339,14 @@ function OpenedFixedCheckout({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" translate="no" lang="en">
+    <div
+      className={cn(
+        'fixed inset-0 z-50 flex items-center justify-center p-4',
+        sidebarCollapsed ? 'lg:pl-[60px]' : 'lg:pl-60',
+      )}
+      translate="no"
+      lang="en"
+    >
       <div className="absolute inset-0 bg-black/25" onClick={() => !processing && onClose()} />
       {paypalClientId ? (
         <PayPalScriptProvider
@@ -390,7 +407,7 @@ function FixedStepIndicator({
                 className={cn(
                   'text-[11px] font-medium',
                   active ? 'text-foreground' : 'text-muted-foreground',
-                  completed && 'text-emerald-700',
+                  completed && 'text-emerald-700 dark:text-emerald-400',
                 )}
               >
                 {it.label}
@@ -428,14 +445,9 @@ function FixedPlanCard({
   const totalPoints = Number(details.walletPoints.replace(/,/g, '')) || 0;
   const wordUses = Math.floor(totalPoints / WORD_SENTENCE_POINTS_PER_USE);
   const paragraphUses = Math.floor(totalPoints / PARAGRAPH_POINTS_PER_USE);
-  const wordPrice = formatEvaluationUnitDollars(
-    WORD_SENTENCE_POINTS_PER_USE,
-    Number(details.pointsPerUsd),
-  );
-  const paragraphPrice = formatEvaluationUnitDollars(
-    PARAGRAPH_POINTS_PER_USE,
-    Number(details.pointsPerUsd),
-  );
+  const unitPrices = getEvaluationUnitPrices(plan.id);
+  const wordPrice = formatEvaluationUnitDollars(unitPrices.wordSentenceDollars);
+  const paragraphPrice = formatEvaluationUnitDollars(unitPrices.paragraphDollars);
 
   return (
     <button
@@ -454,16 +466,16 @@ function FixedPlanCard({
           className={cn(
             'flex h-8 w-8 items-center justify-center rounded-xl',
             plan.id === 'flagship'
-              ? 'bg-amber-500/10 text-amber-700'
+              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
               : plan.id === 'advanced'
-                ? 'bg-emerald-500/10 text-emerald-700'
-                : 'bg-sky-500/10 text-sky-700',
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
           )}
         >
           <copy.Icon className="h-4 w-4" />
         </span>
         {plan.recommended && (
-          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold text-emerald-700">
+          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400">
             {t('Recommended', '推荐')}
           </span>
         )}
@@ -479,10 +491,15 @@ function FixedPlanCard({
 
       <div className="mt-3 space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">
         <FeatureLine>
-          {details.walletPoints} {t('eval pts', '评测点')}
+          {details.walletPoints} {t('pts', '评测积分')}
         </FeatureLine>
         <FeatureLine>
-          +{plan.bonusPct}% {t('bonus credits', '赠送评测点')}
+          {plan.bonusPct > 0
+            ? t(
+                `${formatBonusPercent(plan.bonusPct)} bonus points`,
+                `${formatBonusPercent(plan.bonusPct)} 赠送评测积分`,
+              )
+            : t('Base points · no extra bonus', '基准评测积分 · 不额外赠送')}
         </FeatureLine>
         <FeatureLine>
           ≈ {wordUses.toLocaleString('en-US')} {t('word / sentence', '字/句')}
@@ -502,7 +519,7 @@ function FixedPlanCard({
         className={cn(
           'mt-4 flex h-9 items-center justify-center rounded-lg text-[12px] font-semibold transition-colors',
           selected
-            ? 'bg-emerald-600 text-white'
+            ? 'bg-emerald-500 text-white'
             : 'border border-border bg-muted/30 text-foreground',
         )}
       >
@@ -515,7 +532,7 @@ function FixedPlanCard({
 function FeatureLine({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-1.5">
-      <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600/80" />
+      <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600/80 dark:text-emerald-400/80" />
       <span>{children}</span>
     </div>
   );
@@ -529,7 +546,7 @@ function FixedCompareTable({ selectedPlanId }: { selectedPlanId: FixedTopupPlan[
       values: FIXED_TOPUP_PLANS.map((plan) => formatCents(plan.amountCents)),
     },
     {
-      label: t('Eval points', '到账评测点'),
+      label: t('Points', '到账评测积分'),
       values: FIXED_TOPUP_PLANS.map((plan) => {
         const details = buildTopupPointDetails(plan.amountCents, {
           id: plan.id,
@@ -542,10 +559,14 @@ function FixedCompareTable({ selectedPlanId }: { selectedPlanId: FixedTopupPlan[
     },
     {
       label: t('Bonus', '赠送'),
-      values: FIXED_TOPUP_PLANS.map((plan) => `+${plan.bonusPct}%`),
+      values: FIXED_TOPUP_PLANS.map((plan) =>
+        plan.bonusPct > 0
+          ? formatBonusPercent(plan.bonusPct)
+          : t('0% · base', '0% · 基准'),
+      ),
     },
     {
-      label: t('Pts / $1', '每 $1 评测点'),
+      label: t('Pts / $1', '每 $1 评测积分'),
       values: FIXED_TOPUP_PLANS.map((plan) => {
         const details = buildTopupPointDetails(plan.amountCents, {
           id: plan.id,
@@ -555,6 +576,18 @@ function FixedCompareTable({ selectedPlanId }: { selectedPlanId: FixedTopupPlan[
         });
         return details.pointsPerUsd;
       }),
+    },
+    {
+      label: t('Word / phrase / sentence unit price', '字、词、句评测单价'),
+      values: FIXED_TOPUP_PLANS.map((plan) =>
+        formatEvaluationUnitDollars(getEvaluationUnitPrices(plan.id).wordSentenceDollars),
+      ),
+    },
+    {
+      label: t('Paragraph unit price', '段落评测单价'),
+      values: FIXED_TOPUP_PLANS.map((plan) =>
+        formatEvaluationUnitDollars(getEvaluationUnitPrices(plan.id).paragraphDollars),
+      ),
     },
     {
       label: t('Word / sentence uses', '可测字/句'),
@@ -608,7 +641,7 @@ function FixedCompareTable({ selectedPlanId }: { selectedPlanId: FixedTopupPlan[
                     key={plan.id}
                     className={cn(
                       'px-3 py-2 font-semibold',
-                      active ? 'bg-emerald-500/[0.06] text-emerald-800' : 'text-foreground',
+                      active ? 'bg-emerald-500/[0.06] text-emerald-800 dark:text-emerald-300' : 'text-foreground',
                     )}
                   >
                     {copy.label}
@@ -629,7 +662,7 @@ function FixedCompareTable({ selectedPlanId }: { selectedPlanId: FixedTopupPlan[
                       key={`${row.label}-${plan.id}`}
                       className={cn(
                         'px-3 py-2 font-medium tabular-nums',
-                        active && 'bg-emerald-500/[0.04] text-emerald-900',
+                        active && 'bg-emerald-500/[0.04] text-emerald-900 dark:text-emerald-200',
                       )}
                     >
                       {value}
@@ -677,7 +710,7 @@ function FixedPayPalButtons({
 
   if (!paypalClientId) {
     return (
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 text-[11px] text-amber-700">
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
         {t(
           'PayPal is not configured. Set NEXT_PUBLIC_PAYPAL_CLIENT_ID to enable top-ups.',
           'PayPal 未配置。请设置 NEXT_PUBLIC_PAYPAL_CLIENT_ID 后再充值。',
@@ -687,9 +720,14 @@ function FixedPayPalButtons({
   }
 
   return (
-    <div className={cn('relative', disabled && 'pointer-events-none opacity-60')}>
+    <div
+      className={cn(
+        'paypal-topup-buttons relative w-full',
+        disabled && 'pointer-events-none opacity-60',
+      )}
+    >
       <PayPalButtons
-        style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' }}
+        style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', tagline: false }}
         disabled={disabled}
         forceReRender={[amountCents]}
         createOrder={async () => {

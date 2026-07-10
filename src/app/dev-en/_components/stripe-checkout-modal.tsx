@@ -1,10 +1,11 @@
 'use client';
 
 import { Check, LayoutGrid, Sparkles, TrendingDown, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Transaction } from '../_lib/mock-store';
 import { useLang } from '../_lib/use-lang';
+import { useUi } from '../_lib/use-ui-store';
 import { StripeCheckoutModalFixed } from './stripe-checkout-modal-fixed';
 import { StripeCheckoutModalLegacy } from './stripe-checkout-modal-legacy';
 import { StripeCheckoutModalPackages } from './stripe-checkout-modal-packages';
@@ -20,7 +21,7 @@ interface StripeCheckoutModalProps {
 }
 
 /**
- * Entry point for "Add credits". Shows a version picker first so product /
+ * Entry point for "Add points". Shows a version picker first so product /
  * design can compare the evaluation-point packages flow, fixed packs, and
  * the committed legacy wallet + volume-tier flow.
  */
@@ -30,19 +31,10 @@ export function StripeCheckoutModal({
   onSuccess,
   keyId,
 }: StripeCheckoutModalProps) {
-  // Remount on every open so HMR / Fast Refresh cannot keep a previously
-  // selected variant and skip the picker.
-  const [session, setSession] = useState(0);
-
-  useEffect(() => {
-    if (open) setSession((n) => n + 1);
-  }, [open]);
-
   if (!open) return null;
 
   return (
     <CheckoutSession
-      key={session}
       onClose={onClose}
       onSuccess={onSuccess}
       keyId={keyId}
@@ -105,9 +97,15 @@ function CheckoutVariantPicker({
   onSelect: (variant: CheckoutModalVariant) => void;
 }) {
   const { t } = useLang();
+  const sidebarCollapsed = useUi((s) => s.sidebarCollapsed);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div
+      className={cn(
+        'fixed inset-0 z-[100] flex items-center justify-center p-4',
+        sidebarCollapsed ? 'lg:pl-[60px]' : 'lg:pl-60',
+      )}
+    >
       <button
         type="button"
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
@@ -144,13 +142,13 @@ function CheckoutVariantPicker({
 
         <div className="grid gap-3 p-4 sm:grid-cols-3">
           <VariantCard
-            title={t('New · Evaluation packages', '新版 · 评测点套餐')}
+            title={t('New · Evaluation packages', '新版 · 评测积分套餐')}
             badge={t('Flexible', '灵活金额')}
-            icon={<Sparkles className="h-5 w-5 text-sky-600" />}
+            icon={<Sparkles className="h-5 w-5 text-sky-600 dark:text-sky-400" />}
             highlights={[
               t('Personal / Business toggle', '个人 / 企业切换'),
               t('Standard · Advanced · Flagship tiers', '标准 / 高级 / 旗舰档位'),
-              t('Custom amount within each tier', '档位内可自定义金额'),
+              t('Compare tiers or enter a custom amount', '可对比档位，也可自定义金额'),
             ]}
             onClick={() => onSelect('packages')}
             tone="sky"
@@ -159,7 +157,7 @@ function CheckoutVariantPicker({
           <VariantCard
             title={t('Fixed packs · Compare', '固定套餐 · 对比')}
             badge={t('Recommended', '推荐')}
-            icon={<LayoutGrid className="h-5 w-5 text-emerald-600" />}
+            icon={<LayoutGrid className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
             highlights={[
               t('3 fixed amounts only', '仅 3 个固定金额'),
               t('Side-by-side pack comparison', '并排对比套餐差异'),
@@ -171,7 +169,7 @@ function CheckoutVariantPicker({
           />
           <VariantCard
             title={t('Legacy · Wallet top-up', '老版 · 钱包充值')}
-            icon={<TrendingDown className="h-5 w-5 text-zinc-600" />}
+            icon={<TrendingDown className="h-5 w-5 text-zinc-600 dark:text-zinc-300" />}
             highlights={[
               t('Monthly volume pricing ladder', '月用量阶梯价'),
               t('$10 – $500 preset amounts', '$10 – $500 预设金额'),
@@ -240,8 +238,8 @@ function VariantCard({
             className={cn(
               'rounded-full px-2 py-0.5 text-[9px] font-semibold',
               tone === 'emerald'
-                ? 'bg-emerald-500/10 text-emerald-700'
-                : 'bg-sky-500/10 text-sky-700',
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
             )}
           >
             {badge}
@@ -252,7 +250,7 @@ function VariantCard({
       <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">
         {highlights.map((line) => (
           <li key={line} className="flex items-start gap-1.5">
-            <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600/70" />
+            <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600/70 dark:text-emerald-400/70" />
             <span>{line}</span>
           </li>
         ))}
@@ -260,9 +258,9 @@ function VariantCard({
       <span
         className={cn(
           'mt-4 text-[11px] font-semibold',
-          tone === 'sky' && 'text-sky-700',
-          tone === 'emerald' && 'text-emerald-700',
-          tone === 'zinc' && 'text-zinc-700',
+          tone === 'sky' && 'text-sky-700 dark:text-sky-300',
+          tone === 'emerald' && 'text-emerald-700 dark:text-emerald-400',
+          tone === 'zinc' && 'text-zinc-700 dark:text-zinc-300',
         )}
       >
         {cta}

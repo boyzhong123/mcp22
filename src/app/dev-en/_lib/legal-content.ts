@@ -167,8 +167,8 @@ export const TERMS_SECTIONS: LegalSection[] = [
         zh: 'Chivox MCP 通过 Model Context Protocol（MCP）及相关 HTTP API 提供语音与语言评测能力。功能、模型、配额与价格以控制台及文档说明为准，我们可在合理通知后调整。',
       },
       {
-        en: 'We may offer free trial credits, promotional quotas, or beta features. Such offers are provided as-is, may be modified or withdrawn at any time, and do not create a commitment to future availability.',
-        zh: '我们可能提供免费试用额度、促销配额或测试功能。此类权益按现状提供，可随时变更或终止，不构成对未来可用性的承诺。',
+        en: 'We may offer free trial points, promotional quotas, or beta features. Such offers are provided as-is, may be modified or withdrawn at any time, and do not create a commitment to future availability.',
+        zh: '我们可能提供免费试用评测积分、促销配额或测试功能。此类权益按现状提供，可随时变更或终止，不构成对未来可用性的承诺。',
       },
     ],
   },
@@ -223,8 +223,8 @@ export const TERMS_SECTIONS: LegalSection[] = [
         zh: '付费功能以美元计费（另有说明除外）。您授权我们及支付处理方（如 PayPal、Stripe）从您选择的支付方式扣取充值及用量费用。依法可能产生税费。',
       },
       {
-        en: 'Except where required by law, fees are non-refundable. Prepaid wallet credits expire only as stated in the console or order confirmation.',
-        zh: '除法律要求外，费用不予退款。预付费钱包余额仅在控制台或订单确认中载明的情形下失效。',
+        en: 'Except where required by law, fees are non-refundable. Prepaid wallet points expire only as stated in the console or order confirmation.',
+        zh: '除法律要求外，费用不予退款。预付费评测积分仅在控制台或订单确认中载明的情形下失效。',
       },
     ],
   },

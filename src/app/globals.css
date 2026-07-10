@@ -291,6 +291,22 @@
   }
 }
 
+/* PayPal Smart Buttons cap around 750px inside their iframe and left-align
+   when the host is wider. Match that cap and center the host so the stack
+   lines up with the title / cancel control. */
+.paypal-topup-buttons {
+  width: 100%;
+  max-width: 750px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.paypal-topup-buttons .paypal-buttons,
+.paypal-topup-buttons .paypal-buttons-context-iframe,
+.paypal-topup-buttons [data-funding-source] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 /* ── Brand loader ───────────────────────────────────────────────────────────
    The Chivox mark (two overlapping circles) in motion. The dots blend with
    `multiply` inside an isolated stacking context so blue × pink reproduces the

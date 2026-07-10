@@ -166,9 +166,13 @@ export const DICT: Record<string, string> = {
   "Here's what's happening across your keys.": '以下是你账号下 key 的整体情况。',
   'Account balance': '账户余额',
   'Total balance': '总余额',
-  'Credits remaining': '剩余额度',
-  'Total credits': '总额度',
-  'Credits left': '剩余额度',
+  'Points remaining': '剩余评测积分',
+  'Total points': '总评测积分',
+  'Points left': '剩余评测积分',
+  // Legacy keys kept so any stray tx() lookups still resolve
+  'Credits remaining': '剩余评测积分',
+  'Total credits': '总评测积分',
+  'Credits left': '剩余评测积分',
   'Spend this month': '本月消费',
   'Spent this month': '本月消费',
   'This month': '本月',
@@ -197,13 +201,18 @@ export const DICT: Record<string, string> = {
   'View billing': '查看账单',
   'View all keys': '查看全部 key',
   'Manage keys': '管理 key',
+  'Add points': '充值',
   'Add credits': '充值',
+  'Add points to this key': '为此 key 充值',
   'Add credits to this key': '为此 key 充值',
+  'Add points to a key': '为 key 充值',
   'Add credits to a key': '为 key 充值',
+  'Add points to': '充值到',
   'Add credits to': '充值到',
   'Top up': '充值',
   'Top up calls': '充值次数',
-  'Buy credits': '购买额度',
+  'Buy points': '购买评测积分',
+  'Buy credits': '购买评测积分',
   // Calls billing model — phrases used across the topup modal & dashboard
   'How many calls?': '购买多少次?',
   'Calls left': '剩余次数',
@@ -244,7 +253,7 @@ export const DICT: Record<string, string> = {
   Starter: '入门',
   'Starter Key': '入门 Key',
   'Starter key': '入门 Key',
-  'Free allowance': '免费额度',
+  'Free allowance': '免费评测积分',
   'Free tier': '免费层',
   'Paid keys': '付费 Key',
   'Paid Keys': '付费 Key',
@@ -285,15 +294,17 @@ export const DICT: Record<string, string> = {
   'Daily limit': '每日上限',
   'Total limit': '总量上限',
   'Per day': '每日',
-  'Total free quota': '总免费额度',
-  'Daily free quota': '每日免费额度',
+  'Total free quota': '总免费评测积分',
+  'Daily free quota': '每日免费评测积分',
   'Free requests per day': '每日免费请求数',
   'Free requests total': '免费请求总数',
   Configure: '配置',
   'Configure spend cap and low-balance alerts': '配置消费上限与低余额提醒',
   'Spend cap & low-balance alerts': '消费上限与低余额提醒',
+  'Needs points': '需充值',
   'Needs credits': '需充值',
   'Top up to activate': '充值后即可启用',
+  'Points needed': '需要充值',
   'Credits needed': '需要充值',
   'Fund this key': '为此 key 充值',
   Status: '状态',
@@ -358,6 +369,7 @@ export const DICT: Record<string, string> = {
   'Current plan': '当前套餐',
 
   // ── Stripe checkout modal ───────────────────────────────────────────
+  'Add points to your key': '为 key 充值',
   'Add credits to your key': '为 key 充值',
   'Add payment method': '添加支付方式',
   'Add a payment method': '添加支付方式',
@@ -402,7 +414,9 @@ export const DICT: Record<string, string> = {
   'Choose an option below. PayPal will open a secure checkout window for you to approve the payment.':
     '请在下方选择支付方式。PayPal 将打开安全结账窗口，由你确认付款。',
   'Your wallet is credited as soon as PayPal confirms the payment.':
-    'PayPal 确认付款后，余额会立即到账。',
+    'PayPal 确认付款后，评测积分会立即到账。',
+  'Points land in your wallet as soon as PayPal confirms the payment.':
+    'PayPal 确认付款后，评测积分会立即到账。',
   'Top up via PayPal — every key shares the same wallet balance.':
     '通过 PayPal 充值 — 所有 Key 共享同一钱包余额。',
   'Demo checkout — PayPal only, no real charge. Taxes via Stripe Tax where applicable.':
@@ -419,7 +433,7 @@ export const DICT: Record<string, string> = {
   'Estimated tax': '预估税费',
   'Total due': '应付总额',
   Total: '合计',
-  'Runway estimate': '额度可用时长预估',
+  'Runway estimate': '评测积分可用时长预估',
   'of runway at your current pace': '够你以当前速率继续使用',
   'Balance after': '充值后余额',
   'Daily burn': '日均消耗',
@@ -458,7 +472,7 @@ export const DICT: Record<string, string> = {
   'Upgrade now': '立即升级',
   'Upgrade to paid': '升级到付费',
   'Starter key exhausted': '入门 Key 已用尽',
-  'Your Starter key is out of free calls.': '你的入门 Key 免费额度已用完。',
+  'Your Starter key is out of free calls.': '你的入门 Key 免费评测积分已用完。',
   'Create or fund a paid key to keep building.':
     '创建付费 key 或充值以继续使用。',
   'See pricing': '查看价格',
@@ -501,7 +515,8 @@ export const DICT: Record<string, string> = {
   'No spend': '无消费',
   'No usage': '无用量',
   'No usage in this window.': '此时段暂无用量。',
-  'Credits by paid key': '各付费 key 余额',
+  'Points by paid key': '各付费 key 评测积分',
+  'Credits by paid key': '各付费 key 评测积分',
   'Daily calls by key': '按 Key 查看每日调用',
   'View usage for this key': '查看此 Key 的用量',
   'Per-key breakdown': '按 Key 拆分',
@@ -509,8 +524,10 @@ export const DICT: Record<string, string> = {
   'Effective savings': '实际节省',
   Savings: '节省',
   'Savings this month': '本月节省',
-  Credits: '额度',
-  'Credits added': '已充值额度',
+  Points: '评测积分',
+  Credits: '评测积分',
+  'Points added': '已充值评测积分',
+  'Credits added': '已充值评测积分',
   'Total paid': '累计支付',
   'Total transactions': '累计交易',
   'Latest top-up': '最近一次充值',
@@ -581,12 +598,18 @@ export const DICT: Record<string, string> = {
   'Full name': '全名',
   'I authorize Chivox, Inc. and Stripe, its authorized representative, to debit the account indicated above for the amount shown. This authorization will remain in effect until I notify you in writing to cancel it.':
     '我授权 Chivox, Inc. 及其代理 Stripe 从上述账户扣款。本授权在我书面撤销前持续有效。',
+  "You're authorizing a one-time ACH debit for this top-up. Funds typically settle in 3–4 business days; points are applied once confirmed. US bank accounts only.":
+    '你正在授权本次 ACH 一次性扣款。资金通常在 3–4 个工作日到账，确认后即充入评测积分。仅支持美国银行账户。',
   "You're authorizing a one-time ACH debit for this top-up. Funds typically settle in 3–4 business days; credits are applied once confirmed. US bank accounts only.":
-    '你正在授权本次 ACH 一次性扣款。资金通常在 3–4 个工作日到账，确认后即充入额度。仅支持美国银行账户。',
+    '你正在授权本次 ACH 一次性扣款。资金通常在 3–4 个工作日到账，确认后即充入评测积分。仅支持美国银行账户。',
+  "I'll initiate this wire from my bank and include the reference above. I understand points are not applied until funds are received.":
+    '我将从开户行发起电汇并在备注中填写上方的参考号。资金到账后评测积分才会充入。',
   "I'll initiate this wire from my bank and include the reference above. I understand credits are not applied until funds are received.":
-    '我将从开户行发起电汇并在备注中填写上方的参考号。资金到账后额度才会充入。',
+    '我将从开户行发起电汇并在备注中填写上方的参考号。资金到账后评测积分才会充入。',
+  "Initiate a wire from your bank using the details below. Points will be applied once funds land (usually same-day domestic, 1–3 days international). We'll email the full instructions and a PDF to your receipt email.":
+    '请按以下信息从你的银行发起电汇。资金到账后评测积分即刻充入（国内通常当天，国际 1–3 天）。完整指引与 PDF 会发到你的收件邮箱。',
   "Initiate a wire from your bank using the details below. Credits will be applied once funds land (usually same-day domestic, 1–3 days international). We'll email the full instructions and a PDF to your receipt email.":
-    '请按以下信息从你的银行发起电汇。资金到账后额度即刻充入（国内通常当天，国际 1–3 天）。完整指引与 PDF 会发到你的收件邮箱。',
+    '请按以下信息从你的银行发起电汇。资金到账后评测积分即刻充入（国内通常当天，国际 1–3 天）。完整指引与 PDF 会发到你的收件邮箱。',
   'You must include the reference number in the wire memo so we can credit the correct account. Wires without a reference are held for manual review for up to 5 business days.':
     '请务必在电汇备注中写明参考号，以便正确入账。未填写参考号的电汇将被保留至多 5 个工作日人工审核。',
   'Important:': '重要：',
@@ -613,6 +636,8 @@ export const DICT: Record<string, string> = {
     '已保存的卡会在结账时自动填充。新卡在充值时添加。',
   'Auto-filled at checkout. Add new cards during a top-up.':
     '结账时自动填充。新卡在充值时添加。',
+  'Cards get saved when you add points to a key and tick':
+    '为 key 充值时勾选保存选项，卡片就会自动保存',
   'Cards get saved when you add credits to a key and tick':
     '为 key 充值时勾选保存选项，卡片就会自动保存',
   'Make default': '设为默认',
@@ -663,10 +688,14 @@ export const DICT: Record<string, string> = {
   'No active API keys. Create one on the': '没有可用的 API key。可在以下页面创建：',
   'No paid keys match those filters.': '没有符合筛选条件的付费 key。',
   'No keys in this project': '此项目下暂无 key',
+  'No activity yet. Add points to a key to see them here.':
+    '暂无活动。为某个 key 充值后会显示在这里。',
   'No activity yet. Add credits to a key to see them here.':
     '暂无活动。为某个 key 充值后会显示在这里。',
   'No matching transactions': '没有匹配的交易',
   'No payments yet': '暂无支付记录',
+  'No successful top-ups yet. Your first points purchase will appear here.':
+    '暂无成功充值。首次充值后会显示在这里。',
   'No successful top-ups yet. Your first credit purchase will appear here.':
     '暂无成功充值。首次充值后会显示在这里。',
   'Adjust your filters or add funds from the billing page.':
@@ -677,16 +706,21 @@ export const DICT: Record<string, string> = {
   'The signup trial package on your Starter key is no longer available. To keep your integrations running, fund a paid key — no subscription, just pay per 1,000 calls with volume discounts.':
     '入门 Key 的注册试用包已不可用。请为付费 Key 充值以继续使用 —— 无订阅，按每 1,000 次调用计费。',
   "You're fine on the starter key. When you need more, create a paid key.":
-    '入门 key 的额度当前足够。需要更多时再创建付费 key 即可。',
-  'when you need more headroom.': '当你需要更多额度时。',
+    '入门 key 的评测积分当前足够。需要更多时再创建付费 key 即可。',
+  'when you need more headroom.': '当你需要更多评测积分时。',
+  'This key needs points before it can serve traffic.':
+    '此 key 需充值后才能对外提供服务。',
   'This key needs credits before it can serve traffic.':
     '此 key 需充值后才能对外提供服务。',
+  'No points loaded — add some to activate this key.':
+    '尚未充值 —— 充值后即可启用此 key。',
   'No credits loaded — add some to activate this key.':
     '尚未充值 —— 充值后即可启用此 key。',
   'Your most active paid keys': '最活跃的付费 Key',
   'Balance, spend cap and low-balance alerts at a glance.':
     '一眼看清余额、消费上限与低余额提醒。',
-  'Spend, limit, credit balances per key.': '按 key 查看消费、上限与余额。',
+  'Spend, limit, point balances per key.': '按 key 查看消费、上限与评测积分。',
+  'Spend, limit, credit balances per key.': '按 key 查看消费、上限与评测积分。',
   'Each paid key has its own balance — top up the ones running low. Your starter key is listed on the':
     '每个付费 key 都有独立余额 —— 及时为余额不足的 key 充值。入门 key 展示在：',
   'Pick a project + key, top up with Stripe.': '选择项目 + key，通过 Stripe 充值。',

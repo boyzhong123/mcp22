@@ -205,8 +205,8 @@ export default function KeysPage() {
           icon={Key}
           title={t('Your keys', '你的 Key')}
           subtitle={t(
-            'All keys consume the same trial allowance and wallet balance. Set per-key spend / call caps in Settings if you want to throttle a specific key.',
-            '所有 Key 共享同一份试用额度与钱包余额。如需限流可在「设置」中为单个 Key 配置消费 / 调用上限。',
+            'All keys consume the same trial points and wallet balance. Set per-key spend / call caps in Settings if you want to throttle a specific key.',
+            '所有 Key 共享同一份试用评测积分与钱包余额。如需限流可在「设置」中为单个 Key 配置消费 / 调用上限。',
           )}
           toneClass="text-foreground"
         />
@@ -604,7 +604,7 @@ function PaidKeyRow({
           )}
           {tier === 'needs-credits' && isEnabled && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400">
-              {tx('Needs credits')}
+              {tx('Needs points')}
             </span>
           )}
           {isPaused && (
@@ -1025,7 +1025,7 @@ function TrialExhaustedBanner({ onAddCredits }: { onAddCredits: () => void }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <h3 className="text-sm font-semibold">
-                {t('Account out of credit', '账户余额已耗尽')}
+                {t('Account out of points', '账户评测积分已耗尽')}
               </h3>
               <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
                 {t('Wallet & trial empty', '钱包与试用均已用完')}
@@ -1046,7 +1046,7 @@ function TrialExhaustedBanner({ onAddCredits }: { onAddCredits: () => void }) {
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-foreground text-background text-sm font-semibold hover:brightness-110"
           >
             <CreditCard className="h-4 w-4" />
-            {tx('Add credits')}
+            {tx('Add points')}
           </button>
           <Link
             href="/dashboard/billing/rates"

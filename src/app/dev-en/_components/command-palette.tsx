@@ -129,7 +129,7 @@ export function DevEnCommandPalette() {
         section: 'Navigation',
         label: t('Go to Billing', '前往 账单'),
         icon: Receipt,
-        keywords: 'balance spend credits',
+        keywords: 'balance spend credits points',
         run: () => go('/dashboard/billing'),
       },
       {
@@ -170,7 +170,7 @@ export function DevEnCommandPalette() {
       {
         id: 'act:add-credits',
         section: 'Actions',
-        label: tx('Add credits'),
+        label: tx('Add points'),
         hint: t('Top up a paid key via Stripe', '通过 Stripe 为付费 Key 充值'),
         icon: Plus,
         keywords: 'topup recharge money buy',
@@ -405,8 +405,8 @@ export function DevEnCommandPalette() {
               {grouped.length === 0 ? (
                 <div className="px-4 py-10 text-center text-xs text-muted-foreground">
                   {t(
-                    `No matches for "${query}". Try "billing", "add credits" or a key last-4.`,
-                    `没有匹配"${query}"。试试 "billing"、"add credits" 或 Key 后 4 位。`,
+                    `No matches for "${query}". Try "billing", "add points" or a key last-4.`,
+                    `没有匹配"${query}"。试试 "billing"、"add points" 或 Key 后 4 位。`,
                   )}
                 </div>
               ) : (

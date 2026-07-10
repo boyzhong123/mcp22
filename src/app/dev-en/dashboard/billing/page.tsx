@@ -28,6 +28,10 @@ import {
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { formatMills } from '../../_lib/format';
+import {
+  formatBaseWalletPoints,
+  millsToWalletPoints,
+} from '../../_lib/topup';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
@@ -118,8 +122,8 @@ export default function BillingPage() {
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {t(
-              'One wallet shared across every key. Top-ups unlock every key on the account at once.',
-              '所有 Key 共享一个钱包。一次充值即可解锁全部 Key。',
+              'All keys share one pool of evaluation points. One top-up unlocks every key.',
+              '所有 Key 共享同一评测积分。一次充值即可解锁全部 Key。',
             )}
           </p>
         </div>
@@ -131,7 +135,7 @@ export default function BillingPage() {
           <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#5ed7b2]/18 text-[#9aefd5] ring-1 ring-[#8be4c9]/30 transition-colors group-hover:bg-[#5ed7b2]/25">
             <Wallet className="h-3.5 w-3.5" strokeWidth={2.5} />
           </span>
-          <span>{t('Add credits', '充值')}</span>
+          <span>{t('Add points', '充值')}</span>
           <ArrowUpRight className="h-3.5 w-3.5 text-[#a8ead7]/75 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#c4f4e6]" />
         </button>
       </div>
@@ -140,35 +144,33 @@ export default function BillingPage() {
            single canonical "where am I in money + trial?" surface. */}
       <AccountWalletStrip onAddCredits={openAddCredits} />
 
-      {/* KPI strip — money-only. Calls / trial-allowance metrics live on
-           Overview & Usage pages; this page is about $$ in / $$ out, so we
-           keep the trio focused on spend dynamics and runway. */}
+      {/* KPI strip — points-first. Dollar amounts only as secondary "worth". */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <StatCard
-          icon={Wallet}
-          label={t('Account balance', '账户余额')}
-          value={formatCents(balanceCents)}
+          icon={Sparkles}
+          label={t('Points remaining', '剩余评测积分')}
+          value={formatBaseWalletPoints(balanceCents)}
           sub={t(
-            'Shared by every key on this account',
-            '所有 Key 共享同一余额',
+            `Worth ${formatCents(balanceCents)} · shared by every key`,
+            `价值 ${formatCents(balanceCents)} · 所有 Key 共享`,
           )}
         />
         <StatCard
           icon={ReceiptText}
-          label={t('Spent this month', '本月消费')}
-          value={formatMills(spendThisMonth)}
+          label={t('Spent this month', '本月消耗')}
+          value={millsToWalletPoints(spendThisMonth).toLocaleString('en-US')}
           sub={t(
-            `${formatCalls(callsThisMonth)} calls billed`,
-            `产生 ${formatCalls(callsThisMonth)} 次调用`,
+            `${formatCalls(callsThisMonth)} calls · worth ${formatMills(spendThisMonth)}`,
+            `${formatCalls(callsThisMonth)} 次调用 · 价值 ${formatMills(spendThisMonth)}`,
           )}
         />
         <StatCard
           icon={CreditCard}
-          label={t('Lifetime topped up', '累计充值')}
-          value={formatCents(wallet.paidCreditsCents)}
+          label={t('Lifetime topped up', '累计获得')}
+          value={formatBaseWalletPoints(wallet.paidCreditsCents)}
           sub={t(
-            'Total loaded into the shared wallet',
-            '累计充值到共享钱包的金额',
+            `Worth ${formatCents(wallet.paidCreditsCents)} loaded in total`,
+            `累计充值价值 ${formatCents(wallet.paidCreditsCents)}`,
           )}
         />
       </div>
@@ -269,7 +271,7 @@ export default function BillingPage() {
         </div>
         {recentTopUps.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground">
-            {tx('No successful top-ups yet. Your first credit purchase will appear here.')}
+            {tx('No successful top-ups yet. Your first points purchase will appear here.')}
           </div>
         ) : (
           <ul className="divide-y divide-border">

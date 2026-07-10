@@ -19,6 +19,7 @@ import {
   type SpendLimit,
   type TrialAllowance,
 } from '../_lib/mock-store';
+import { formatBaseWalletPoints } from '../_lib/topup';
 import { useMockStore } from '../_lib/use-mock-store';
 import { useLang } from '../_lib/use-lang';
 import { getTrialValidityRemainingProgress } from '../_lib/trial-validity-progress.mjs';
@@ -50,18 +51,11 @@ const EMPTY_LIMIT: SpendLimit = {
 };
 
 /**
- * Account-level wallet + trial summary strip.
+ * Account-level paid points + trial summary strip.
  *
- * Visual goal is a single cohesive card with two clearly delimited
- * zones — Wallet on the left (money) and Trial on the right (calls) —
- * separated by a soft vertical rule. The CTA sits inline with the
- * wallet headline so users don't read a third "column" of unrelated
- * helper text.
- *
- * The previous version stacked label + number + subtext in a busy column
- * and pushed the CTA into its own micro-column with a
- * helper paragraph; that read as three competing things. This version
- * collapses that into one balance row + one supporting row.
+ * Two zones: paid evaluation points on the left, free-trial points on the
+ * right. Dollar amounts appear only as secondary "worth about $X" copy —
+ * the hero number is always points.
  */
 export function AccountWalletStrip({
   onAddCredits,
@@ -103,10 +97,10 @@ export function AccountWalletStrip({
     : trial.daysLeft;
   const allowanceStatus =
     totalPct <= 10
-      ? t('Almost spent', '额度不足')
+      ? t('Almost spent', '评测积分不足')
       : totalPct <= 30
-        ? t('Running low', '额度较少')
-        : t('Plenty left', '额度充足');
+        ? t('Running low', '评测积分较少')
+        : t('Plenty left', '评测积分充足');
 
   // Once the signup trial package is consumed or expired, the trial section
   // is no longer meaningful. We swap it out for a "usage vs your caps"
@@ -124,12 +118,18 @@ export function AccountWalletStrip({
         )}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-[11px] text-muted-foreground">
-            {t('Wallet', '钱包')}
+            {t('Points', '评测积分')}
           </span>
           <span className="text-sm font-semibold tabular-nums">
-            {formatCents(balance)}
+            {formatBaseWalletPoints(balance)}
+          </span>
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {t(
+              `worth ${formatCents(balance)}`,
+              `价值 ${formatCents(balance)}`,
+            )}
           </span>
         </div>
         <div className="flex items-center gap-2 min-w-0">
@@ -151,7 +151,7 @@ export function AccountWalletStrip({
           onClick={onAddCredits}
           className="ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-foreground text-background text-xs font-semibold hover:brightness-110"
         >
-          {tx('Add credits')}
+          {tx('Add points')}
         </button>
       </div>
     );
@@ -173,12 +173,9 @@ export function AccountWalletStrip({
         className,
       )}
     >
-      {/* ── Zone A · Wallet card ──────────────────────────────────
-          Premium credit-card aesthetic: deep slate gradient with a
-          decorative wallet glyph in the corner. The balance reads as
-          the hero in light-weight display text against the dark panel,
-          and the bright "+ Add credits" pill becomes the unmissable
-          primary action on the page. */}
+      {/* ── Zone A · Paid evaluation points ───────────────────────
+          Premium dark card: points are the hero number; dollar value
+          is secondary "worth about $X" copy under the supporting row. */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-100 p-5 shadow-sm">
         {/* Decorative底纹 — a faint dot-grid weave + a diagonal sheen so the
             dark panel reads as textured stock rather than a flat fill. */}
@@ -208,26 +205,26 @@ export function AccountWalletStrip({
           aria-hidden
           className="pointer-events-none absolute -left-10 -bottom-12 h-36 w-36 rounded-full bg-gradient-to-tr from-sky-400/10 to-transparent blur-2xl"
         />
-        <Wallet
+        <Sparkles
           aria-hidden
           className="pointer-events-none absolute right-4 top-4 h-7 w-7 text-white/10"
         />
 
         <div className="relative">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300/80">
-            {t('Wallet balance', '钱包余额')}
+            {t('Evaluation points', '评测积分')}
           </div>
 
           <div className="mt-2 flex items-end gap-3 flex-wrap">
             <div className="text-[34px] font-bold tabular-nums tracking-[-0.025em] leading-none text-white">
-              {formatCents(balance)}
+              {formatBaseWalletPoints(balance)}
             </div>
           </div>
 
           <div className="mt-2 text-[11.5px] text-slate-400 tabular-nums">
             {t(
-              `${formatCents(wallet.paidCreditsUsedCents)} spent · ${formatCents(wallet.paidCreditsCents)} topped up`,
-              `已用 ${formatCents(wallet.paidCreditsUsedCents)} · 累计充值 ${formatCents(wallet.paidCreditsCents)}`,
+              `${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} used · ${formatBaseWalletPoints(wallet.paidCreditsCents)} topped up · worth ${formatCents(balance)}`,
+              `已用 ${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} · 累计获得 ${formatBaseWalletPoints(wallet.paidCreditsCents)} · 价值 ${formatCents(balance)}`,
             )}
           </div>
 
@@ -245,7 +242,7 @@ export function AccountWalletStrip({
             <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400/15 to-teal-400/15 text-emerald-600 ring-1 ring-emerald-500/20">
               <Wallet className="h-3.5 w-3.5" strokeWidth={2.5} />
             </span>
-            {tx('Add credits')}
+            {tx('Add points')}
             <ArrowRight className="h-3.5 w-3.5 text-[#10233f]/45 transition-all group-hover:translate-x-0.5 group-hover:text-[#10233f]" />
           </button>
         </div>
@@ -272,13 +269,13 @@ export function AccountWalletStrip({
             <div className="relative">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-400">
                 <Sparkles className="h-3 w-3" />
-                {t('Free trial allowance', '免费试用额度')}
+                {t('Free trial allowance', '免费试用评测积分')}
               </div>
 
               <div className="mt-3.5 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-stretch">
                 <div className="flex min-w-0 flex-col justify-between py-1">
                   <UsageBar
-                    label={t('Credits remaining', '剩余额度')}
+                    label={t('Points remaining', '剩余评测积分')}
                     left={trial.totalLeft}
                     total={trialPackage.totalLimit}
                     pct={totalPct}

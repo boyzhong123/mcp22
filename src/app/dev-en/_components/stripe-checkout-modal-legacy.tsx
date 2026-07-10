@@ -50,6 +50,7 @@ import {
 import { billing, describeError } from '../_lib/api';
 import { hydrateFromApi } from '../_lib/mock-store-bridge';
 import { usePaymentConfig } from '../_lib/payment-config';
+import { useUi } from '../_lib/use-ui-store';
 
 interface StripeCheckoutModalLegacyProps {
   open: boolean;
@@ -151,6 +152,7 @@ function OpenedCheckoutModal({
   const { tx, t } = useLang();
   const { user } = useMockAuth();
   const { paypalClientId } = usePaymentConfig();
+  const sidebarCollapsed = useUi((s) => s.sidebarCollapsed);
   const accountBalance = useMockStore(getAccountBalanceCents, 0);
   const callsThisMonth = useMockStore(getAccountCallsThisMonth, 0);
   const currentTierIndex = getTierIndexForMonthlyCalls(callsThisMonth);
@@ -388,7 +390,7 @@ function OpenedCheckoutModal({
     }
   }
 
-  const modalTitle = tx('Add credits');
+  const modalTitle = tx('Add points');
 
   const subtitle = t(
     'Top up via PayPal — every key shares the same wallet balance.',
@@ -443,8 +445,8 @@ function OpenedCheckoutModal({
             </h3>
             <p className="text-sm text-muted-foreground">
               {method === 'wire'
-                ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Credits will land in your wallet once funds arrive (usually 1–3 business days).', '。款项到账后将立即入账(通常 1–3 个工作日)。')}`
-                : `+${formatCents(quote.totalCents)} ${t('credit added to your wallet', '已入账钱包')}. ≈${formatCallsRange(quote.totalCents)} ${t('calls.', '次调用。')} ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
+                ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Points will land in your wallet once funds arrive (usually 1–3 business days).', '。款项到账后评测积分将立即入账(通常 1–3 个工作日)。')}`
+                : `+${formatCents(quote.totalCents)} ${t('added to your wallet', '已入账钱包')}. ≈${formatCallsRange(quote.totalCents)} ${t('calls.', '次调用。')} ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
             </p>
           </div>
         ) : (
@@ -730,7 +732,7 @@ function OpenedCheckoutModal({
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg bg-emerald-500/[0.06] px-2.5 py-1.5">
                       <div className="text-[10px] font-medium text-emerald-700">
-                        {t('Wallet credit', '入账钱包')}
+                        {t('Wallet points', '入账钱包')}
                       </div>
                       <div className="text-sm font-bold tabular-nums text-emerald-800">
                         {formatCents(quote.totalCents)}
@@ -796,7 +798,7 @@ function OpenedCheckoutModal({
                 </button>
               ) : (
                 <div className="space-y-2">
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 text-center">
                     <div className="text-xs font-semibold">
                       {tx('Complete your payment securely with PayPal')}
                     </div>
@@ -826,7 +828,7 @@ function OpenedCheckoutModal({
                       setError(null);
                       setStep(1);
                     }}
-                    className="w-full h-9 rounded-lg border border-zinc-200/80 bg-zinc-100/80 text-xs font-medium text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-zinc-200/75 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mx-auto block h-9 w-full max-w-[750px] rounded-lg border border-zinc-200/80 bg-zinc-100/80 text-xs font-medium text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-zinc-200/75 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t('Cancel payment', '取消支付')}
                   </button>
@@ -835,7 +837,7 @@ function OpenedCheckoutModal({
 
               <p className="text-[10px] text-muted-foreground text-center leading-relaxed flex items-center justify-center gap-1">
                 <Lock className="h-2.5 w-2.5" />
-                {tx('Your wallet is credited as soon as PayPal confirms the payment.')}
+                {tx('Points land in your wallet as soon as PayPal confirms the payment.')}
               </p>
             </div>
           </form>
@@ -845,7 +847,10 @@ function OpenedCheckoutModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={cn(
+        'fixed inset-0 z-50 flex items-center justify-center p-4',
+        sidebarCollapsed ? 'lg:pl-[60px]' : 'lg:pl-60',
+      )}
       translate="no"
       lang="en"
     >
@@ -898,9 +903,14 @@ function PayPalTopupButtons({
   }
 
   return (
-    <div className={cn('relative', disabled && 'opacity-60 pointer-events-none')}>
+    <div
+      className={cn(
+        'paypal-topup-buttons relative w-full',
+        disabled && 'opacity-60 pointer-events-none',
+      )}
+    >
       <PayPalButtons
-        style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' }}
+        style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', tagline: false }}
         disabled={disabled}
         forceReRender={[amountCents]}
         createOrder={async () => {
@@ -951,7 +961,7 @@ function StepIndicator({
 }) {
   const { t } = useLang();
   const items: { idx: 1 | 2; label: string }[] = [
-    { idx: 1, label: t('Select credits', '选择额度') },
+    { idx: 1, label: t('Select amount', '选择金额') },
     { idx: 2, label: t('Checkout', '确认支付') },
   ];
   return (
@@ -1085,7 +1095,7 @@ function TopupQuoteSummary({
   if (quote.baseCents <= 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-background px-3 py-2.5 text-[11px] text-muted-foreground">
-        {t('Pick an amount above to see the wallet credit.', '在上方选择金额后会显示入账额度。')}
+        {t('Pick an amount above to see the wallet points.', '在上方选择金额后会显示入账评测积分。')}
       </div>
     );
   }
@@ -1112,7 +1122,7 @@ function TopupQuoteSummary({
         </div>
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-[11px] text-foreground font-medium">
-            {t('Credit added', '入账总额')}
+            {t('Points added', '入账总额')}
           </span>
           <span className="text-base font-bold tabular-nums">
             {formatCents(quote.totalCents)}
@@ -1818,7 +1828,7 @@ function AchPanel({
       <div className="flex items-start gap-2 rounded-md bg-sky-500/5 border border-sky-500/20 px-2.5 py-2 text-[11px] text-sky-700 dark:text-sky-300">
         <Landmark className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          {tx("You're authorizing a one-time ACH debit for this top-up. Funds typically settle in 3–4 business days; credits are applied once confirmed. US bank accounts only.")}
+          {tx("You're authorizing a one-time ACH debit for this top-up. Funds typically settle in 3–4 business days; points are applied once confirmed. US bank accounts only.")}
         </span>
       </div>
 
@@ -1946,7 +1956,7 @@ function WirePanel({
       <div className="flex items-start gap-2 rounded-md bg-indigo-500/5 border border-indigo-500/20 px-2.5 py-2 text-[11px] text-indigo-700 dark:text-indigo-300">
         <Building2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          {tx("Initiate a wire from your bank using the details below. Credits will be applied once funds land (usually same-day domestic, 1–3 days international). We'll email the full instructions and a PDF to your receipt email.")}
+          {tx("Initiate a wire from your bank using the details below. Points will be applied once funds land (usually same-day domestic, 1–3 days international). We'll email the full instructions and a PDF to your receipt email.")}
         </span>
       </div>
 
@@ -1968,7 +1978,7 @@ function WirePanel({
           className="h-3.5 w-3.5 mt-0.5 shrink-0"
         />
         <span>
-          {tx("I'll initiate this wire from my bank and include the reference above. I understand credits are not applied until funds are received.")}
+          {tx("I'll initiate this wire from my bank and include the reference above. I understand points are not applied until funds are received.")}
         </span>
       </label>
     </div>

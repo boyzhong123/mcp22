@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  ArrowLeftRight,
+  BarChart3,
   Building2,
   Check,
   ChevronDown,
@@ -10,6 +12,7 @@ import {
   CreditCard,
   Crown,
   FileText,
+  Gift,
   Landmark,
   Lock,
   Mail,
@@ -41,21 +44,28 @@ import { useMockAuth } from '../_lib/mock-auth';
 import { useLang } from '../_lib/use-lang';
 import {
   BASE_POINTS_PER_USD,
+  COMPARE_PACKAGE_IDS,
   PARAGRAPH_POINTS_PER_USE,
   TOPUP_BONUS_TIERS,
+  TRIAL_CALLS,
   TRIAL_VALID_DAYS,
   WORD_SENTENCE_POINTS_PER_USE,
   buildTopupPointDetails,
+  formatBonusPercent,
   formatEvaluationUnitDollars,
   formatWalletPoints,
+  getEvaluationUnitPrices,
   getTopupBonusTier,
+  isPaidPackageId,
   quoteTopup,
+  type ComparePackageId,
   type TopupBonusTier,
   type TopupQuote,
 } from '../_lib/topup';
 import { billing, describeError } from '../_lib/api';
 import { hydrateFromApi } from '../_lib/mock-store-bridge';
 import { usePaymentConfig } from '../_lib/payment-config';
+import { useUi } from '../_lib/use-ui-store';
 
 interface StripeCheckoutModalPackagesProps {
   open: boolean;
@@ -115,16 +125,33 @@ const CASHAPP_BACKING = { handle: '$alex_rivera', last4: 'cash' };
 const PAYPAL_BACKING = { email: 'alex.rivera@icloud.com', last4: 'ppal' };
 const SALES_EMAIL = 'ming.zhao@chivox.com';
 
+// Typical market sentence-eval quote vs our cheapest flagship rate.
+// Used only for the compare-table savings slogan — not a contractual claim.
+const COMPARABLE_SENTENCE_EVAL_DOLLARS = 0.0051;
+const MAX_SENTENCE_EVAL_SAVINGS_PCT = Math.round(
+  (1 -
+    getEvaluationUnitPrices('flagship').wordSentenceDollars /
+      COMPARABLE_SENTENCE_EVAL_DOLLARS) *
+    100,
+);
+
 function pointPricingSummary(
   t: (en: string, zh: string) => string,
   tier: TopupBonusTier = TOPUP_BONUS_TIERS[0],
 ): string {
-  const details = buildTopupPointDetails(tier.minCents, tier);
-  const wordSentencePrice = formatEvaluationUnitDollars(WORD_SENTENCE_POINTS_PER_USE, Number(details.pointsPerUsd));
-  const paragraphPrice = formatEvaluationUnitDollars(PARAGRAPH_POINTS_PER_USE, Number(details.pointsPerUsd));
+  const unitPrices = getEvaluationUnitPrices(tier.id);
+  const wordSentencePrice = formatEvaluationUnitDollars(unitPrices.wordSentenceDollars);
+  const paragraphPrice = formatEvaluationUnitDollars(unitPrices.paragraphDollars);
   return t(
-    `Word / sentence from ${wordSentencePrice}/use · paragraph from ${paragraphPrice}/use`,
-    `字/句低至 ${wordSentencePrice}/次 · 段落低至 ${paragraphPrice}/次`,
+    `Word / phrase / sentence ${wordSentencePrice}/use · paragraph ${paragraphPrice}/use`,
+    `字 / 词 / 句 ${wordSentencePrice}/次 · 段落 ${paragraphPrice}/次`,
+  );
+}
+
+function pointDebitSummary(t: (en: string, zh: string) => string): string {
+  return t(
+    `Word / phrase / sentence ${WORD_SENTENCE_POINTS_PER_USE} pt · paragraph ${PARAGRAPH_POINTS_PER_USE} pts`,
+    `字 / 词 / 句 ${WORD_SENTENCE_POINTS_PER_USE} 积分/次 · 段落 ${PARAGRAPH_POINTS_PER_USE} 积分/次`,
   );
 }
 
@@ -136,7 +163,7 @@ function walletPointsLabel(
   const points = tier
     ? buildTopupPointDetails(amountCents, tier).walletPoints
     : formatWalletPoints(amountCents);
-  return `${points} ${t('eval pts', '评测点')}`;
+  return `${points} ${t('pts', '评测积分')}`;
 }
 
 function detectBrand(num: string): CardBrand | 'generic' {
@@ -184,6 +211,7 @@ function OpenedCheckoutModal({
   const { tx, t } = useLang();
   const { user } = useMockAuth();
   const { paypalClientId } = usePaymentConfig();
+  const sidebarCollapsed = useUi((s) => s.sidebarCollapsed);
 
   // Account-wallet top-up: PayPal only (no card-on-file in this product).
   const [method] = useState<MethodKey>('paypal');
@@ -194,6 +222,8 @@ function OpenedCheckoutModal({
   const [customAmount, setCustomAmount] = useState<string>('');
   const [selectedBonusTierId, setSelectedBonusTierId] =
     useState<TopupBonusTier['id']>(TOPUP_BONUS_TIERS[0].id);
+  const [selectedPackageId, setSelectedPackageId] =
+    useState<ComparePackageId>(TOPUP_BONUS_TIERS[0].id);
   const [buyerMode, setBuyerMode] = useState<BuyerMode>('personal');
 
   // new card fields
@@ -234,13 +264,12 @@ function OpenedCheckoutModal({
   const [receiptEmail, setReceiptEmail] = useState<string>(() => user?.email ?? '');
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
+  const [claimedFree, setClaimedFree] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const paypalOrderCounter = useRef(0);
 
-  // 2-step wizard for `add-credits`:
-  //   Step 1 — choose top-up amount (preset chips or custom dollars)
-  //   Step 2 — confirm details and pay securely with PayPal
-  type Step = 1 | 2;
+  // Three deliberate decisions: choose a package, set an amount, then pay.
+  type Step = 1 | 2 | 3;
   const [step, setStep] = useState<Step>(1);
 
   const effectiveCents = useMemo(() => {
@@ -261,6 +290,7 @@ function OpenedCheckoutModal({
   );
   const selectedBonusTier =
     TOPUP_BONUS_TIERS.find((tier) => tier.id === selectedBonusTierId) ?? TOPUP_BONUS_TIERS[0];
+  const freeSelected = selectedPackageId === 'free';
   const taxCents = 0;
   // What the user actually pays.
   const totalCents = effectiveCents + taxCents;
@@ -325,6 +355,22 @@ function OpenedCheckoutModal({
     await new Promise((r) => setTimeout(r, 900));
     setWalletAuthorizing(false);
     setWalletAuthorized(true);
+  }
+
+  function claimFreePackage() {
+    setError(null);
+    setClaimedFree(true);
+    setDone(true);
+    window.setTimeout(() => {
+      onClose();
+    }, 900);
+  }
+
+  function selectPaidPackage(tier: TopupBonusTier) {
+    setSelectedPackageId(tier.id);
+    setSelectedBonusTierId(tier.id);
+    setAmountCents(tier.presetCents[0]);
+    setCustomAmount('');
   }
 
   async function finalizeSuccess(
@@ -429,15 +475,15 @@ function OpenedCheckoutModal({
     }
   }
 
-  const modalTitle = tx('Add credits');
+  const modalTitle = tx('Add points');
 
   const subtitle = t(
-    'Top up via PayPal — credits apply to every key on the account.',
-    '通过 PayPal 充值 — 额度对账号下所有 Key 生效。',
+    'Top up via PayPal — points apply to every key on the account.',
+    '通过 PayPal 充值 — 评测积分对账号下所有 Key 生效。',
   );
 
   const card = (
-      <div className="relative w-full max-w-[640px] max-h-[92vh] flex flex-col rounded-2xl bg-background border border-border shadow-2xl overflow-hidden">
+      <div className="relative flex max-h-[92vh] w-full max-w-[980px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border/60 bg-background shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="h-7 w-7 shrink-0 rounded-md bg-[#635bff] flex items-center justify-center">
@@ -457,7 +503,7 @@ function OpenedCheckoutModal({
                 type="button"
                 onClick={onSwitchVariant}
                 disabled={processing}
-                className="rounded-md border border-indigo-500/30 bg-indigo-500/[0.08] px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-500/[0.14] transition-colors disabled:opacity-40"
+                className="rounded-md border border-indigo-500/30 bg-indigo-500/[0.08] px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/[0.14] transition-colors disabled:opacity-40"
               >
                 {t('Switch version', '切换版本')}
               </button>
@@ -480,12 +526,21 @@ function OpenedCheckoutModal({
               <Check className="h-7 w-7 text-emerald-500" strokeWidth={2.5} />
             </div>
             <h3 className="text-lg font-semibold mb-1">
-              {method === 'wire' ? tx('Wire instructions sent') : tx('Payment successful')}
+              {claimedFree
+                ? t('Free plan ready', '免费版已就绪')
+                : method === 'wire'
+                  ? tx('Wire instructions sent')
+                  : tx('Payment successful')}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {method === 'wire'
-                ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Credits will land in your wallet once funds arrive (usually 1–3 business days).', '。款项到账后将立即入账(通常 1–3 个工作日)。')}`
-                : `+${walletPointsLabel(quote.totalCents, t, selectedBonusTier)} ${t('credited to your wallet.', '已入账钱包。')} ${pointPricingSummary(t, selectedBonusTier)}. ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
+              {claimedFree
+                ? t(
+                    `${TRIAL_CALLS} free evaluation points are available on your account · valid ${TRIAL_VALID_DAYS} days · no payment required.`,
+                    `账号已有 ${TRIAL_CALLS} 免费评测积分 · ${TRIAL_VALID_DAYS} 天有效 · 无需付费。`,
+                  )
+                : method === 'wire'
+                  ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Points will land in your wallet once funds arrive (usually 1–3 business days).', '。款项到账后评测积分将立即入账(通常 1–3 个工作日)。')}`
+                  : `+${walletPointsLabel(quote.totalCents, t, selectedBonusTier)} ${t('added to your wallet.', '已入账钱包。')} ${pointPricingSummary(t, selectedBonusTier)}. ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
             </p>
           </div>
         ) : (
@@ -493,14 +548,16 @@ function OpenedCheckoutModal({
             onSubmit={handlePay}
             className="flex-1 min-h-0 flex flex-col"
           >
-            {/* Scrollable content — everything except the Pay footer */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-3">
+            {/* Scrollable content — everything except the Pay footer.
+                Keep overflow scroll but hide the native scrollbar chrome. */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {step === 1 && <FreeTierBanner />}
             <StepIndicator
               step={step}
-              onSelectAmount={() => {
-                if (processing || step === 1) return;
+              onGoToStep={(nextStep) => {
+                if (processing || nextStep >= step) return;
                 setError(null);
-                setStep(1);
+                setStep(nextStep);
               }}
             />
 
@@ -513,9 +570,7 @@ function OpenedCheckoutModal({
               </div>
             )}
 
-            {/* Step 1 — top-up amount picker. The wallet is shared across
-                 every key on the account, so the user just picks dollars
-                 and we show how many points land. */}
+            {/* Step 1 — package comparison. */}
             {step === 1 && (
               <section className="space-y-3">
                 <TopupIntroPanel
@@ -524,40 +579,71 @@ function OpenedCheckoutModal({
                 />
 
                 {buyerMode === 'personal' ? (
-                  <>
-                    <SectionLabel>{t('How much to top up?', '充值多少？')}</SectionLabel>
-
-                    <TieredTopupSelector
-                      amountCents={amountCents}
-                      customAmount={customAmount}
-                      effectiveCents={effectiveCents}
-                      selectedTier={selectedBonusTier}
-                      selectedTierId={selectedBonusTierId}
-                      onSelectTier={(tier) => {
-                        setSelectedBonusTierId(tier.id);
-                        setAmountCents(tier.presetCents[0]);
-                        setCustomAmount('');
-                      }}
-                      onSwitchTierForCustom={(tier) => {
-                        setSelectedBonusTierId(tier.id);
-                      }}
-                      onSelectAmount={(nextCents) => {
-                        setAmountCents(nextCents);
-                        setCustomAmount('');
-                      }}
-                      onCustomAmount={(next) => setCustomAmount(next)}
-                    />
-                  </>
-                ) : (
-                  <BusinessTopupPanel
-                    onUseSelfServe={() => setBuyerMode('personal')}
+                  <TierComparePanel
+                    selectedPackageId={selectedPackageId}
+                    onSelectPackage={(packageId) => {
+                      setSelectedPackageId(packageId);
+                      if (isPaidPackageId(packageId)) {
+                        selectPaidPackage(
+                          TOPUP_BONUS_TIERS.find((tier) => tier.id === packageId) ??
+                            TOPUP_BONUS_TIERS[0],
+                        );
+                      }
+                    }}
+                    onChoosePackage={(packageId) => {
+                      setError(null);
+                      setSelectedPackageId(packageId);
+                      if (packageId === 'free') {
+                        claimFreePackage();
+                        return;
+                      }
+                      selectPaidPackage(
+                        TOPUP_BONUS_TIERS.find((tier) => tier.id === packageId) ??
+                          TOPUP_BONUS_TIERS[0],
+                      );
+                      setStep(2);
+                    }}
                   />
+                ) : (
+                  <BusinessTopupPanel />
                 )}
               </section>
             )}
 
-            {/* Step 2 from here on: confirmation details + summary. */}
+            {/* Step 2 — amount selection for the chosen package. */}
             {step === 2 && (
+              <section className="space-y-3">
+                <SectionLabel>{t('Choose an amount', '选择金额')}</SectionLabel>
+                <TieredTopupSelector
+                  amountCents={amountCents}
+                  customAmount={customAmount}
+                  effectiveCents={effectiveCents}
+                  selectedTier={selectedBonusTier}
+                  selectedTierId={selectedBonusTierId}
+                  amountOnly
+                  onBackToCompare={() => {
+                    setError(null);
+                    setStep(1);
+                  }}
+                  onSelectTier={(tier) => {
+                    setSelectedBonusTierId(tier.id);
+                    setAmountCents(tier.presetCents[0]);
+                    setCustomAmount('');
+                  }}
+                  onSwitchTierForCustom={(tier) => {
+                    setSelectedBonusTierId(tier.id);
+                  }}
+                  onSelectAmount={(nextCents) => {
+                    setAmountCents(nextCents);
+                    setCustomAmount('');
+                  }}
+                  onCustomAmount={(next) => setCustomAmount(next)}
+                />
+              </section>
+            )}
+
+            {/* Step 3 — confirmation and payment. */}
+            {step === 3 && (
               <Step2Recap
                 quote={quote}
                 tier={selectedBonusTier}
@@ -565,14 +651,14 @@ function OpenedCheckoutModal({
                 onEdit={() => {
                   if (processing) return;
                   setError(null);
-                  setStep(1);
+                  setStep(2);
                 }}
               />
             )}
 
             {/* 3. Method-specific details for legacy methods. The active
                 PayPal flow is rendered by the official buttons below. */}
-            {step === 2 && method !== 'paypal' && (
+            {step === 3 && method !== 'paypal' && (
             <section className="rounded-lg border border-border bg-muted/20 p-3">
               {method === 'apple' && (
                 <WalletPanel
@@ -656,7 +742,7 @@ function OpenedCheckoutModal({
             )}
 
             {/* 4. Receipt email */}
-            {step === 2 && (
+            {step === 3 && (
             <section>
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <SectionLabel>{tx('Receipt email')}</SectionLabel>
@@ -673,7 +759,7 @@ function OpenedCheckoutModal({
                   placeholder="you@example.com"
                   className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/65"
                 />
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/[0.08] text-indigo-600 transition-colors group-focus-within:bg-indigo-500/[0.14]">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/[0.08] text-indigo-600 dark:text-indigo-400 transition-colors group-focus-within:bg-indigo-500/[0.14]">
                   <Pencil className="h-3 w-3" />
                 </span>
               </label>
@@ -681,7 +767,7 @@ function OpenedCheckoutModal({
             )}
 
             {/* 5. Itemized summary */}
-            {step === 2 && (
+            {step === 3 && (
               <div className="overflow-hidden rounded-xl border border-border bg-background shadow-[0_6px_18px_-18px_rgba(15,23,42,0.45)]">
                 <div className="flex items-center justify-between border-b border-border/70 bg-muted/25 px-3.5 py-1.5">
                   <div className="text-[11px] font-semibold">
@@ -708,24 +794,28 @@ function OpenedCheckoutModal({
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg bg-emerald-500/[0.06] px-2.5 py-1.5">
-                      <div className="text-[10px] font-medium text-emerald-700">
-                        {t('Wallet points', '入账评测点')}
+                      <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        {t('Wallet points', '入账评测积分')}
                       </div>
-                      <div className="text-sm font-bold tabular-nums text-emerald-800">
+                      <div className="text-sm font-bold tabular-nums text-emerald-800 dark:text-emerald-300">
                         ≈ {walletPointsLabel(quote.totalCents, t, selectedBonusTier)}
                       </div>
                     </div>
                     <div className="rounded-lg bg-indigo-500/[0.06] px-2.5 py-1.5">
-                      <div className="text-[10px] font-medium text-indigo-700">
-                        {t('Unit pricing', '单次价格')}
+                      <div className="text-[10px] font-medium text-indigo-700 dark:text-indigo-300">
+                        {t('Points deducted per successful evaluation', '成功评测扣分规则')}
                       </div>
-                      <div className="text-[11px] font-bold leading-snug text-indigo-800">
-                        {pointPricingSummary(t, selectedBonusTier)}
+                      <div className="text-[11px] font-bold leading-snug text-indigo-800 dark:text-indigo-300">
+                        {pointDebitSummary(t)}
                       </div>
                     </div>
                   </div>
+                  <p className="text-[9.5px] leading-relaxed text-muted-foreground">
+                    {t('Published reference prices: ', '套餐公布参考价：')}
+                    {pointPricingSummary(t, selectedBonusTier)}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between gap-3 border-t border-border/70 bg-zinc-50/80 px-3.5 py-2">
+                <div className="flex items-center justify-between gap-3 border-t border-border/70 bg-muted/40 px-3.5 py-2">
                   <span className="text-sm font-semibold">{tx('Total due')}</span>
                   <span className="text-lg font-bold tracking-tight tabular-nums">
                     {formatCents(totalCents)}
@@ -742,16 +832,22 @@ function OpenedCheckoutModal({
                  ACH) grow. The soft top border + shadow separates it from
                  the scrollable content. */}
             <div className="shrink-0 border-t border-border/60 bg-background/95 backdrop-blur-sm px-5 py-4 space-y-2 shadow-[0_-6px_14px_-10px_rgba(17,24,39,0.18)]">
-              {/* Step 1: Continue (no payment yet). Step 2: Back + Pay. */}
+              {/* Step 1: package comparison. Step 2: choose amount. Step 3: pay. */}
               {step === 1 && buyerMode === 'business' ? (
                 <div className="space-y-2">
                   <a
                     href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Chivox MCP enterprise volume pricing')}`}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition-colors hover:bg-emerald-700"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition-colors hover:bg-emerald-600"
                   >
                     <Mail className="h-4 w-4" />
                     {t('Contact sales', '联系销售')}
                   </a>
+                  <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+                    {t(
+                      'Share expected monthly volume plus billing and security needs — we reply within one business day.',
+                      '告诉我们预计月用量，以及开票与安全需求，通常一个工作日内回复。',
+                    )}
+                  </p>
                   <button
                     type="button"
                     onClick={() => setBuyerMode('personal')}
@@ -763,11 +859,60 @@ function OpenedCheckoutModal({
               ) : step === 1 ? (
                 <button
                   type="button"
+                  onClick={() => {
+                    setError(null);
+                    if (freeSelected) {
+                      claimFreePackage();
+                      return;
+                    }
+                    setStep(2);
+                  }}
+                  className={cn(
+                    'group relative w-full h-11 rounded-lg text-white text-sm font-semibold',
+                    freeSelected
+                      ? 'bg-sky-600 shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_2px_rgba(17,24,39,0.08)] hover:bg-sky-700 hover:-translate-y-px hover:shadow-[0_4px_14px_-4px_rgba(14,165,233,0.55),0_1px_0_rgba(255,255,255,0.1)_inset] active:translate-y-0 active:bg-sky-800 focus-visible:ring-sky-500/60'
+                      : 'bg-[#635bff] shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_2px_rgba(17,24,39,0.08)] hover:bg-[#5148e3] hover:-translate-y-px hover:shadow-[0_4px_14px_-4px_rgba(99,91,255,0.55),0_1px_0_rgba(255,255,255,0.1)_inset] active:translate-y-0 active:bg-[#4b43d6] focus-visible:ring-[#635bff]/60',
+                    'transition-[transform,box-shadow,background-color] duration-150 ease-out',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                    'disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:-translate-y-0 disabled:hover:shadow-none',
+                    'flex items-center justify-center gap-2',
+                  )}
+                >
+                  <span className="flex flex-col items-center leading-tight">
+                    <span>
+                      {freeSelected
+                        ? t('Use free plan', '使用免费版')
+                        : t('Choose this package', '选择此套餐')}
+                    </span>
+                    <span className="text-[11px] font-normal opacity-85 tabular-nums">
+                      {freeSelected
+                        ? t(
+                            `${TRIAL_CALLS} pts · no payment`,
+                            `${TRIAL_CALLS} 积分 · 无需付费`,
+                          )
+                        : (
+                          <>
+                            {topupTierCopy(selectedBonusTier, t).label} ·{' '}
+                            {selectedBonusTier.bonusPct > 0
+                              ? t(
+                                  `${formatBonusPercent(selectedBonusTier.bonusPct)} bonus`,
+                                  `${formatBonusPercent(selectedBonusTier.bonusPct)} 赠送`,
+                                )
+                              : t('Base points', '基准积分')}
+                          </>
+                        )}
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : step === 2 ? (
+                <button
+                  type="button"
                   disabled={!amountValid || !keyValid}
                   onClick={() => {
                     if (!amountValid || !keyValid) return;
                     setError(null);
-                    setStep(2);
+                    setStep(3);
                   }}
                   className={cn(
                     'group relative w-full h-11 rounded-lg text-white text-sm font-semibold',
@@ -782,7 +927,7 @@ function OpenedCheckoutModal({
                 >
                   <span className="flex flex-col items-center leading-tight">
                     <span>
-                      {t('Continue', '下一步')} · {formatCents(totalCents || 0)}
+                      {t('Continue to payment', '继续确认支付')} · {formatCents(totalCents || 0)}
                     </span>
                     <span className="text-[11px] font-normal opacity-85 tabular-nums">
                       ≈ {walletPointsLabel(effectiveCents, t, selectedBonusTier)}
@@ -792,7 +937,7 @@ function OpenedCheckoutModal({
                 </button>
               ) : (
                 <div className="space-y-2">
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 text-center">
                     <div className="text-xs font-semibold">
                       {tx('Complete your payment securely with PayPal')}
                     </div>
@@ -820,9 +965,9 @@ function OpenedCheckoutModal({
                     onClick={() => {
                       if (processing) return;
                       setError(null);
-                      setStep(1);
+                      setStep(2);
                     }}
-                    className="w-full h-9 rounded-lg border border-zinc-200/80 bg-zinc-100/80 text-xs font-medium text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-zinc-200/75 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mx-auto block h-9 w-full max-w-[750px] rounded-lg border border-border bg-muted/60 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t('Cancel payment', '取消支付')}
                   </button>
@@ -836,7 +981,20 @@ function OpenedCheckoutModal({
                       'Invoice / PO / Net terms · DPA on request · reply within 1 business day.',
                       '发票 / 采购单 / 账期 · 可提供 DPA · 通常一个工作日内回复。',
                     )
-                  : tx('Your wallet is credited as soon as PayPal confirms the payment.')}
+                  : step === 1
+                    ? t(
+                        'Choose a package first. You can set the amount on the next step.',
+                        '先选套餐，下一步再选金额。',
+                      )
+                    : step === 2
+                      ? t(
+                          'Confirm the amount, points received, and estimated usage before payment.',
+                          '付款前确认充值金额、到账积分和预计可用次数。',
+                        )
+                      : t(
+                          `Only successful evaluations deduct points · valid ${TRIAL_VALID_DAYS} days · non-refundable after top-up.`,
+                          `仅成功评测扣分 · ${TRIAL_VALID_DAYS} 天有效 · 充值后不支持退款。`,
+                        )}
               </p>
             </div>
           </form>
@@ -846,7 +1004,12 @@ function OpenedCheckoutModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={cn(
+        // Offset by the dashboard sidebar so the dialog centers in the
+        // main content column (viewport-center looks left-biased).
+        'fixed inset-0 z-50 flex items-center justify-center p-4',
+        sidebarCollapsed ? 'lg:pl-[60px]' : 'lg:pl-60',
+      )}
       translate="no"
       lang="en"
     >
@@ -899,9 +1062,14 @@ function PayPalTopupButtons({
   }
 
   return (
-    <div className={cn('relative', disabled && 'opacity-60 pointer-events-none')}>
+    <div
+      className={cn(
+        'paypal-topup-buttons relative w-full',
+        disabled && 'opacity-60 pointer-events-none',
+      )}
+    >
       <PayPalButtons
-        style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' }}
+        style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', tagline: false }}
         disabled={disabled}
         forceReRender={[amountCents]}
         createOrder={async () => {
@@ -936,24 +1104,25 @@ function PayPalTopupButtons({
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 /**
- * Two-step wizard header. Step 1 = pick a top-up amount; Step 2 = pay.
- * Splitting the flow keeps the initial screen short and on-task instead
- * of overwhelming users with the full Stripe payment surface up front.
+ * Three-step wizard header. Step 1 = compare packages; Step 2 = select an
+ * amount; Step 3 = confirm and pay. This keeps comparison, budget setting,
+ * and payment as separate decisions.
  * The visual treatment mirrors typical
  * checkout / onboarding wizards: the active dot fills, completed dots
  * show a check.
  */
 function StepIndicator({
   step,
-  onSelectAmount,
+  onGoToStep,
 }: {
-  step: 1 | 2;
-  onSelectAmount: () => void;
+  step: 1 | 2 | 3;
+  onGoToStep: (step: 1 | 2 | 3) => void;
 }) {
   const { t } = useLang();
-  const items: { idx: 1 | 2; label: string }[] = [
-    { idx: 1, label: t('Select credits', '选择额度') },
-    { idx: 2, label: t('Checkout', '确认支付') },
+  const items: { idx: 1 | 2 | 3; label: string }[] = [
+    { idx: 1, label: t('Compare packages', '套餐对比') },
+    { idx: 2, label: t('Choose amount', '选择金额') },
+    { idx: 3, label: t('Checkout', '确认支付') },
   ];
   return (
     <div className="mb-1 -mt-1 flex items-center justify-center gap-2">
@@ -964,7 +1133,7 @@ function StepIndicator({
           <div key={it.idx} className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => completed && onSelectAmount()}
+              onClick={() => completed && onGoToStep(it.idx)}
               disabled={!completed}
               className={cn(
                 'flex items-center gap-2 rounded-full transition-colors',
@@ -973,7 +1142,7 @@ function StepIndicator({
               )}
               aria-label={
                 completed
-                  ? t('Edit top-up amount', '修改充值金额')
+                  ? t(`Return to ${it.label}`, `返回${it.label}`)
                   : undefined
               }
             >
@@ -993,17 +1162,17 @@ function StepIndicator({
                 className={cn(
                   'text-[11px] font-medium transition-colors',
                   active ? 'text-foreground' : 'text-muted-foreground',
-                  completed && 'text-emerald-700',
+                  completed && 'text-emerald-700 dark:text-emerald-400',
                 )}
               >
                 {it.label}
               </span>
             </button>
-            {i === 0 && (
+            {i < items.length - 1 && (
               <span
                 className={cn(
                   'h-px w-6 transition-colors',
-                  step === 2 ? 'bg-emerald-500/60' : 'bg-border',
+                  step > it.idx ? 'bg-emerald-500/60' : 'bg-border',
                 )}
               />
             )}
@@ -1047,6 +1216,16 @@ function Step2Recap({
             ≈ {walletPointsLabel(quote.totalCents, t, tier)}
           </span>
         </div>
+        <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+          {topupTierCopy(tier, t).label} ·{' '}
+          {tier.bonusPct > 0
+            ? t(
+                `${formatBonusPercent(tier.bonusPct)} bonus`,
+                `${formatBonusPercent(tier.bonusPct)} 赠送`,
+              )
+            : t('base points', '基准积分')}{' '}
+          · {pointDebitSummary(t)}
+        </div>
       </div>
       <div className="text-right shrink-0">
         <div className="text-base font-bold tabular-nums">
@@ -1057,7 +1236,7 @@ function Step2Recap({
           type="button"
           onClick={onEdit}
           disabled={disabled}
-          className="mt-1 inline-flex h-6 items-center gap-1 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-2 text-[10px] font-semibold text-indigo-700 transition-colors hover:border-indigo-500/40 hover:bg-indigo-500/[0.11] disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-1 inline-flex h-6 items-center gap-1 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-2 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 transition-colors hover:border-indigo-500/40 hover:bg-indigo-500/[0.11] disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={t('Edit top-up amount', '修改充值金额')}
         >
           <Pencil className="h-3 w-3" />
@@ -1065,6 +1244,75 @@ function Step2Recap({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Compact tip above the checkout steps: how points are deducted, plus the
+ * free-trial allowance. Dismissible for the rest of the browser session so
+ * returning users aren't blocked by the same callout every open.
+ */
+const POINTS_HINT_DISMISS_KEY = 'chivox.checkout.points-hint.dismissed';
+
+function FreeTierBanner() {
+  const { t } = useLang();
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.sessionStorage.getItem(POINTS_HINT_DISMISS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      window.sessionStorage.setItem(POINTS_HINT_DISMISS_KEY, '1');
+    } catch {
+      // Ignore quota / private-mode failures; local dismiss still applies.
+    }
+  };
+
+  return (
+    <section
+      aria-label={t('How evaluation points work', '评测积分扣减规则')}
+      className="relative rounded-xl border border-sky-500/25 bg-sky-500/[0.06] px-3.5 py-2.5 pr-10"
+    >
+      <button
+        type="button"
+        onClick={dismiss}
+        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md text-sky-700/55 transition-colors hover:bg-sky-500/10 hover:text-sky-900 dark:text-sky-200/55 dark:hover:text-sky-100"
+        aria-label={t('Dismiss', '关闭')}
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-700 dark:text-sky-300">
+          <Sparkles className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 space-y-1">
+          <div className="text-[13px] font-semibold tracking-tight text-foreground">
+            {t('How points are deducted', '评测积分怎么扣')}
+          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {t(
+              `Only successful evaluations · ${WORD_SENTENCE_POINTS_PER_USE} pt / word, phrase or sentence · ${PARAGRAPH_POINTS_PER_USE} pts / paragraph`,
+              `仅成功评测扣分 · 字 / 词 / 句 ${WORD_SENTENCE_POINTS_PER_USE} 积分 · 段落 ${PARAGRAPH_POINTS_PER_USE} 积分`,
+            )}
+          </p>
+          <p className="text-[11px] leading-relaxed text-sky-800/85 dark:text-sky-200/80">
+            {t(
+              `New accounts also receive ${TRIAL_CALLS} free points, valid ${TRIAL_VALID_DAYS} days.`,
+              `新账号另送 ${TRIAL_CALLS} 免费积分，有效期 ${TRIAL_VALID_DAYS} 天。`,
+            )}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1078,84 +1326,57 @@ function TopupIntroPanel({
   const { t } = useLang();
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-sky-300/45 bg-gradient-to-br from-sky-500/[0.05] to-transparent px-4 py-3.5">
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1 space-y-2.5">
-            <div>
-              <div className="text-sm font-bold tracking-tight text-foreground">
-                {t('Start free — 600 evaluations on us', '免费开始 — 送 600 次评测')}
-              </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-sky-800/80">
-                {t(
-                  'Valid for 30 days · no credit card · shared across every API key',
-                  '一个月有效 · 无需信用卡 · 账户下所有 API Key 共享',
-                )}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold text-sky-800">
-              <IntroChip>{t('≈ 600 word / sentence', '≈ 600 字/句')}</IntroChip>
-              <IntroChip>{t('≈ 300 paragraphs', '≈ 300 段落')}</IntroChip>
-              <IntroChip>{t('600 eval pts', '600 评测点')}</IntroChip>
-            </div>
-          </div>
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/[0.14] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <ShieldCheck className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+          {t('Choose a checkout path', '选择充值方式')}
         </div>
-      </div>
-
-      <div className="flex flex-col items-center gap-3 pt-0.5">
-        <div
-          role="tablist"
-          aria-label={t('Billing type', '计费类型')}
-          className="inline-flex w-full max-w-md rounded-xl border border-border bg-muted/35 p-1.5"
-        >
-          <BuyerModeButton
-            active={buyerMode === 'personal'}
-            icon={<Smartphone className="h-3.5 w-3.5" />}
-            label={t('Self-serve', '自助充值')}
-            hint={t('Pay as you go', '按量付费')}
-            onClick={() => onBuyerModeChange('personal')}
-          />
-          <BuyerModeButton
-            active={buyerMode === 'business'}
-            icon={<Building2 className="h-3.5 w-3.5" />}
-            label={t('Team / Enterprise', '团队 / 企业')}
-            hint={t('Volume, invoice & SLA', '用量、发票与 SLA')}
-            onClick={() => onBuyerModeChange('business')}
-          />
-        </div>
-        <p className="max-w-md px-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           {buyerMode === 'personal'
             ? t(
-                'Pick a volume tier, choose an amount in USD, then pay — credits land instantly.',
-                '选档位、按美元选金额、付款 — 评测额度即时到账。',
+                'Compare packages, set an amount, then confirm payment.',
+                '对比套餐、设置金额、确认付款。',
               )
             : t(
-                'Volume pricing with Net terms, DPA / security review, and dedicated support for procurement-ready teams.',
-                '面向需要用量定价、账期、DPA / 安全评审与专属支持的采购友好团队。',
+                'For volume pricing, invoices, procurement, and security review.',
+                '适合需要用量定价、发票、采购与安全评审的团队。',
               )}
         </p>
+      </div>
+      <div
+        role="tablist"
+        aria-label={t('Billing type', '计费类型')}
+        className="inline-flex w-full shrink-0 rounded-xl border border-border bg-muted/50 p-1 sm:w-[310px]"
+      >
+        <BuyerModeButton
+          active={buyerMode === 'personal'}
+          icon={<Smartphone className="h-3.5 w-3.5" />}
+          label={t('Self-serve', '自助充值')}
+          hint={t('Pay as you go', '按量付费')}
+          onClick={() => onBuyerModeChange('personal')}
+        />
+        <BuyerModeButton
+          active={buyerMode === 'business'}
+          icon={<Building2 className="h-3.5 w-3.5" />}
+          label={t('Team / Enterprise', '团队 / 企业')}
+          hint={t('Volume & invoice', '用量与发票')}
+          onClick={() => onBuyerModeChange('business')}
+        />
       </div>
     </div>
   );
 }
 
-function BusinessTopupPanel({
-  onUseSelfServe,
-}: {
-  onUseSelfServe: () => void;
-}) {
+function BusinessTopupPanel() {
   const { t } = useLang();
-  const mailSubject = encodeURIComponent('Chivox MCP enterprise volume pricing');
 
   return (
-    <div className="overflow-hidden rounded-xl border border-emerald-600/20 bg-gradient-to-b from-emerald-500/[0.06] to-background shadow-[0_10px_28px_-22px_rgba(5,150,105,0.55)]">
+    <div className="overflow-hidden rounded-xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/[0.06] to-background shadow-[0_10px_28px_-22px_rgba(5,150,105,0.55)]">
       <div className="border-b border-emerald-500/15 px-4 py-3.5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
               <Building2 className="h-3 w-3" />
               {t('For procurement & security review', '采购与安全评审友好')}
             </div>
@@ -1173,7 +1394,7 @@ function BusinessTopupPanel({
             <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               {t('Typical start', '常见起步')}
             </div>
-            <div className="text-sm font-bold tabular-nums text-emerald-800">
+            <div className="text-sm font-bold tabular-nums text-emerald-800 dark:text-emerald-300">
               {t('$200+/mo', '$200+/月')}
             </div>
           </div>
@@ -1205,6 +1426,30 @@ function BusinessTopupPanel({
             'GDPR 友好默认、SOC 2 对齐控制、企业级可用性 SLA，并配备专属对接。',
           )}
         />
+        <BusinessFeature
+          icon={<Building2 className="h-3.5 w-3.5" />}
+          title={t('Shared wallet & multiple keys', '统一账户与多 Key 管理')}
+          body={t(
+            'Create separate keys for apps, environments, or business lines; share one balance while tracking usage independently.',
+            '可按应用、环境或业务线创建多个 Key；统一共享余额、分别追踪用量，管理更清晰。',
+          )}
+        />
+        <BusinessFeature
+          icon={<Lock className="h-3.5 w-3.5" />}
+          title={t('Budgets, caps & alerts', '预算上限与风险提醒')}
+          body={t(
+            'Set daily or monthly spend and call caps at account or key level, with threshold alerts to prevent surprises.',
+            '支持账户级与 Key 级日/月消费、调用上限及阈值提醒，降低异常流量与超支风险。',
+          )}
+        />
+        <BusinessFeature
+          icon={<BarChart3 className="h-3.5 w-3.5" />}
+          title={t('Usage & cost visibility', '用量洞察与成本归因')}
+          body={t(
+            'Break down calls and cost by date and key, compare trends, and export the current view to CSV.',
+            '按时间与 Key 查看调用量、成本趋势和明细，并可将当前视图导出为 CSV。',
+          )}
+        />
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-t border-emerald-500/10 bg-emerald-500/[0.03] px-3.5 py-2.5">
@@ -1214,31 +1459,9 @@ function BusinessTopupPanel({
         <TrustPill>{t('SOC 2 aligned', 'SOC 2 对齐')}</TrustPill>
         <TrustPill>{t('Enterprise SLA', '企业级 SLA')}</TrustPill>
         <TrustPill>{t('Private / VPC', '私有化 / VPC')}</TrustPill>
-      </div>
-
-      <div className="flex flex-col gap-2.5 border-t border-emerald-500/15 bg-background/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {t(
-            'Share expected monthly volume plus billing and security needs — we reply within one business day.',
-            '告诉我们预计月用量，以及开票与安全需求，通常一个工作日内回复。',
-          )}
-        </p>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onUseSelfServe}
-            className="h-9 rounded-lg border border-border bg-background px-3 text-[12px] font-semibold text-foreground transition-colors hover:bg-muted/60"
-          >
-            {t('Self-serve instead', '改用自助充值')}
-          </button>
-          <a
-            href={`mailto:${SALES_EMAIL}?subject=${mailSubject}`}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
-          >
-            <Mail className="h-3.5 w-3.5" />
-            {t('Contact sales', '联系销售')}
-          </a>
-        </div>
+        <TrustPill>{t('Multi-key management', '多 Key 管理')}</TrustPill>
+        <TrustPill>{t('Budget guardrails', '预算风控')}</TrustPill>
+        <TrustPill>{t('Usage export', '用量导出')}</TrustPill>
       </div>
     </div>
   );
@@ -1255,7 +1478,7 @@ function BusinessFeature({
 }) {
   return (
     <div className="rounded-xl border border-emerald-500/15 bg-background/90 px-3 py-3">
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600/10 text-emerald-700">
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
         {icon}
       </div>
       <div className="mt-2 text-[12px] font-semibold leading-snug text-foreground">{title}</div>
@@ -1266,17 +1489,8 @@ function BusinessFeature({
 
 function TrustPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-900/80">
-      <Check className="h-2.5 w-2.5 text-emerald-600" />
-      {children}
-    </span>
-  );
-}
-
-function IntroChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex h-6 items-center gap-1 rounded-full bg-background/75 px-2 ring-1 ring-sky-300/35">
-      <Check className="h-3 w-3 shrink-0" />
+    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-900/80 dark:text-emerald-200/90">
+      <Check className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
       {children}
     </span>
   );
@@ -1304,8 +1518,8 @@ function BuyerModeButton({
       className={cn(
         'flex flex-1 flex-col items-center justify-center gap-1 rounded-lg px-3 py-2.5 transition-colors',
         active
-          ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
-          : 'text-muted-foreground hover:text-foreground',
+          ? 'bg-foreground text-background shadow-sm'
+          : 'text-muted-foreground hover:bg-background/70 hover:text-foreground',
       )}
     >
       <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold leading-none">
@@ -1316,7 +1530,7 @@ function BuyerModeButton({
         <span
           className={cn(
             'text-[10px] font-medium leading-none',
-            active ? 'text-muted-foreground' : 'text-muted-foreground/70',
+            active ? 'text-background/75' : 'text-muted-foreground/70',
           )}
         >
           {hint}
@@ -1336,6 +1550,8 @@ function TieredTopupSelector({
   onSwitchTierForCustom,
   onSelectAmount,
   onCustomAmount,
+  amountOnly = false,
+  onBackToCompare,
 }: {
   amountCents: number;
   customAmount: string;
@@ -1346,8 +1562,11 @@ function TieredTopupSelector({
   onSwitchTierForCustom: (tier: TopupBonusTier) => void;
   onSelectAmount: (amountCents: number) => void;
   onCustomAmount: (value: string) => void;
+  amountOnly?: boolean;
+  onBackToCompare?: () => void;
 }) {
   const { t } = useLang();
+  const [showComparison, setShowComparison] = useState(false);
   const [dismissedSuggestionKey, setDismissedSuggestionKey] = useState<string | null>(null);
   const recommendedTier = customAmount.trim() ? getTopupBonusTier(effectiveCents) : selectedTier;
   const suggestionKey = `${selectedTier.id}:${recommendedTier.id}:${effectiveCents}`;
@@ -1368,33 +1587,97 @@ function TieredTopupSelector({
     fallbackTier.id !== selectedTier.id;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background">
+    <div
+      id="topup-tier-selector"
+      className="scroll-mt-3 overflow-hidden rounded-xl border border-border bg-background"
+    >
       <div className="border-b border-border/70 bg-muted/20 px-3.5 py-3">
-        <div className="flex items-center gap-1.5 text-sm font-semibold">
-          <Zap className="h-3.5 w-3.5 text-emerald-600" />
-          {t('Pick a bonus tier, then an amount', '先选档位，再选金额')}
-        </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          {t(
-            'Higher tiers unlock more bonus points. Expand a tier to pick an amount and see what you get.',
-            '档位越高，赠送评测点越多。点开任一档位选择金额，右侧会显示到账明细。',
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-sm font-semibold">
+              <Zap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              {amountOnly
+                ? t('Set your top-up amount', '设置充值金额')
+                : t('Pick a bonus tier, then an amount', '先选档位，再选金额')}
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              {amountOnly
+                ? t(
+                    `You chose ${topupTierCopy(selectedTier, t).label}. Pick a preset or enter an amount; your points quote updates immediately.`,
+                    `已选${topupTierCopy(selectedTier, t).label}。可选预设金额或自定义输入，到账明细会即时更新。`,
+                  )
+                : t(
+                    'Higher tiers unlock more bonus points. Expand a tier to pick an amount and see what you get.',
+                    '档位越高，赠送评测积分越多。点开任一档位选择金额，右侧会显示到账明细。',
+                  )}
+            </p>
+          </div>
+          {amountOnly ? (
+            <button
+              type="button"
+              onClick={onBackToCompare}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 transition-colors hover:bg-emerald-500/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              {t('Back to packages', '返回套餐对比')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                const nextValue = !showComparison;
+                setShowComparison(nextValue);
+                if (nextValue) {
+                  window.requestAnimationFrame(() => {
+                    document
+                      .getElementById('topup-tier-selector')
+                      ?.scrollIntoView({ block: 'start' });
+                  });
+                }
+              }}
+              aria-expanded={showComparison}
+              aria-controls="topup-tier-comparison"
+              className={cn(
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30',
+                showComparison
+                  ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+                  : 'border-border bg-background text-foreground hover:border-emerald-500/35 hover:bg-emerald-500/[0.05]',
+              )}
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              {showComparison
+                ? t('Back to amounts', '返回选金额')
+                : t('Compare tiers', '对比套餐')}
+            </button>
           )}
-        </p>
+        </div>
       </div>
 
-      <div className="space-y-2.5 p-3">
-        {TOPUP_BONUS_TIERS.map((tier) => {
+      {showComparison && !amountOnly ? (
+        <TierComparePanel
+          selectedPackageId={selectedTierId}
+          onSelectPackage={(packageId) => {
+            if (!isPaidPackageId(packageId)) return;
+            const tier =
+              TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+            setDismissedSuggestionKey(null);
+            onSelectTier(tier);
+          }}
+          onChoosePackage={(packageId) => {
+            if (!isPaidPackageId(packageId)) return;
+            const tier =
+              TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+            setDismissedSuggestionKey(null);
+            onSelectTier(tier);
+            setShowComparison(false);
+          }}
+        />
+      ) : (
+        <div className="space-y-2.5 p-3">
+          {(amountOnly ? [selectedTier] : TOPUP_BONUS_TIERS).map((tier) => {
           const expanded = tier.id === selectedTierId;
           const copy = topupTierCopy(tier, t);
           const details = buildTopupPointDetails(tier.minCents, tier);
-          const wordPrice = formatEvaluationUnitDollars(
-            WORD_SENTENCE_POINTS_PER_USE,
-            Number(details.pointsPerUsd),
-          );
-          const paragraphPrice = formatEvaluationUnitDollars(
-            PARAGRAPH_POINTS_PER_USE,
-            Number(details.pointsPerUsd),
-          );
 
           return (
             <div
@@ -1402,7 +1685,7 @@ function TieredTopupSelector({
               className={cn(
                 'group/tier overflow-hidden rounded-xl border bg-background transition-all',
                 expanded
-                  ? 'border-emerald-400/70 bg-emerald-500/[0.035] ring-1 ring-emerald-400/25'
+                  ? 'border-emerald-500 bg-emerald-500/[0.035] ring-1 ring-emerald-400/25'
                   : 'border-border/80 hover:-translate-y-px hover:border-emerald-500/35 hover:shadow-[0_10px_20px_-18px_rgba(16,185,129,0.9)]',
               )}
             >
@@ -1429,22 +1712,22 @@ function TieredTopupSelector({
                       className={cn(
                         'h-3.5 w-3.5',
                         tier.id === 'flagship'
-                          ? 'text-amber-600'
+                          ? 'text-amber-600 dark:text-amber-400'
                           : tier.id === 'advanced'
-                            ? 'text-emerald-600'
-                            : 'text-sky-600',
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-sky-600 dark:text-sky-400',
                       )}
                     />
                     {copy.label}
                   </span>
                   {copy.badge && (
-                    <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
+                    <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400">
                       {copy.badge}
                     </span>
                   )}
                   <span className="ml-auto flex shrink-0 items-center gap-1.5">
                     {expanded ? (
-                      <span className="hidden rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700 sm:inline">
+                      <span className="hidden rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 sm:inline">
                         {t('Current tier', '当前档位')}
                       </span>
                     ) : (
@@ -1452,14 +1735,14 @@ function TieredTopupSelector({
                         <span
                           className={cn(
                             'text-[11px] font-semibold',
-                            tier.id === 'flagship' ? 'text-amber-800' : 'text-emerald-700',
+                            tier.id === 'flagship' ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-400',
                           )}
                         >
                           {tier.id === 'flagship'
                             ? t('Best discount', '最高折扣')
                             : tier.id === 'advanced'
                               ? t('More discount', '更多折扣')
-                              : t('Includes bonus', '含赠送')}
+                              : t('Base points', '基准积分')}
                         </span>
                         <BonusPctPill pct={tier.bonusPct} />
                       </span>
@@ -1468,8 +1751,8 @@ function TieredTopupSelector({
                       className={cn(
                         'flex h-7 w-7 items-center justify-center rounded-full border transition-all',
                         expanded
-                          ? 'rotate-180 border-emerald-500/35 bg-emerald-500/10 text-emerald-700'
-                          : 'border-border/80 bg-muted/30 text-muted-foreground group-hover/tier:border-emerald-500/35 group-hover/tier:bg-emerald-500/[0.08] group-hover/tier:text-emerald-700',
+                          ? 'rotate-180 border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                          : 'border-border/80 bg-muted/30 text-muted-foreground group-hover/tier:border-emerald-500/35 group-hover/tier:bg-emerald-500/[0.08] group-hover/tier:text-emerald-700 dark:group-hover/tier:text-emerald-400',
                       )}
                     >
                       <ChevronDown className="h-4 w-4" />
@@ -1479,8 +1762,8 @@ function TieredTopupSelector({
 
                 <div className="pr-9 text-[11px] leading-relaxed text-muted-foreground">
                   {t(
-                    `${formatCents(tier.minCents)}+ · ${details.pointsPerUsd} pts/$ · word ${wordPrice}/use · paragraph ${paragraphPrice}/use`,
-                    `${formatCents(tier.minCents)} 起 · 每 $1 = ${details.pointsPerUsd} 评测点 · 字/句 ${wordPrice}/次 · 段落 ${paragraphPrice}/次`,
+                    `${formatCents(tier.minCents)}+ · ${details.pointsPerUsd} pts/$ · ${tier.bonusPct > 0 ? `${formatBonusPercent(tier.bonusPct)} bonus` : 'base points'}`,
+                    `${formatCents(tier.minCents)} 起 · 每 $1 到账 ${details.pointsPerUsd} 评测积分 · ${tier.bonusPct > 0 ? `含 ${formatBonusPercent(tier.bonusPct)} 赠送` : '基准积分'}`,
                   )}
                 </div>
               </button>
@@ -1514,7 +1797,7 @@ function TieredTopupSelector({
                               {formatCents(preset)}
                             </span>
                             <span className={cn('mt-1 block whitespace-nowrap text-[10px] tabular-nums', selected ? 'text-white/85' : 'text-muted-foreground')}>
-                              {presetDetails.walletPoints} {t('eval pts', '评测点')}
+                              {presetDetails.walletPoints} {t('pts', '评测积分')}
                             </span>
                           </button>
                         );
@@ -1533,8 +1816,8 @@ function TieredTopupSelector({
                         belowTierMin
                           ? 'border-red-500 ring-1 ring-red-500/20'
                           : customAmount
-                            ? 'border-zinc-900 ring-1 ring-zinc-900/10'
-                            : 'border-border/80 focus-within:border-zinc-900/40',
+                            ? 'border-foreground ring-1 ring-foreground/10'
+                            : 'border-border/80 focus-within:border-foreground/40',
                       )}
                     >
                       <span className="text-sm font-semibold text-muted-foreground">$</span>
@@ -1554,18 +1837,18 @@ function TieredTopupSelector({
                     </label>
 
                     {belowTierMin && (
-                      <div className="rounded-lg border border-red-500/25 bg-red-50/80 px-2.5 py-2 text-[11px] leading-relaxed text-red-800">
+                      <div className="rounded-lg border border-red-500/25 bg-red-500/[0.08] px-2.5 py-2 text-[11px] leading-relaxed text-red-800 dark:text-red-200">
                         <p className="font-semibold">
                           {t(
                             `${topupTierCopy(selectedTier, t).label} requires ${formatCents(selectedTier.minCents)} minimum.`,
                             `${topupTierCopy(selectedTier, t).label}最低充值 ${formatCents(selectedTier.minCents)}。`,
                           )}
                         </p>
-                        <p className="mt-0.5 text-red-700/85">
+                        <p className="mt-0.5 text-red-700/85 dark:text-red-300/85">
                           {canDowngradeTier && fallbackTier
                             ? t(
-                                `Entered ${formatCents(effectiveCents)} qualifies for ${topupTierCopy(fallbackTier, t).label} (+${fallbackTier.bonusPct}%).`,
-                                `当前 ${formatCents(effectiveCents)} 可使用${topupTierCopy(fallbackTier, t).label}（+${fallbackTier.bonusPct}%）。`,
+                                `Entered ${formatCents(effectiveCents)} qualifies for ${topupTierCopy(fallbackTier, t).label} (${formatBonusPercent(fallbackTier.bonusPct)}).`,
+                                `当前 ${formatCents(effectiveCents)} 可使用${topupTierCopy(fallbackTier, t).label}（${formatBonusPercent(fallbackTier.bonusPct)}）。`,
                               )
                             : t(
                                 `Enter at least ${formatCents(selectedTier.minCents)}, or pick a lower tier.`,
@@ -1610,8 +1893,847 @@ function TieredTopupSelector({
               )}
             </div>
           );
-        })}
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TierComparePanel({
+  selectedPackageId,
+  onSelectPackage,
+  onChoosePackage,
+}: {
+  selectedPackageId: ComparePackageId;
+  /** Card body: highlight only. */
+  onSelectPackage: (packageId: ComparePackageId) => void;
+  /** Card button: confirm free claim or advance to amount selection. */
+  onChoosePackage: (packageId: ComparePackageId) => void;
+}) {
+  const { t } = useLang();
+
+  // Per-use savings relative to the entry paid tier — makes the tier-to-tier
+  // price drop legible at a glance instead of asking users to compare
+  // four-decimal dollar figures themselves.
+  const baseUnitPrices = getEvaluationUnitPrices(TOPUP_BONUS_TIERS[0].id);
+  const savingsVsBase = (
+    packageId: ComparePackageId,
+    priceKey: 'wordSentenceDollars' | 'paragraphDollars',
+  ): number | null => {
+    if (!isPaidPackageId(packageId)) return null;
+    const unitPrices = getEvaluationUnitPrices(packageId);
+    const pct = Math.round((1 - unitPrices[priceKey] / baseUnitPrices[priceKey]) * 100);
+    return pct > 0 ? pct : null;
+  };
+  const savingsBadge = (
+    packageId: ComparePackageId,
+    priceKey: 'wordSentenceDollars' | 'paragraphDollars',
+  ): string | null => {
+    const pct = savingsVsBase(packageId, priceKey);
+    return pct != null ? t(`Save ${pct}%`, `省 ${pct}%`) : null;
+  };
+
+  const rows: CompareDataRow[] = [
+    {
+      label: t('Bonus points', '赠送评测积分'),
+      value: (packageId) => {
+        if (packageId === 'free') {
+          return TRIAL_CALLS.toLocaleString('en-US');
+        }
+        const tier =
+          TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+        return tier.bonusPct > 0
+          ? formatBonusPercent(tier.bonusPct)
+          : t('0% · base', '0% · 基准');
+      },
+      accent: true,
+    },
+    {
+      label: t('Points per $1', '每 $1 到账评测积分'),
+      value: (packageId) => {
+        if (packageId === 'free') return '—';
+        const tier =
+          TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+        return buildTopupPointDetails(tier.minCents, tier).pointsPerUsd;
+      },
+    },
+    {
+      label: t('Word, phrase & sentence evaluation', '字、词、句评测'),
+      sub: t('Published reference price', '公布参考价'),
+      value: (packageId) => {
+        if (packageId === 'free') {
+          return t(
+            `${WORD_SENTENCE_POINTS_PER_USE} pt / use`,
+            `${WORD_SENTENCE_POINTS_PER_USE} 积分/次`,
+          );
+        }
+        const unitPrices = getEvaluationUnitPrices(packageId);
+        return t(
+          `${formatEvaluationUnitDollars(unitPrices.wordSentenceDollars)} / evaluation`,
+          `${formatEvaluationUnitDollars(unitPrices.wordSentenceDollars)} / 次`,
+        );
+      },
+      badge: (packageId) => savingsBadge(packageId, 'wordSentenceDollars'),
+      badgeTone: 'savings',
+      pricing: true,
+    },
+    {
+      label: t('Paragraph evaluation', '段落评测'),
+      sub: t('Published reference price', '公布参考价'),
+      value: (packageId) => {
+        if (packageId === 'free') {
+          return t(
+            `${PARAGRAPH_POINTS_PER_USE} pts / use`,
+            `${PARAGRAPH_POINTS_PER_USE} 积分/次`,
+          );
+        }
+        const unitPrices = getEvaluationUnitPrices(packageId);
+        return t(
+          `${formatEvaluationUnitDollars(unitPrices.paragraphDollars)} / evaluation`,
+          `${formatEvaluationUnitDollars(unitPrices.paragraphDollars)} / 次`,
+        );
+      },
+      badge: (packageId) => savingsBadge(packageId, 'paragraphDollars'),
+      badgeTone: 'savings',
+      pricing: true,
+    },
+    {
+      label: t('Sentence price advantage', '句评单价优势'),
+      sub: t(
+        `Up to ${MAX_SENTENCE_EVAL_SAVINGS_PCT}% lower than similar products`,
+        `较同类产品最多低 ${MAX_SENTENCE_EVAL_SAVINGS_PCT}%`,
+      ),
+      subAccent: true,
+      check: true,
+      value: () => '✓',
+      badge: () =>
+        t(`−${MAX_SENTENCE_EVAL_SAVINGS_PCT}%`, `低 ${MAX_SENTENCE_EVAL_SAVINGS_PCT}%`),
+    },
+  ];
+
+  // Engine capabilities — identical across packages, sourced from the Chivox
+  // open docs / MCP tool surface. Kept in the compare table (not folded).
+  const capabilityRows: CompareDataRow[] = [
+    {
+      label: t('Exam-grade scoring', '考试级评分'),
+      sub: t(
+        'Same engine used in high-stakes speaking exams',
+        '中高考英语听说考试同款引擎',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('Chinese scoring engine', '中文评分引擎'),
+      sub: t(
+        'Mandarin · pinyin · tone · character / sentence / paragraph',
+        '普通话 · 拼音 · 声调 · 字 / 句 / 段落',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('English scoring engine', '英文评分引擎'),
+      sub: t(
+        'American / British accent · word / sentence / paragraph',
+        '美式 / 英式口音 · 词 / 句 / 段落',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('Evaluation granularity', '评测颗粒度'),
+      sub: t(
+        'Phoneme · word · sentence · paragraph / passage',
+        '音素 · 单词 · 句子 · 段落 / 篇章',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('Scoring dimensions', '评分维度'),
+      sub: t(
+        'Overall · accuracy · fluency · integrity · stress · intonation',
+        '总分 · 准确度 · 流利度 · 完整度 · 重音 · 语调',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('Phoneme-level diagnosis', '音素级发音诊断'),
+      sub: t(
+        'Pinpoints pronunciation issues down to each phoneme',
+        '精确定位每个音素的发音问题',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('Pronunciation correction', '发音纠音建议'),
+      sub: t(
+        'Actionable feedback for words and sentences',
+        '单词 / 句子级可执行纠音反馈',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('Phonics evaluation', '自然拼读评测'),
+      sub: t(
+        'Letter-sound mapping for English learners',
+        '英文自然拼读 / 字母发音对应评测',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('Real-time streaming', '实时流式评测'),
+      sub: t(
+        'WebSocket session for live reading assessment',
+        'WebSocket 实时朗读评测会话',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+    {
+      label: t('LLM-ready structured output', '结构化结果直送 LLM'),
+      sub: t(
+        'MCP payload ready for diagnosis-to-practice loops',
+        'MCP 结构化返回，便于二次诊断与练习生成',
+      ),
+      check: true,
+      value: () => '✓',
+    },
+  ];
+
+  return (
+    <div
+      id="topup-tier-comparison"
+      className="space-y-4 rounded-xl border border-border bg-background p-4"
+    >
+      <div className="px-0.5">
+        <div>
+          <div className="text-sm font-semibold text-foreground">
+            {t('Compare packages', '套餐对比')}
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t(
+              'Start free with 600 points, or top up for more volume and lower published unit prices.',
+              '可先用免费版 600 积分，或充值获得更大用量与更低公布单价。',
+            )}
+          </p>
+        </div>
       </div>
+
+      <div className="w-full">
+        <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
+          {COMPARE_PACKAGE_IDS.map((packageId) => {
+            const copy = packageCopy(packageId, t);
+            const selected = packageId === selectedPackageId;
+            const paidTier = isPaidPackageId(packageId)
+              ? TOPUP_BONUS_TIERS.find((tier) => tier.id === packageId)
+              : null;
+            const unitPrices = paidTier ? getEvaluationUnitPrices(paidTier.id) : null;
+            const wordPrice = unitPrices
+              ? formatEvaluationUnitDollars(unitPrices.wordSentenceDollars)
+              : null;
+            const paragraphPrice = unitPrices
+              ? formatEvaluationUnitDollars(unitPrices.paragraphDollars)
+              : null;
+
+            return (
+              <div
+                key={packageId}
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectPackage(packageId)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onSelectPackage(packageId);
+                  }
+                }}
+                aria-pressed={selected}
+                aria-label={t(`Highlight ${copy.label}`, `高亮${copy.label}`)}
+                className={cn(
+                  'group/compare relative flex min-h-[168px] min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border bg-background p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 sm:p-3.5',
+                  packageId === 'free'
+                    ? 'focus-visible:ring-sky-500/30'
+                    : 'focus-visible:ring-emerald-500/30',
+                  selected
+                    ? packageId === 'free'
+                      ? 'border-sky-500 bg-sky-500/[0.045] ring-1 ring-sky-400/25'
+                      : 'border-emerald-500 bg-emerald-500/[0.045] ring-1 ring-emerald-400/25'
+                    : packageId === 'free'
+                      ? 'border-border/80 hover:-translate-y-px hover:border-sky-500/35 hover:shadow-[0_10px_20px_-18px_rgba(14,165,233,0.9)]'
+                      : 'border-border/80 hover:-translate-y-px hover:border-emerald-500/35 hover:shadow-[0_10px_20px_-18px_rgba(16,185,129,0.9)]',
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'pointer-events-none absolute -bottom-3 -right-3 select-none text-foreground/[0.06]',
+                    selected && 'text-foreground/[0.09]',
+                  )}
+                >
+                  <copy.Icon className="h-24 w-24" strokeWidth={1.25} />
+                </span>
+
+                <span className="relative z-[1] flex w-full items-start justify-between gap-2">
+                  <span
+                    className={cn(
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                      packageId === 'free'
+                        ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
+                        : packageId === 'flagship'
+                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                          : packageId === 'advanced'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
+                    )}
+                  >
+                    <copy.Icon className="h-4 w-4" />
+                  </span>
+                  {copy.badge && (
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+                        packageId === 'free'
+                          ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
+                          : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+                      )}
+                    >
+                      {copy.badge}
+                    </span>
+                  )}
+                </span>
+
+                <span className="relative z-[1] mt-2 block text-sm font-bold text-foreground sm:text-base">
+                  {copy.label}
+                </span>
+                <span className="relative z-[1] mt-1 block text-xl font-bold tabular-nums tracking-tight text-foreground sm:text-2xl">
+                  {packageId === 'free' ? '$0' : formatCents(paidTier?.minCents ?? 0)}
+                </span>
+                <span className="relative z-[1] text-[10px] text-muted-foreground sm:text-[11px]">
+                  {packageId === 'free'
+                    ? t('no payment required', '无需付费')
+                    : t('minimum top-up', '最低起充')}
+                </span>
+
+                <span className="relative z-[1] mt-2 text-[10px] leading-snug text-muted-foreground sm:mt-3 sm:text-[11px]">
+                  {packageId === 'free'
+                    ? t(
+                        `${TRIAL_CALLS} pts · ${TRIAL_VALID_DAYS} days`,
+                        `送 ${TRIAL_CALLS} 积分 · ${TRIAL_VALID_DAYS} 天`,
+                      )
+                    : paidTier && paidTier.bonusPct > 0
+                      ? (
+                          <>
+                            {t('Includes ', '含 ')}
+                            <span className="font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                              {formatBonusPercent(paidTier.bonusPct)}
+                            </span>
+                            {t(' bonus points', ' 赠送积分')}
+                          </>
+                        )
+                      : t('Base points · no bonus', '基准积分 · 不额外赠送')}
+                </span>
+                <span
+                  className={cn(
+                    'relative z-[1] mt-1.5 mb-3 flex flex-col gap-0.5 text-[10px] font-semibold tabular-nums leading-tight sm:text-[11px]',
+                    packageId === 'free'
+                      ? 'text-sky-700 dark:text-sky-300'
+                      : 'text-emerald-700 dark:text-emerald-400',
+                  )}
+                >
+                  {packageId === 'free' ? (
+                    <>
+                      <span className="text-[9px] font-semibold text-muted-foreground sm:text-[10px]">
+                        {t('Price reference', '价格参考')}
+                      </span>
+                      <span>
+                        {t(
+                          `Word ${WORD_SENTENCE_POINTS_PER_USE} pt/use`,
+                          `单词 ${WORD_SENTENCE_POINTS_PER_USE} 积分/次`,
+                        )}
+                      </span>
+                      <span>
+                        {t(
+                          `Paragraph ${PARAGRAPH_POINTS_PER_USE} pts/use`,
+                          `段落 ${PARAGRAPH_POINTS_PER_USE} 积分/次`,
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[9px] font-semibold text-muted-foreground sm:text-[10px]">
+                        {t('Price reference', '价格参考')}
+                      </span>
+                      <span>
+                        {t(`Word ${wordPrice}/use`, `单词 ${wordPrice}/次`)}
+                      </span>
+                      <span>
+                        {t(`Paragraph ${paragraphPrice}/use`, `段落 ${paragraphPrice}/次`)}
+                      </span>
+                    </>
+                  )}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onChoosePackage(packageId);
+                  }}
+                  aria-label={
+                    packageId === 'free'
+                      ? t('Use free plan', '使用免费版')
+                      : selected
+                        ? t(`Continue with ${copy.label}`, `使用${copy.label}继续`)
+                        : t(`Choose ${copy.label}`, `选择${copy.label}`)
+                  }
+                  className={cn(
+                    'relative z-[1] mt-auto flex h-9 w-full items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2',
+                    packageId === 'free'
+                      ? selected
+                        ? 'bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-sky-500/30'
+                        : 'border border-sky-500/35 bg-sky-500/[0.08] text-sky-800 hover:border-sky-500/50 hover:bg-sky-500/[0.14] dark:text-sky-200 focus-visible:ring-sky-500/30'
+                      : selected
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600 focus-visible:ring-emerald-500/30'
+                        : 'border border-border bg-muted/25 text-foreground hover:border-emerald-500/30 hover:text-emerald-700 dark:hover:text-emerald-400 focus-visible:ring-emerald-500/30',
+                  )}
+                >
+                  {packageId === 'free'
+                    ? selected
+                      ? t('Use free plan', '使用免费版')
+                      : t('Choose', '选择')
+                    : selected
+                      ? t('Current tier', '当前档位')
+                      : t('Choose', '选择')}
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover/compare:translate-x-0.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-border">
+        <div className="border-b border-border/70 bg-muted/20 px-3.5 py-2.5 text-[12px] font-semibold text-foreground">
+          {t('Package details', '套餐明细')}
+        </div>
+        <div className="overflow-hidden px-2 py-4 sm:px-3 sm:py-5">
+          <CompareFloatGrid
+            selectedPackageId={selectedPackageId}
+            onSelectPackage={onSelectPackage}
+            rows={rows}
+            capabilityRows={capabilityRows}
+          />
+        </div>
+      </div>
+
+      <p className="px-0.5 text-[10px] leading-relaxed text-muted-foreground">
+        {t(
+          `Rules: only successful evaluations deduct points · valid ${TRIAL_VALID_DAYS} days · shared across all API keys · earliest-expiring batch first · paid top-ups are non-refundable.`,
+          `规则：仅成功评测扣分 · ${TRIAL_VALID_DAYS} 天有效 · 账号下所有 Key 共享 · 优先扣最早到期积分 · 付费充值后不支持退款。`,
+        )}
+      </p>
+    </div>
+  );
+}
+
+type CompareDataRow = {
+  label: string;
+  sub?: string;
+  value: (packageId: ComparePackageId) => string;
+  badge?: (packageId: ComparePackageId) => string | null;
+  /** Savings callouts use amber; competitive claims stay emerald. */
+  badgeTone?: 'savings' | 'default';
+  accent?: boolean;
+  pricing?: boolean;
+  check?: boolean;
+  /** Make the sub-line read as a promo callout (emerald, bolder). */
+  subAccent?: boolean;
+};
+
+type CompareGridRow =
+  | { kind: 'header' }
+  | {
+      kind: 'section';
+      key: string;
+      label: string;
+      tone: 'cost' | 'muted';
+      aside?: string;
+    }
+  | { kind: 'data'; key: string; row: CompareDataRow };
+
+const TIER_COL_START = [
+  'col-start-2',
+  'col-start-3',
+  'col-start-4',
+  'col-start-5',
+] as const;
+
+function CompareFloatGrid({
+  selectedPackageId,
+  onSelectPackage,
+  rows,
+  capabilityRows,
+}: {
+  selectedPackageId: ComparePackageId;
+  onSelectPackage: (packageId: ComparePackageId) => void;
+  rows: CompareDataRow[];
+  capabilityRows: CompareDataRow[];
+}) {
+  const { t } = useLang();
+
+  const gridRows: CompareGridRow[] = [
+    { kind: 'header' },
+    ...rows.slice(0, 2).map((row) => ({ kind: 'data' as const, key: row.label, row })),
+    {
+      kind: 'section',
+      key: 'cost',
+      label: t('Published reference prices', '套餐公布参考价'),
+      tone: 'cost',
+    },
+    ...rows.slice(2, 5).map((row) => ({ kind: 'data' as const, key: row.label, row })),
+    {
+      kind: 'section',
+      key: 'capabilities',
+      label: t('Shared evaluation capabilities', '共有评测能力'),
+      tone: 'muted',
+    },
+    ...capabilityRows.map((row) => ({ kind: 'data' as const, key: row.label, row })),
+  ];
+
+  const rowCount = gridRows.length;
+
+  return (
+    <div
+      className="grid w-full grid-cols-[minmax(5.5rem,0.9fr)_repeat(4,minmax(0,1fr))] gap-x-1 text-[10px] sm:gap-x-1.5 sm:text-[11px]"
+      style={{
+        gridTemplateRows: gridRows
+          .map((item) =>
+            item.kind === 'header'
+              ? 'minmax(3.75rem, auto)'
+              : item.kind === 'section'
+                ? 'minmax(2rem, auto)'
+                : 'minmax(2.2rem, auto)',
+          )
+          .join(' '),
+      }}
+    >
+      <div className="col-start-1 row-span-full grid min-w-0 grid-rows-subgrid overflow-hidden rounded-lg border border-border/60 bg-background">
+        {gridRows.map((item, index) => (
+          <CompareLabelCell
+            key={item.kind === 'header' ? 'header' : item.key}
+            item={item}
+            isLast={index === rowCount - 1}
+          />
+        ))}
+      </div>
+
+      {COMPARE_PACKAGE_IDS.map((packageId, packageIndex) => {
+        const copy = packageCopy(packageId, t);
+        const selected = packageId === selectedPackageId;
+        return (
+          <div
+            key={packageId}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selected}
+            aria-label={t(`Select ${copy.label}`, `选择${copy.label}`)}
+            onClick={() => onSelectPackage(packageId)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onSelectPackage(packageId);
+              }
+            }}
+            className={cn(
+              TIER_COL_START[packageIndex],
+              'row-span-full grid min-w-0 cursor-pointer grid-rows-subgrid overflow-hidden transition-all duration-200 ease-out',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
+              selected
+                ? packageId === 'free'
+                  ? 'z-10 rounded-xl bg-background shadow-[0_12px_28px_-18px_rgba(14,165,233,0.45),0_0_0_1px_rgba(14,165,233,0.12)] ring-1 ring-sky-500/40 focus-visible:ring-sky-500/40'
+                  : 'z-10 rounded-xl bg-background shadow-[0_12px_28px_-18px_rgba(16,185,129,0.55),0_0_0_1px_rgba(16,185,129,0.12)] ring-1 ring-emerald-500/40 focus-visible:ring-emerald-500/40'
+                : packageId === 'free'
+                  ? 'rounded-lg border border-border/60 bg-background hover:border-sky-500/35 hover:bg-sky-500/[0.02] focus-visible:ring-sky-500/30'
+                  : 'rounded-lg border border-border/60 bg-background hover:border-emerald-500/35 hover:bg-emerald-500/[0.02] focus-visible:ring-emerald-500/30',
+            )}
+          >
+            {gridRows.map((item, index) => (
+              <CompareTierCell
+                key={item.kind === 'header' ? 'header' : item.key}
+                item={item}
+                packageId={packageId}
+                label={copy.label}
+                selected={selected}
+                isLast={index === rowCount - 1}
+              />
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CompareLabelCell({
+  item,
+  isLast,
+}: {
+  item: CompareGridRow;
+  isLast: boolean;
+}) {
+  const { t } = useLang();
+
+  if (item.kind === 'header') {
+    return (
+      <div className="flex flex-col justify-center gap-1 border-b border-zinc-700/80 bg-zinc-900 px-2 py-3 text-white sm:px-3 sm:py-4">
+        <span className="text-[12px] font-bold leading-none tracking-wide sm:text-[14px]">
+          {t('Packages', '套餐')}
+        </span>
+        <span className="text-[10px] font-normal leading-none text-zinc-400 sm:text-[11px]">
+          {t('Min. top-up', '最低起充')}
+        </span>
+      </div>
+    );
+  }
+
+  if (item.kind === 'section') {
+    return (
+      <div
+        className={cn(
+          'flex items-center px-2 py-2 sm:px-3 sm:py-2.5',
+          !isLast && 'border-b border-border/40',
+          item.tone === 'cost'
+            ? 'bg-emerald-500/[0.08]'
+            : 'bg-slate-500/[0.06] dark:bg-slate-400/[0.08]',
+        )}
+      >
+        <span
+          className={cn(
+            'text-[9px] font-bold uppercase tracking-[0.1em] sm:text-[10px] sm:tracking-[0.14em]',
+            item.tone === 'cost'
+              ? 'text-emerald-800 dark:text-emerald-300'
+              : 'text-slate-600 dark:text-slate-300',
+          )}
+        >
+          {item.label}
+        </span>
+      </div>
+    );
+  }
+
+  const { row } = item;
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 flex-col justify-center bg-background px-2 py-2 sm:px-3 sm:py-2.5',
+        !isLast && 'border-b border-border/40',
+      )}
+    >
+      <span
+        className={cn(
+          'text-[11px] font-semibold leading-snug sm:text-[12px]',
+          row.pricing ? 'text-emerald-800 dark:text-emerald-300' : 'text-foreground',
+        )}
+      >
+        {row.label}
+      </span>
+      {row.sub && (
+        <span
+          className={cn(
+            'mt-0.5 leading-tight',
+            row.subAccent
+              ? 'text-[10px] font-bold text-emerald-700 dark:text-emerald-400 sm:text-[11px]'
+              : 'text-[9px] font-normal text-muted-foreground sm:text-[10px]',
+          )}
+        >
+          {row.sub}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CompareTierCell({
+  item,
+  packageId,
+  label,
+  selected,
+  isLast,
+}: {
+  item: CompareGridRow;
+  packageId: ComparePackageId;
+  label: string;
+  selected: boolean;
+  isLast: boolean;
+}) {
+  const { t } = useLang();
+  const free = packageId === 'free';
+  const paidTier = isPaidPackageId(packageId)
+    ? TOPUP_BONUS_TIERS.find((tier) => tier.id === packageId) ?? TOPUP_BONUS_TIERS[0]
+    : null;
+
+  if (item.kind === 'header') {
+    return (
+      <div
+        className={cn(
+          'flex flex-col justify-center gap-1 border-b px-2 py-3 transition-colors sm:px-3 sm:py-4',
+          selected
+            ? free
+              ? 'border-sky-500/30 bg-sky-950 text-white'
+              : 'border-emerald-500/30 bg-emerald-950 text-white'
+            : 'border-zinc-700/80 bg-zinc-900 text-white',
+        )}
+      >
+        <span
+          className={cn(
+            'text-[12px] font-bold leading-snug tracking-wide sm:text-[14px]',
+            selected && (free ? 'text-sky-300' : 'text-emerald-300'),
+          )}
+        >
+          {label}
+        </span>
+        <span
+          className={cn(
+            'text-[10px] font-normal leading-none tabular-nums sm:text-[11px]',
+            selected
+              ? free
+                ? 'text-sky-400/80'
+                : 'text-emerald-400/80'
+              : 'text-zinc-400',
+          )}
+        >
+          {free
+            ? t('Free · $0', '免费 · $0')
+            : t(
+                `From ${formatCents(paidTier?.minCents ?? 0)}`,
+                `${formatCents(paidTier?.minCents ?? 0)} 起`,
+              )}
+        </span>
+      </div>
+    );
+  }
+
+  if (item.kind === 'section') {
+    return (
+      <div
+        className={cn(
+          'flex items-center px-2 py-2 sm:px-3 sm:py-2.5',
+          !isLast && 'border-b border-border/40',
+          selected
+            ? item.tone === 'cost'
+              ? free
+                ? 'bg-sky-500/[0.1]'
+                : 'bg-emerald-500/[0.1]'
+              : free
+                ? 'bg-sky-500/[0.06]'
+                : 'bg-emerald-500/[0.06]'
+            : item.tone === 'cost'
+              ? 'bg-emerald-500/[0.08]'
+              : 'bg-slate-500/[0.06] dark:bg-slate-400/[0.08]',
+        )}
+      >
+        {item.aside && (
+          <span
+            className={cn(
+              'text-[9px] font-semibold leading-snug sm:text-[10px]',
+              selected
+                ? free
+                  ? 'text-sky-800 dark:text-sky-300'
+                  : 'text-emerald-800 dark:text-emerald-300'
+                : 'text-slate-600 dark:text-slate-300',
+            )}
+          >
+            {item.aside}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  const { row } = item;
+  const badge = row.badge?.(packageId) ?? null;
+
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 items-center px-2 py-2 font-semibold tabular-nums transition-colors sm:px-3 sm:py-2.5',
+        !isLast &&
+          (selected
+            ? free
+              ? 'border-b border-sky-500/10'
+              : 'border-b border-emerald-500/10'
+            : 'border-b border-border/40'),
+        selected
+          ? free
+            ? 'bg-sky-500/[0.02] text-[11px] text-sky-900 dark:text-sky-200 sm:text-[12px]'
+            : 'bg-emerald-500/[0.02] text-[11px] text-emerald-900 dark:text-emerald-200 sm:text-[12px]'
+          : 'bg-background text-[10px] sm:text-[11px]',
+        !selected &&
+          (row.accent || row.pricing
+            ? free
+              ? 'text-sky-700 dark:text-sky-400'
+              : 'text-emerald-700 dark:text-emerald-400'
+            : 'text-foreground'),
+        selected &&
+          (row.accent || row.pricing) &&
+          (free
+            ? 'text-sky-700 dark:text-sky-400'
+            : 'text-emerald-700 dark:text-emerald-400'),
+        row.pricing && 'font-bold',
+      )}
+    >
+      {row.check ? (
+        <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
+          <Check
+            className={cn(
+              'h-3.5 w-3.5 shrink-0',
+              free
+                ? 'text-sky-600 dark:text-sky-400'
+                : 'text-emerald-600 dark:text-emerald-400',
+            )}
+            strokeWidth={2.5}
+          />
+          {badge && (
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none',
+                row.badgeTone === 'savings'
+                  ? 'bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300'
+                  : free
+                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400'
+                    : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+              )}
+            >
+              {badge}
+            </span>
+          )}
+        </span>
+      ) : (
+        <span className="inline-flex min-w-0 flex-wrap items-center gap-1 break-words">
+          {row.value(packageId)}
+          {badge && (
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none',
+                row.badgeTone === 'savings'
+                  ? 'bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300'
+                  : free
+                    ? 'bg-sky-500/10 text-sky-700 dark:text-sky-400'
+                    : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+              )}
+            >
+              {badge}
+            </span>
+          )}
+        </span>
+      )}
     </div>
   );
 }
@@ -1641,7 +2763,7 @@ function TierSuggestionCard({
   const gainPct = currentPoints > 0 ? Math.round((gainedPoints / currentPoints) * 100) : 0;
 
   return (
-    <div className="rounded-xl border border-amber-300/70 bg-amber-50/80 px-3 py-2.5 text-amber-950">
+    <div className="rounded-xl border border-amber-500/35 bg-amber-500/[0.1] px-3 py-2.5 text-amber-950 dark:text-amber-100">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="text-[12px] font-bold">
@@ -1650,15 +2772,15 @@ function TierSuggestionCard({
               `这个金额已达到${recommendedCopy.label}，切换后更划算`,
             )}
           </div>
-          <p className="mt-0.5 text-[10.5px] leading-relaxed text-amber-800">
+          <p className="mt-0.5 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">
             {t(
-              `Same ${formatCents(amountCents)}, higher bonus: +${currentTier.bonusPct}% → +${recommendedTier.bonusPct}%.`,
-              `同样 ${formatCents(amountCents)}，赠送比例从 +${currentTier.bonusPct}% 提升到 +${recommendedTier.bonusPct}%。`,
+              `Same ${formatCents(amountCents)}, higher bonus: ${formatBonusPercent(currentTier.bonusPct)} → ${formatBonusPercent(recommendedTier.bonusPct)}.`,
+              `同样 ${formatCents(amountCents)}，赠送比例从 ${formatBonusPercent(currentTier.bonusPct)} 提升到 ${formatBonusPercent(recommendedTier.bonusPct)}。`,
             )}
           </p>
         </div>
-        <div className="shrink-0 rounded-full bg-background/85 px-2 py-1 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20">
-          +{gainedPoints.toLocaleString('en-US')} {t('eval pts', '评测点')}
+        <div className="shrink-0 rounded-full bg-background/85 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+          +{gainedPoints.toLocaleString('en-US')} {t('pts', '评测积分')}
           {gainPct > 0 ? ` · +${gainPct}%` : ''}
         </div>
       </div>
@@ -1681,14 +2803,14 @@ function TierSuggestionCard({
         <button
           type="button"
           onClick={onDismiss}
-          className="h-7 rounded-full border border-amber-300/70 bg-background/70 px-2.5 text-[10.5px] font-semibold text-amber-900 transition-colors hover:bg-background"
+          className="h-7 rounded-full border border-amber-500/35 bg-background/70 px-2.5 text-[10.5px] font-semibold text-amber-900 dark:text-amber-200 transition-colors hover:bg-background"
         >
           {t('Keep current tier', '仍用当前档')}
         </button>
         <button
           type="button"
           onClick={onAccept}
-          className="h-7 rounded-full bg-emerald-600 px-2.5 text-[10.5px] font-semibold text-white transition-colors hover:bg-emerald-700"
+          className="h-7 rounded-full bg-emerald-500 px-2.5 text-[10.5px] font-semibold text-white transition-colors hover:bg-emerald-600"
         >
           {t(`Switch to ${recommendedCopy.label}`, `切换到${recommendedCopy.label}`)}
         </button>
@@ -1712,7 +2834,7 @@ function TierComparisonBar({
 
   return (
     <div className="grid grid-cols-[4.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 text-[10px]">
-      <span className={cn('truncate font-semibold', muted ? 'text-amber-800/75' : 'text-emerald-800')}>
+      <span className={cn('truncate font-semibold', muted ? 'text-amber-800/75 dark:text-amber-300/80' : 'text-emerald-800 dark:text-emerald-300')}>
         {label}
       </span>
       <span className="h-1.5 overflow-hidden rounded-full bg-background/80 ring-1 ring-amber-200/70">
@@ -1738,38 +2860,33 @@ function TierQuoteCard({
   belowMin?: boolean;
 }) {
   const { t } = useLang();
+  const [quoteNow] = useState(() => new Date());
   const details = buildTopupPointDetails(amountCents, tier);
-  const wordPrice = formatEvaluationUnitDollars(
-    WORD_SENTENCE_POINTS_PER_USE,
-    Number(details.pointsPerUsd),
-  );
-  const paragraphPrice = formatEvaluationUnitDollars(
-    PARAGRAPH_POINTS_PER_USE,
-    Number(details.pointsPerUsd),
-  );
+  const unitPrices = getEvaluationUnitPrices(tier.id);
+  const wordPrice = formatEvaluationUnitDollars(unitPrices.wordSentenceDollars);
+  const paragraphPrice = formatEvaluationUnitDollars(unitPrices.paragraphDollars);
   const totalPoints = Number(details.walletPoints.replace(/,/g, '')) || 0;
-  const walletValueCents = Math.round((totalPoints / BASE_POINTS_PER_USD) * 100);
-  const quoteDate = new Date().toLocaleDateString('en-CA');
-  const expiresDate = new Date(Date.now() + TRIAL_VALID_DAYS * 86_400_000).toLocaleDateString('en-CA');
+  const quoteDate = quoteNow.toLocaleDateString('en-CA');
+  const expiresDate = new Date(quoteNow.getTime() + TRIAL_VALID_DAYS * 86_400_000).toLocaleDateString('en-CA');
 
   if (amountCents <= 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-background px-3 py-3 text-[11px] text-muted-foreground">
-        {t('Pick an amount to compare wallet dollars and evaluation points.', '选择金额后对比钱包金额和到账评测点。')}
+        {t('Pick an amount to compare wallet dollars and evaluation points.', '选择金额后对比钱包金额和到账评测积分。')}
       </div>
     );
   }
 
   if (belowMin) {
     return (
-      <div className="rounded-xl border border-dashed border-red-300/70 bg-red-50/40 px-3 py-3 text-[11px] leading-relaxed text-red-800">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-red-700/80">
-          {t('Credit quote', '额度账单')}
+      <div className="rounded-xl border border-dashed border-red-500/40 bg-red-500/[0.08] px-3 py-3 text-[11px] leading-relaxed text-red-800 dark:text-red-200">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-red-700/80 dark:text-red-300/90">
+          {t('Points quote', '积分账单')}
         </div>
         <p className="mt-2 font-semibold">
           {t('Amount below this tier minimum', '金额未达到当前档位最低要求')}
         </p>
-        <p className="mt-1 text-red-700/85">
+        <p className="mt-1 text-red-700/85 dark:text-red-300/85">
           {t(
             `${topupTierCopy(tier, t).label} starts at ${formatCents(tier.minCents)}. Quote unavailable until the minimum is met.`,
             `${topupTierCopy(tier, t).label}最低 ${formatCents(tier.minCents)}。未达标前不显示到账明细。`,
@@ -1783,36 +2900,41 @@ function TierQuoteCard({
   const paragraphUses = Math.floor(totalPoints / PARAGRAPH_POINTS_PER_USE).toLocaleString('en-US');
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-background">
+    <div className="overflow-hidden rounded-xl border border-border bg-background text-zinc-900 dark:text-white">
       {/* Bill header — total + meta on one compact block */}
       <div className="px-3 pt-2.5 pb-2">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-            {t('Credit quote', '额度账单')}
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-white/75">
+            {t('Points quote', '积分账单')}
           </span>
-          <span className="font-mono text-[10px] tabular-nums text-zinc-400">{quoteDate}</span>
+          <span className="font-mono text-[10px] tabular-nums text-zinc-400 dark:text-white/70">{quoteDate}</span>
         </div>
         <div className="mt-1.5 flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-1">
-            <span className="text-[1.5rem] font-bold leading-none tracking-tight tabular-nums text-zinc-900">
+            <span className="text-[1.5rem] font-bold leading-none tracking-tight tabular-nums text-zinc-900 dark:text-white">
               {details.walletPoints}
             </span>
-            <span className="text-[12px] font-medium text-zinc-500">
-              {t('eval pts', '评测点')}
+            <span className="text-[12px] font-medium text-zinc-500 dark:text-white/80">
+              {t('pts', '评测积分')}
             </span>
           </div>
-          <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
-            {t(`≈ ${formatCents(walletValueCents)}`, `≈ ${formatCents(walletValueCents)}`)}
+          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+            {tier.bonusPct > 0
+              ? t(
+                  `${formatBonusPercent(tier.bonusPct)} bonus included`,
+                  `已含 ${formatBonusPercent(tier.bonusPct)} 赠送`,
+                )
+              : t('Base points', '基准积分')}
           </span>
         </div>
       </div>
 
-      <div className="border-t border-zinc-100" />
+      <div className="border-t border-border/60" />
 
       {/* Line items — denser invoice rows */}
       <div className="space-y-1.5 px-3 py-2">
         <QuoteLine
-          label={t('Base points', '基础评测点')}
+          label={t('Base points', '基础评测积分')}
           value={details.basePoints}
           hint={t(
             `${formatCents(amountCents)} × ${BASE_POINTS_PER_USD} pts/$1`,
@@ -1820,37 +2942,56 @@ function TierQuoteCard({
           )}
         />
         <QuoteLine
-          label={t(`Bonus (+${tier.bonusPct}%)`, `赠送（+${tier.bonusPct}%）`)}
-          value={`+${details.bonusPoints}`}
+          label={
+            tier.bonusPct > 0
+              ? t(
+                  `Bonus (${formatBonusPercent(tier.bonusPct)})`,
+                  `赠送（${formatBonusPercent(tier.bonusPct)}）`,
+                )
+              : t('Bonus (none)', '额外赠送（无）')
+          }
+          value={tier.bonusPct > 0 ? `+${details.bonusPoints}` : '0'}
           tone="bonus"
         />
       </div>
 
       {/* Estimated usage — two compact rows, no nested card title bloat */}
-      <div className="mx-2 mb-2 space-y-1 rounded-lg bg-zinc-50 px-2.5 py-1.5">
+      <div className="mx-2 mb-2 space-y-1 rounded-lg bg-muted/50 px-2.5 py-1.5 dark:bg-white/5">
         <QuoteLine
-          label={t('Word / sentence', '字 / 句')}
+          label={t(
+            `Word / phrase / sentence (${WORD_SENTENCE_POINTS_PER_USE} pt/use)`,
+            `字 / 词 / 句（${WORD_SENTENCE_POINTS_PER_USE} 积分/次）`,
+          )}
           value={`≈ ${wordUses} ${t('uses', '次')}`}
-          hint={`${wordPrice}/${t('use', '次')}`}
+          hint={t(`ref. ${wordPrice}/use`, `参考 ${wordPrice}/次`)}
           icon={MessageSquareText}
           compact
         />
         <QuoteLine
-          label={t('Paragraph', '段落')}
+          label={t(
+            `Paragraph (${PARAGRAPH_POINTS_PER_USE} pts/use)`,
+            `段落（${PARAGRAPH_POINTS_PER_USE} 积分/次）`,
+          )}
           value={`≈ ${paragraphUses} ${t('uses', '次')}`}
-          hint={`${paragraphPrice}/${t('use', '次')}`}
+          hint={t(`ref. ${paragraphPrice}/use`, `参考 ${paragraphPrice}/次`)}
           icon={FileText}
           compact
         />
+        <p className="pt-0.5 text-[9.5px] leading-snug text-muted-foreground">
+          {t(
+            'Points deducted are the billing source of truth; dollar unit prices are published reference prices.',
+            '实际按评测积分扣减；美元单次价格为套餐公布参考价。',
+          )}
+        </p>
       </div>
 
       {/* Validity footer */}
-      <div className="flex items-center gap-1.5 border-t border-amber-200/50 bg-amber-50/80 px-3 py-1.5">
-        <Clock className="h-3 w-3 shrink-0 text-amber-700" />
-        <p className="text-[10px] leading-snug text-amber-950/80">
+      <div className="flex items-center gap-1.5 border-t border-amber-500/25 bg-amber-500/[0.08] px-3 py-1.5 dark:border-white/10 dark:bg-white/5">
+        <Clock className="h-3 w-3 shrink-0 text-amber-700 dark:text-white/80" />
+        <p className="text-[10px] font-medium leading-snug text-amber-950/80 dark:text-white/85">
           {t(
-            `Valid ${TRIAL_VALID_DAYS} days · expires ${expiresDate} · non-refundable`,
-            `${TRIAL_VALID_DAYS} 天有效 · ${expiresDate} 前用完 · 过期不退`,
+            `Only successful evaluations deduct points · valid ${TRIAL_VALID_DAYS} days · expires ${expiresDate} · non-refundable`,
+            `仅成功评测扣分 · ${TRIAL_VALID_DAYS} 天有效 · ${expiresDate} 前用完 · 过期不退`,
           )}
         </p>
       </div>
@@ -1876,29 +3017,58 @@ function QuoteLine({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
       <div className="flex min-w-0 items-center gap-1.5">
-        {Icon && <Icon className="h-3 w-3 shrink-0 text-zinc-400" strokeWidth={1.75} />}
-        <span className={cn('truncate text-[11px]', tone === 'bonus' ? 'text-emerald-700' : 'text-zinc-600')}>
+        {Icon && <Icon className="h-3 w-3 shrink-0 text-zinc-400 dark:text-white/70" strokeWidth={1.75} />}
+        <span
+          className={cn(
+            'truncate text-[11px] font-medium',
+            tone === 'bonus'
+              ? 'text-emerald-700 dark:text-emerald-300'
+              : 'text-zinc-700 dark:text-white',
+          )}
+        >
           {label}
         </span>
         {hint && !compact && (
-          <span className="truncate text-[10px] tabular-nums text-zinc-400">· {hint}</span>
+          <span className="truncate text-[10px] tabular-nums text-zinc-400 dark:text-white/70">· {hint}</span>
         )}
       </div>
       <div className="flex items-baseline justify-end gap-1.5 text-right">
         <span
           className={cn(
-            'font-semibold tabular-nums leading-none',
-            compact ? 'text-[12px]' : 'text-[12px]',
-            tone === 'bonus' ? 'text-emerald-700' : 'text-zinc-900',
+            'text-[12px] font-semibold tabular-nums leading-none',
+            tone === 'bonus'
+              ? 'text-emerald-700 dark:text-emerald-300'
+              : 'text-zinc-900 dark:text-white',
           )}
         >
           {value}
         </span>
         {hint && compact && (
-          <span className="text-[10px] tabular-nums text-zinc-400">{hint}</span>
+          <span className="text-[10px] tabular-nums text-zinc-400 dark:text-white/70">{hint}</span>
         )}
       </div>
     </div>
+  );
+}
+
+function packageCopy(
+  packageId: ComparePackageId,
+  t: (en: string, zh: string) => string,
+): {
+  label: string;
+  badge: string;
+  Icon: LucideIcon;
+} {
+  if (packageId === 'free') {
+    return {
+      label: t('Free', '免费版'),
+      badge: t('No payment', '无需付费'),
+      Icon: Gift,
+    };
+  }
+  return topupTierCopy(
+    TOPUP_BONUS_TIERS.find((tier) => tier.id === packageId) ?? TOPUP_BONUS_TIERS[0],
+    t,
   );
 }
 
@@ -1920,28 +3090,28 @@ function topupTierCopy(tier: TopupBonusTier, t: (en: string, zh: string) => stri
   return { label: t('Standard', '标准版'), badge: '', Icon: Sparkles };
 }
 
-/** Flat bonus pill — emerald for mid tiers, amber for the top (+25%). */
+/** Flat bonus pill — the 0% entry tier is the baseline, not a promotion. */
 function BonusPctPill({ pct }: { pct: number }) {
-  const gold = pct >= 25;
+  const gold = pct >= 20;
   return (
     <span
       className={cn(
         'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums leading-none',
         gold
-          ? 'bg-amber-500/12 text-amber-800'
-          : 'bg-emerald-500/12 text-emerald-700',
+          ? 'bg-amber-500/12 text-amber-800 dark:text-amber-300'
+          : 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400',
       )}
     >
-      +{pct}%
+      {formatBonusPercent(pct)}
     </span>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="mb-3 block text-xs font-medium text-muted-foreground">
+    <div className="mb-3 block text-xs font-medium text-muted-foreground">
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -2580,7 +3750,7 @@ function AchPanel({
       <div className="flex items-start gap-2 rounded-md bg-sky-500/5 border border-sky-500/20 px-2.5 py-2 text-[11px] text-sky-700 dark:text-sky-300">
         <Landmark className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          {tx("You're authorizing a one-time ACH debit for this top-up. Funds typically settle in 3–4 business days; credits are applied once confirmed. US bank accounts only.")}
+          {tx("You're authorizing a one-time ACH debit for this top-up. Funds typically settle in 3–4 business days; points are applied once confirmed. US bank accounts only.")}
         </span>
       </div>
 
@@ -2708,7 +3878,7 @@ function WirePanel({
       <div className="flex items-start gap-2 rounded-md bg-indigo-500/5 border border-indigo-500/20 px-2.5 py-2 text-[11px] text-indigo-700 dark:text-indigo-300">
         <Building2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          {tx("Initiate a wire from your bank using the details below. Credits will be applied once funds land (usually same-day domestic, 1–3 days international). We'll email the full instructions and a PDF to your receipt email.")}
+          {tx("Initiate a wire from your bank using the details below. Points will be applied once funds land (usually same-day domestic, 1–3 days international). We'll email the full instructions and a PDF to your receipt email.")}
         </span>
       </div>
 
@@ -2730,7 +3900,7 @@ function WirePanel({
           className="h-3.5 w-3.5 mt-0.5 shrink-0"
         />
         <span>
-          {tx("I'll initiate this wire from my bank and include the reference above. I understand credits are not applied until funds are received.")}
+          {tx("I'll initiate this wire from my bank and include the reference above. I understand points are not applied until funds are received.")}
         </span>
       </label>
     </div>

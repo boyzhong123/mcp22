@@ -19,6 +19,7 @@ import {
   TOPUP_PRESETS_CENTS,
   TRIAL_CALLS,
   TRIAL_VALID_DAYS,
+  formatBaseWalletPoints,
   formatCallsRange,
   formatUnitDollars,
 } from '../../../_lib/topup';
@@ -79,7 +80,11 @@ export default function PricingPage() {
 
         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
           <Mini label={tx('Calls this month')} value={calls.toLocaleString('en-US')} />
-          <Mini label={t('Wallet balance', '钱包余额')} value={formatCents(balance)} />
+          <Mini
+            label={t('Evaluation points', '评测积分')}
+            value={formatBaseWalletPoints(balance)}
+            hint={t(`Worth ${formatCents(balance)}`, `价值 ${formatCents(balance)}`)}
+          />
           <Mini label={tx('Net cost')} value={formatMills(spend)} />
         </div>
       </div>
@@ -178,10 +183,12 @@ export default function PricingPage() {
 function Mini({
   label,
   value,
+  hint,
   tone,
 }: {
   label: string;
   value: string;
+  hint?: string;
   tone?: 'default' | 'emerald';
 }) {
   return (
@@ -197,6 +204,11 @@ function Mini({
       >
         {value}
       </div>
+      {hint && (
+        <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
+          {hint}
+        </div>
+      )}
     </div>
   );
 }
