@@ -42,8 +42,8 @@ import {
  * Design intent:
  *  • First fold = what it does + how to plug it in, in one screen.
  *  • Content is dev-first: code, JSON, numbers; marketing copy kept minimal.
- *  • Visuals drawn directly in JSX (waveform, score meter, phoneme chips,
- *    tone chart) so the page ships fast with no extra assets.
+ *  • Interactive visuals (hero slides) stay in JSX;
+ *    capability + use-case cards use editorial stills under public/.
  *  • Aesthetic borrowed from tavily.com — neutral palette, quiet dividers,
  *    generous spacing, cards over gradients.
  * ────────────────────────────────────────────────────────── */
@@ -174,6 +174,25 @@ const CORE_CAPABILITIES: {
   },
 ];
 
+const CAPABILITY_ART: Record<CapabilityVisual, { src: string; alt: string }> = {
+  meters: {
+    src: '/capabilities/meters-v2.jpg',
+    alt: 'Speech score meters: overall 84, accuracy 78, fluency 88, rhythm 73',
+  },
+  bilingual: {
+    src: '/capabilities/bilingual-v2.jpg',
+    alt: 'Bilingual panel with zh-CN 你好 / en-US Hello pronunciation details',
+  },
+  dialogue: {
+    src: '/capabilities/dialogue-v2.jpg',
+    alt: 'AI dialogue scoring UI with five-dimension score chips',
+  },
+  target: {
+    src: '/capabilities/target-v2.jpg',
+    alt: 'Personalized drill card with /θ/ minimal pairs and LLM chips',
+  },
+};
+
 const CAPABILITY_TONE: Record<CapabilityTone, {
   accent: string;
   iconBg: string;
@@ -216,14 +235,27 @@ const CAPABILITY_TONE: Record<CapabilityTone, {
   },
 };
 
-/* ── use-case cards, each with a colorful inline illustration ─── */
-type UseCaseArt =
-  | 'mandarin'
-  | 'english'
-  | 'kids'
-  | 'podcast'
-  | 'voice'
-  | 'ecosystem';
+/* ── use-case cards — AI-generated editorial stills in public/use-cases/ ─── */
+type UseCaseArt = 'mandarin' | 'voice' | 'podcast' | 'games';
+
+const USE_CASE_ART: Record<UseCaseArt, { src: string; alt: string }> = {
+  mandarin: {
+    src: '/use-cases/mandarin-v2.jpg',
+    alt: 'Mandarin tone assessment UI with pinyin chips and tone score 88',
+  },
+  voice: {
+    src: '/use-cases/voice-v2.jpg',
+    alt: 'AI interview scoring chat with overall 84 and /θ/ coaching tip',
+  },
+  podcast: {
+    src: '/use-cases/podcast-v2.jpg',
+    alt: 'Contact-center QA waveform with retake highlight at 01:24',
+  },
+  games: {
+    src: '/use-cases/games-v2.jpg',
+    alt: 'Voice-gated game HUD with PASS, latency, and phoneme miss chips',
+  },
+};
 
 const USE_CASES: {
   art: UseCaseArt;
@@ -253,7 +285,7 @@ const USE_CASES: {
       'Evaluate standard-phrase delivery, articulation, pacing and keyword hits for call-center reps. Flag exactly which second drifted off-script and auto-generate coaching drills.',
   },
   {
-    art: 'ecosystem',
+    art: 'games',
     tag: 'Serious Games &amp; XR',
     title: 'Voice-gated NPCs and pronunciation-powered gameplay',
     body:
@@ -593,7 +625,7 @@ export default function GlobalLandingPage() {
                       className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full bg-gradient-to-b ${tone.accent}`}
                     />
 
-                    {/* LEFT — compact visual preview */}
+                    {/* LEFT — editorial still */}
                     <div className="sm:w-[190px] sm:shrink-0 self-start">
                       <CapabilityVisual id={c.visual} />
                     </div>
@@ -1381,163 +1413,19 @@ function Spinner() {
 }
 
 /* ──────────────────────────────────────────────────────────
- *  CAPABILITY VISUALS — small illustrative blocks per card
+ *  CAPABILITY VISUALS — editorial stills in public/capabilities/
  * ────────────────────────────────────────────────────────── */
 function CapabilityVisual({ id }: { id: CapabilityVisual }) {
-  if (id === 'meters') return <CapVisualMeters />;
-  if (id === 'bilingual') return <CapVisualBilingual />;
-  if (id === 'dialogue') return <CapVisualDialogue />;
-  return <CapVisualTarget />;
-}
-
-/* 01 · assess — 4 scoring meters (Tavily-ish slim bars) */
-function CapVisualMeters() {
-  const rows = [
-    { k: 'overall', v: 84, c: 'from-emerald-400 to-emerald-500' },
-    { k: 'accuracy', v: 78, c: 'from-emerald-400 to-teal-500' },
-    { k: 'fluency', v: 88, c: 'from-emerald-400 to-emerald-500' },
-    { k: 'rhythm', v: 73, c: 'from-amber-400 to-amber-500' },
-  ];
+  const art = CAPABILITY_ART[id];
   return (
-    <div className="rounded-xl border border-zinc-900/[0.06] bg-white/50 backdrop-blur-sm p-3.5 flex flex-col gap-1.5">
-      {rows.map((r) => (
-        <div key={r.k} className="flex items-center gap-3">
-          <span className="w-[70px] text-[10.5px] font-mono text-muted-foreground">{r.k}</span>
-          <div className="relative flex-1 h-1.5 rounded-full bg-zinc-900/[0.06] overflow-hidden">
-            <div
-              className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${r.c}`}
-              style={{ width: `${r.v}%` }}
-            />
-          </div>
-          <span className="w-7 text-right text-[11px] font-mono tabular-nums text-foreground/80">{r.v}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* 02 · languages — CN / EN toggle with pinyin + tone lines */
-function CapVisualBilingual() {
-  return (
-    <div className="rounded-xl border border-zinc-900/[0.06] bg-white/50 backdrop-blur-sm p-3 overflow-hidden">
-      <div className="flex items-center gap-1.5 mb-2.5">
-        <span className="inline-flex items-center gap-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-mono text-rose-700 whitespace-nowrap">
-          <span className="h-1 w-1 rounded-full bg-rose-500" />
-          zh-CN
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-mono text-sky-700 whitespace-nowrap">
-          <span className="h-1 w-1 rounded-full bg-sky-500" />
-          en-US
-        </span>
-        <span className="ml-auto text-[9.5px] font-mono text-muted-foreground whitespace-nowrap">
-          one flag
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1.5">
-        <div className="min-w-0 rounded-lg border border-rose-500/25 bg-rose-500/[0.05] px-2 py-1.5">
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="font-zh text-base text-rose-800 leading-none">你好</span>
-            <span className="font-pinyin text-[10.5px] text-rose-700 truncate">nǐ hǎo</span>
-          </div>
-          <div className="mt-1 flex items-center gap-1 text-rose-600">
-            <svg width="22" height="6" viewBox="0 0 34 8" className="shrink-0">
-              <path d="M1 6 Q 5 6, 9 3 T 17 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M18 6 Q 22 6, 26 3 T 33 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-            <span className="text-[9px] font-mono text-rose-600/70 truncate">tones · pinyin</span>
-          </div>
-        </div>
-
-        <div className="min-w-0 rounded-lg border border-sky-500/25 bg-sky-500/[0.05] px-2 py-1.5">
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="text-[14px] font-semibold text-sky-900 leading-none">Hello</span>
-            <span className="font-mono text-[10px] text-sky-700 truncate">/həˈloʊ/</span>
-          </div>
-          <div className="mt-1 flex items-center gap-0.5 text-sky-600">
-            <span className="inline-flex h-1 w-3 rounded bg-sky-500" />
-            <span className="inline-flex h-1 w-1.5 rounded bg-sky-300" />
-            <span className="inline-flex h-1 w-2 rounded bg-sky-500" />
-            <span className="text-[9px] font-mono ml-1 text-sky-600/70 truncate">stress · CEFR</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* 03 · converse — 3 chat bubbles with a tiny waveform */
-function CapVisualDialogue() {
-  return (
-    <div className="rounded-xl border border-zinc-900/[0.06] bg-white/50 backdrop-blur-sm p-3.5 flex flex-col gap-2">
-      <div className="flex items-start gap-2">
-        <span className="h-6 w-6 shrink-0 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-700 text-[10px] font-mono flex items-center justify-center">AI</span>
-        <div className="rounded-lg rounded-tl-sm border border-violet-500/20 bg-violet-500/[0.05] px-2.5 py-1.5 text-[11.5px] text-foreground/85 max-w-[70%]">
-          Describe your hometown in three sentences.
-        </div>
-      </div>
-      <div className="flex items-start gap-2 justify-end">
-        <div className="rounded-lg rounded-tr-sm border border-zinc-900/[0.08] bg-white/70 px-2.5 py-1.5 max-w-[80%]">
-          <div className="flex items-end gap-[2px] h-3.5">
-            {[0.4, 0.8, 0.5, 1, 0.7, 0.9, 0.4, 0.7, 0.55, 0.85, 0.6, 0.3, 0.9, 0.5].map((h, i) => (
-              <span
-                key={i}
-                className="inline-block w-[2.5px] rounded-[1.5px] bg-gradient-to-t from-violet-400/50 to-violet-500"
-                style={{ height: `${h * 100}%` }}
-              />
-            ))}
-          </div>
-          <div className="mt-1 text-[10px] font-mono text-muted-foreground">user · 00:14</div>
-        </div>
-        <span className="h-6 w-6 shrink-0 rounded-full bg-zinc-900/[0.06] border border-zinc-900/10 text-zinc-700 text-[10px] font-mono flex items-center justify-center">U</span>
-      </div>
-      <div className="mt-0.5 flex flex-wrap gap-1">
-        {['fluency 82', 'content 76', 'grammar 88', 'accuracy 79', 'rhythm 81'].map((s) => (
-          <span key={s} className="inline-flex items-center rounded-md border border-violet-500/25 bg-violet-500/[0.06] px-1.5 py-0.5 text-[10px] font-mono text-violet-700">
-            {s}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* 04 · drill — bullseye + LLM chip row */
-function CapVisualTarget() {
-  return (
-    <div className="rounded-xl border border-zinc-900/[0.06] bg-white/50 backdrop-blur-sm p-3.5 flex items-center gap-4">
-      {/* bullseye */}
-      <svg width="72" height="72" viewBox="0 0 72 72" className="shrink-0">
-        <defs>
-          <radialGradient id="capTarget" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <circle cx="36" cy="36" r="34" fill="url(#capTarget)" />
-        <circle cx="36" cy="36" r="28" fill="none" stroke="#f59e0b" strokeOpacity="0.35" strokeWidth="1" />
-        <circle cx="36" cy="36" r="20" fill="none" stroke="#f59e0b" strokeOpacity="0.5" strokeWidth="1" />
-        <circle cx="36" cy="36" r="12" fill="none" stroke="#f59e0b" strokeOpacity="0.7" strokeWidth="1.2" />
-        <circle cx="36" cy="36" r="4" fill="#f59e0b" />
-        {/* arrow */}
-        <line x1="62" y1="12" x2="40" y2="34" stroke="#18181b" strokeWidth="1.5" strokeLinecap="round" />
-        <polygon points="36,36 42,32 40,34" fill="#18181b" />
-      </svg>
-      <div className="flex-1 min-w-0">
-        <div className="text-[10.5px] font-mono uppercase tracking-wider text-amber-700/90 mb-1.5">
-          personalized drill
-        </div>
-        <div className="text-[12.5px] font-mono text-foreground/85 truncate">
-          <span className="text-rose-600">/θ/</span> minimal pairs · <span className="text-muted-foreground">think · sink · thank · sank</span>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {['GPT', 'Claude', 'Gemini', 'Qwen'].map((m) => (
-            <span key={m} className="inline-flex items-center rounded-md border border-zinc-900/[0.08] bg-white/70 px-1.5 py-0.5 text-[10px] font-mono text-foreground/70">
-              {m}
-            </span>
-          ))}
-        </div>
-      </div>
+    <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-zinc-900/[0.06] bg-white/40">
+      <Image
+        src={art.src}
+        alt={art.alt}
+        fill
+        className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+        sizes="190px"
+      />
     </div>
   );
 }
@@ -1597,6 +1485,12 @@ function HeroEarArt() {
   };
   const serifStyle = {
     fontFamily: 'var(--font-hero-serif, "Fraunces", Georgia, serif)',
+  };
+  const thinkStyle = {
+    fontFamily: 'var(--font-think-serif, "Newsreader", Georgia, serif)',
+    fontStyle: 'italic' as const,
+    fontWeight: 500,
+    letterSpacing: '-0.015em',
   };
 
   return (
@@ -1664,7 +1558,7 @@ function HeroEarArt() {
       {/* ░░░░░ CN SCENE ░░░░░ */}
       <g className="cn-scene">
         <text
-          x="210" y="345" textAnchor="middle" fontSize="220" fontWeight="700"
+          x="210" y="345" textAnchor="middle" fontSize="190" fontWeight="700"
           fill="url(#hh-hanzi)"
           style={{
             fontFamily:
@@ -1768,8 +1662,10 @@ function HeroEarArt() {
       {/* ░░░░░ EN SCENE — diagnosis + correction ░░░░░ */}
       <g className="en-scene">
         <text
-          x="210" y="330" textAnchor="middle" fontSize="180" fontWeight="500" fill="url(#hh-think)"
-          style={{ ...serifStyle, fontStyle: 'italic', letterSpacing: '-0.015em' }}
+          x="210" y="330" textAnchor="middle" fontSize="194" fontWeight="500" fill="url(#hh-think)"
+          textLength={300}
+          lengthAdjust="spacingAndGlyphs"
+          style={thinkStyle}
         >
           think
         </text>
@@ -1980,6 +1876,7 @@ const HERO_SLIDES = [
     label: 'Plug-and-play',
     chip: 'npx · 60 s',
     tone: 'emerald',
+    src: '/hero-slides/01-setup.jpg',
     headline: 'One MCP. Every agent runtime.',
     sub: 'Plug Chivox into Claude, Cursor, Cline, LangChain, or any custom loop in minutes.',
     points: [
@@ -1994,6 +1891,7 @@ const HERO_SLIDES = [
     label: 'Mandarin depth',
     chip: 'Hardest acoustic signal',
     tone: 'rose',
+    src: '/hero-slides/02-mandarin.jpg',
     headline: 'Hardest acoustic signal? Solved.',
     sub: 'Tones, sandhi, erhua, retroflex — surfaced as structured fields instead of lost in transcription.',
     points: [
@@ -2008,6 +1906,7 @@ const HERO_SLIDES = [
     label: 'Phoneme diagnosis',
     chip: 'Beyond STT',
     tone: 'violet',
+    src: '/hero-slides/03-phoneme.jpg',
     headline: 'Raw audio in. Clear diagnosis out.',
     sub: 'Per-phoneme accuracy, stress, liaison, ms-level windows — the signal an LLM can actually reason on.',
     points: [
@@ -2022,6 +1921,7 @@ const HERO_SLIDES = [
     label: 'Reasoning-ready JSON',
     chip: 'Not a leaderboard cell',
     tone: 'amber',
+    src: '/hero-slides/04-reasoning.jpg',
     headline: 'A payload, not just a score.',
     sub: 'Dozens of fields — pron, fluency, audio quality, per-word details — designed for LLM agents.',
     points: [
@@ -2036,6 +1936,7 @@ const HERO_SLIDES = [
     label: 'Enterprise-ready',
     chip: 'Production proof',
     tone: 'sky',
+    src: '/hero-slides/05-scale.jpg',
     headline: 'Scale you can ship to enterprise.',
     sub: '9B+ evaluations a year, 99.99% uptime, 185 regions — scoring that aligns with human experts.',
     points: [
@@ -2115,20 +2016,14 @@ function HeroCarousel() {
       onMouseEnter={() => { pausedRef.current = true; }}
       onMouseLeave={() => { pausedRef.current = false; }}
     >
-      <div className="absolute -inset-4 rounded-3xl bg-foreground/[0.04] blur-2xl pointer-events-none" />
-
       <div className="grid lg:grid-cols-12 gap-6 items-center">
-        {/* LEFT — uniform 16:9 long-strip card, click to zoom.
-         * Capped at max-w-[460px] and pinned to the LEFT edge of its
-         * column. The right column's copy is pinned to its RIGHT edge,
-         * so the two halves breathe instead of crashing into each other
-         * in the middle of the row. */}
+        {/* LEFT — generated still fills the frame (no outer glow / gray canvas). */}
         <div className="lg:col-span-6">
           <button
             type="button"
             onClick={() => setZoomOpen(true)}
             aria-label="Open screenshot preview"
-            className="group block w-full max-w-[460px] mx-auto lg:mx-0 lg:mr-auto text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-2xl"
+            className="group block w-full max-w-[500px] mx-auto lg:mx-0 lg:mr-auto text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-2xl"
           >
             <HeroSlideCard slide={activeSlide} isActive />
           </button>
@@ -2365,56 +2260,19 @@ function HeroSlideCard({
   slide: (typeof HERO_SLIDES)[number];
   isActive?: boolean;
 }) {
+  // Stills are pre-cropped to the window only. Use contain so the full
+  // UI stays visible (cover was clipping edges).
   return (
-    <div
-      className={`overflow-hidden rounded-2xl border shadow-[0_24px_80px_-24px_rgba(0,0,0,0.22)] flex flex-col aspect-[16/9] ${
-        isActive
-          ? 'bg-white border-zinc-900/[0.1]'
-          : 'glass-card'
-      }`}
-    >
-      {/* window chrome */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-900/[0.08] bg-white/40 backdrop-blur-sm shrink-0">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
-        </div>
-        <div className="text-[11px] font-mono text-muted-foreground tracking-tight">
-          chivox ·{' '}
-          {slide.id === 'setup'
-            ? 'mcp.config'
-            : slide.id === 'scale'
-            ? 'scale.metrics'
-            : slide.id === 'mandarin'
-            ? 'assess.mandarin'
-            : slide.id === 'phoneme'
-            ? 'phoneme.diagnose'
-            : 'agent.reasoning'}
-        </div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider ${
-            slide.tone === 'emerald'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-              : slide.tone === 'rose'
-              ? 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300'
-              : slide.tone === 'amber'
-              ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-              : 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300'
-          }`}
-        >
-          {slide.chip}
-        </span>
-      </div>
-
-      {/* viewport — fills the remaining height of the 16:9 frame */}
-      <div className="relative flex-1 min-h-0 overflow-hidden">
-        {slide.id === 'setup' && <HeroSlideSetup />}
-        {slide.id === 'scale' && <HeroSlideScale />}
-        {slide.id === 'mandarin' && <HeroSlideMandarin />}
-        {slide.id === 'phoneme' && <HeroSlidePhoneme />}
-        {slide.id === 'reasoning' && <HeroSlideReasoning />}
-      </div>
+    <div className="overflow-hidden rounded-2xl aspect-[16/9] relative bg-transparent">
+      <Image
+        src={`${slide.src}?v=8`}
+        alt={slide.label}
+        fill
+        sizes="(max-width: 1024px) 100vw, 500px"
+        className="object-contain object-center"
+        priority={isActive || slide.order === 1}
+        unoptimized
+      />
     </div>
   );
 }
@@ -3588,418 +3446,15 @@ function ScoreBadge({
  *  USE-CASE ARTWORK — inline colorful SVGs, Tavily-style
  * ═══════════════════════════════════════════════════════════ */
 function UseCaseArtwork({ id }: { id: UseCaseArt }) {
-  switch (id) {
-    case 'mandarin':
-      return <ArtMandarin />;
-    case 'english':
-      return <ArtEnglish />;
-    case 'kids':
-      return <ArtKids />;
-    case 'podcast':
-      return <ArtPodcast />;
-    case 'voice':
-      return <ArtVoice />;
-    case 'ecosystem':
-      return <ArtEcosystem />;
-  }
-}
-
-/* ── AI Mandarin Tutor · 红橙渐变 + 大 汉字 + 声调轮廓 ───── */
-function ArtMandarin() {
+  const art = USE_CASE_ART[id];
   return (
-    <div className="absolute inset-0 bg-gradient-to-br from-rose-50 via-white to-amber-50 overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.5]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(244,63,94,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(244,63,94,0.08) 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
-        }}
-      />
-      <div className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-rose-200/50 blur-3xl" />
-
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span
-          className="font-zh text-rose-400/35 text-[120px] md:text-[140px] font-semibold leading-none"
-          style={{ letterSpacing: '-0.04em' }}
-        >
-          语
-        </span>
-      </div>
-
-      <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full">
-        <g stroke="rgb(225,29,72)" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.55">
-          <path d="M20 40 L110 40" />
-          <path d="M20 150 Q65 150 110 70" />
-          <path d="M210 60 L240 130 L280 120 L310 80" />
-          <path d="M210 40 L310 130" />
-        </g>
-      </svg>
-
-      <div className="absolute left-4 top-4 flex flex-wrap gap-1.5">
-        {[
-          { t: 'nǐ', k: 'T3' },
-          { t: 'hǎo', k: 'T3' },
-          { t: 'jīn', k: 'T1' },
-        ].map((p) => (
-          <span
-            key={p.t}
-            className="rounded-md bg-white/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-pinyin text-rose-700 border border-rose-200 shadow-sm flex items-center gap-1"
-          >
-            {p.t}
-            <span className="font-mono text-[9px] text-rose-500/80">{p.k}</span>
-          </span>
-        ))}
-      </div>
-
-      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm px-2 py-1 text-[10px] font-mono text-rose-700 border border-rose-200 shadow-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        tone score · 88
-      </div>
-    </div>
-  );
-}
-
-/* ── English Conversation Partner · 蓝紫渐变 + chat + wave ── */
-function ArtEnglish() {
-  const bars = Array.from({ length: 40 }).map((_, i) =>
-    Math.max(0.25, Math.abs(Math.sin(i * 0.55) * Math.cos(i * 0.23 + 1)) + 0.2),
-  );
-  return (
-    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-violet-500 to-sky-500 overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.22] mix-blend-overlay"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)',
-          backgroundSize: '18px 18px',
-        }}
-      />
-      <div className="absolute -top-10 right-10 h-48 w-48 rounded-full bg-white/20 blur-2xl" />
-
-      {/* chat bubbles */}
-      <div className="absolute top-4 left-4 rounded-xl bg-white/90 backdrop-blur-sm px-2.5 py-1.5 text-[11px] text-indigo-800 shadow-md border border-white/70 max-w-[60%]">
-        How would you pronounce <em className="not-italic font-semibold">gorgeous</em>?
-      </div>
-      <div className="absolute top-[55%] right-3 rounded-xl bg-indigo-950/70 backdrop-blur-sm px-2.5 py-1.5 text-[11px] text-white shadow-md border border-white/20">
-        GPT · you said /gor-ʒuːs/
-      </div>
-
-      {/* waveform */}
-      <svg viewBox="0 0 320 60" className="absolute bottom-3 left-3 right-3 w-[calc(100%-1.5rem)] h-12">
-        {bars.map((h, i) => {
-          const x = Number(((i / bars.length) * 320).toFixed(2));
-          const barH = Number((h * 50).toFixed(2));
-          const y = Number((30 - barH / 2).toFixed(2));
-          return (
-            <rect
-              key={i}
-              x={x}
-              y={y}
-              width="4"
-              height={barH}
-              rx="1.5"
-              fill="white"
-              opacity={0.85}
-            />
-          );
-        })}
-      </svg>
-
-      {/* score chip */}
-      <div className="absolute bottom-16 right-3 inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm px-2 py-1 text-[10px] font-mono text-indigo-700 border border-white/70 shadow-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-        fluency · 82
-      </div>
-    </div>
-  );
-}
-
-/* ── Kids' Reading Coach · 粉-桃渐变 + 星星 + 书 + phonics ─── */
-function ArtKids() {
-  return (
-    <div className="absolute inset-0 bg-gradient-to-br from-pink-400 via-fuchsia-400 to-rose-300 overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.2] mix-blend-overlay"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1.2px, transparent 1.2px)',
-          backgroundSize: '20px 20px',
-        }}
-      />
-      <div className="absolute -top-8 -right-8 h-40 w-40 rounded-full bg-yellow-200/40 blur-2xl" />
-
-      {/* book */}
-      <svg viewBox="0 0 200 120" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%]">
-        <defs>
-          <linearGradient id="bookPage" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="100%" stopColor="#fff0f6" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M100 20 C70 10 40 12 20 22 L20 100 C40 90 70 92 100 100 C130 92 160 90 180 100 L180 22 C160 12 130 10 100 20 Z"
-          fill="url(#bookPage)"
-          stroke="white"
-          strokeWidth="2"
-          opacity="0.95"
-        />
-        <line x1="100" y1="20" x2="100" y2="100" stroke="#f9a8d4" strokeWidth="1.5" />
-        {/* text lines */}
-        {[0, 1, 2].map((i) => (
-          <g key={i}>
-            <line x1="30" y1={40 + i * 16} x2="90" y2={40 + i * 16} stroke="#f472b6" strokeWidth="2" opacity="0.65" />
-            <line x1="110" y1={40 + i * 16} x2="170" y2={40 + i * 16} stroke="#f472b6" strokeWidth="2" opacity={i === 1 ? 0.3 : 0.65} />
-          </g>
-        ))}
-      </svg>
-
-      {/* stars */}
-      {[
-        { cx: 30, cy: 30, r: 5 },
-        { cx: 290, cy: 40, r: 7 },
-        { cx: 40, cy: 150, r: 6 },
-        { cx: 280, cy: 160, r: 4 },
-      ].map((s, i) => (
-        <svg
-          key={i}
-          viewBox="0 0 24 24"
-          className="absolute text-yellow-300"
-          style={{ left: s.cx, top: s.cy, width: s.r * 3, height: s.r * 3 }}
-        >
-          <path
-            d="M12 2 L14.5 9 L22 9.5 L16 14 L18 22 L12 17.5 L6 22 L8 14 L2 9.5 L9.5 9 Z"
-            fill="currentColor"
-            stroke="white"
-            strokeWidth="1"
-          />
-        </svg>
-      ))}
-
-      {/* phonics badges */}
-      <div className="absolute bottom-3 left-3 flex gap-1.5">
-        {['/æ/', '/t/', '/s/'].map((p) => (
-          <span
-            key={p}
-            className="rounded-md bg-white/85 backdrop-blur-sm px-2 py-0.5 text-[10px] font-mono text-fuchsia-700 border border-white/60 shadow-sm"
-          >
-            {p}
-          </span>
-        ))}
-      </div>
-      <div className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-white/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-mono text-rose-600 border border-white/70 shadow-sm">
-        ⭐ 5 / 5
-      </div>
-    </div>
-  );
-}
-
-/* ── Content QA · 青/绿渐变 + 波形 + 时间轴 + retake 标记 ── */
-function ArtPodcast() {
-  const bars = Array.from({ length: 60 }).map((_, i) =>
-    Math.abs(Math.sin(i * 0.35) * Math.cos(i * 0.7 + 2)) + 0.15,
-  );
-  return (
-    <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-teal-50 overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.45]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(16,185,129,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.08) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-      <div className="absolute -bottom-12 right-10 h-44 w-44 rounded-full bg-emerald-200/40 blur-3xl" />
-
-      <svg viewBox="0 0 320 100" className="absolute inset-x-4 top-1/2 -translate-y-1/2 w-[calc(100%-2rem)] h-24">
-        {bars.map((h, i) => {
-          const x = Number(((i / bars.length) * 320).toFixed(2));
-          const barH = Number((h * 80).toFixed(2));
-          const y = Number((50 - barH / 2).toFixed(2));
-          return (
-            <rect
-              key={i}
-              x={x}
-              y={y}
-              width="3.5"
-              height={barH}
-              rx="1.5"
-              fill="rgb(5,150,105)"
-              opacity={i >= 28 && i <= 36 ? 0.22 : 0.65}
-            />
-          );
-        })}
-        <rect x={146} y={10} width="44" height="80" rx="4" fill="rgba(5,150,105,0.08)" stroke="rgb(5,150,105)" strokeOpacity="0.55" strokeDasharray="3 3" />
-        <text x={168} y={8} textAnchor="middle" fontSize="9" fontFamily="ui-monospace, monospace" fill="rgb(6,95,70)">
-          retake
-        </text>
-      </svg>
-
-      <div className="absolute bottom-3 inset-x-3 flex justify-between text-[10px] font-mono text-emerald-800">
-        <span>00:00</span>
-        <span className="text-emerald-600/60">·</span>
-        <span className="bg-white/80 rounded px-1.5 py-0.5 border border-emerald-200">01:24 retake</span>
-        <span className="text-emerald-600/60">·</span>
-        <span>02:48</span>
-      </div>
-
-      <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm px-2 py-1 text-[10px] font-mono text-emerald-700 border border-emerald-200 shadow-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        AI QA · live
-      </div>
-    </div>
-  );
-}
-
-/* ── Voice Agents · 紫渐变 + IM 聊天线程 + 语音消息 ──────── */
-function ArtVoice() {
-  return (
-    <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-sky-50 overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.45]"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(139,92,246,0.10) 1px, transparent 1px)',
-          backgroundSize: '22px 22px',
-        }}
-      />
-      <div className="absolute -top-10 -left-10 h-48 w-48 rounded-full bg-violet-200/50 blur-3xl" />
-
-      <div className="absolute inset-0 p-5 flex flex-col gap-2 justify-center">
-        <div className="flex items-center gap-2 max-w-[82%]">
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-300 to-violet-400 shrink-0 shadow-sm" />
-          <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-2 flex items-center gap-2 shadow-sm border border-violet-100">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-violet-600" fill="currentColor">
-              <path d="M8 5v14l11-7L8 5z" />
-            </svg>
-            <div className="flex items-end gap-0.5 h-4">
-              {[4, 8, 12, 10, 14, 8, 6, 10, 5].map((h, i) => (
-                <span key={i} className="w-0.5 rounded-full bg-violet-500" style={{ height: `${h}px` }} />
-              ))}
-            </div>
-            <span className="text-[10px] font-mono text-violet-700">0:06</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 max-w-[90%] ml-auto">
-          <div className="rounded-2xl rounded-br-sm bg-violet-900/92 backdrop-blur-sm px-3 py-2 flex items-center gap-2 shadow-sm">
-            <span className="text-[11px] text-white/95">Scored</span>
-            <span className="rounded-md bg-emerald-400/25 text-emerald-100 px-1.5 py-0.5 text-[10px] font-mono">overall 84</span>
-            <span className="rounded-md bg-amber-400/25 text-amber-100 px-1.5 py-0.5 text-[10px] font-mono">fluency 78</span>
-          </div>
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 shrink-0 shadow-sm flex items-center justify-center text-[10px] font-bold text-white">
-            ai
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 max-w-[70%]">
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-300 to-violet-400 shrink-0 shadow-sm" />
-          <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 shadow-sm border border-violet-100 text-[11px] text-violet-800">
-            Try it again, focus on /θ/
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm px-2 py-1 text-[10px] font-mono text-violet-700 border border-violet-200 shadow-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        voice · live
-      </div>
-    </div>
-  );
-}
-
-/* ── Dev Ecosystem · 绿渐变 + 中心节点 + 客户端星环 ──────── */
-function ArtEcosystem() {
-  const NODES = [
-    { label: 'Cursor', angle: -90 },
-    { label: 'Claude', angle: -30 },
-    { label: 'Cline', angle: 30 },
-    { label: 'LangChain', angle: 90 },
-    { label: 'Zed', angle: 150 },
-    { label: 'Dify', angle: 210 },
-  ];
-  const rx = 110;
-  const ry = 58;
-  return (
-    <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-white to-emerald-50 overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.4]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(14,165,233,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(14,165,233,0.08) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-        }}
-      />
-      <div className="absolute -bottom-10 -right-10 h-48 w-48 rounded-full bg-sky-200/40 blur-3xl" />
-
-      <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full">
-        <ellipse cx="160" cy="90" rx={rx + 10} ry={ry + 10} stroke="rgb(14,165,233)" strokeOpacity="0.25" strokeDasharray="3 5" fill="none" />
-        <ellipse cx="160" cy="90" rx={rx - 20} ry={ry - 14} stroke="rgb(14,165,233)" strokeOpacity="0.18" strokeDasharray="2 4" fill="none" />
-
-        {NODES.map((n) => {
-          const rad = (n.angle * Math.PI) / 180;
-          const x = 160 + Math.cos(rad) * rx;
-          const y = 90 + Math.sin(rad) * ry;
-          return (
-            <line
-              key={n.label}
-              x1="160"
-              y1="90"
-              x2={x}
-              y2={y}
-              stroke="rgb(14,165,233)"
-              strokeOpacity="0.35"
-              strokeWidth="1"
-            />
-          );
-        })}
-
-        <circle cx="160" cy="90" r="24" fill="white" stroke="rgb(14,165,233)" strokeOpacity="0.35" />
-        <text
-          x="160"
-          y="94"
-          textAnchor="middle"
-          fontSize="11"
-          fontWeight="700"
-          fill="#0369a1"
-          fontFamily="ui-sans-serif, system-ui"
-        >
-          chivox
-        </text>
-
-        {NODES.map((n) => {
-          const rad = (n.angle * Math.PI) / 180;
-          const x = 160 + Math.cos(rad) * rx;
-          const y = 90 + Math.sin(rad) * ry;
-          return (
-            <g key={n.label}>
-              <circle cx={x} cy={y} r="4" fill="rgb(14,165,233)" />
-              <rect
-                x={x - 30}
-                y={y + 8}
-                width="60"
-                height="16"
-                rx="5"
-                fill="white"
-                stroke="rgb(14,165,233)"
-                strokeOpacity="0.25"
-              />
-              <text
-                x={x}
-                y={y + 19}
-                textAnchor="middle"
-                fontSize="9"
-                fontFamily="ui-sans-serif, system-ui"
-                fill="#0369a1"
-                fontWeight="600"
-              >
-                {n.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-
-      <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm px-2 py-1 text-[10px] font-mono text-sky-700 border border-sky-200 shadow-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        MCP · 1 config
-      </div>
-      <div className="absolute bottom-3 right-3 text-[10px] font-mono text-sky-700/80">
-        + LlamaIndex · OpenAI Agents SDK
-      </div>
-    </div>
+    <Image
+      src={art.src}
+      alt={art.alt}
+      fill
+      className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+    />
   );
 }
 

@@ -551,19 +551,19 @@
   transform: translateY(6px);
 }
 .hero-ear-art .en-chip-0 {
-  animation: hhChipIn 11s ease-in-out infinite both;
+  animation: hhChipIn 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
   animation-delay: 0s;
 }
 .hero-ear-art .en-chip-1 {
-  animation: hhChipIn 11s ease-in-out infinite both;
+  animation: hhChipIn 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
   animation-delay: 0.1s;
 }
 .hero-ear-art .en-chip-2 {
-  animation: hhChipIn 11s ease-in-out infinite both;
+  animation: hhChipIn 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
   animation-delay: 0.2s;
 }
 .hero-ear-art .en-chip-3 {
-  animation: hhChipIn 11s ease-in-out infinite both;
+  animation: hhChipIn 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
   animation-delay: 0.3s;
 }
 @keyframes hhChipIn {
@@ -628,10 +628,10 @@
   transform-box: fill-box;
 }
 .hero-ear-art .en-bar-theta-init {
-  animation: hhBarThetaInit 11s ease-in-out infinite both;
+  animation: hhBarThetaInit 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 .hero-ear-art .en-bar-theta-fix {
-  animation: hhBarThetaFix 11s ease-in-out infinite both;
+  animation: hhBarThetaFix 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 @keyframes hhBarThetaInit {
   0%,
@@ -681,7 +681,7 @@
   }
 }
 .hero-ear-art .en-bar-i {
-  animation: hhBarI 11s ease-in-out infinite both;
+  animation: hhBarI 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 @keyframes hhBarI {
   0%,
@@ -700,10 +700,10 @@
   }
 }
 .hero-ear-art .en-bar-ng-init {
-  animation: hhBarNgInit 11s ease-in-out infinite both;
+  animation: hhBarNgInit 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 .hero-ear-art .en-bar-ng-fix {
-  animation: hhBarNgFix 11s ease-in-out infinite both;
+  animation: hhBarNgFix 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 @keyframes hhBarNgInit {
   0%,
@@ -753,10 +753,10 @@
   }
 }
 .hero-ear-art .en-bar-k-ghost {
-  animation: hhBarKGhost 11s ease-in-out infinite both;
+  animation: hhBarKGhost 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 .hero-ear-art .en-bar-k-fix {
-  animation: hhBarKFix 11s ease-in-out infinite both;
+  animation: hhBarKFix 11s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 @keyframes hhBarKGhost {
   0%,

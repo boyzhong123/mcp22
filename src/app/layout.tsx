@@ -1,4 +1,5 @@
 import localFont from 'next/font/local';
+import { Newsreader } from 'next/font/google';
 import { RootThemeProvider } from '@/components/root-theme-provider';
 import './globals.css';
 
@@ -29,6 +30,15 @@ const fraunces = localFont({
   display: 'swap',
 });
 
+/** HeroEarArt “think” watermark — Newsreader reads cleaner at large italic sizes. */
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  style: ['normal', 'italic'],
+  weight: ['400', '500', '600'],
+  variable: '--font-think-serif',
+  display: 'swap',
+});
+
 export const metadata = {
   title: 'Chivox MCP | Speech Assessment',
   description: 'Multi-dimensional Analysis & LLM Integration',
@@ -39,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} font-noto-sc h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${newsreader.variable} font-noto-sc h-full`}
     >
       <body className="min-h-full flex flex-col relative">
         <RootThemeProvider>{children}</RootThemeProvider>
