@@ -72,13 +72,14 @@ type NavItem = {
 
 /** Primary nav items (anchors scroll on /, jump to /#… elsewhere).
  *  Order strictly mirrors what the visitor scrolls past on the homepage:
- *  Hero → Capabilities → Proof → Quickstart → Use cases → CTA.
+ *  Hero → Capabilities → Proof → Quickstart → Use cases → Pricing → CTA.
  *  Hero/CTA are unanchored on purpose; the rest map 1:1. */
 const NAV_ITEMS: readonly NavItem[] = [
   { href: '#capabilities', label: 'Capabilities' },
   { href: '#proof', label: 'Proof' },
   { href: '#quickstart', label: 'Quickstart' },
   { href: '#use-cases', label: 'Use cases' },
+  { href: '#pricing', label: 'Pricing' },
 ] as const;
 
 /** Deep-dive sub-pages, surfaced as a "Resources ▾" dropdown. */

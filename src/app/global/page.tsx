@@ -25,10 +25,20 @@ import {
   ShieldCheck,
   Lightbulb,
   Play,
+  CalendarDays,
+  Gift,
+  KeyRound,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FadeUp, StaggerContainer, StaggerItem, CountUp } from '@/components/animated-section';
+import {
+  EVALUATION_UNIT_PRICES,
+  FIXED_TOPUP_PLANS,
+  TRIAL_CALLS,
+  TRIAL_VALID_DAYS,
+  formatEvaluationUnitDollars,
+} from '@/app/dev-en/_lib/topup';
 import {
   TopNav,
   SiteFooter,
@@ -853,6 +863,8 @@ export default function GlobalLandingPage() {
         </div>
       </section>
 
+      <PricingUsageStory />
+
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        * CTA — visually merged into ContactSection below (no border, slim padding).
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -904,6 +916,241 @@ export default function GlobalLandingPage() {
 
       <SiteFooter />
     </main>
+  );
+}
+
+const PRICING_PACKAGE_COPY = {
+  standard: {
+    label: 'Standard',
+    bonus: 'No bonus',
+    tone: 'text-sky-800',
+    badge: 'border-sky-200 bg-sky-50 text-sky-800',
+  },
+  advanced: {
+    label: 'Advanced',
+    bonus: '+10% bonus',
+    tone: 'text-emerald-800',
+    badge: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  },
+  flagship: {
+    label: 'Flagship',
+    bonus: '+20% bonus',
+    tone: 'text-amber-700',
+    badge: 'border-amber-200 bg-amber-50 text-amber-800',
+  },
+} as const;
+
+function formatPackagePrice(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function PricingUsageStory() {
+  const pricingFacts = [
+    { icon: Check, label: 'Successful evaluations only' },
+    { icon: KeyRound, label: 'Shared across every API key' },
+    { icon: CalendarDays, label: `Points stay valid for ${TRIAL_VALID_DAYS} days` },
+  ];
+
+  return (
+    <section
+      id="pricing"
+      className="relative scroll-mt-24 border-b border-[#e9e2d2]/70 py-16 md:py-20"
+    >
+      <div className="container mx-auto max-w-6xl px-6 xl:max-w-7xl">
+        <div className="grid min-w-0 gap-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14 xl:gap-16">
+          <FadeUp className="min-w-0">
+            <div className="flex h-full flex-col">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
+                  Pricing
+                </span>
+                <span className="text-[12px] font-medium text-foreground/65">Usage story</span>
+              </div>
+
+              <h2
+                className="text-[36px] font-medium leading-[1.04] tracking-[-0.04em] sm:text-[50px] lg:text-[52px] xl:text-[56px]"
+                style={{ fontFamily: 'var(--font-hero-serif, "Fraunces", Georgia, serif)' }}
+              >
+                <span className="block">One point for a word.</span>
+                <span className="mt-1 block">Two for a paragraph.</span>
+                <span className="mt-1 block italic text-emerald-700">Zero for a failed call.</span>
+              </h2>
+
+              <p className="mt-7 max-w-xl text-[15px] leading-relaxed text-muted-foreground md:text-base">
+                Start with {TRIAL_CALLS} free points. Pay only for successful evaluations, then top up
+                when you need more.
+              </p>
+
+              <div className="mt-7 max-w-md divide-y divide-zinc-900/[0.07]">
+                {pricingFacts.map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex items-center gap-3 py-3 first:pt-0">
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-700">
+                      <Icon className="h-4 w-4" strokeWidth={2} />
+                    </span>
+                    <span className="text-[13.5px] font-medium text-foreground/85">{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-7 flex flex-wrap items-center gap-4">
+                <Link
+                  href="/login"
+                  className="group inline-flex h-11 items-center gap-2 rounded-full bg-zinc-900 pl-5 pr-3 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(0,0,0,0.4)] transition-all hover:-translate-y-px hover:bg-zinc-800"
+                >
+                  Start free
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 transition-colors group-hover:bg-white/25">
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+                <Link
+                  href="/dev-en/dashboard/billing"
+                  className="group inline-flex h-11 items-center gap-1.5 px-1 text-sm font-semibold text-emerald-800 transition-colors hover:text-emerald-950"
+                >
+                  View pricing details
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </div>
+            </div>
+          </FadeUp>
+
+          <FadeUp delay={0.08} className="min-w-0">
+            <ol className="relative space-y-7 before:absolute before:bottom-16 before:left-5 before:top-10 before:w-px before:bg-gradient-to-b before:from-emerald-500/25 before:via-zinc-900/12 before:to-emerald-500/20 sm:space-y-8">
+              <li className="relative grid grid-cols-[40px_1fr] gap-4 sm:grid-cols-[40px_1fr_250px] sm:items-center">
+                <PricingStepNumber value="1" />
+                <div>
+                  <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Start with {TRIAL_CALLS} points</h3>
+                  <p className="mt-1 text-[12.5px] text-muted-foreground">Free trial, no card required</p>
+                </div>
+                <div className="col-start-2 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] px-4 py-4 sm:col-start-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/[0.08] text-emerald-700 ring-1 ring-emerald-500/15">
+                    <Sparkles className="h-5 w-5" strokeWidth={1.8} />
+                  </span>
+                  <span className="heading-display text-3xl tracking-[-0.02em] text-emerald-800">{TRIAL_CALLS}</span>
+                  <span className="text-[12px] leading-tight text-foreground/70">points / {TRIAL_VALID_DAYS} days</span>
+                </div>
+              </li>
+
+              <li className="relative grid grid-cols-[40px_1fr] gap-4 sm:grid-cols-[40px_1fr]">
+                <PricingStepNumber value="2" />
+                <div>
+                  <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Evaluate with MCP</h3>
+                  <p className="mt-1 text-[12.5px] text-muted-foreground">
+                    Points are deducted only for successful evaluations.
+                  </p>
+
+                  <div className="mt-4 space-y-2">
+                    <PricingCodeRow
+                      code={'assess_speech({ reference_text: "An apple a day." })'}
+                      points="−1 pt"
+                    />
+                    <PricingCodeRow
+                      code={'assess_speech({ reference_text: paragraphText })'}
+                      points="−2 pts"
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Failed calls cost $0 and 0 points.</p>
+                </div>
+              </li>
+
+              <li className="relative grid grid-cols-[40px_1fr] gap-4 sm:grid-cols-[40px_1fr_250px] sm:items-center">
+                <PricingStepNumber value="3" />
+                <div>
+                  <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Top up when needed</h3>
+                  <p className="mt-1 text-[12.5px] text-muted-foreground">Add more points with package bonuses.</p>
+                </div>
+                <div className="col-start-2 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] px-4 py-4 sm:col-start-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/[0.08] text-emerald-700 ring-1 ring-emerald-500/15">
+                    <Gift className="h-5 w-5" strokeWidth={1.8} />
+                  </span>
+                  <span className="text-[12px] text-foreground/65">Up to</span>
+                  <span className="heading-display text-3xl tracking-[-0.02em] text-emerald-800">+20%</span>
+                  <span className="text-[12px] leading-tight text-foreground/70">bonus points</span>
+                </div>
+              </li>
+            </ol>
+          </FadeUp>
+        </div>
+
+        <FadeUp delay={0.12} className="mt-12 min-w-0 md:mt-14">
+          <div className="overflow-hidden rounded-2xl border border-zinc-900/[0.08] bg-white/65 backdrop-blur-sm">
+            <div className="grid md:grid-cols-3">
+              {FIXED_TOPUP_PLANS.map((plan, index) => {
+                const copy = PRICING_PACKAGE_COPY[plan.id];
+                const rates = EVALUATION_UNIT_PRICES[plan.id];
+                const recommended = plan.id === 'advanced';
+                return (
+                  <div
+                    key={plan.id}
+                    className={cn(
+                      'relative px-5 py-5 sm:px-6',
+                      index > 0 && 'border-t border-zinc-900/[0.07] md:border-l md:border-t-0',
+                      recommended && 'bg-emerald-500/[0.045]',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className={cn('text-[15px] font-semibold', copy.tone)}>{copy.label}</h3>
+                        {recommended && (
+                          <span className="rounded-full border border-emerald-500/20 bg-white/70 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-800">
+                            Most popular
+                          </span>
+                        )}
+                      </div>
+                      <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', copy.badge)}>
+                        {copy.bonus}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-baseline gap-2">
+                      <span className="text-[11px] text-muted-foreground">from</span>
+                      <span className={cn('heading-display text-[28px] tracking-[-0.02em]', copy.tone)}>
+                        {formatPackagePrice(plan.amountCents)}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-1 text-[11px] text-foreground/65">
+                      <div>
+                        {formatEvaluationUnitDollars(rates.wordSentenceDollars)} / word or sentence
+                      </div>
+                      <div>{formatEvaluationUnitDollars(rates.paragraphDollars)} / paragraph</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between gap-4 border-t border-zinc-900/[0.07] bg-zinc-900/[0.018] px-5 py-3 text-[11px] text-muted-foreground sm:px-6">
+              <span>Published per-evaluation reference prices.</span>
+              <Link
+                href="/dev-en/dashboard/billing"
+                className="group inline-flex shrink-0 items-center gap-1 font-semibold text-emerald-800 hover:text-emerald-950"
+              >
+                Full pricing details
+                <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+          </div>
+        </FadeUp>
+      </div>
+    </section>
+  );
+}
+
+function PricingStepNumber({ value }: { value: string }) {
+  return (
+    <span className="relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/20 bg-[#fbfaf6] text-lg font-semibold text-emerald-800 ring-4 ring-emerald-500/[0.055]">
+      {value}
+    </span>
+  );
+}
+
+function PricingCodeRow({ code, points }: { code: string; points: string }) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-zinc-900/[0.07] bg-white/70 px-3.5 py-3">
+      <code className="min-w-0 truncate font-mono text-[10.5px] text-foreground/70 sm:text-[11px]">{code}</code>
+      <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-semibold tabular-nums text-emerald-700">
+        <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+        {points}
+      </span>
+    </div>
   );
 }
 
