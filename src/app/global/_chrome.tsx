@@ -21,16 +21,12 @@ import {
   ArrowRight,
   ArrowUpRight,
   AudioWaveform,
-  BookOpen,
   Check,
   CheckCircle2,
   ChevronDown,
-  GaugeCircle,
   LayoutDashboard,
   Loader2,
   Mail,
-  MessagesSquare,
-  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -88,7 +84,7 @@ export const RESOURCE_ITEMS: readonly {
   label: string;
   summary: string;
   eyebrow: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  iconSrc: string;
   accent: string;
 }[] = [
   {
@@ -96,32 +92,32 @@ export const RESOURCE_ITEMS: readonly {
     label: 'Reasoning engine',
     summary: 'What the JSON payload actually looks like — and how an LLM reasons over it.',
     eyebrow: 'Day-1',
-    icon: Sparkles,
-    accent: 'from-emerald-500/15 to-emerald-500/0 text-emerald-700',
+    iconSrc: '/resource-icons/01-reasoning.png?v=2',
+    accent: 'from-emerald-500/15 to-emerald-500/0',
   },
   {
     href: '/runtime',
     label: 'Runtime',
     summary: 'Keys, budgets, alerts, observability, privacy, scale — the day-2 stuff.',
     eyebrow: 'Day-2',
-    icon: GaugeCircle,
-    accent: 'from-amber-500/15 to-amber-500/0 text-amber-700',
+    iconSrc: '/resource-icons/02-runtime.png?v=2',
+    accent: 'from-amber-500/15 to-amber-500/0',
   },
   {
     href: '/faq',
     label: 'FAQ',
     summary: 'Integration speed, languages, streaming, accuracy, pricing.',
     eyebrow: 'Quick answers',
-    icon: MessagesSquare,
-    accent: 'from-sky-500/15 to-sky-500/0 text-sky-700',
+    iconSrc: '/resource-icons/03-faq.png?v=2',
+    accent: 'from-sky-500/15 to-sky-500/0',
   },
   {
     href: '/docs',
     label: 'Developer docs',
     summary: 'Endpoints, payload schema, SDKs, and end-to-end integration recipes.',
     eyebrow: 'Reference',
-    icon: BookOpen,
-    accent: 'from-violet-500/15 to-violet-500/0 text-violet-700',
+    iconSrc: '/resource-icons/04-docs.png?v=2',
+    accent: 'from-violet-500/15 to-violet-500/0',
   },
 ] as const;
 
@@ -523,7 +519,6 @@ export function TopNav() {
                     <div className="px-2 pb-3">
                       {RESOURCE_ITEMS.map((r, i) => {
                         const isOn = pathname.startsWith(r.href);
-                        const Icon = r.icon;
                         return (
                           <Link
                             key={r.href}
@@ -549,7 +544,14 @@ export function TopNav() {
                                 r.accent,
                               )}
                             >
-                              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={r.iconSrc}
+                                alt=""
+                                width={22}
+                                height={22}
+                                className="h-[22px] w-[22px] object-contain"
+                              />
                             </span>
 
                             <div className="min-w-0 flex-1">

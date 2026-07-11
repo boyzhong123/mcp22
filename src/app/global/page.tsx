@@ -28,6 +28,7 @@ import {
   CalendarDays,
   Gift,
   KeyRound,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,9 +36,16 @@ import { FadeUp, StaggerContainer, StaggerItem, CountUp } from '@/components/ani
 import {
   EVALUATION_UNIT_PRICES,
   FIXED_TOPUP_PLANS,
+  TOPUP_BONUS_TIERS,
   TRIAL_CALLS,
   TRIAL_VALID_DAYS,
+  WORD_SENTENCE_POINTS_PER_USE,
+  PARAGRAPH_POINTS_PER_USE,
+  buildTopupPointDetails,
+  formatBonusPercent,
   formatEvaluationUnitDollars,
+  getEvaluationUnitPrices,
+  type ComparePackageId,
 } from '@/app/dev-en/_lib/topup';
 import {
   TopNav,
@@ -198,7 +206,7 @@ const CAPABILITY_ART: Record<CapabilityVisual, { src: string; alt: string }> = {
     alt: 'AI dialogue scoring UI with five-dimension score chips',
   },
   target: {
-    src: '/capabilities/target-v2.jpg',
+    src: '/capabilities/target-v4.jpg',
     alt: 'Personalized drill card with /θ/ minimal pairs and LLM chips',
   },
 };
@@ -960,7 +968,7 @@ function PricingUsageStory() {
       className="relative scroll-mt-24 border-b border-[#e9e2d2]/70 py-14 md:py-14"
     >
       <div className="container mx-auto max-w-6xl px-6 xl:max-w-7xl">
-        <div className="grid min-w-0 gap-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14 xl:gap-16">
+        <div className="grid min-w-0 gap-14 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-14 xl:gap-16">
           <FadeUp className="min-w-0">
             <div className="flex h-full flex-col">
               <div className="mb-5 flex items-center gap-3">
@@ -1141,21 +1149,460 @@ function PricingUsageStory() {
             </div>
           </div>
 
-          <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center">
-            <span className="h-px flex-1 bg-zinc-900/[0.08]" />
-            <span className="text-center text-[11px] text-muted-foreground">Lower published unit cost as you scale.</span>
-            <span className="h-px flex-1 bg-zinc-900/[0.08]" />
+          <PricingPackIncludes />
+        </FadeUp>
+      </div>
+    </section>
+  );
+}
+
+/** Shared product surface — same on every pack. Full matrix opens in the modal. */
+const PRICING_PACK_INCLUDES = [
+  'Exam-grade Mandarin & English scoring',
+  'Phoneme-level diagnosis',
+  'Pronunciation correction feedback',
+  'Word · sentence · paragraph granularity',
+  'Real-time streaming',
+  'LLM-ready MCP JSON',
+] as const;
+
+const PRICING_COMPARE_COLUMNS: {
+  id: ComparePackageId;
+  label: string;
+  price: string;
+  tone: string;
+  header: string;
+}[] = [
+  {
+    id: 'free',
+    label: 'Free',
+    price: '$0',
+    tone: 'text-sky-700',
+    header: 'bg-zinc-800 text-white',
+  },
+  {
+    id: 'standard',
+    label: 'Standard',
+    price: `from ${formatPackagePrice(FIXED_TOPUP_PLANS[0].amountCents)}`,
+    tone: 'text-blue-700',
+    header: 'bg-zinc-800 text-white',
+  },
+  {
+    id: 'advanced',
+    label: 'Advanced',
+    price: `from ${formatPackagePrice(FIXED_TOPUP_PLANS[1].amountCents)}`,
+    tone: 'text-emerald-700',
+    header: 'bg-emerald-700 text-white',
+  },
+  {
+    id: 'flagship',
+    label: 'Flagship',
+    price: `from ${formatPackagePrice(FIXED_TOPUP_PLANS[2].amountCents)}`,
+    tone: 'text-amber-700',
+    header: 'bg-zinc-800 text-white',
+  },
+];
+
+const COMPARABLE_SENTENCE_EVAL_DOLLARS = 0.0051;
+const MAX_SENTENCE_EVAL_SAVINGS_PCT = Math.round(
+  (1 - EVALUATION_UNIT_PRICES.flagship.wordSentenceDollars / COMPARABLE_SENTENCE_EVAL_DOLLARS) * 100,
+);
+
+function pricingColumnValue(
+  packageId: ComparePackageId,
+  kind: 'bonus' | 'pointsPerUsd' | 'word' | 'paragraph',
+): { text: string; badge?: string } {
+  if (packageId === 'free') {
+    if (kind === 'bonus') return { text: TRIAL_CALLS.toLocaleString('en-US') };
+    if (kind === 'pointsPerUsd') return { text: '—' };
+    if (kind === 'word') return { text: `${WORD_SENTENCE_POINTS_PER_USE} pt / use` };
+    return { text: `${PARAGRAPH_POINTS_PER_USE} pts / use` };
+  }
+
+  const plan = FIXED_TOPUP_PLANS.find((item) => item.id === packageId) ?? FIXED_TOPUP_PLANS[0];
+  const tier = TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+  const details = buildTopupPointDetails(plan.amountCents, tier);
+  const rates = getEvaluationUnitPrices(packageId);
+  const base = EVALUATION_UNIT_PRICES.standard;
+
+  if (kind === 'bonus') {
+    return {
+      text: plan.bonusPct > 0 ? formatBonusPercent(plan.bonusPct) : '0% · base',
+    };
+  }
+  if (kind === 'pointsPerUsd') return { text: details.pointsPerUsd };
+  if (kind === 'word') {
+    const save = Math.round((1 - rates.wordSentenceDollars / base.wordSentenceDollars) * 100);
+    return {
+      text: `${formatEvaluationUnitDollars(rates.wordSentenceDollars)} / use`,
+      badge: save > 0 ? `Save ${save}%` : undefined,
+    };
+  }
+  const save = Math.round((1 - rates.paragraphDollars / base.paragraphDollars) * 100);
+  return {
+    text: `${formatEvaluationUnitDollars(rates.paragraphDollars)} / use`,
+    badge: save > 0 ? `Save ${save}%` : undefined,
+  };
+}
+
+function PricingPackIncludes() {
+  const [open, setOpen] = useState(false);
+  const preview = PRICING_PACK_INCLUDES.slice(0, 2);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+
+    // Keep wheel/trackpad on the backdrop from scrolling the page underneath.
+    const onWheel = (e: WheelEvent) => {
+      const scroller = document.getElementById('pricing-compare-scroll');
+      if (scroller && scroller.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const scroller = document.getElementById('pricing-compare-scroll');
+      if (scroller && scroller.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchmove', onTouchMove);
+    };
+  }, [open]);
+
+  return (
+    <div className="mt-8 min-w-0 border-t border-zinc-900/[0.07] pt-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-800/80">
+            Included on every pack
+          </p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            Lower published unit cost as you scale — only price and bonus change.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="group inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-emerald-800 hover:text-emerald-950"
+        >
+          View more
+          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      </div>
+
+      <ul className="mt-4 grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+        {preview.map((label) => (
+          <li key={label} className="flex min-w-0 items-center gap-2.5">
+            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-700" strokeWidth={2.5} />
+            <span className="truncate text-[12.5px] font-medium text-foreground/80">{label}</span>
+          </li>
+        ))}
+      </ul>
+
+      {open ? <PricingCompareModal onClose={() => setOpen(false)} /> : null}
+    </div>
+  );
+}
+
+function PricingCompareModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] overscroll-none">
+      <button
+        type="button"
+        aria-label="Close comparison"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+      />
+
+      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pricing-compare-title"
+          className="relative flex max-h-[min(90vh,820px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-zinc-900/10 bg-[#fbfaf6] shadow-[0_28px_90px_-28px_rgba(0,0,0,0.5)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-900/[0.07] px-4 py-4 sm:px-6">
+            <div className="min-w-0">
+              <h3
+                id="pricing-compare-title"
+                className="text-[16px] font-semibold tracking-[-0.02em] text-foreground sm:text-[17px]"
+              >
+                Compare packages
+              </h3>
+              <p className="mt-1 text-[12.5px] text-muted-foreground">
+                Start free with {TRIAL_CALLS} points, or top up for more volume and lower published
+                unit prices.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-900/10 bg-white/80 text-foreground/70 transition-colors hover:bg-white hover:text-foreground"
+            >
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
+
+          <div
+            id="pricing-compare-scroll"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4"
+          >
+            <PricingCompareMatrix />
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-900/[0.07] px-4 py-3 sm:px-6">
+            <p className="max-w-xl text-[11px] leading-relaxed text-muted-foreground">
+              Only successful evaluations deduct points · valid {TRIAL_VALID_DAYS} days · shared
+              across API keys.
+            </p>
             <Link
               href="/dev-en/dashboard/billing"
-              className="group inline-flex shrink-0 items-center justify-center gap-1 text-[12px] font-semibold text-emerald-800 hover:text-emerald-950"
+              className="group inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-800 hover:text-emerald-950"
             >
               Full pricing details
               <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
-        </FadeUp>
+        </div>
       </div>
-    </section>
+    </div>
+  );
+}
+
+function PricingCompareMatrix() {
+  const valueRows: {
+    key: string;
+    label: string;
+    sub?: string;
+    kind: 'bonus' | 'pointsPerUsd' | 'word' | 'paragraph';
+  }[] = [
+    { key: 'bonus', label: 'Bonus evaluation points', kind: 'bonus' },
+    { key: 'ppu', label: 'Points per $1', kind: 'pointsPerUsd' },
+    {
+      key: 'word',
+      label: 'Word / phrase / sentence',
+      sub: 'Published reference price',
+      kind: 'word',
+    },
+    {
+      key: 'paragraph',
+      label: 'Paragraph evaluation',
+      sub: 'Published reference price',
+      kind: 'paragraph',
+    },
+  ];
+
+  const capabilityRows = [
+    {
+      label: 'Exam-grade scoring',
+      sub: 'Same engine used in high-stakes speaking exams',
+    },
+    {
+      label: 'Chinese scoring engine',
+      sub: 'Mandarin · pinyin · tone · character / sentence / paragraph',
+    },
+    {
+      label: 'English scoring engine',
+      sub: 'American / British accent · word / sentence / paragraph',
+    },
+    {
+      label: 'Evaluation granularity',
+      sub: 'Phoneme · word · sentence · paragraph / passage',
+    },
+    {
+      label: 'Scoring dimensions',
+      sub: 'Overall · accuracy · fluency · integrity · stress · intonation',
+    },
+    {
+      label: 'Phoneme-level diagnosis',
+      sub: 'Pinpoints pronunciation issues down to each phoneme',
+    },
+    {
+      label: 'Pronunciation correction',
+      sub: 'Actionable feedback for words and sentences',
+    },
+    {
+      label: 'Phonics evaluation',
+      sub: 'Letter-sound mapping for English learners',
+    },
+    {
+      label: 'Real-time streaming',
+      sub: 'WebSocket session for live reading assessment',
+    },
+    {
+      label: 'LLM-ready structured output',
+      sub: 'MCP payload ready for diagnosis-to-practice loops',
+    },
+  ];
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-zinc-900/[0.08] bg-white/70">
+      <table className="w-full min-w-[720px] border-collapse text-left">
+        <thead className="sticky top-0 z-20">
+          <tr>
+            <th className="sticky left-0 z-30 bg-zinc-900 px-3 py-3 text-[11px] font-semibold text-white sm:px-4">
+              <div>Feature</div>
+              <div className="mt-0.5 text-[10px] font-normal text-zinc-400">Min. top-up</div>
+            </th>
+            {PRICING_COMPARE_COLUMNS.map((col) => (
+              <th
+                key={col.id}
+                className={cn('px-2.5 py-3 text-center sm:px-3', col.header)}
+              >
+                <div className="text-[12px] font-semibold sm:text-[13px]">{col.label}</div>
+                <div className="mt-0.5 text-[10px] font-normal opacity-80">{col.price}</div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {valueRows.slice(0, 2).map((row) => (
+            <tr key={row.key} className="border-b border-zinc-900/[0.06]">
+              <td className="sticky left-0 z-10 bg-[#fbfaf6] px-3 py-2.5 sm:px-4">
+                <div className="text-[12px] font-medium text-foreground/85">{row.label}</div>
+              </td>
+              {PRICING_COMPARE_COLUMNS.map((col) => {
+                const value = pricingColumnValue(col.id, row.kind);
+                return (
+                  <td
+                    key={`${row.key}-${col.id}`}
+                    className={cn(
+                      'px-2.5 py-2.5 text-center sm:px-3',
+                      col.id === 'advanced' && 'bg-emerald-500/[0.04]',
+                    )}
+                  >
+                    <span className="text-[12px] font-semibold tabular-nums text-foreground/85">
+                      {value.text}
+                    </span>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+
+          <tr>
+            <td
+              colSpan={PRICING_COMPARE_COLUMNS.length + 1}
+              className="bg-emerald-500/[0.08] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-800 sm:px-4"
+            >
+              Published reference prices
+            </td>
+          </tr>
+
+          {valueRows.slice(2).map((row) => (
+            <tr key={row.key} className="border-b border-zinc-900/[0.06]">
+              <td className="sticky left-0 z-10 bg-[#fbfaf6] px-3 py-2.5 sm:px-4">
+                <div className="text-[12px] font-medium text-foreground/85">{row.label}</div>
+                {row.sub ? (
+                  <div className="mt-0.5 text-[10.5px] text-muted-foreground">{row.sub}</div>
+                ) : null}
+              </td>
+              {PRICING_COMPARE_COLUMNS.map((col) => {
+                const value = pricingColumnValue(col.id, row.kind);
+                return (
+                  <td
+                    key={`${row.key}-${col.id}`}
+                    className={cn(
+                      'px-2.5 py-2.5 text-center sm:px-3',
+                      col.id === 'advanced' && 'bg-emerald-500/[0.04]',
+                    )}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[12px] font-semibold tabular-nums text-emerald-800">
+                        {value.text}
+                      </span>
+                      {value.badge ? (
+                        <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
+                          {value.badge}
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+
+          <tr className="border-b border-zinc-900/[0.06]">
+            <td className="sticky left-0 z-10 bg-[#fbfaf6] px-3 py-2.5 sm:px-4">
+              <div className="text-[12px] font-medium text-foreground/85">Sentence price advantage</div>
+              <div className="mt-0.5 text-[10.5px] font-medium text-emerald-700">
+                Up to {MAX_SENTENCE_EVAL_SAVINGS_PCT}% lower than similar products
+              </div>
+            </td>
+            {PRICING_COMPARE_COLUMNS.map((col) => (
+              <td
+                key={`adv-${col.id}`}
+                className={cn(
+                  'px-2.5 py-2.5 text-center sm:px-3',
+                  col.id === 'advanced' && 'bg-emerald-500/[0.04]',
+                )}
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <Check className="h-4 w-4 text-sky-600" strokeWidth={2.5} />
+                  <span className="rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-sky-800">
+                    −{MAX_SENTENCE_EVAL_SAVINGS_PCT}%
+                  </span>
+                </div>
+              </td>
+            ))}
+          </tr>
+
+          <tr>
+            <td
+              colSpan={PRICING_COMPARE_COLUMNS.length + 1}
+              className="bg-zinc-500/[0.07] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-600 sm:px-4"
+            >
+              Shared evaluation capabilities
+            </td>
+          </tr>
+
+          {capabilityRows.map((row, index) => (
+            <tr
+              key={row.label}
+              className={cn(
+                index < capabilityRows.length - 1 && 'border-b border-zinc-900/[0.05]',
+              )}
+            >
+              <td className="sticky left-0 z-10 bg-[#fbfaf6] px-3 py-2.5 sm:px-4">
+                <div className="text-[12px] font-medium text-foreground/85">{row.label}</div>
+                <div className="mt-0.5 text-[10.5px] text-muted-foreground">{row.sub}</div>
+              </td>
+              {PRICING_COMPARE_COLUMNS.map((col) => (
+                <td
+                  key={`${row.label}-${col.id}`}
+                  className={cn(
+                    'px-2.5 py-2.5 text-center sm:px-3',
+                    col.id === 'advanced' && 'bg-emerald-500/[0.04]',
+                  )}
+                >
+                  <Check className="mx-auto h-4 w-4 text-sky-600" strokeWidth={2.5} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -1695,8 +2142,9 @@ function CapabilityVisual({ id }: { id: CapabilityVisual }) {
         src={art.src}
         alt={art.alt}
         fill
-        className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-        sizes="190px"
+        quality={92}
+        className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
+        sizes="(max-width: 640px) 40vw, 220px"
       />
     </div>
   );
@@ -2537,7 +2985,7 @@ function HeroSlideCard({
   return (
     <div className="overflow-hidden rounded-2xl aspect-[16/9] relative bg-transparent">
       <Image
-        src={`${slide.src}?v=12`}
+        src={`${slide.src}?v=14`}
         alt={slide.label}
         fill
         sizes="(max-width: 1024px) 100vw, 500px"
