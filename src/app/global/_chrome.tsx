@@ -20,15 +20,17 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
-  AudioWaveform,
   Check,
   CheckCircle2,
   ChevronDown,
   LayoutDashboard,
   Loader2,
   Mail,
+  Menu,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NavMegaIcon, type NavMegaIconId } from '@/components/nav-mega-icons';
 import {
   sendGlobalContactEmail,
   type GlobalContactFormData,
@@ -66,16 +68,123 @@ type NavItem = {
   external?: boolean;
 };
 
-/** Primary nav items (anchors scroll on /, jump to /#… elsewhere).
- *  Order strictly mirrors what the visitor scrolls past on the homepage:
- *  Hero → Capabilities → Proof → Quickstart → Use cases → Pricing → CTA.
- *  Hero/CTA are unanchored on purpose; the rest map 1:1. */
+export const NAV_GROUPS: readonly {
+  label: string;
+  items: readonly {
+    href: string;
+    label: string;
+    summary: string;
+    eyebrow: string;
+    icon: NavMegaIconId;
+    accent: string;
+  }[];
+}[] = [
+  {
+    label: 'Products',
+    items: [
+      {
+        href: '/products/english-speech-assessment',
+        label: 'English assessment',
+        summary: 'Pronunciation, fluency and phoneme-level feedback.',
+        eyebrow: 'Product',
+        icon: 'english',
+        accent: 'from-sky-500/15 to-sky-500/0',
+      },
+      {
+        href: '/products/mandarin-chinese-assessment',
+        label: 'Mandarin assessment',
+        summary: 'Tone, Pinyin and fluency evidence.',
+        eyebrow: 'Product',
+        icon: 'mandarin',
+        accent: 'from-rose-500/15 to-rose-500/0',
+      },
+      {
+        href: '/products/kids-speech-assessment',
+        label: 'Kids speech assessment',
+        summary: 'Structured feedback for young-learner products.',
+        eyebrow: 'Product',
+        icon: 'kids',
+        accent: 'from-amber-500/15 to-amber-500/0',
+      },
+      {
+        href: '/products/mcp-server',
+        label: 'MCP server',
+        summary: 'Speech tools for agent-native workflows.',
+        eyebrow: 'Product',
+        icon: 'mcp',
+        accent: 'from-emerald-500/15 to-emerald-500/0',
+      },
+    ],
+  },
+  {
+    label: 'AI Solutions',
+    items: [
+      {
+        href: '/solutions/function-calling',
+        label: 'Function calling',
+        summary: 'Typed speech-assessment tools for LLM agents.',
+        eyebrow: 'Solution',
+        icon: 'function',
+        accent: 'from-violet-500/15 to-violet-500/0',
+      },
+      {
+        href: '/solutions/ai-language-tutor',
+        label: 'AI language tutor',
+        summary: 'Grounded pronunciation coaching in conversation.',
+        eyebrow: 'Solution',
+        icon: 'tutor',
+        accent: 'from-teal-500/15 to-teal-500/0',
+      },
+    ],
+  },
+];
+
+/** Shared desktop mega-menu chrome — keep Products / Solutions / Resources identical. */
+const NAV_PANEL_SURFACE = {
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(252,248,240,0.98) 100%)',
+  backdropFilter: 'blur(28px) saturate(180%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+  boxShadow:
+    'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 0 0 1px rgba(255,255,255,0.55), 0 28px 60px -22px rgba(16,52,33,0.32), 0 8px 22px -12px rgba(16,185,129,0.22)',
+} as const;
+
+function navTriggerClass(scrolled: boolean, active: boolean) {
+  return cn(
+    'inline-flex items-center gap-1 rounded-full transition-all duration-300',
+    scrolled ? 'px-2.5 py-1' : 'px-3 py-1.5',
+    active
+      ? 'text-zinc-900 bg-gradient-to-b from-emerald-50 to-white shadow-[inset_0_0_0_1px_rgba(16,185,129,0.25)]'
+      : 'hover:text-zinc-900 hover:bg-zinc-900/[0.04]',
+  );
+}
+
+function navMenuItemClass(isOn: boolean) {
+  return cn(
+    'group/item relative flex items-start gap-3 rounded-xl px-2.5 py-2.5',
+    'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+    isOn
+      ? 'bg-emerald-500/[0.09] ring-1 ring-emerald-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'
+      : 'hover:bg-white/80 hover:ring-1 hover:ring-emerald-500/15 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_16px_-10px_rgba(16,185,129,0.30)] hover:-translate-y-[1px]',
+  );
+}
+
+function navIconTileClass(accent: string) {
+  return cn(
+    'mt-[2px] inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+    'bg-gradient-to-br ring-1 ring-inset ring-zinc-900/[0.06]',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]',
+    'transition-transform duration-300 group-hover/item:scale-[1.04]',
+    accent,
+  );
+}
+
+/** Primary direct links. Product and solution detail pages live in the
+ *  two dropdown groups above, while these high-intent destinations stay
+ *  one click away. */
 const NAV_ITEMS: readonly NavItem[] = [
-  { href: '#capabilities', label: 'Capabilities' },
-  { href: '#proof', label: 'Proof' },
-  { href: '#quickstart', label: 'Quickstart' },
-  { href: '#use-cases', label: 'Use cases' },
-  { href: '#pricing', label: 'Pricing' },
+  { href: '/about', label: 'Why Chivox', external: true },
+  { href: '/pricing', label: 'Pricing', external: true },
+  { href: '/docs', label: 'Docs', external: true },
 ] as const;
 
 /** Deep-dive sub-pages, surfaced as a "Resources ▾" dropdown. */
@@ -84,15 +193,23 @@ export const RESOURCE_ITEMS: readonly {
   label: string;
   summary: string;
   eyebrow: string;
-  iconSrc: string;
+  icon: NavMegaIconId;
   accent: string;
 }[] = [
+  {
+    href: '/demo',
+    label: 'Live demo',
+    summary: 'Record speech and inspect the assessment experience before integrating.',
+    eyebrow: 'Try it',
+    icon: 'demo',
+    accent: 'from-rose-500/15 to-rose-500/0',
+  },
   {
     href: '/reasoning',
     label: 'Reasoning engine',
     summary: 'What the JSON payload actually looks like — and how an LLM reasons over it.',
     eyebrow: 'Day-1',
-    iconSrc: '/resource-icons/01-reasoning.png?v=2',
+    icon: 'reasoning',
     accent: 'from-emerald-500/15 to-emerald-500/0',
   },
   {
@@ -100,7 +217,7 @@ export const RESOURCE_ITEMS: readonly {
     label: 'Runtime',
     summary: 'Keys, budgets, alerts, observability, privacy, scale — the day-2 stuff.',
     eyebrow: 'Day-2',
-    iconSrc: '/resource-icons/02-runtime.png?v=2',
+    icon: 'runtime',
     accent: 'from-amber-500/15 to-amber-500/0',
   },
   {
@@ -108,15 +225,15 @@ export const RESOURCE_ITEMS: readonly {
     label: 'FAQ',
     summary: 'Integration speed, languages, streaming, accuracy, pricing.',
     eyebrow: 'Quick answers',
-    iconSrc: '/resource-icons/03-faq.png?v=2',
+    icon: 'faq',
     accent: 'from-sky-500/15 to-sky-500/0',
   },
   {
-    href: '/docs',
-    label: 'Developer docs',
-    summary: 'Endpoints, payload schema, SDKs, and end-to-end integration recipes.',
-    eyebrow: 'Reference',
-    iconSrc: '/resource-icons/04-docs.png?v=2',
+    href: '/blog',
+    label: 'Guides & insights',
+    summary: 'Speech assessment, AI tutor and voice-agent product guidance.',
+    eyebrow: 'Learn',
+    icon: 'docs',
     accent: 'from-violet-500/15 to-violet-500/0',
   },
 ] as const;
@@ -276,10 +393,38 @@ export function TopNav() {
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [active, setActive] = useState<string>('');
-  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
-  const resourcesRef = useRef<HTMLDivElement | null>(null);
+  /** Only one desktop mega-menu open at a time — avoids Products/Solutions stacking. */
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const menuCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRaf = useRef<number | null>(null);
+
+  const openNavMenu = (id: string) => {
+    if (menuCloseTimer.current) {
+      clearTimeout(menuCloseTimer.current);
+      menuCloseTimer.current = null;
+    }
+    setOpenMenu(id);
+  };
+
+  const scheduleCloseNavMenu = () => {
+    if (menuCloseTimer.current) clearTimeout(menuCloseTimer.current);
+    menuCloseTimer.current = setTimeout(() => {
+      menuCloseTimer.current = null;
+      setOpenMenu(null);
+    }, 100);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (menuCloseTimer.current) clearTimeout(menuCloseTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    setOpenMenu(null);
+  }, [pathname]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -345,24 +490,6 @@ export function TopNav() {
     };
   }, [onLanding]);
 
-  // Close the Resources menu on outside click / escape
-  useEffect(() => {
-    if (!resourcesOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!resourcesRef.current) return;
-      if (!resourcesRef.current.contains(e.target as Node)) setResourcesOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setResourcesOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [resourcesOpen]);
-
   // Close contact modal on Escape.
   useEffect(() => {
     if (!contactOpen) return;
@@ -372,6 +499,19 @@ export function TopNav() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [contactOpen]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
 
   const anchorHref = (hash: string) => (onLanding ? hash : `/${hash}`);
   const resourceActive = RESOURCE_ITEMS.some((r) => pathname.startsWith(r.href));
@@ -424,6 +564,95 @@ export function TopNav() {
               )}
               aria-label="Page sections"
             >
+              {NAV_GROUPS.map((group) => {
+                const isGroupActive = group.items.some((item) => pathname.startsWith(item.href));
+                const isOpen = openMenu === group.label;
+                return (
+                  <div
+                    key={group.label}
+                    className="relative"
+                    onMouseEnter={() => openNavMenu(group.label)}
+                    onMouseLeave={scheduleCloseNavMenu}
+                    onFocusCapture={() => openNavMenu(group.label)}
+                    onBlurCapture={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                        scheduleCloseNavMenu();
+                      }
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className={navTriggerClass(scrolled, isGroupActive || isOpen)}
+                      aria-haspopup="menu"
+                      aria-expanded={isOpen}
+                    >
+                      {group.label}
+                      <ChevronDown
+                        className={cn(
+                          'h-3.5 w-3.5 opacity-60 transition-transform duration-200',
+                          isOpen && 'rotate-180',
+                        )}
+                      />
+                    </button>
+                    <div
+                      role="menu"
+                      className={cn(
+                        'absolute left-0 top-full z-50 w-[360px] origin-top-left overflow-hidden rounded-2xl border border-emerald-500/[0.16] pt-3 transition-[opacity,transform] duration-150',
+                        isOpen
+                          ? 'visible opacity-100 translate-y-0 pointer-events-auto'
+                          : 'invisible opacity-0 -translate-y-1 pointer-events-none',
+                      )}
+                      style={NAV_PANEL_SURFACE}
+                    >
+                      <span
+                        aria-hidden
+                        className="absolute top-[6px] left-7 h-3 w-3 rotate-45 border-l border-t border-emerald-500/[0.18]"
+                        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(252,248,240,0.98))' }}
+                      />
+                      <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+                        <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-emerald-700/85">/{group.label}</span>
+                        <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-zinc-400">{group.label === 'Products' ? 'assessment suite' : 'agent patterns'}</span>
+                      </div>
+                      <div className="px-2 pb-3">
+                      {group.items.map((item) => {
+                        const isOn = pathname.startsWith(item.href);
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            role="menuitem"
+                            className={navMenuItemClass(isOn)}
+                          >
+                            <span aria-hidden className={navIconTileClass(item.accent)}>
+                              <NavMegaIcon id={item.icon} />
+                            </span>
+                            <div className="min-w-0 flex-1 pr-4">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="text-[14px] font-semibold tracking-[-0.005em] text-zinc-900">{item.label}</span>
+                                {isOn ? (
+                                  <span className="text-[10px] font-mono text-emerald-700">● current</span>
+                                ) : (
+                                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 group-hover/item:text-emerald-700/80 transition-colors">{item.eyebrow}</span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{item.summary}</p>
+                            </div>
+                            <ArrowUpRight
+                              className={cn(
+                                'absolute right-2.5 bottom-2.5 h-3.5 w-3.5 text-zinc-400 transition-all duration-300',
+                                'group-hover/item:text-emerald-700 group-hover/item:translate-x-[2px] group-hover/item:-translate-y-[2px]',
+                                isOn && 'opacity-0',
+                              )}
+                            />
+                          </Link>
+                        );
+                      })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
               {NAV_ITEMS.map((item) => {
                 const isActive = !item.external && onLanding && active === item.href;
                 const commonClass = cn(
@@ -461,48 +690,48 @@ export function TopNav() {
               })}
 
               {/* Resources ▾ dropdown — collapsed deep-dive pages */}
-              <div className="relative" ref={resourcesRef}>
+              <div
+                className="relative"
+                onMouseEnter={() => openNavMenu('Resources')}
+                onMouseLeave={scheduleCloseNavMenu}
+                onFocusCapture={() => openNavMenu('Resources')}
+                onBlurCapture={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                    scheduleCloseNavMenu();
+                  }
+                }}
+              >
                 <button
                   type="button"
-                  onClick={() => setResourcesOpen((v) => !v)}
                   aria-haspopup="menu"
-                  aria-expanded={resourcesOpen}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full transition-all duration-300',
-                    scrolled ? 'px-2.5 py-1' : 'px-3 py-1.5',
-                    resourceActive
-                      ? 'text-zinc-900 bg-gradient-to-b from-emerald-50 to-white shadow-[inset_0_0_0_1px_rgba(16,185,129,0.25)]'
-                      : 'hover:text-zinc-900 hover:bg-zinc-900/[0.04]',
-                  )}
+                  aria-expanded={openMenu === 'Resources'}
+                  className={navTriggerClass(scrolled, resourceActive || openMenu === 'Resources')}
                 >
                   Resources
                   <ChevronDown
                     className={cn(
                       'h-3.5 w-3.5 opacity-60 transition-transform duration-200',
-                      resourcesOpen && 'rotate-180',
+                      openMenu === 'Resources' && 'rotate-180',
                     )}
                   />
                 </button>
-                {resourcesOpen && (
-                  <div
-                    role="menu"
-                    className="resources-pop absolute right-0 top-[calc(100%+12px)] w-[360px] origin-top-right overflow-hidden rounded-2xl border border-emerald-500/[0.16]"
-                    style={{
-                      background:
-                        'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(251,246,233,0.92) 100%)',
-                      backdropFilter: 'blur(28px) saturate(180%)',
-                      WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-                      boxShadow:
-                        'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 0 0 1px rgba(255,255,255,0.5), 0 28px 60px -22px rgba(16,52,33,0.32), 0 8px 22px -12px rgba(16,185,129,0.22)',
-                    }}
+                <div
+                  role="menu"
+                  className={cn(
+                    'resources-pop absolute right-0 top-full z-50 w-[360px] origin-top-right overflow-hidden rounded-2xl border border-emerald-500/[0.16] pt-3 transition-[opacity,transform] duration-150',
+                    openMenu === 'Resources'
+                      ? 'visible opacity-100 translate-y-0 pointer-events-auto'
+                      : 'invisible opacity-0 -translate-y-1 pointer-events-none',
+                  )}
+                    style={NAV_PANEL_SURFACE}
                   >
                     {/* notch pointing to the trigger */}
                     <span
                       aria-hidden
-                      className="absolute -top-[6px] right-7 h-3 w-3 rotate-45 border-l border-t border-emerald-500/[0.18]"
+                      className="absolute top-[6px] right-7 h-3 w-3 rotate-45 border-l border-t border-emerald-500/[0.18]"
                       style={{
                         background:
-                          'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(251,246,233,0.95))',
+                          'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(252,248,240,0.98))',
                       }}
                     />
 
@@ -524,37 +753,14 @@ export function TopNav() {
                             key={r.href}
                             href={r.href}
                             role="menuitem"
-                            onClick={() => setResourcesOpen(false)}
                             style={{ animationDelay: `${60 + i * 55}ms` }}
-                            className={cn(
-                              'resources-row group relative flex items-start gap-3 rounded-xl px-2.5 py-2.5',
-                              'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                              isOn
-                                ? 'bg-emerald-500/[0.09] ring-1 ring-emerald-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'
-                                : 'hover:bg-white/70 hover:ring-1 hover:ring-emerald-500/15 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_16px_-10px_rgba(16,185,129,0.30)] hover:-translate-y-[1px]',
-                            )}
+                            className={cn(navMenuItemClass(isOn), 'resources-row')}
                           >
-                            <span
-                              aria-hidden
-                              className={cn(
-                                'mt-[2px] inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
-                                'bg-gradient-to-br ring-1 ring-inset ring-zinc-900/[0.06]',
-                                'shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]',
-                                'transition-transform duration-300 group-hover:scale-[1.04]',
-                                r.accent,
-                              )}
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={r.iconSrc}
-                                alt=""
-                                width={22}
-                                height={22}
-                                className="h-[22px] w-[22px] object-contain"
-                              />
+                            <span aria-hidden className={navIconTileClass(r.accent)}>
+                              <NavMegaIcon id={r.icon} />
                             </span>
 
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 pr-4">
                               <div className="flex items-baseline justify-between gap-2">
                                 <span className="text-[14px] font-semibold text-zinc-900 tracking-[-0.005em]">
                                   {r.label}
@@ -562,7 +768,7 @@ export function TopNav() {
                                 {isOn ? (
                                   <span className="text-[10px] font-mono text-emerald-700">● current</span>
                                 ) : (
-                                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 group-hover:text-emerald-700/80 transition-colors">
+                                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 group-hover/item:text-emerald-700/80 transition-colors">
                                     {r.eyebrow}
                                   </span>
                                 )}
@@ -576,7 +782,7 @@ export function TopNav() {
                               className={cn(
                                 'absolute right-2.5 bottom-2.5 h-3.5 w-3.5 text-zinc-400',
                                 'transition-all duration-300',
-                                'group-hover:text-emerald-700 group-hover:translate-x-[2px] group-hover:-translate-y-[2px]',
+                                'group-hover/item:text-emerald-700 group-hover/item:translate-x-[2px] group-hover/item:-translate-y-[2px]',
                                 isOn && 'opacity-0',
                               )}
                             />
@@ -585,7 +791,6 @@ export function TopNav() {
                       })}
                     </div>
                   </div>
-                )}
               </div>
 
               <a
@@ -620,6 +825,15 @@ export function TopNav() {
               >
                 Contact
               </button>
+              <button
+                type="button"
+                onClick={() => setMobileOpen((open) => !open)}
+                aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-expanded={mobileOpen}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-900/[0.12] bg-white/65 text-zinc-800 shadow-sm md:hidden"
+              >
+                {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </button>
               <HeaderAuthCTA scrolled={scrolled} />
             </div>
 
@@ -649,6 +863,42 @@ export function TopNav() {
           </div>
         </div>
       </header>
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-[35] md:hidden">
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            onClick={() => setMobileOpen(false)}
+            className="absolute inset-0 bg-zinc-950/20 backdrop-blur-sm"
+          />
+          <nav
+            aria-label="Mobile navigation"
+            className="absolute inset-x-3 top-[84px] max-h-[calc(100vh-96px)] overflow-y-auto rounded-3xl border border-emerald-500/[0.18] bg-[#fffdf8]/95 p-4 shadow-[0_30px_70px_-28px_rgba(16,52,33,0.45)] backdrop-blur-2xl"
+          >
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="mb-5 last:mb-0">
+                <div className="px-2 text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-700">/{group.label}</div>
+                <div className="mt-2 grid gap-1">
+                  {group.items.map((item) => (
+                    <Link key={item.href} href={item.href} className="rounded-xl px-3 py-2.5 hover:bg-emerald-500/[0.07]">
+                      <div className="text-[14px] font-semibold text-zinc-900">{item.label}</div>
+                      <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">{item.summary}</div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="grid grid-cols-2 gap-2 border-t border-zinc-900/[0.08] pt-4">
+              {[...NAV_ITEMS, ...RESOURCE_ITEMS.map((item) => ({ href: item.href, label: item.label, external: true }))].map((item) => (
+                <Link key={`${item.href}-${item.label}`} href={item.href} className="rounded-xl border border-zinc-900/[0.08] bg-white/65 px-3 py-2.5 text-[13px] font-semibold text-zinc-800">
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </div>
+      )}
 
       {contactOpen && (
         <div className="fixed inset-0 z-[120]">
@@ -1400,13 +1650,47 @@ export function SiteFooter() {
             </div>
 
             <p className="text-[11.5px] text-zinc-600 leading-relaxed max-w-md">
-              Product-update sign-up: enter your work email and tap the arrow — your mail app opens
-              with a short note to <span className="font-medium text-zinc-700">ming.zhao@chivox.com</span>{' '}
-              so we can add you to the list. No spam. Unsubscribe anytime by replying.
+              Get product updates — a short note when something ships. No spam, unsubscribe anytime.
             </p>
           </div>
 
-          <div className="lg:col-span-5 lg:pl-6">
+          <div className="lg:col-span-5 lg:pl-6 grid grid-cols-2 gap-8">
+            <div>
+            <div className="text-[13.5px] font-medium text-zinc-800 mb-4">Explore</div>
+            <ul className="flex flex-col gap-3 text-[14px] text-zinc-700">
+              <li>
+                <Link href="/products/english-speech-assessment" className="hover:text-zinc-900 transition-colors">
+                  English assessment
+                </Link>
+              </li>
+              <li>
+                <Link href="/products/mandarin-chinese-assessment" className="hover:text-zinc-900 transition-colors">
+                  Mandarin assessment
+                </Link>
+              </li>
+              <li>
+                <Link href="/products/kids-speech-assessment" className="hover:text-zinc-900 transition-colors">
+                  Kids assessment
+                </Link>
+              </li>
+              <li>
+                <Link href="/products/mcp-server" className="hover:text-zinc-900 transition-colors">
+                  MCP server
+                </Link>
+              </li>
+              <li>
+                <Link href="/solutions/ai-language-tutor" className="hover:text-zinc-900 transition-colors">
+                  AI language tutor
+                </Link>
+              </li>
+              <li>
+                <Link href="/pricing" className="hover:text-zinc-900 transition-colors">
+                  Pricing
+                </Link>
+              </li>
+            </ul>
+            </div>
+            <div>
             <div className="text-[13.5px] font-medium text-zinc-800 mb-4">Developers</div>
             <ul className="flex flex-col gap-3 text-[14px] text-zinc-700">
               <li>
@@ -1445,6 +1729,16 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/about" className="hover:text-zinc-900 transition-colors">
+                  About &amp; customers
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="hover:text-zinc-900 transition-colors">
+                  Guides &amp; insights
+                </Link>
+              </li>
+              <li>
                 <a
                   href="mailto:ming.zhao@chivox.com?subject=Chivox%20MCP%20inquiry"
                   className="hover:text-zinc-900 transition-colors"
@@ -1464,6 +1758,7 @@ export function SiteFooter() {
                 </a>
               </li>
             </ul>
+            </div>
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import type {
   AccountBalance,
   AccountLimits,
   BillingSummary,
+  EvaluationPointBatchListResponse,
   PricingInfo,
   TopupOrder,
   Transaction,
@@ -24,6 +25,11 @@ export function summary(): Promise<BillingSummary> {
   return request<BillingSummary>('/billing/summary');
 }
 
+/** Expiring point batches, ordered by the next expiry first. */
+export function listEvaluationPointBatches(): Promise<EvaluationPointBatchListResponse> {
+  return request<EvaluationPointBatchListResponse>('/billing/evaluation-points/batches');
+}
+
 // doc §5.8 — account-level four-axis limits.
 export function getLimits(): Promise<AccountLimits> {
   return request<AccountLimits>('/billing/limits');
@@ -38,7 +44,10 @@ export async function setLimits(patch: Partial<AccountLimits>): Promise<AccountL
 
 // doc §5.3 — create a PayPal order; returns the PayPal order id + our
 // transaction id. The browser then drives buyer approval via the PayPal SDK.
-export function createTopupOrder(params: { amount_cents: number }): Promise<TopupOrder> {
+export function createTopupOrder(params: {
+  amount_cents: number;
+  package_id: 'standard' | 'advanced' | 'flagship';
+}): Promise<TopupOrder> {
   return request<TopupOrder>('/billing/topups/order', { method: 'POST', body: params });
 }
 

@@ -916,7 +916,10 @@ function PayPalTopupButtons({
         createOrder={async () => {
           onProcessing(true);
           try {
-            const order = await billing.createTopupOrder({ amount_cents: amountCents });
+            const order = await billing.createTopupOrder({
+              amount_cents: amountCents,
+              package_id: 'standard',
+            });
             txnIdRef.current = order.transaction_id;
             return order.paypal_order_id;
           } catch (err) {

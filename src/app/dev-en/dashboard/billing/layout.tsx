@@ -7,16 +7,16 @@ const TABS: SectionTab[] = [
     label: 'Overview',
     zhLabel: '概览',
     description:
-      'Money in, money out — points remaining, spend this month, and monthly limit.',
-    zhDescription: '资金流入流出——剩余评测积分、本月消费、月度上限。',
+      'Evaluation point balance, usage, and account limits.',
+    zhDescription: '评测积分余额、消耗与账户上限。',
   },
   {
     href: '/dashboard/billing/history',
     label: 'History',
     zhLabel: '充值记录',
     description:
-      'Every top-up in one searchable, CSV-exportable list.',
-    zhDescription: '所有充值记录，可搜索、可导出 CSV。',
+      'Searchable recharge records with payment and credited-point details.',
+    zhDescription: '可搜索的充值记录，含支付金额与到账积分明细。',
   },
   {
     href: '/dashboard/billing/rates',

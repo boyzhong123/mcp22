@@ -33,8 +33,10 @@ import { PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { cn } from '@/lib/utils';
 import {
   addTransaction,
+  addEvaluationPointBatch,
   formatCents,
   getAccountBalanceCents,
+  getAccountEvaluationPoints,
   topupAccount,
   type CardBrand,
   type PaymentMethod,
@@ -55,6 +57,7 @@ import {
   formatEvaluationUnitDollars,
   formatWalletPoints,
   getEvaluationUnitPrices,
+  getTopupPointMath,
   getTopupBonusTier,
   isPaidPackageId,
   quoteTopup,
@@ -73,7 +76,7 @@ interface StripeCheckoutModalPackagesProps {
   onSuccess?: (txn: Transaction) => void;
   /** Accepted for back-compat; wallet top-ups are account-wide. */
   keyId?: string;
-  /** Dev/compare: return to the checkout version picker. */
+  /** Compatibility-only: old unpublished checkout demos may pass this prop. */
   onSwitchVariant?: () => void;
 }
 
@@ -189,7 +192,6 @@ export function StripeCheckoutModalPackages({
   open,
   onClose,
   onSuccess,
-  onSwitchVariant,
 }: StripeCheckoutModalPackagesProps) {
   // Gate so the inner component fully unmounts between opens, guaranteeing
   // fresh `useState` lazy initializers every time the modal appears.
@@ -198,7 +200,6 @@ export function StripeCheckoutModalPackages({
     <OpenedCheckoutModal
       onClose={onClose}
       onSuccess={onSuccess}
-      onSwitchVariant={onSwitchVariant}
     />
   );
 }
@@ -206,7 +207,6 @@ export function StripeCheckoutModalPackages({
 function OpenedCheckoutModal({
   onClose,
   onSuccess,
-  onSwitchVariant,
 }: Omit<StripeCheckoutModalPackagesProps, 'open' | 'keyId'>) {
   const { tx, t } = useLang();
   const { user } = useMockAuth();
@@ -381,12 +381,18 @@ function OpenedCheckoutModal({
   ) {
     const pending = !!opts?.pending;
     const balanceBeforeCents = getAccountBalanceCents();
+    const balanceBeforePoints = getAccountEvaluationPoints();
+    const pointMath = getTopupPointMath(quote.baseCents, selectedBonusTier);
 
     // Pending methods (e.g. wire) don't credit until funds settle.
     if (!pending) {
-      topupAccount({ baseCents: quote.baseCents });
+      topupAccount({
+        baseCents: quote.baseCents,
+        creditedPoints: pointMath.totalPoints,
+      });
     }
     const balanceAfterCents = getAccountBalanceCents();
+    const balanceAfterPoints = getAccountEvaluationPoints();
 
     const baseLabel = formatCents(quote.baseCents);
     const pointsLabel = walletPointsLabel(quote.baseCents, t, selectedBonusTier);
@@ -406,8 +412,24 @@ function OpenedCheckoutModal({
       paypalOrderId,
       balanceBeforeCents,
       balanceAfterCents,
+      packageId: selectedBonusTier.id,
+      basePoints: pointMath.basePoints,
+      bonusPoints: pointMath.bonusPoints,
+      creditedPoints: pending ? 0 : pointMath.totalPoints,
+      balanceBeforePoints,
+      balanceAfterPoints,
+      pointsExpireAt: new Date(Date.now() + TRIAL_VALID_DAYS * 86400000).toISOString(),
       kind: 'credit-topup',
     });
+
+    if (!pending) {
+      addEvaluationPointBatch({
+        transactionId: txn.id,
+        packageId: selectedBonusTier.id,
+        creditedPoints: pointMath.totalPoints,
+        expiresAt: new Date(Date.now() + TRIAL_VALID_DAYS * 86400000).toISOString(),
+      });
+    }
 
     setProcessing(false);
     setDone(true);
@@ -498,16 +520,6 @@ function OpenedCheckoutModal({
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {onSwitchVariant && (
-              <button
-                type="button"
-                onClick={onSwitchVariant}
-                disabled={processing}
-                className="rounded-md border border-indigo-500/30 bg-indigo-500/[0.08] px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/[0.14] transition-colors disabled:opacity-40"
-              >
-                {t('Switch version', '切换版本')}
-              </button>
-            )}
             <button
               type="button"
               onClick={() => !processing && onClose()}
@@ -947,6 +959,7 @@ function OpenedCheckoutModal({
                   </div>
                   <PayPalTopupButtons
                     amountCents={effectiveCents}
+                    packageId={selectedBonusTier.id}
                     disabled={!formValid || processing}
                     onProcessing={setProcessing}
                     onError={(msg) => {
@@ -1034,12 +1047,14 @@ function OpenedCheckoutModal({
 
 function PayPalTopupButtons({
   amountCents,
+  packageId,
   disabled,
   onProcessing,
   onError,
   onPaid,
 }: {
   amountCents: number;
+  packageId: TopupBonusTier['id'];
   disabled: boolean;
   onProcessing: (v: boolean) => void;
   onError: (msg: string) => void;
@@ -1075,7 +1090,10 @@ function PayPalTopupButtons({
         createOrder={async () => {
           onProcessing(true);
           try {
-            const order = await billing.createTopupOrder({ amount_cents: amountCents });
+            const order = await billing.createTopupOrder({
+              amount_cents: amountCents,
+              package_id: packageId,
+            });
             txnIdRef.current = order.transaction_id;
             return order.paypal_order_id;
           } catch (err) {

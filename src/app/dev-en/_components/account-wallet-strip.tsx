@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   formatCalls,
   formatCents,
+  getAccountEvaluationPoints,
   getAccountBalanceCents,
   getAccountCallsThisMonth,
   getAccountCallsToday,
@@ -19,12 +20,13 @@ import {
   type SpendLimit,
   type TrialAllowance,
 } from '../_lib/mock-store';
-import { formatBaseWalletPoints } from '../_lib/topup';
 import { useMockStore } from '../_lib/use-mock-store';
 import { useLang } from '../_lib/use-lang';
 import { getTrialValidityRemainingProgress } from '../_lib/trial-validity-progress.mjs';
 
 const DEFAULT_WALLET: AccountWallet = {
+  paidEvaluationPoints: 0,
+  usedEvaluationPoints: 0,
   paidCreditsCents: 0,
   paidCreditsUsedCents: 0,
 };
@@ -69,6 +71,7 @@ export function AccountWalletStrip({
 }) {
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
   const balance = useMockStore(getAccountBalanceCents, 0);
+  const evaluationPoints = useMockStore(getAccountEvaluationPoints, 0);
   const trial = useMockStore(getAccountTrialRemaining, DEFAULT_TRIAL);
   const trialPackage = useMockStore(getTrial, DEFAULT_TRIAL_PACKAGE);
   const spendLimit = useMockStore(getSpendLimit, EMPTY_LIMIT);
@@ -123,7 +126,7 @@ export function AccountWalletStrip({
             {t('Points', '评测积分')}
           </span>
           <span className="text-sm font-semibold tabular-nums">
-            {formatBaseWalletPoints(balance)}
+            {evaluationPoints.toLocaleString('en-US')}
           </span>
           <span className="text-[11px] text-muted-foreground tabular-nums">
             {t(
@@ -217,14 +220,14 @@ export function AccountWalletStrip({
 
           <div className="mt-2 flex items-end gap-3 flex-wrap">
             <div className="text-[34px] font-bold tabular-nums tracking-[-0.025em] leading-none text-white">
-              {formatBaseWalletPoints(balance)}
+              {evaluationPoints.toLocaleString('en-US')}
             </div>
           </div>
 
           <div className="mt-2 text-[11.5px] text-slate-400 tabular-nums">
             {t(
-              `${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} used · ${formatBaseWalletPoints(wallet.paidCreditsCents)} topped up · worth ${formatCents(balance)}`,
-              `已用 ${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} · 累计获得 ${formatBaseWalletPoints(wallet.paidCreditsCents)} · 价值 ${formatCents(balance)}`,
+              `${wallet.usedEvaluationPoints.toLocaleString('en-US')} used · ${wallet.paidEvaluationPoints.toLocaleString('en-US')} credited · worth ${formatCents(balance)}`,
+              `已用 ${wallet.usedEvaluationPoints.toLocaleString('en-US')} · 累计到账 ${wallet.paidEvaluationPoints.toLocaleString('en-US')} · 价值 ${formatCents(balance)}`,
             )}
           </div>
 

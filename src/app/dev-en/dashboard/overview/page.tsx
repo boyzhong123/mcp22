@@ -57,6 +57,8 @@ import { formatMills } from '../../_lib/format';
 import { formatBaseWalletPoints } from '../../_lib/topup';
 
 const DEFAULT_WALLET: AccountWallet = {
+  paidEvaluationPoints: 0,
+  usedEvaluationPoints: 0,
   paidCreditsCents: 0,
   paidCreditsUsedCents: 0,
 };

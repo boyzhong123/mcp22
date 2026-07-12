@@ -1,6 +1,8 @@
 import localFont from 'next/font/local';
 import { Newsreader } from 'next/font/google';
+import type { Metadata } from 'next';
 import { RootThemeProvider } from '@/components/root-theme-provider';
+import { SITE_URL } from '@/lib/site';
 import './globals.css';
 
 const geistSans = localFont({
@@ -39,9 +41,14 @@ const newsreader = Newsreader({
   display: 'swap',
 });
 
-export const metadata = {
-  title: 'Chivox MCP | Speech Assessment',
-  description: 'Multi-dimensional Analysis & LLM Integration',
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'Chivox AI | Speech and Pronunciation Assessment',
+    template: '%s',
+  },
+  description:
+    'Speech assessment, pronunciation scoring and MCP tools for AI language tutors, voice agents and EdTech products.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

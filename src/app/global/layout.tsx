@@ -2,13 +2,13 @@ import type { ReactNode } from 'react';
 import { HtmlLangSync } from '@/components/html-lang-sync';
 
 export const metadata = {
-  title: 'Chivox MCP — Speech assessment for AI language agents',
+  title: 'Speech & Pronunciation Assessment MCP for EdTech and Voice AI | Chivox AI',
   description:
-    'Give your LLM phoneme-level pronunciation scoring for Mandarin Chinese and English through a single MCP call. Built for developers building AI tutors, conversation partners and reading coaches.',
+    'Chivox AI provides real-time speech assessment, pronunciation scoring and MCP tools for AI language tutors, voice agents and EdTech products.',
   openGraph: {
-    title: 'Chivox MCP — Speech assessment for AI language agents',
+    title: 'Speech & Pronunciation Assessment MCP for EdTech and Voice AI | Chivox AI',
     description:
-      'One MCP call gives your LLM phoneme-level scoring for Mandarin and English. Build AI tutors, conversation partners, and reading coaches with production-grade feedback.',
+      'Real-time speech assessment and pronunciation scoring for AI language tutors, voice agents and EdTech products.',
     type: 'website',
   },
   alternates: {

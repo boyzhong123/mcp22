@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowUpRight,
+  CalendarClock,
+  ChevronDown,
   CreditCard,
   HelpCircle,
   ReceiptText,
@@ -15,21 +17,24 @@ import {
   formatCents,
   getAccountBalanceCents,
   getAccountCallsThisMonth,
+  getAccountEvaluationPoints,
+  getAccountLifetimeEvaluationPoints,
   getAccountSpendThisMonthMills,
   getKeyMonthlyCalls,
   getTransactions,
+  getEvaluationPointBatches,
   getUsage,
   getWallet,
   listKeys,
   type AccountWallet,
   type ApiKey,
+  type EvaluationPointBatch,
   type Transaction,
   type UsagePoint,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { formatMills } from '../../_lib/format';
 import {
-  formatBaseWalletPoints,
   millsToWalletPoints,
 } from '../../_lib/topup';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
@@ -38,19 +43,24 @@ import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { useLang } from '../../_lib/use-lang';
 
 const DEFAULT_WALLET: AccountWallet = {
+  paidEvaluationPoints: 0,
+  usedEvaluationPoints: 0,
   paidCreditsCents: 0,
   paidCreditsUsedCents: 0,
 };
 
 export default function BillingPage() {
-  const { t, tx } = useLang();
+  const { t, tx, lang } = useLang();
   const usage = useMockStore(getUsage, [] as UsagePoint[]);
   const keys = useMockStore(listKeys, [] as ApiKey[]);
   const transactions = useMockStore(getTransactions, [] as Transaction[]);
+  const pointBatches = useMockStore(getEvaluationPointBatches, [] as EvaluationPointBatch[]);
   const spendThisMonth = useMockStore(getAccountSpendThisMonthMills, 0);
   const callsThisMonth = useMockStore(getAccountCallsThisMonth, 0);
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
   const balanceCents = useMockStore(getAccountBalanceCents, 0);
+  const evaluationPoints = useMockStore(getAccountEvaluationPoints, 0);
+  const lifetimeEvaluationPoints = useMockStore(getAccountLifetimeEvaluationPoints, 0);
 
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
 
@@ -149,7 +159,7 @@ export default function BillingPage() {
         <StatCard
           icon={Sparkles}
           label={t('Points remaining', '剩余评测积分')}
-          value={formatBaseWalletPoints(balanceCents)}
+          value={evaluationPoints.toLocaleString('en-US')}
           sub={t(
             `Worth ${formatCents(balanceCents)} · shared by every key`,
             `价值 ${formatCents(balanceCents)} · 所有 Key 共享`,
@@ -166,14 +176,16 @@ export default function BillingPage() {
         />
         <StatCard
           icon={CreditCard}
-          label={t('Lifetime topped up', '累计获得')}
-          value={formatBaseWalletPoints(wallet.paidCreditsCents)}
+          label={t('Lifetime points credited', '累计到账积分')}
+          value={lifetimeEvaluationPoints.toLocaleString('en-US')}
           sub={t(
-            `Worth ${formatCents(wallet.paidCreditsCents)} loaded in total`,
-            `累计充值价值 ${formatCents(wallet.paidCreditsCents)}`,
+            `${wallet.usedEvaluationPoints.toLocaleString('en-US')} points used · worth ${formatCents(wallet.paidCreditsCents)} paid`,
+            `已使用 ${wallet.usedEvaluationPoints.toLocaleString('en-US')} 积分 · 累计支付价值 ${formatCents(wallet.paidCreditsCents)}`,
           )}
         />
       </div>
+
+      <PointExpiryBreakdown batches={pointBatches} lang={lang} t={t} />
 
 
       {/* Per-key spend breakdown — pure money view. Cap-related chrome
@@ -275,30 +287,30 @@ export default function BillingPage() {
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {recentTopUps.map((t) => {
-              const k = t.keyId ? keys.find((kk) => kk.id === t.keyId) : undefined;
+            {recentTopUps.map((transaction) => {
+              const k = transaction.keyId ? keys.find((kk) => kk.id === transaction.keyId) : undefined;
               return (
-                <li key={t.id} className="py-2.5 flex items-center gap-3">
+                <li key={transaction.id} className="py-2.5 flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                     <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
-                      {t.description}
+                      {transaction.description}
                     </div>
                     <div className="text-[11px] text-muted-foreground truncate">
-                      {new Date(t.createdAt).toLocaleString('en-US', {
+                      {new Date(transaction.createdAt).toLocaleString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         hour: 'numeric',
                         minute: '2-digit',
                       })}
                       {k && ` · ${k.name}`}
-                      {t.last4 && ` · •••• ${t.last4}`}
+                      {transaction.last4 && ` · •••• ${transaction.last4}`}
                     </div>
                   </div>
                   <div className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                    +{formatCents(t.amountCents)}
+                    +{(transaction.creditedPoints ?? 0).toLocaleString('en-US')} {t('pts', '积分')}
                   </div>
                 </li>
               );
@@ -319,4 +331,154 @@ export default function BillingPage() {
       />
     </div>
   );
+}
+
+function PointExpiryBreakdown({
+  batches,
+  lang,
+  t,
+}: {
+  batches: EvaluationPointBatch[];
+  lang: string;
+  t: (en: string, zh: string) => string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const now = Date.now();
+  const activeBatches = useMemo(
+    () =>
+      batches.filter(
+        (batch) =>
+          batch.status === 'active' &&
+          batch.remainingPoints > 0 &&
+          Date.parse(batch.expiresAt) > now,
+      ),
+    [batches, now],
+  );
+  const availablePoints = activeBatches.reduce(
+    (total, batch) => total + batch.remainingPoints,
+    0,
+  );
+  const nextExpiry = activeBatches[0];
+  const locale = lang === 'zh' ? 'zh-CN' : 'en-US';
+  const daysUntilNextExpiry = nextExpiry
+    ? Math.max(0, Math.ceil((Date.parse(nextExpiry.expiresAt) - now) / 86400000))
+    : 0;
+  const colors = ['bg-sky-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500'];
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-background">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300">
+            <CalendarClock className="h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold">
+              {t('Point balance by expiry', '按有效期查看积分余额')}
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {nextExpiry
+                ? t(
+                    `${nextExpiry.remainingPoints.toLocaleString('en-US')} points expire in ${daysUntilNextExpiry} days. Points are used from the earliest-expiring batch first.`,
+                    `${nextExpiry.remainingPoints.toLocaleString('en-US')} 积分将在 ${daysUntilNextExpiry} 天后到期；调用时优先扣除最早到期批次。`,
+                  )
+                : t(
+                    'No active paid point batches.',
+                    '当前没有可用的付费积分批次。',
+                  )}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          aria-expanded={expanded}
+        >
+          {expanded ? t('Hide details', '收起明细') : t('View details', '查看明细')}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      <div className="border-y border-border bg-muted/[0.16] px-5 py-4">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <span className="text-xs text-muted-foreground">
+            {t('Available point distribution', '可用积分分布')}
+          </span>
+          <span className="text-sm font-semibold tabular-nums">
+            {availablePoints.toLocaleString('en-US')} {t('pts', '积分')}
+          </span>
+        </div>
+        <div
+          className="flex h-3 overflow-hidden rounded-full bg-muted"
+          role="img"
+          aria-label={t('Available points grouped by expiry', '按到期日划分的可用积分')}
+        >
+          {activeBatches.map((batch, index) => {
+            const width = availablePoints > 0 ? (batch.remainingPoints / availablePoints) * 100 : 0;
+            return (
+              <div
+                key={batch.id}
+                className={`${colors[index % colors.length]} min-w-[3px] border-r border-background/70 last:border-r-0`}
+                style={{ width: `${width}%` }}
+                title={`${batch.remainingPoints.toLocaleString('en-US')} ${t('pts', '积分')} · ${new Date(batch.expiresAt).toLocaleDateString(locale)}`}
+              />
+            );
+          })}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
+          {activeBatches.map((batch, index) => (
+            <span key={batch.id} className="inline-flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-sm ${colors[index % colors.length]}`} />
+              {new Date(batch.expiresAt).toLocaleDateString(locale, { month: 'short', day: 'numeric' })}
+              {' · '}
+              {batch.remainingPoints.toLocaleString('en-US')}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="divide-y divide-border">
+          {activeBatches.map((batch, index) => {
+            const daysLeft = Math.max(0, Math.ceil((Date.parse(batch.expiresAt) - now) / 86400000));
+            return (
+              <div key={batch.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-3.5">
+                <span className={`h-2.5 w-2.5 rounded-full ${colors[index % colors.length]}`} />
+                <div className="min-w-[150px] flex-1">
+                  <p className="text-sm font-medium">
+                    {packageLabel(batch.packageId, t)} · {t('recharge batch', '充值批次')}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {t('Credited', '到账')} {batch.creditedPoints.toLocaleString('en-US')} {t('pts', '积分')}
+                    {' · '}
+                    {t('Used', '已用')} {batch.usedPoints.toLocaleString('en-US')} {t('pts', '积分')}
+                  </p>
+                </div>
+                <div className="min-w-[130px] text-right">
+                  <p className="text-sm font-semibold tabular-nums">
+                    {batch.remainingPoints.toLocaleString('en-US')} {t('pts', '积分')}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {t('Valid through', '有效期至')} {new Date(batch.expiresAt).toLocaleDateString(locale)}
+                    {' · '}
+                    {t(`${daysLeft}d left`, `剩余 ${daysLeft} 天`)}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function packageLabel(
+  packageId: EvaluationPointBatch['packageId'],
+  t: (en: string, zh: string) => string,
+) {
+  if (packageId === 'advanced') return t('Advanced', '高级');
+  if (packageId === 'flagship') return t('Flagship', '旗舰');
+  return t('Standard', '标准');
 }

@@ -13,6 +13,7 @@ import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
 import { billing } from '../../../_lib/api';
 import { RechargeTrends } from '../../../_components/recharge-trends';
+import { centsToWalletPoints } from '../../../_lib/topup';
 
 type StatusFilter = 'all' | Transaction['status'];
 
@@ -66,7 +67,10 @@ export default function RechargeHistoryPage() {
         if (!query.trim()) return true;
         const q = query.toLowerCase();
         return (
-          t.last4.includes(q) || t.description.toLowerCase().includes(q)
+          t.id.toLowerCase().includes(q) ||
+          t.last4.includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          (t.packageId ?? '').includes(q)
         );
       });
   }, [all, query, status]);
@@ -81,22 +85,27 @@ export default function RechargeHistoryPage() {
     [succeeded],
   );
 
+  const totalCreditedPoints = useMemo(
+    () => succeeded.reduce((acc, transaction) => acc + creditedPoints(transaction), 0),
+    [succeeded],
+  );
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <SummaryCard
-          label={tx('Total transactions')}
+          label={t('Successful top-ups', '成功充值笔数')}
           value={succeeded.length.toString()}
           hint={tx('Succeeded only')}
         />
         <SummaryCard
-          label={tx('Total paid')}
-          value={formatCents(totalSucceeded)}
-          hint={tx('Succeeded only')}
+          label={t('Points credited', '累计到账积分')}
+          value={formatPoints(totalCreditedPoints)}
+          hint={t(`Paid ${formatCents(totalSucceeded)} in total`, `累计支付 ${formatCents(totalSucceeded)}`)}
         />
         <SummaryCard
-          label={tx('Latest top-up')}
-          value={all[0] ? formatCents(all[0].amountCents) : '—'}
+          label={t('Latest credit', '最近到账积分')}
+          value={all[0] ? formatPoints(creditedPoints(all[0])) : '—'}
           hint={all[0] ? formatDate(all[0].createdAt) : tx('No payments yet')}
           badge={all[0] ? <StatusPill status={all[0].status} /> : undefined}
         />
@@ -112,7 +121,7 @@ export default function RechargeHistoryPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={tx('Search last 4 or description…')}
+              placeholder={t('Search transaction ID or package…', '搜索交易 ID 或套餐…')}
               className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground/30"
             />
           </div>
@@ -135,10 +144,11 @@ export default function RechargeHistoryPage() {
           </div>
         </div>
 
-        <div className="hidden md:grid grid-cols-[1.6fr_1fr_0.8fr_0.8fr_0.8fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/20 border-b border-border">
+        <div className="hidden md:grid grid-cols-[1.45fr_0.9fr_0.7fr_0.85fr_0.75fr_0.7fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/20 border-b border-border">
           <div>{tx('Description')}</div>
           <div>{tx('Date')}</div>
-          <div>{tx('Amount')}</div>
+          <div>{t('Paid', '支付金额')}</div>
+          <div>{t('Points credited', '到账积分')}</div>
           <div>{tx('Method')}</div>
           <div>{tx('Status')}</div>
           <div />
@@ -161,7 +171,7 @@ export default function RechargeHistoryPage() {
                 <button
                   type="button"
                   onClick={() => openTransaction(t)}
-                  className="w-full px-5 py-3.5 md:grid md:grid-cols-[1.6fr_1fr_0.8fr_0.8fr_0.8fr_auto] md:gap-4 md:items-center flex flex-col gap-1.5 text-left hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 transition-colors"
+                  className="w-full px-5 py-3.5 md:grid md:grid-cols-[1.45fr_0.9fr_0.7fr_0.85fr_0.75fr_0.7fr_auto] md:gap-4 md:items-center flex flex-col gap-1.5 text-left hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 transition-colors"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{t.description}</p>
@@ -169,6 +179,9 @@ export default function RechargeHistoryPage() {
                   <div className="text-xs text-muted-foreground">{formatDate(t.createdAt)}</div>
                   <div className="text-sm font-semibold tabular-nums">
                     {formatCents(t.amountCents)}
+                  </div>
+                  <div className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                    +{formatPoints(creditedPoints(t))}
                   </div>
                   <div className="text-xs text-muted-foreground capitalize">
                     {(() => {
@@ -270,8 +283,8 @@ function TransactionDetailDrawer({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs text-muted-foreground">{t('Top-up amount', '充值金额')}</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {formatCents(transaction.amountCents)}
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  +{formatPoints(creditedPoints(transaction))}
                 </p>
               </div>
               <StatusPill status={transaction.status} />
@@ -280,6 +293,7 @@ function TransactionDetailDrawer({
           </div>
 
           <div className="rounded-xl border border-border divide-y divide-border">
+            <DetailRow label={t('Paid amount', '支付金额')} value={formatCents(transaction.amountCents)} />
             <DetailRow label={t('Payment method', '支付方式')} value={methodLabel(transaction.method, transaction.last4)} />
             <DetailRow label={t('Transaction time', '交易时间')} value={formatDate(transaction.createdAt)} />
             <DetailRow label={t('PayPal order ID', 'PayPal 订单号')} value={transaction.paypalOrderId ?? '—'} mono />
@@ -288,16 +302,44 @@ function TransactionDetailDrawer({
 
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('Wallet balance change', '钱包余额变化')}
+              {t('Evaluation point breakdown', '评测积分到账明细')}
+            </h3>
+            <div className="rounded-xl border border-border divide-y divide-border">
+              <DetailRow
+                label={t('Package', '充值套餐')}
+                value={packageLabel(transaction.packageId, t)}
+              />
+              <DetailRow
+                label={t('Base points', '基础积分')}
+                value={formatPoints(transaction.basePoints ?? creditedPoints(transaction))}
+              />
+              <DetailRow
+                label={t('Bonus points', '赠送积分')}
+                value={formatPoints(transaction.bonusPoints ?? 0)}
+              />
+              <DetailRow
+                label={t('Points credited', '实际到账')}
+                value={`+${formatPoints(creditedPoints(transaction))}`}
+              />
+              <DetailRow
+                label={t('Valid through', '有效期至')}
+                value={transaction.pointsExpireAt ? formatDate(transaction.pointsExpireAt) : '—'}
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('Evaluation point balance change', '评测积分余额变化')}
             </h3>
             <div className="rounded-xl border border-border divide-y divide-border">
               <DetailRow
                 label={t('Balance before', '充值前余额')}
-                value={formatOptionalCents(transaction.balanceBeforeCents)}
+                value={formatOptionalPoints(transaction.balanceBeforePoints)}
               />
               <DetailRow
                 label={t('Balance after', '充值后余额')}
-                value={formatOptionalCents(transaction.balanceAfterCents)}
+                value={formatOptionalPoints(transaction.balanceAfterPoints)}
               />
             </div>
           </div>
@@ -332,8 +374,26 @@ function DetailRow({
   );
 }
 
-function formatOptionalCents(cents?: number): string {
-  return typeof cents === 'number' ? formatCents(cents) : '—';
+function creditedPoints(transaction: Transaction): number {
+  return Math.max(0, transaction.creditedPoints ?? centsToWalletPoints(transaction.amountCents));
+}
+
+function formatPoints(points: number): string {
+  return `${Math.max(0, Math.round(points)).toLocaleString('en-US')} pts`;
+}
+
+function formatOptionalPoints(points?: number): string {
+  return typeof points === 'number' ? formatPoints(points) : '—';
+}
+
+function packageLabel(
+  packageId: Transaction['packageId'],
+  t: (en: string, zh: string) => string,
+): string {
+  if (packageId === 'advanced') return t('Advanced', '高级');
+  if (packageId === 'flagship') return t('Flagship', '旗舰');
+  if (packageId === 'standard') return t('Standard', '标准');
+  return '—';
 }
 
 function methodLabel(method: Transaction['method'], last4: string) {

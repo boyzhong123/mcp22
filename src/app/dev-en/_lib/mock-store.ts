@@ -5,11 +5,12 @@
  * developer preview. No network calls, no API keys are real — everything
  * resets when the user clears site data.
  *
- * Billing model (account wallet, calls + dollars):
+ * Billing model (account wallet, evaluation points):
  *
  *   ACCOUNT WALLET — single source of truth for paid credit. Top-ups grow
- *   `paidCreditsCents`; consumption grows `paidCreditsUsedCents`. All keys
- *   on the account share this pool. Top-ups load the paid amount directly.
+ *   `paidEvaluationPoints`; consumption grows `usedEvaluationPoints`. All
+ *   keys on the account share this pool. The payment amount is retained only
+ *   for receipts and reconciliation; the product balance is evaluation points.
  *
  *   TRIAL ALLOWANCE — every new account is granted a fixed call package,
  *   free of charge, valid for a limited time window after signup. Trial is
@@ -139,6 +140,13 @@ export interface ApiKey {
  * Remaining balance is the simple difference.
  */
 export interface AccountWallet {
+  /** Canonical user-facing balance model. These fields come from the billing API. */
+  paidEvaluationPoints: number;
+  usedEvaluationPoints: number;
+  /**
+   * Compatibility mirrors for legacy spend/runway code. Do not use these for
+   * new UI or API contracts — points above are the source of truth.
+   */
   paidCreditsCents: number;
   paidCreditsUsedCents: number;
 }
@@ -241,8 +249,32 @@ export interface Transaction {
   paypalOrderId?: string;
   balanceBeforeCents?: number;
   balanceAfterCents?: number;
+  /** Point-led receipt data returned by the new billing transaction API. */
+  packageId?: 'standard' | 'advanced' | 'flagship';
+  basePoints?: number;
+  bonusPoints?: number;
+  creditedPoints?: number;
+  balanceBeforePoints?: number;
+  balanceAfterPoints?: number;
+  pointsExpireAt?: string;
   kind: TransactionKind;
   keyId?: string;
+}
+
+/**
+ * An individual, expiring lot of paid evaluation points. The server creates
+ * one after each successful capture and debits the earliest expiry first.
+ */
+export interface EvaluationPointBatch {
+  id: string;
+  transactionId: string;
+  packageId: 'standard' | 'advanced' | 'flagship';
+  creditedPoints: number;
+  usedPoints: number;
+  remainingPoints: number;
+  createdAt: string;
+  expiresAt: string;
+  status: 'active' | 'exhausted' | 'expired';
 }
 
 /**
@@ -313,13 +345,16 @@ export const VOLUME_TIERS: VolumeTier[] = [
 // v17: signup trial corrected to 600 calls valid for 30 days.
 // v18: purge stale masked keys cached from a previous backend hydration so
 // demo reseeds with full-plaintext mock keys (copy must yield plaintext).
-const SCHEMA_VERSION = 18;
+// v19: wallet and recharge records are evaluation-point based.
+// v20: paid points are tracked as expiring recharge batches.
+const SCHEMA_VERSION = 20;
 const SCHEMA_KEY = 'dev-en:schema-version';
 
 const STORAGE = {
   keys: 'dev-en:keys',
   usage: 'dev-en:usage',
   transactions: 'dev-en:transactions',
+  evaluationPointBatches: 'dev-en:evaluation-point-batches',
   spendLimit: 'dev-en:spend-limit',
   paymentMethods: 'dev-en:payment-methods',
   notifications: 'dev-en:notifications',
@@ -346,6 +381,7 @@ interface Cache {
   keys: ApiKey[] | null;
   usage: UsagePoint[] | null;
   transactions: Transaction[] | null;
+  evaluationPointBatches: EvaluationPointBatch[] | null;
   spendLimit: SpendLimit | null;
   paymentMethods: PaymentMethod[] | null;
   notifications: NotificationSettings | null;
@@ -359,6 +395,7 @@ const cache: Cache = {
   keys: null,
   usage: null,
   transactions: null,
+  evaluationPointBatches: null,
   spendLimit: null,
   paymentMethods: null,
   notifications: null,
@@ -367,6 +404,9 @@ const cache: Cache = {
   accountAlert: null,
   seeded: false,
 };
+
+let pointBatchSnapshotFor: EvaluationPointBatch[] | null = null;
+let pointBatchSnapshot: EvaluationPointBatch[] = [];
 
 function isBrowser() {
   return typeof window !== 'undefined';
@@ -431,7 +471,7 @@ type MutationProxy = {
   /** @deprecated Account-wallet model — wallet topups are local-only. */
   addKeyCalls?: (mockId: string, calls: number) => void;
   /** Account-level wallet top-up. */
-  topupAccount?: (input: { baseCents: number }) => void;
+  topupAccount?: (input: { baseCents: number; creditedPoints: number }) => void;
   /** Account-level low-balance alert update. */
   updateAccountAlert?: (alert: AccountLowBalanceAlert) => void;
   updateNotificationSettings?: (patch: Partial<NotificationSettings>) => void;
@@ -452,6 +492,7 @@ export function __replaceCache(partial: {
   keys?: ApiKey[];
   usage?: UsagePoint[];
   transactions?: Transaction[];
+  evaluationPointBatches?: EvaluationPointBatch[];
   spendLimit?: SpendLimit;
   paymentMethods?: PaymentMethod[];
   notifications?: NotificationSettings;
@@ -462,6 +503,7 @@ export function __replaceCache(partial: {
   if (partial.keys !== undefined) cache.keys = partial.keys;
   if (partial.usage !== undefined) cache.usage = partial.usage;
   if (partial.transactions !== undefined) cache.transactions = partial.transactions;
+  if (partial.evaluationPointBatches !== undefined) cache.evaluationPointBatches = partial.evaluationPointBatches;
   if (partial.spendLimit !== undefined) cache.spendLimit = partial.spendLimit;
   if (partial.paymentMethods !== undefined) cache.paymentMethods = partial.paymentMethods;
   if (partial.notifications !== undefined) cache.notifications = partial.notifications;
@@ -816,10 +858,22 @@ function seedIfNeeded() {
   // overseas checkout supports PayPal only.
   const existingTxn = read<Transaction[] | null>(STORAGE.transactions, null);
   if (!existingTxn) {
-    const mkTxn = (o: Omit<Transaction, 'id'>): Transaction => ({
-      ...o,
-      id: uuid('txn_'),
-    });
+    const mkTxn = (o: Omit<Transaction, 'id'>): Transaction => {
+      const basePoints = Math.floor((o.amountCents / 100) * 250);
+      const bonusPct = o.amountCents >= 19_990 ? 20 : o.amountCents >= 9_990 ? 10 : 0;
+      const bonusPoints = Math.round(basePoints * (bonusPct / 100));
+      return {
+        ...o,
+        id: uuid('txn_'),
+        packageId: bonusPct === 20 ? 'flagship' : bonusPct === 10 ? 'advanced' : 'standard',
+        basePoints,
+        bonusPoints,
+        creditedPoints: basePoints + bonusPoints,
+        balanceBeforePoints: Math.floor(((o.balanceBeforeCents ?? 0) / 100) * 250),
+        balanceAfterPoints: Math.floor(((o.balanceAfterCents ?? 0) / 100) * 250),
+        pointsExpireAt: new Date(new Date(o.createdAt).getTime() + 30 * 86400000).toISOString(),
+      };
+    };
 
     const seeded: Transaction[] = [
       // newest first
@@ -918,19 +972,68 @@ function seedIfNeeded() {
     cache.notifications = existingNotif;
   }
 
-  // ── Account wallet ── ($72.50 left of $100 paid credit)
+  // ── Account wallet ── (18,125 paid evaluation points remaining)
   const existingWallet = read<AccountWallet | null>(STORAGE.wallet, null);
   if (!existingWallet) {
     const seeded: AccountWallet = {
+      // Canonical point balance: 68,750 credited, 50,625 used.
+      paidEvaluationPoints: 68_750,
+      usedEvaluationPoints: 50_625,
       // Total credits ever loaded.
-      paidCreditsCents: 10000,
-      // Already consumed: $100 - $72.50 remaining = $27.50
-      paidCreditsUsedCents: 2750,
+      paidCreditsCents: 26_500,
+      // Already consumed: $265 - $72.50 remaining = $192.50
+      paidCreditsUsedCents: 19_250,
     };
     write(STORAGE.wallet, seeded);
     cache.wallet = seeded;
   } else {
     cache.wallet = existingWallet;
+  }
+
+  // ── Evaluation point batches ──
+  // The balance is deliberately split across multiple purchases so the UI can
+  // demonstrate the real FIFO-by-expiry model. New successful top-ups append
+  // another batch; the server is authoritative once the API is connected.
+  const existingPointBatches = read<EvaluationPointBatch[] | null>(
+    STORAGE.evaluationPointBatches,
+    null,
+  );
+  if (!existingPointBatches) {
+    const transactionByAge = cache.transactions ?? [];
+    const txForAge = (daysAgo: number) =>
+      transactionByAge.find((transaction) => {
+        const age = Math.round((now - new Date(transaction.createdAt).getTime()) / 86400000);
+        return age === daysAgo;
+      })?.id ?? `txn_seed_${daysAgo}`;
+    const mkBatch = (
+      daysAgo: number,
+      creditedPoints: number,
+      remainingPoints: number,
+      daysUntilExpiry: number,
+      packageId: EvaluationPointBatch['packageId'],
+    ): EvaluationPointBatch => ({
+      id: uuid('point_batch_'),
+      transactionId: txForAge(daysAgo),
+      packageId,
+      creditedPoints,
+      usedPoints: creditedPoints - remainingPoints,
+      remainingPoints,
+      createdAt: new Date(now - daysAgo * 86400000).toISOString(),
+      expiresAt: new Date(now + daysUntilExpiry * 86400000).toISOString(),
+      status: remainingPoints > 0 ? 'active' : 'exhausted',
+    });
+    const seeded = [
+      mkBatch(30, 12_500, 0, -1, 'standard'),
+      mkBatch(18, 12_500, 7_000, 12, 'standard'),
+      mkBatch(14, 6_250, 5_125, 16, 'standard'),
+      mkBatch(10, 5_000, 3_000, 20, 'standard'),
+      mkBatch(6, 27_500, 0, 24, 'advanced'),
+      mkBatch(1, 5_000, 3_000, 29, 'standard'),
+    ];
+    write(STORAGE.evaluationPointBatches, seeded);
+    cache.evaluationPointBatches = seeded;
+  } else {
+    cache.evaluationPointBatches = existingPointBatches;
   }
 
   // ── Trial allowance ── (mid-consumption: 120/600, 25 days left)
@@ -984,6 +1087,18 @@ export function getTransactions(): Transaction[] {
   return cache.transactions ?? [];
 }
 
+/** All paid-point batches, soonest expiry first. */
+export function getEvaluationPointBatches(): EvaluationPointBatch[] {
+  seedIfNeeded();
+  const source = cache.evaluationPointBatches ?? [];
+  if (pointBatchSnapshotFor === source) return pointBatchSnapshot;
+  pointBatchSnapshotFor = source;
+  pointBatchSnapshot = [...source].sort(
+    (a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt),
+  );
+  return pointBatchSnapshot;
+}
+
 export function getSpendLimit(): SpendLimit {
   seedIfNeeded();
   return cache.spendLimit!;
@@ -1018,6 +1133,8 @@ export function updateNotificationSettings(
 // ─── Account-level readers ──────────────────────────────────────────────────
 
 const DEFAULT_WALLET: AccountWallet = {
+  paidEvaluationPoints: 0,
+  usedEvaluationPoints: 0,
   paidCreditsCents: 0,
   paidCreditsUsedCents: 0,
 };
@@ -1051,6 +1168,51 @@ export function getAccountAlert(): AccountLowBalanceAlert {
 export function getAccountBalanceCents(): number {
   const w = getWallet();
   return Math.max(0, w.paidCreditsCents - w.paidCreditsUsedCents);
+}
+
+/** Remaining paid evaluation points. This is the balance shown to users. */
+export function getAccountEvaluationPoints(): number {
+  const batches = getEvaluationPointBatches();
+  if (batches.length > 0) {
+    return batches.reduce(
+      (total, batch) => total + (batch.status === 'active' ? batch.remainingPoints : 0),
+      0,
+    );
+  }
+  const w = getWallet();
+  return Math.max(0, w.paidEvaluationPoints - w.usedEvaluationPoints);
+}
+
+/** Total paid evaluation points ever credited, excluding the free trial. */
+export function getAccountLifetimeEvaluationPoints(): number {
+  return Math.max(0, getWallet().paidEvaluationPoints);
+}
+
+/** Add one server-equivalent, expiring point lot after a successful top-up. */
+export function addEvaluationPointBatch(input: {
+  transactionId: string;
+  packageId: EvaluationPointBatch['packageId'];
+  creditedPoints: number;
+  expiresAt: string;
+}): EvaluationPointBatch {
+  seedIfNeeded();
+  const creditedPoints = Math.max(0, Math.round(input.creditedPoints));
+  const batch: EvaluationPointBatch = {
+    id: uuid('point_batch_'),
+    transactionId: input.transactionId,
+    packageId: input.packageId,
+    creditedPoints,
+    usedPoints: 0,
+    remainingPoints: creditedPoints,
+    createdAt: new Date().toISOString(),
+    expiresAt: input.expiresAt,
+    status: 'active',
+  };
+  const next = [batch, ...(cache.evaluationPointBatches ?? [])];
+  cache.evaluationPointBatches = next;
+  write(STORAGE.evaluationPointBatches, next);
+  notify();
+  return batch;
 }
 
 export interface AccountTrialRemaining {
@@ -1607,23 +1769,26 @@ export function deleteKey(id: string): void {
 }
 
 /**
- * Top up the account wallet. `baseCents` is the amount the user paid and
- * the amount that lands in `paidCreditsCents`.
+ * Top up the account wallet. `creditedPoints` is the product balance that
+ * lands in the account; `baseCents` is retained for payment reconciliation.
  *
  * Returns the new wallet snapshot.
  */
-export function topupAccount(input: { baseCents: number }): AccountWallet {
+export function topupAccount(input: { baseCents: number; creditedPoints?: number }): AccountWallet {
   seedIfNeeded();
   const base = Math.max(0, Math.round(input.baseCents));
+  const creditedPoints = Math.max(0, Math.round(input.creditedPoints ?? 0));
   const current = cache.wallet ?? DEFAULT_WALLET;
   const next: AccountWallet = {
+    paidEvaluationPoints: current.paidEvaluationPoints + creditedPoints,
+    usedEvaluationPoints: current.usedEvaluationPoints,
     paidCreditsCents: current.paidCreditsCents + base,
     paidCreditsUsedCents: current.paidCreditsUsedCents,
   };
   cache.wallet = next;
   write(STORAGE.wallet, next);
   notify();
-  mutationProxy.topupAccount?.({ baseCents: base });
+  mutationProxy.topupAccount?.({ baseCents: base, creditedPoints });
   return next;
 }
 

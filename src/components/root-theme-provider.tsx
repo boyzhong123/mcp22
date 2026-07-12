@@ -22,6 +22,11 @@ function isWarmCreamMarketingPath(pathname: string | null): boolean {
     root === 'faq' ||
     root === 'demo' ||
     root === 'docs' ||
+    root === 'about' ||
+    root === 'products' ||
+    root === 'solutions' ||
+    root === 'pricing' ||
+    root === 'blog' ||
     root === 'logo-lab'
   );
 }

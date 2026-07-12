@@ -53,6 +53,7 @@ import {
   AmbientBackdrop,
   SAMPLE_MCP_RICH_JSON,
 } from './_chrome';
+import { CustomerTrustSection } from '@/app/_marketing/customer-trust';
 
 /* ─────────────────────────────────────────────────────────────
  * Standalone English landing for overseas developers.
@@ -258,20 +259,20 @@ type UseCaseArt = 'mandarin' | 'voice' | 'podcast' | 'games';
 
 const USE_CASE_ART: Record<UseCaseArt, { src: string; alt: string }> = {
   mandarin: {
-    src: '/use-cases/mandarin-v2.jpg',
-    alt: 'Mandarin tone assessment UI with pinyin chips and tone score 88',
+    src: '/use-cases/mandarin-v4.jpg',
+    alt: 'Learner practicing Mandarin tones with pinyin chips and score 88',
   },
   voice: {
-    src: '/use-cases/voice-v2.jpg',
-    alt: 'AI interview scoring chat with overall 84 and /θ/ coaching tip',
+    src: '/use-cases/voice-v4.jpg',
+    alt: 'Candidate in a video interview with overall 84 and /θ/ coaching tip overlay',
   },
   podcast: {
-    src: '/use-cases/podcast-v2.jpg',
-    alt: 'Contact-center QA waveform with retake highlight at 01:24',
+    src: '/use-cases/podcast-v4.jpg',
+    alt: 'Contact-center agent with QA waveform and coaching highlight',
   },
   games: {
-    src: '/use-cases/games-v2.jpg',
-    alt: 'Voice-gated game HUD with PASS, latency, and phoneme miss chips',
+    src: '/use-cases/games-v4.jpg',
+    alt: 'Player practicing voice-gated gameplay with PASS, latency, and unlock HUD',
   },
 };
 
@@ -465,6 +466,9 @@ export default function GlobalLandingPage() {
                     fontFeatureSettings: '"ss01" 1, "cv11" 1',
                   }}
                 >
+                  <span className="mb-5 block font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-emerald-700 sm:text-[12px]">
+                    Speech &amp; pronunciation assessment MCP
+                  </span>
                   {/* line 1 */}
                   <span className="block text-zinc-900">Your agent can hear them.</span>
 
@@ -797,6 +801,8 @@ export default function GlobalLandingPage() {
         </div>
       </section>
 
+      <CustomerTrustSection compact />
+
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        * QUICKSTART — 3 steps, dead simple. Sits AFTER /proof so the
        * reader has already seen the credibility story by the time we
@@ -979,7 +985,7 @@ function PricingUsageStory() {
               </div>
 
               <h2
-                className="text-crisp text-[36px] font-bold leading-[1.04] tracking-[-0.045em] sm:text-[48px] lg:text-[50px] xl:text-[54px]"
+                className="heading-display text-crisp text-3xl leading-[1.1] tracking-[-0.025em] md:text-[44px]"
               >
                 <span className="block">One point for a word.</span>
                 <span className="mt-1 block">Two for a paragraph.</span>
@@ -2985,7 +2991,7 @@ function HeroSlideCard({
   return (
     <div className="overflow-hidden rounded-2xl aspect-[16/9] relative bg-transparent">
       <Image
-        src={`${slide.src}?v=14`}
+        src={`${slide.src}?v=15`}
         alt={slide.label}
         fill
         sizes="(max-width: 1024px) 100vw, 500px"

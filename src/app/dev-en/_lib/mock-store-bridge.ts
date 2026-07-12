@@ -18,6 +18,7 @@ import {
   type AccountWallet,
   type ApiKey as MockApiKey,
   type Environment,
+  type EvaluationPointBatch as MockEvaluationPointBatch,
   type NotificationSettings as MockNotifications,
   type SpendLimit as MockSpendLimit,
   type Transaction as MockTransaction,
@@ -37,10 +38,12 @@ import type {
   AccountLimits as RealAccountLimits,
   ApiKey as RealApiKey,
   BillingSummary,
+  EvaluationPointBatch as RealEvaluationPointBatch,
   NotificationSettings as RealNotifications,
   Transaction as RealTransaction,
   UsagePoint as RealUsagePoint,
 } from './api';
+import { centsToWalletPoints } from './topup';
 
 // ────────────────────────────────────────────────────────────────────────────
 // ID encoding: mock-store uses string ids ("key_xxx"); the backend uses numeric
@@ -138,6 +141,11 @@ function mapWalletFromSummary(summary: BillingSummary): AccountWallet {
   const cumulativeTopup = Math.max(0, Math.round((summary.paid_credits_mills ?? 0) / 10));
   const paidCreditsCents = Math.max(cumulativeTopup, balanceCents);
   return {
+    paidEvaluationPoints: Math.max(
+      summary.evaluation_points_credited_total ?? 0,
+      summary.evaluation_points_balance ?? 0,
+    ),
+    usedEvaluationPoints: Math.max(0, summary.evaluation_points_used_total ?? 0),
     paidCreditsCents,
     paidCreditsUsedCents: paidCreditsCents - balanceCents,
   };
@@ -162,7 +170,32 @@ function mapTransaction(t: RealTransaction): MockTransaction {
     description: t.description ?? `Top-up ${(t.amount_cents / 100).toFixed(2)}`,
     balanceBeforeCents: t.balance_before,
     balanceAfterCents: t.balance_after,
+    packageId: t.package_id,
+    basePoints: t.base_points,
+    bonusPoints: t.bonus_points,
+    creditedPoints: t.credited_points ?? centsToWalletPoints(t.amount_cents),
+    balanceBeforePoints: t.point_balance_before,
+    balanceAfterPoints: t.point_balance_after,
+    pointsExpireAt: t.points_expire_at ?? undefined,
     kind,
+  };
+}
+
+function mapEvaluationPointBatch(batch: RealEvaluationPointBatch): MockEvaluationPointBatch {
+  const status: MockEvaluationPointBatch['status'] =
+    batch.status === 'active' || batch.status === 'exhausted' || batch.status === 'expired'
+      ? batch.status
+      : 'active';
+  return {
+    id: batch.id,
+    transactionId: mockTxId(batch.transaction_id),
+    packageId: batch.package_id,
+    creditedPoints: batch.credited_points,
+    usedPoints: batch.used_points,
+    remainingPoints: batch.remaining_points,
+    createdAt: batch.created_at,
+    expiresAt: batch.expires_at,
+    status,
   };
 }
 
@@ -328,9 +361,10 @@ export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<vo
   __markSeeded(); // prevent seed fallback before first response lands
 
   try {
-    const [keysRes, txRes, limitsRes, notifRes, usageRes, summaryRes] = await Promise.allSettled([
+    const [keysRes, txRes, batchesRes, limitsRes, notifRes, usageRes, summaryRes] = await Promise.allSettled([
       keysApi.list(),
       billing.listTransactions({ page: 1, page_size: 50 }),
+      billing.listEvaluationPointBatches(),
       billing.getLimits(),
       notifApi.get(),
       usageApi.points({ granularity: 'day' }),
@@ -344,6 +378,9 @@ export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<vo
     }
     if (txRes.status === 'fulfilled') {
       partial.transactions = (txRes.value.transactions ?? []).map(mapTransaction);
+    }
+    if (batchesRes.status === 'fulfilled') {
+      partial.evaluationPointBatches = (batchesRes.value.batches ?? []).map(mapEvaluationPointBatch);
     }
     if (limitsRes.status === 'fulfilled') {
       partial.spendLimit = mapLimits(limitsRes.value);

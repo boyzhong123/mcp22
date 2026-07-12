@@ -96,6 +96,10 @@ export interface AccountSummary {
 export interface AccountBalance {
   balance_mills: number; // 1 USD = 1000 mills (0.1 cent each)
   balance_usd: string; // formatted, e.g. "$5.00"
+  /** Canonical product balance; money fields are reconciliation metadata. */
+  evaluation_points_balance: number;
+  evaluation_points_used?: number;
+  evaluation_points_expires_at?: string | null;
 }
 
 export interface PricingTier {
@@ -112,6 +116,38 @@ export interface PricingInfo {
   pricing_mode: string;
   trial_calls: number;
   trial_days: number;
+  evaluation_point_rules?: {
+    base_points_per_usd: number;
+    word_sentence_points_per_use: number;
+    paragraph_points_per_use: number;
+    valid_days: number;
+  };
+  topup_packages?: EvaluationPointPackage[];
+}
+
+export interface EvaluationPointPackage {
+  id: 'standard' | 'advanced' | 'flagship';
+  min_amount_cents: number;
+  bonus_percent: number;
+  preset_amount_cents: number[];
+}
+
+/** One expiring batch created by a successful top-up. */
+export interface EvaluationPointBatch {
+  id: string;
+  transaction_id: number;
+  package_id: 'standard' | 'advanced' | 'flagship';
+  credited_points: number;
+  used_points: number;
+  remaining_points: number;
+  expires_at: string;
+  created_at: string;
+  status: 'active' | 'exhausted' | 'expired';
+}
+
+export interface EvaluationPointBatchListResponse {
+  batches: EvaluationPointBatch[];
+  total: number;
 }
 
 // doc §5.8 / §5.9 — account-level four-axis limits.
@@ -144,6 +180,12 @@ export interface BillingSummary {
   active_keys: number;
   paid_credits_mills: number;
   paid_credits_used_mills: number;
+  /** Point-led fields used by billing, recharge history, and overview UI. */
+  evaluation_points_balance: number;
+  evaluation_points_credited_total: number;
+  evaluation_points_used_total: number;
+  evaluation_points_expiring_soon?: number;
+  evaluation_points_next_expiry_at?: string | null;
 }
 
 export type TransactionKind = 'balance-topup' | 'credit-topup' | string;
@@ -162,6 +204,13 @@ export interface Transaction {
   kind: TransactionKind;
   balance_before?: number;
   balance_after?: number;
+  package_id?: 'standard' | 'advanced' | 'flagship';
+  base_points?: number;
+  bonus_points?: number;
+  credited_points?: number;
+  point_balance_before?: number;
+  point_balance_after?: number;
+  points_expire_at?: string | null;
   created_at: string;
 }
 
@@ -177,6 +226,8 @@ export interface TopupOrder {
   paypal_order_id: string;
   transaction_id: number;
   amount_cents: number;
+  package_id: 'standard' | 'advanced' | 'flagship';
+  quoted_points: number;
 }
 
 // ─── Notifications (doc §6) ─────────────────────────────────────────────────
