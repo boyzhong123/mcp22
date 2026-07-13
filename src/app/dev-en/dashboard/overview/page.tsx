@@ -161,8 +161,8 @@ export default function OverviewPage() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {t(
-            "Here's a snapshot of your Chivox MCP workspace — one shared wallet, free trial, and pay-as-you-go from there.",
-            '你的 Chivox MCP 工作区概览 — 一个共享钱包 + 免费试用，超出后按用量计费。',
+            "Here's a snapshot of your Chivox MCP workspace — one shared point pool, free trial points, and top-ups from there.",
+            '你的 Chivox MCP 工作区概览 — 一个共享积分池 + 免费试用积分，用完随时充值。',
           )}
         </p>
       </div>
@@ -459,8 +459,8 @@ export default function OverviewPage() {
             <h2 className="text-sm font-semibold">{tx('Quick actions')}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               {t(
-                'Common next steps for pay-as-you-go accounts.',
-                '按量计费账户的常见后续操作。',
+                'Common next steps for prepaid point accounts.',
+                '积分账户的常见后续操作。',
               )}
             </p>
           </div>
@@ -508,14 +508,14 @@ export default function OverviewPage() {
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <BarChart3 className="h-4 w-4" />
           <span>
-            {tx('Need to review rates? Check')}{' '}
+            {t('Need to review rates? Check', '想了解计费？查看')}{' '}
             <Link
               href="/dashboard/billing/rates"
               className="underline underline-offset-4 text-foreground"
             >
-              {tx('pay-as-you-go pricing')}
+              {t('evaluation-point packages', '评测积分套餐')}
             </Link>{' '}
-            {t('— tiered by monthly usage.', '— 按月用量阶梯计价。')}
+            {t('— bonus points up to +20%.', '— 赠送积分最高 +20%。')}
           </span>
         </div>
         <Link

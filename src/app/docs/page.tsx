@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Speech MCP and Function Calling Docs | Chivox AI',
-  description: 'Developer documentation for Chivox speech assessment MCP, response fields, quickstarts and agent integration patterns.',
+  title: 'Docs – Speech MCP & Function Calling | Chivox AI',
+  description: 'Developer docs for Chivox Speech & Pronunciation Assessment MCP, with quickstarts, MCP references and integration guides for speech scoring services.',
   alternates: { canonical: '/docs' },
 };
 

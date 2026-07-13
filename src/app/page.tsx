@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 /**
  * Root entry → canonical landing lives at `/global`, which has its own
@@ -8,5 +8,5 @@ import { redirect } from 'next/navigation';
  * agents, so we redirect instead — single source of truth.
  */
 export default function RootPage() {
-  redirect('/global');
+  permanentRedirect('/global');
 }

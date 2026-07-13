@@ -4,11 +4,12 @@ import { HtmlLangSync } from '@/components/html-lang-sync';
 export const metadata = {
   title: 'Speech & Pronunciation Assessment MCP for EdTech and Voice AI | Chivox AI',
   description:
-    'Chivox AI provides real-time speech assessment, pronunciation scoring and MCP tools for AI language tutors, voice agents and EdTech products.',
+    'Chivox AI provides real-time speech assessment, pronunciation scoring API and MCP server for AI language tutors, voice agents and EdTech platforms. Backed by 20 years of R&D.',
   openGraph: {
     title: 'Speech & Pronunciation Assessment MCP for EdTech and Voice AI | Chivox AI',
     description:
-      'Real-time speech assessment and pronunciation scoring for AI language tutors, voice agents and EdTech products.',
+      'Real-time speech assessment, pronunciation scoring API and MCP server for AI language tutors, voice agents and EdTech platforms.',
+    url: '/global',
     type: 'website',
   },
   alternates: {

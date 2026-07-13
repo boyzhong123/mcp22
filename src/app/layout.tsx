@@ -49,6 +49,31 @@ export const metadata: Metadata = {
   },
   description:
     'Speech assessment, pronunciation scoring and MCP tools for AI language tutors, voice agents and EdTech products.',
+  keywords: [
+    'Chivox AI',
+    'speech scoring',
+    'speech recognition',
+    'speech assessment',
+    'pronunciation assessment',
+    'speech evaluation',
+    'pronunciation scoring',
+    'voice AI',
+    'English speech assessment',
+    'Mandarin Chinese assessment',
+    'kids speech assessment',
+    'speech MCP',
+    'pronunciation MCP server',
+    'function calling',
+    'voice agent pronunciation assessment',
+    'AI tutor speech scoring solutions',
+  ],
+  openGraph: {
+    siteName: 'Chivox AI',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

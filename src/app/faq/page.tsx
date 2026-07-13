@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Speech MCP, Pronunciation API and Integration FAQ | Chivox AI',
-  description: 'Answers about Chivox speech assessment, pronunciation scoring, MCP integration, language coverage, privacy and pricing.',
+  title: 'FAQ – Speech MCP, Pronunciation API & Integrations | Chivox AI',
+  description: 'Answers about Chivox AI speech MCP, pronunciation API integration, LLM payload setup, languages, pricing, MCP server deployment and speech scoring.',
   alternates: { canonical: '/faq' },
 };
 

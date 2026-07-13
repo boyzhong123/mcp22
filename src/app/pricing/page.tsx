@@ -14,11 +14,11 @@ import {
 import { absoluteUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Speech Assessment MCP Pricing | Chivox AI',
+  title: 'Pricing – Speech MCP & Pronunciation Assessment | Chivox AI',
   description:
-    `Transparent pricing for Chivox speech assessment MCP. Start with ${TRIAL_CALLS} free evaluation points, then top up from $19.90 — pay only for successful evaluations.`,
+    `Transparent pricing for Chivox speech MCP, speech scoring and pronunciation assessment. Start with ${TRIAL_CALLS} free evaluation points, then top up from $19.90.`,
   alternates: { canonical: '/pricing' },
-  openGraph: { title: 'Speech Assessment MCP Pricing | Chivox AI', description: `Start with ${TRIAL_CALLS} free evaluation points, then top up from $19.90. Pay only for successful evaluations.`, url: absoluteUrl('/pricing'), type: 'website' },
+  openGraph: { title: 'Pricing – Speech MCP & Pronunciation Assessment | Chivox AI', description: `Transparent speech MCP and pronunciation assessment pricing, with ${TRIAL_CALLS} free evaluation points and flexible top-ups.`, url: absoluteUrl('/pricing'), type: 'website' },
 };
 
 const PACK_COPY: Record<(typeof FIXED_TOPUP_PLANS)[number]['id'], { label: string; blurb: string }> = {

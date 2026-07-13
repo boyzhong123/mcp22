@@ -14,10 +14,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = SOLUTION_PAGES[(await params).slug];
   if (!page) return {};
   return {
-    title: `${page.title} | Chivox AI`,
-    description: page.description,
+    title: page.seoTitle,
+    description: page.seoDescription,
     alternates: { canonical: page.path },
-    openGraph: { title: page.title, description: page.description, url: absoluteUrl(page.path), type: 'website' },
+    openGraph: { title: page.seoTitle, description: page.seoDescription, url: absoluteUrl(page.path), type: 'website' },
   };
 }
 

@@ -52,7 +52,7 @@ export interface TopupBonusTier {
 
 export const TOPUP_BONUS_TIERS: TopupBonusTier[] = [
   { id: 'standard', minCents: 1_990, bonusPct: 0, presetCents: [1_990, 5_000, 9_000] },
-  { id: 'advanced', minCents: 9_990, bonusPct: 10, presetCents: [9_990, 15_000, 19_000] },
+  { id: 'advanced', minCents: 9_990, bonusPct: 10, presetCents: [9_990, 15_000, 19_900] },
   { id: 'flagship', minCents: 19_990, bonusPct: 20, presetCents: [19_990, 30_000, 50_000] },
 ];
 

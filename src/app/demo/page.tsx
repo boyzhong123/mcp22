@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Live Speech and Pronunciation Scoring Demo | Chivox AI',
-  description: 'Try Chivox speech assessment and inspect pronunciation, fluency and phoneme-level feedback before integrating.',
+  title: 'Live Demo – Try Speaking AI Scoring | Chivox AI',
+  description: "Try Chivox's pronunciation assessment MCP live. Record your voice and receive instant phoneme-level feedback from our speech recognition engine.",
   alternates: { canonical: '/demo' },
 };
 

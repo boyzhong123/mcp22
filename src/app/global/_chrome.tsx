@@ -546,14 +546,10 @@ export function TopNav() {
           >
             <Link
               href="/"
-              className={cn(
-                'shrink-0 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-zinc-400/40 origin-left',
-                'transition-transform duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
-                scrolled ? 'scale-[0.92]' : 'scale-100',
-              )}
+              className="shrink-0 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-zinc-400/40"
               aria-label="Chivox MCP home"
             >
-              <ChivoxMcpBrand />
+              <ChivoxMcpBrand compact={scrolled} />
             </Link>
 
             <nav
@@ -1154,14 +1150,34 @@ export function AmbientBackdrop() {
 
 /* ══ Brand mark ══════════════════════════════════════════════ */
 
-export function ChivoxMcpBrand({ className, onWarm = false }: { className?: string; onWarm?: boolean }) {
+export function ChivoxMcpBrand({
+  className,
+  onWarm = false,
+  compact = false,
+}: {
+  className?: string;
+  onWarm?: boolean;
+  /** Shrinks the mark + wordmark in sync with the condensed sticky nav. */
+  compact?: boolean;
+}) {
   return (
     <span className={cn('flex items-center gap-[5px] shrink-0 whitespace-nowrap', className)}>
-      <span className="relative h-[3.6rem] w-[3.6rem] shrink-0">
+      <span
+        className={cn(
+          'relative shrink-0 transition-[height,width] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+          compact ? 'h-[2.7rem] w-[2.7rem]' : 'h-[3.6rem] w-[3.6rem]',
+        )}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
       </span>
-      <span className="font-bold tracking-[-0.02em] text-[22px] leading-none flex items-center gap-0.5">
+      <span
+        className={cn(
+          'font-bold tracking-[-0.02em] leading-none flex items-center gap-0.5',
+          'transition-[font-size] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+          compact ? 'text-[18px]' : 'text-[22px]',
+        )}
+      >
         <span className={onWarm ? 'text-zinc-900' : 'text-foreground'}>Chivox</span>
         <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
       </span>

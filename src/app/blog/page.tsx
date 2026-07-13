@@ -5,10 +5,10 @@ import { AmbientBackdrop, ContactSection, SiteFooter, TopNav } from '@/app/globa
 import { absoluteUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Voice AI and Pronunciation Assessment Resources | Chivox AI',
-  description: 'Practical guides on speech assessment, pronunciation scoring, voice AI, MCP integration and language-learning product design from Chivox AI.',
+  title: 'Blog – Voice AI & Pronunciation Assessment | Chivox AI',
+  description: 'Insights on speech assessment, pronunciation scoring, voice AI and MCP server integration, plus speech recognition and language-learning technology trends.',
   alternates: { canonical: '/blog' },
-  openGraph: { title: 'Voice AI and Pronunciation Assessment Resources | Chivox AI', description: 'Practical speech assessment and MCP integration resources for product and engineering teams.', url: absoluteUrl('/blog'), type: 'website' },
+  openGraph: { title: 'Blog – Voice AI & Pronunciation Assessment | Chivox AI', description: 'Speech assessment, pronunciation scoring, voice AI and MCP server integration insights.', url: absoluteUrl('/blog'), type: 'website' },
 };
 
 const RESOURCES = [

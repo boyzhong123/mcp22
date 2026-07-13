@@ -7,13 +7,13 @@ import { AmbientBackdrop, ContactSection, SiteFooter, TopNav } from '@/app/globa
 import { absoluteUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'About Chivox AI | Speech Assessment and Voice AI R&D',
+  title: 'About Chivox AI – Speech Assessment & Voice AI R&D',
   description:
-    'Learn about Chivox AI, its speech assessment and pronunciation-scoring technology, and customer applications across language learning and voice AI.',
+    'Chivox AI is a voice AI company specializing in speech assessment, pronunciation scoring and speech recognition, backed by 20 years of language-learning technology R&D.',
   alternates: { canonical: '/about' },
   openGraph: {
-    title: 'About Chivox AI | Speech Assessment and Voice AI R&D',
-    description: 'Speech assessment R&D translated into practical tools for language-learning and voice-AI products.',
+    title: 'About Chivox AI – Speech Assessment & Voice AI R&D',
+    description: 'Speech assessment, pronunciation scoring and speech recognition backed by 20 years of language-learning technology R&D.',
     url: absoluteUrl('/about'),
     type: 'website',
   },

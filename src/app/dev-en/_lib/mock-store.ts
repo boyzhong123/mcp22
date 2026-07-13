@@ -638,17 +638,17 @@ function seedIfNeeded() {
         env: 'production',
         createdAt: new Date(now - 85 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 2 * 60000).toISOString(),
-        spendCapCents: 25000, // $250/mo cap
-        monthlyCallCap: 80000, // 80K calls/mo cap
+        spendCapCents: 15000, // $150/mo cap
+        monthlyCallCap: 20000, // 20K calls/mo cap
       }),
       // 2. Mobile prod — high-traffic key bumping into its monthly call
-      //    cap (about 60% used this month against a 50K cap).
+      //    cap (about 60% used this month against a 12K cap).
       mk({
         name: 'Mobile — Prod',
         env: 'production',
         createdAt: new Date(now - 70 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 6 * 3600000).toISOString(),
-        monthlyCallCap: 50000,
+        monthlyCallCap: 12000,
       }),
       // 3. Secondary prod — no cap configured.
       mk({
@@ -717,16 +717,18 @@ function seedIfNeeded() {
   // ── Usage (120 days × keys × models) ──
   const existingUsage = read<UsagePoint[] | null>(STORAGE.usage, null);
   if (!existingUsage || existingUsage.length === 0) {
-    // Volume target: ~110K calls/month landing solidly in the 100K–1M tier.
+    // Volume target: ~26K calls/month ≈ 40K evaluation points — keeps the
+    // "spent this month" KPI comfortably below the wallet's lifetime story
+    // (68,750 credited / 50,625 used) so the demo ledger stays coherent.
     // Per-key weekday traffic rate (average calls across all models).
     // Keys not listed here → no historical traffic (e.g. revoked, or the
     // freshly-created "Staging" key that still awaits its first top-up and
     // therefore has never served a request).
     const perKeyDailyBase: Record<string, number> = {
-      'Web App — Prod': 2200,
-      'Web App — Prod (secondary)': 900,
-      'Mobile — Prod': 1400,
-      'Load test': 320,
+      'Web App — Prod': 515,
+      'Web App — Prod (secondary)': 210,
+      'Mobile — Prod': 330,
+      'Load test': 75,
       // Starter key: light experimentation usage for the trial story.
       'Starter key': 4,
     };
@@ -783,9 +785,9 @@ function seedIfNeeded() {
   const existingLimit = read<Partial<SpendLimit> | null>(STORAGE.spendLimit, null);
   if (!existingLimit) {
     const seeded: SpendLimit = {
-      // $200 default lets the demo's ~$90-110/mo spend land at ~50% used
+      // $300 default lets the demo's ~$150-170/mo spend land at ~50% used
       // (meaningful amber zone for the Overview KPI and Billing chart).
-      monthlyCapCents: 200_00,
+      monthlyCapCents: 300_00,
       monthlyCallCap: null,
       dailyCapCents: null,
       dailyCallCap: null,

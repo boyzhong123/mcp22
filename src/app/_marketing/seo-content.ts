@@ -50,6 +50,10 @@ export type MarketingPageData = {
   eyebrow: string;
   title: string;
   description: string;
+  /** Search-result title; kept separate from the on-page H1. */
+  seoTitle: string;
+  /** Search-result summary; kept separate from longer page copy. */
+  seoDescription: string;
   intro: string;
   outcomes: Array<{ value: string; label: string }>;
   sections: MarketingSection[];
@@ -67,6 +71,9 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     group: 'Product',
     eyebrow: 'English speech assessment',
     title: 'English speech assessment and pronunciation scoring for EdTech',
+    seoTitle: 'English Speech Assessment & Speech Scoring for EdTech | Chivox AI',
+    seoDescription:
+      'English speech assessment and scoring for EdTech and AI language tutors, with pronunciation MCP, voice-agent scoring and fluency evaluation by Chivox AI.',
     description:
       'English speech assessment for EdTech and AI language tutors, with pronunciation, fluency, stress, rhythm and phoneme-level scoring from Chivox AI.',
     intro:
@@ -134,6 +141,9 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     group: 'Product',
     eyebrow: 'Mandarin Chinese assessment',
     title: 'Mandarin Chinese pronunciation assessment with tone-level detail',
+    seoTitle: 'Mandarin Chinese Pronunciation Assessment & Evaluation MCP | Chivox AI',
+    seoDescription:
+      'Mandarin Chinese pronunciation assessment and speech evaluation MCP with tonal analysis and Pinyin fluency scoring for voice AI and language education platforms.',
     description:
       'Mandarin Chinese pronunciation assessment for language learning and voice AI, including tone, Pinyin, fluency and pronunciation evaluation from Chivox AI.',
     intro:
@@ -227,6 +237,9 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     group: 'Product',
     eyebrow: 'Kids speech assessment',
     title: 'Kids speech assessment for engaging pronunciation practice',
+    seoTitle: 'Kids Speech Assessment API | Pronunciation Practice | Chivox AI',
+    seoDescription:
+      "Engage young learners with kids speech assessment and pronunciation practice APIs, including real-time feedback for children's language education apps.",
     description:
       'Kids speech assessment API for pronunciation practice, reading and language-learning apps, with real-time structured feedback from Chivox AI.',
     intro:
@@ -294,6 +307,9 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     group: 'Product',
     eyebrow: 'Speech assessment MCP server',
     title: 'Pronunciation MCP server for voice AI and language agents',
+    seoTitle: 'Speech MCP Server – Pronunciation MCP for Voice AI | Chivox AI',
+    seoDescription:
+      'Integrate the Chivox pronunciation MCP server for real-time speech assessment and pronunciation scoring in MCP clients and voice-AI workflows.',
     description:
       'Connect Chivox speech assessment and pronunciation scoring to voice agents, AI tutors and MCP clients through a structured MCP server workflow.',
     intro:
@@ -378,6 +394,9 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
     group: 'AI solution',
     eyebrow: 'Function calling',
     title: 'Function calling for voice-agent pronunciation scoring',
+    seoTitle: 'Function Calling – Voice Agent Pronunciation Scoring | Chivox AI',
+    seoDescription:
+      'Add function calling for voice-agent pronunciation scoring. Integrate Chivox speech assessment and pronunciation evaluation into LLM agent workflows.',
     description:
       'Add pronunciation assessment and speech scoring to LLM and voice-agent workflows through clear function-calling contracts and structured Chivox AI results.',
     intro:
@@ -459,6 +478,9 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
     group: 'AI solution',
     eyebrow: 'AI language tutor',
     title: 'Speech scoring for AI language tutors and voice agents',
+    seoTitle: 'AI Language Tutor – Voice Agent Pronunciation Assessment | Chivox AI',
+    seoDescription:
+      'Power AI language tutors with real-time pronunciation MCP and speech scoring, or add real-time pronunciation and speech assessment to voice agents.',
     description:
       'Build AI language tutors and voice agents with real-time pronunciation assessment, structured speech scoring and grounded learner feedback from Chivox AI.',
     intro:
