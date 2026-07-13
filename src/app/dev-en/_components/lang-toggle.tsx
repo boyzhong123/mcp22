@@ -15,7 +15,7 @@ import { useLang } from '../_lib/use-lang';
  * iOS / macOS control segmented style). Clicking a segment updates the
  * external lang store; all `useLang()` subscribers re-render.
  */
-const LANG_TOGGLE_VISIBLE = false;
+const LANG_TOGGLE_VISIBLE = true;
 
 export function DevEnLangToggle() {
   const { lang, setLang } = useLang();

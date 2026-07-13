@@ -2349,8 +2349,8 @@ function TierComparePanel({
                       </span>
                       <span>
                         {t(
-                          `Word ${WORD_SENTENCE_POINTS_PER_USE} pt/use`,
-                          `单词 ${WORD_SENTENCE_POINTS_PER_USE} 积分/次`,
+                          `Word / phrase / sentence ${WORD_SENTENCE_POINTS_PER_USE} pt/use`,
+                          `字 / 词 / 句 ${WORD_SENTENCE_POINTS_PER_USE} 积分/次`,
                         )}
                       </span>
                       <span>
@@ -2366,7 +2366,10 @@ function TierComparePanel({
                         {t('Price reference', '价格参考')}
                       </span>
                       <span>
-                        {t(`Word ${wordPrice}/use`, `单词 ${wordPrice}/次`)}
+                        {t(
+                          `Word / phrase / sentence ${wordPrice}/use`,
+                          `字 / 词 / 句 ${wordPrice}/次`,
+                        )}
                       </span>
                       <span>
                         {t(`Paragraph ${paragraphPrice}/use`, `段落 ${paragraphPrice}/次`)}
