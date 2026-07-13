@@ -4,6 +4,7 @@
  * Tiny observable store for cross-cutting dashboard UI state:
  *   - sidebar collapsed / expanded
  *   - command palette open / closed
+ *   - in-flight client navigation (progress bar + loader)
  *
  * Deliberately framework-free (no Context, no zustand) — sidebar, topbar
  * and the palette itself all subscribe via `useSyncExternalStore`, which
@@ -16,16 +17,24 @@ type State = {
   sidebarCollapsed: boolean;
   paletteOpen: boolean;
   tourOpen: boolean;
+  /** Non-null while a client-side route change is in flight. */
+  navigationPending: string | null;
 };
 
 function readInitial(): State {
   if (typeof window === 'undefined') {
-    return { sidebarCollapsed: false, paletteOpen: false, tourOpen: false };
+    return {
+      sidebarCollapsed: false,
+      paletteOpen: false,
+      tourOpen: false,
+      navigationPending: null,
+    };
   }
   return {
     sidebarCollapsed: window.localStorage.getItem(SIDEBAR_KEY) === '1',
     paletteOpen: false,
     tourOpen: false,
+    navigationPending: null,
   };
 }
 
@@ -46,7 +55,12 @@ export function getUiState(): State {
 }
 
 export function getUiServerState(): State {
-  return { sidebarCollapsed: false, paletteOpen: false, tourOpen: false };
+  return {
+    sidebarCollapsed: false,
+    paletteOpen: false,
+    tourOpen: false,
+    navigationPending: null,
+  };
 }
 
 export function setSidebarCollapsed(next: boolean): void {
@@ -88,5 +102,18 @@ export function openTour(): void {
 export function closeTour(): void {
   if (!state.tourOpen) return;
   state = { ...state, tourOpen: false };
+  emit();
+}
+
+/** Mark a client navigation as in-flight so the progress UI can react immediately. */
+export function startNavigation(href: string): void {
+  if (state.navigationPending === href) return;
+  state = { ...state, navigationPending: href };
+  emit();
+}
+
+export function clearNavigation(): void {
+  if (state.navigationPending === null) return;
+  state = { ...state, navigationPending: null };
   emit();
 }

@@ -590,7 +590,7 @@ function FixedCompareTable({ selectedPlanId }: { selectedPlanId: FixedTopupPlan[
       ),
     },
     {
-      label: t('Word / sentence uses', '可测字/句'),
+      label: t('Word / phrase / sentence uses', '可测字/词/句'),
       values: FIXED_TOPUP_PLANS.map((plan) => {
         const details = buildTopupPointDetails(plan.amountCents, {
           id: plan.id,

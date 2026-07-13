@@ -161,9 +161,13 @@ export default function UsagePage() {
   const dayPerKey = (d: (typeof stackedData)[number], keyId: string) =>
     isCostMetric ? (d.perKeyCost[keyId] ?? 0) : (d.perKey[keyId] ?? 0);
   const formatAxis = (v: number) =>
-    isCostMetric ? `${Math.round(v).toLocaleString('en-US')} pts` : Math.round(v).toLocaleString('en-US');
+    isCostMetric
+      ? `${Math.round(v).toLocaleString('en-US')} ${tx('pts')}`
+      : `${Math.round(v).toLocaleString('en-US')} ${tx('calls')}`;
   const formatTooltipValue = (v: number) =>
-    isCostMetric ? `${Math.round(v).toLocaleString('en-US')} pts` : v.toLocaleString('en-US');
+    isCostMetric
+      ? `${Math.round(v).toLocaleString('en-US')} ${tx('pts')}`
+      : `${v.toLocaleString('en-US')} ${tx('calls')}`;
 
   const perKeyBreakdown = useMemo(() => {
     const map = new Map<string, { calls: number; points: number; wordCalls: number; paragraphCalls: number; wordPoints: number; paragraphPoints: number }>();
@@ -282,14 +286,27 @@ export default function UsagePage() {
         </div>
       </div>
 
-      {/* KPI strip */}
+      {/* KPI strip — units made explicit: calls (次) vs points (积分) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi label={tx('Total calls')} value={kpiTotalCalls.toLocaleString('en-US')} />
-        <Kpi label={t('Points consumed', '消耗积分')} value={kpiTotalCost.toLocaleString('en-US')} />
-        <Kpi label={tx('Avg / day')} value={kpiAvgPerDay.toLocaleString('en-US')} />
         <Kpi
-          label={tx('Peak day')}
+          label={tx('Total calls')}
+          value={kpiTotalCalls.toLocaleString('en-US')}
+          unit={tx('calls')}
+        />
+        <Kpi
+          label={t('Points consumed', '消耗积分')}
+          value={kpiTotalCost.toLocaleString('en-US')}
+          unit={t('pts', '积分')}
+        />
+        <Kpi
+          label={t('Avg calls / day', '日均调用')}
+          value={kpiAvgPerDay.toLocaleString('en-US')}
+          unit={tx('calls')}
+        />
+        <Kpi
+          label={t('Peak calls', '峰值调用')}
           value={peakDay?.totalCalls.toLocaleString('en-US') ?? '0'}
+          unit={tx('calls')}
           sub={peakDay?.date}
         />
       </div>
@@ -567,8 +584,8 @@ export default function UsagePage() {
                         </span>
                         <span className="tabular-nums">
                           {isCostMetric
-                            ? d.totalCalls.toLocaleString('en-US')
-                            : `${d.totalCostMills.toLocaleString('en-US')} pts`}
+                            ? `${d.totalCalls.toLocaleString('en-US')} ${tx('calls')}`
+                            : `${d.totalCostMills.toLocaleString('en-US')} ${tx('pts')}`}
                         </span>
                       </div>
                     </>
@@ -611,8 +628,18 @@ export default function UsagePage() {
                     onClick={() => toggleBreakdownSort('points')}
                   />
                 </th>
-                <th className="text-right px-5 py-2.5 font-semibold">{t('Word / sentence', '字词句')}</th>
-                <th className="text-right px-5 py-2.5 font-semibold">{t('Paragraph', '段落')}</th>
+                <th className="text-right px-5 py-2.5 font-semibold">
+                  {t('Word / phrase / sentence', '字词句')}
+                  <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
+                    {t('calls / pts', '次 / 积分')}
+                  </span>
+                </th>
+                <th className="text-right px-5 py-2.5 font-semibold">
+                  {t('Paragraph', '段落')}
+                  <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
+                    {t('calls / pts', '次 / 积分')}
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -630,14 +657,20 @@ export default function UsagePage() {
                       {keyLast4(row.key!.secret)}
                     </td>
                     <td className="px-5 py-3 text-right tabular-nums">
-                      {row.calls.toLocaleString('en-US')}
+                      {row.calls.toLocaleString('en-US')} {tx('calls')}
                     </td>
-                    <td className="px-5 py-3 text-right tabular-nums font-medium">{row.points.toLocaleString('en-US')} pts</td>
-                    <td className="px-5 py-3 text-right tabular-nums text-xs">
-                      {row.wordCalls.toLocaleString('en-US')} / {row.wordPoints.toLocaleString('en-US')} pts
+                    <td className="px-5 py-3 text-right tabular-nums font-medium">
+                      {row.points.toLocaleString('en-US')} {tx('pts')}
                     </td>
                     <td className="px-5 py-3 text-right tabular-nums text-xs">
-                      {row.paragraphCalls.toLocaleString('en-US')} / {row.paragraphPoints.toLocaleString('en-US')} pts
+                      {row.wordCalls.toLocaleString('en-US')} {tx('calls')}
+                      <span className="text-muted-foreground mx-1">/</span>
+                      {row.wordPoints.toLocaleString('en-US')} {tx('pts')}
+                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums text-xs">
+                      {row.paragraphCalls.toLocaleString('en-US')} {tx('calls')}
+                      <span className="text-muted-foreground mx-1">/</span>
+                      {row.paragraphPoints.toLocaleString('en-US')} {tx('pts')}
                     </td>
                   </tr>
                 ))
@@ -722,11 +755,13 @@ function FilterSelect({
 function Kpi({
   label,
   value,
+  unit,
   sub,
   tone,
 }: {
   label: string;
   value: string;
+  unit?: string;
   sub?: string;
   tone?: 'default' | 'emerald';
 }) {
@@ -737,11 +772,14 @@ function Kpi({
       </div>
       <div
         className={cn(
-          'mt-1 text-lg font-semibold tabular-nums',
+          'mt-1 flex items-baseline gap-1 text-lg font-semibold tabular-nums',
           tone === 'emerald' && 'text-emerald-600 dark:text-emerald-400',
         )}
       >
-        {value}
+        <span>{value}</span>
+        {unit ? (
+          <span className="text-xs font-medium text-muted-foreground">{unit}</span>
+        ) : null}
       </div>
       {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>

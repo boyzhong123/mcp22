@@ -13,6 +13,8 @@ export const CUSTOMERS = [
     type: 'Offline learning',
     logoClassName: 'max-h-5 max-w-[96px]',
     logoTileClassName: 'border-zinc-900/[0.10] bg-white',
+    decor: '/customers/decor/nowukan.jpg',
+    decorAlt: 'Soft glass accents in nowUkan orange, green and blue on light gray texture',
     description:
       'An offline English-learning app for learners in connectivity-constrained regions, sold as a one-time purchase with lifetime access and focused on IELTS, TOEFL and Cambridge English listening and speaking practice.',
   },
@@ -26,6 +28,8 @@ export const CUSTOMERS = [
     type: 'School platform',
     logoClassName: 'max-h-5 max-w-[96px]',
     logoTileClassName: 'border-zinc-900/[0.10] bg-white',
+    decor: '/customers/decor/rentris.jpg',
+    decorAlt: 'Soft crimson and charcoal swoosh accents on light gray texture',
     description:
       'A school-focused technology company expanding from attendance and security systems into a Chinese and English learning platform.',
   },
@@ -39,6 +43,8 @@ export const CUSTOMERS = [
     type: 'Online courses',
     logoClassName: 'max-h-6 max-w-[64px]',
     logoTileClassName: 'border-zinc-900/[0.10] bg-white',
+    decor: '/customers/decor/huahua.jpg',
+    decorAlt: 'Soft blush petal and warm glass pebble on light gray texture',
     description:
       'An online Chinese-learning provider building a structured Mandarin and HSK course experience for local learners.',
   },
@@ -92,11 +98,28 @@ export function CustomerTrustSection({ compact = false }: { compact?: boolean })
             return (
               <article key={customer.name} className="group relative flex h-full flex-col overflow-hidden rounded-[22px] border border-zinc-900/[0.08] bg-white/72 p-6 shadow-[0_18px_45px_-35px_rgba(15,23,42,0.35)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/25 hover:bg-white/90 hover:shadow-[0_30px_68px_-42px_rgba(16,52,33,0.44)]">
                 <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <div className="flex items-center justify-between gap-3">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute bottom-0 right-0 h-[55%] w-[58%] min-h-[160px] min-w-[160px] opacity-[0.55] transition-opacity duration-300 group-hover:opacity-[0.72]"
+                  style={{
+                    maskImage: 'radial-gradient(ellipse 95% 95% at 100% 100%, #000 35%, transparent 78%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse 95% 95% at 100% 100%, #000 35%, transparent 78%)',
+                  }}
+                >
+                  <Image
+                    src={customer.decor}
+                    alt=""
+                    fill
+                    quality={82}
+                    className="object-cover object-[70%_70%]"
+                    sizes="240px"
+                  />
+                </div>
+                <div className="relative z-[1] flex items-center justify-between gap-3">
                   <span className="text-[10px] font-mono tracking-[0.16em] text-zinc-400">0{index + 1}</span>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-900/[0.08] bg-zinc-50 px-2.5 py-1 text-[9px] font-mono uppercase tracking-[0.12em] text-zinc-600"><Icon className="h-3 w-3 text-emerald-700" aria-hidden />{customer.type}</span>
                 </div>
-                <div className="mt-8 flex flex-1 flex-col">
+                <div className="relative z-[1] mt-8 flex flex-1 flex-col">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-[19px] font-semibold tracking-[-0.02em] text-zinc-900">{customer.name}</h3>
                   </div>

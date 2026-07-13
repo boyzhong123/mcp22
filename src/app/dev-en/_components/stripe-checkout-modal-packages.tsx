@@ -28,11 +28,14 @@ import {
   Wrench,
   X,
   Zap,
+  Loader2,
+  Send,
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { cn } from '@/lib/utils';
+import { EnterpriseContactForm } from './enterprise-contact-form';
 import {
   addTransaction,
   addEvaluationPointBatch,
@@ -129,6 +132,7 @@ const LINK_BACKING = { brand: 'visa' as CardBrand, last4: '4242' };
 const CASHAPP_BACKING = { handle: '$alex_rivera', last4: 'cash' };
 const PAYPAL_BACKING = { email: 'alex.rivera@icloud.com', last4: 'ppal' };
 const SALES_EMAIL = 'ming.zhao@chivox.com';
+const ENTERPRISE_CONTACT_FORM_ID = 'checkout-enterprise-contact';
 
 // Typical market sentence-eval quote vs our cheapest flagship rate.
 // Used only for the compare-table savings slogan — not a contractual claim.
@@ -227,6 +231,8 @@ function OpenedCheckoutModal({
   const [selectedPackageId, setSelectedPackageId] =
     useState<ComparePackageId>(TOPUP_BONUS_TIERS[0].id);
   const [buyerMode, setBuyerMode] = useState<BuyerMode>('personal');
+  const [salesContactPending, setSalesContactPending] = useState(false);
+  const [salesContactDone, setSalesContactDone] = useState(false);
 
   // new card fields
   const [cardNumber, setCardNumber] = useState('');
@@ -558,10 +564,7 @@ function OpenedCheckoutModal({
             </p>
           </div>
         ) : (
-          <form
-            onSubmit={handlePay}
-            className="flex-1 min-h-0 flex flex-col"
-          >
+          <div className="flex-1 min-h-0 flex flex-col">
             {/* Scrollable content — everything except the Pay footer.
                 Keep overflow scroll but hide the native scrollbar chrome. */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -589,7 +592,10 @@ function OpenedCheckoutModal({
               <section className="space-y-3">
                 <TopupIntroPanel
                   buyerMode={buyerMode}
-                  onBuyerModeChange={setBuyerMode}
+                  onBuyerModeChange={(mode) => {
+                    setBuyerMode(mode);
+                    if (mode === 'business') setSalesContactDone(false);
+                  }}
                 />
 
                 {buyerMode === 'personal' ? (
@@ -619,7 +625,15 @@ function OpenedCheckoutModal({
                     }}
                   />
                 ) : (
-                  <BusinessTopupPanel />
+                  <BusinessTopupPanel
+                    defaultEmail={user?.email ?? receiptEmail}
+                    defaultName={user?.name ?? ''}
+                    formId={ENTERPRISE_CONTACT_FORM_ID}
+                    hideSubmit
+                    onPendingChange={setSalesContactPending}
+                    onStatusChange={(s) => setSalesContactDone(s === 'success')}
+                    onSuccess={() => setSalesContactDone(true)}
+                  />
                 )}
               </section>
             )}
@@ -849,22 +863,52 @@ function OpenedCheckoutModal({
               {/* Step 1: package comparison. Step 2: choose amount. Step 3: pay. */}
               {step === 1 && buyerMode === 'business' ? (
                 <div className="space-y-2">
-                  <a
-                    href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Chivox MCP enterprise API partnership')}`}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition-colors hover:bg-emerald-600"
-                  >
-                    <Mail className="h-4 w-4" />
-                    {t('Contact sales', '联系销售')}
-                  </a>
+                  {salesContactDone ? (
+                    <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-2.5 text-center text-[12.5px] font-medium text-emerald-800 dark:text-emerald-300">
+                      {t(
+                        'Inquiry sent — we’ll reply within one business day.',
+                        '已发送，我们会在一个工作日内回复。',
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="submit"
+                      form={ENTERPRISE_CONTACT_FORM_ID}
+                      disabled={salesContactPending}
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {salesContactPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('Sending…', '发送中…')}
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          {t('Send to sales', '发送给销售')}
+                        </>
+                      )}
+                    </button>
+                  )}
                   <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
                     {t(
-                      'Share expected monthly volume and partnership needs — a dedicated contact reaches out within one business day.',
-                      '留下预计月用量与合作需求，专属对接人通常在一个工作日内与您联系。',
-                    )}
+                      'Fill in the form above — same auto-send path as the homepage, delivered to',
+                      '请先填写上方表单；发送逻辑与首页一致，将送达',
+                    )}{' '}
+                    <a
+                      href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Chivox MCP enterprise API partnership')}`}
+                      className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+                    >
+                      {SALES_EMAIL}
+                    </a>
+                    .
                   </p>
                   <button
                     type="button"
-                    onClick={() => setBuyerMode('personal')}
+                    onClick={() => {
+                      setBuyerMode('personal');
+                      setSalesContactDone(false);
+                    }}
                     className="w-full text-center text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {t('Prefer self-serve? Top up with card or PayPal →', '更想自助充值？用卡或 PayPal 立即充值 →')}
@@ -1012,7 +1056,7 @@ function OpenedCheckoutModal({
                         )}
               </p>
             </div>
-          </form>
+          </div>
         )}
       </div>
   );
@@ -1388,7 +1432,23 @@ function TopupIntroPanel({
   );
 }
 
-function BusinessTopupPanel() {
+function BusinessTopupPanel({
+  defaultEmail,
+  defaultName,
+  formId,
+  hideSubmit,
+  onPendingChange,
+  onStatusChange,
+  onSuccess,
+}: {
+  defaultEmail?: string;
+  defaultName?: string;
+  formId: string;
+  hideSubmit?: boolean;
+  onPendingChange?: (pending: boolean) => void;
+  onStatusChange?: (status: 'idle' | 'success' | 'error') => void;
+  onSuccess?: () => void;
+}) {
   const { t } = useLang();
 
   return (
@@ -1517,6 +1577,19 @@ function BusinessTopupPanel() {
         <TrustPill>{t('Multi-key management', '多 Key 管理')}</TrustPill>
         <TrustPill>{t('Budget guardrails', '预算风控')}</TrustPill>
         <TrustPill>{t('Usage export', '用量导出')}</TrustPill>
+      </div>
+
+      <div className="border-t border-emerald-500/15 bg-background/70 px-3.5 py-3.5">
+        <EnterpriseContactForm
+          source="/dev-en/dashboard/billing#enterprise-partnership"
+          defaultEmail={defaultEmail}
+          defaultName={defaultName}
+          formId={formId}
+          hideSubmit={hideSubmit}
+          onPendingChange={onPendingChange}
+          onStatusChange={onStatusChange}
+          onSuccess={onSuccess}
+        />
       </div>
     </div>
   );

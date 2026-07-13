@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, BellRing, Check, Gauge, Sparkles, WalletCards } from 'lucide-react';
 import { AmbientBackdrop, ContactSection, SiteFooter, TopNav } from '@/app/global/_chrome';
+import { ComparePlansModal, type CompareColumn, type CompareRow } from './_components/compare-plans-modal';
 import {
   EVALUATION_UNIT_PRICES,
   FIXED_TOPUP_PLANS,
@@ -40,7 +41,7 @@ const INCLUDED_EVERYWHERE = [
 const PRICING_FAQ = [
   {
     question: 'What counts as one evaluation?',
-    answer: `One successful scoring call. A word or sentence evaluation deducts ${WORD_SENTENCE_POINTS_PER_USE} point, a paragraph evaluation deducts ${PARAGRAPH_POINTS_PER_USE} points. Failed or errored calls deduct nothing.`,
+    answer: `One successful scoring call. A word, phrase or sentence evaluation deducts ${WORD_SENTENCE_POINTS_PER_USE} point, a paragraph evaluation deducts ${PARAGRAPH_POINTS_PER_USE} points. Failed or errored calls deduct nothing.`,
   },
   {
     question: 'Do points expire?',
@@ -69,6 +70,51 @@ const faqSchema = {
 function formatPackagePrice(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
+
+/** Columns for the "compare all plans" modal table. */
+const COMPARE_COLUMNS: CompareColumn[] = [
+  { id: 'free', label: 'Free', price: '$0', accent: false },
+  ...FIXED_TOPUP_PLANS.map((plan) => ({
+    id: plan.id,
+    label: PACK_COPY[plan.id].label,
+    price: `from ${formatPackagePrice(plan.amountCents)}`,
+    accent: Boolean(plan.recommended),
+  })),
+];
+
+/** One row per compared attribute; `values` is aligned to COMPARE_COLUMNS. */
+const COMPARE_ROWS: CompareRow[] = [
+  { label: 'Starting price', values: COMPARE_COLUMNS.map((c) => c.price) },
+  {
+    label: 'Purchase bonus',
+    values: [
+      '—',
+      ...FIXED_TOPUP_PLANS.map((p) => (p.bonusPct > 0 ? `+${p.bonusPct}%` : '—')),
+    ],
+  },
+  {
+    label: 'Per word, phrase or sentence',
+    values: [
+      `${TRIAL_CALLS} free points`,
+      ...FIXED_TOPUP_PLANS.map((p) => `${formatEvaluationUnitDollars(EVALUATION_UNIT_PRICES[p.id].wordSentenceDollars)}`),
+    ],
+  },
+  {
+    label: 'Per paragraph',
+    values: [
+      'Included',
+      ...FIXED_TOPUP_PLANS.map((p) => `${formatEvaluationUnitDollars(EVALUATION_UNIT_PRICES[p.id].paragraphDollars)}`),
+    ],
+  },
+  {
+    label: 'Point validity',
+    values: COMPARE_COLUMNS.map(() => `${TRIAL_VALID_DAYS} days`),
+  },
+  ...INCLUDED_EVERYWHERE.map((feature) => ({
+    label: feature,
+    values: COMPARE_COLUMNS.map(() => true),
+  })),
+];
 
 export default function PricingPage() {
   return (
@@ -135,7 +181,7 @@ export default function PricingPage() {
                     </div>
                     <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">{copy.blurb}</p>
                     <ul className="mt-5 space-y-2 text-[12.5px] text-foreground/80">
-                      <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={3} />{formatEvaluationUnitDollars(rates.wordSentenceDollars)} / word or sentence</li>
+                      <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={3} />{formatEvaluationUnitDollars(rates.wordSentenceDollars)} / word, phrase or sentence</li>
                       <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={3} />{formatEvaluationUnitDollars(rates.paragraphDollars)} / paragraph</li>
                     </ul>
                   </article>
@@ -145,7 +191,7 @@ export default function PricingPage() {
 
             <div className="mt-8 grid gap-4 rounded-2xl border border-zinc-900/[0.08] bg-white/60 p-6 sm:grid-cols-3 md:p-7">
               {[
-                { title: `${WORD_SENTENCE_POINTS_PER_USE} point / word or sentence`, body: 'Deducted only when the evaluation succeeds.' },
+                { title: `${WORD_SENTENCE_POINTS_PER_USE} point / word, phrase or sentence`, body: 'Deducted only when the evaluation succeeds.' },
                 { title: `${PARAGRAPH_POINTS_PER_USE} points / paragraph`, body: 'Longer reading and speaking tasks cost two points.' },
                 { title: '0 points / failed call', body: 'Errors and rejected audio never touch your balance.' },
               ].map((item) => (
@@ -166,6 +212,8 @@ export default function PricingPage() {
                 ))}
               </ul>
             </div>
+
+            <ComparePlansModal columns={COMPARE_COLUMNS} rows={COMPARE_ROWS} />
           </div>
         </section>
 

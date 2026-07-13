@@ -36,6 +36,7 @@ import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { useLang } from '../../_lib/use-lang';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_WALLET: AccountWallet = {
   paidEvaluationPoints: 0,
@@ -152,7 +153,7 @@ export default function BillingPage() {
           label={t('Evaluation points used this month', '本月消耗评测积分')}
           value={monthlyEvaluationUsage.totalPoints.toLocaleString('en-US')}
           sub={t(
-            `${formatCalls(monthlyEvaluationUsage.calls)} calls · word/sentence ${monthlyEvaluationUsage.wordSentenceCalls.toLocaleString('en-US')} (${monthlyEvaluationUsage.wordSentencePoints.toLocaleString('en-US')} pts) · paragraph ${monthlyEvaluationUsage.paragraphCalls.toLocaleString('en-US')} (${monthlyEvaluationUsage.paragraphPoints.toLocaleString('en-US')} pts)`,
+            `${formatCalls(monthlyEvaluationUsage.calls)} calls · word/phrase/sentence ${monthlyEvaluationUsage.wordSentenceCalls.toLocaleString('en-US')} (${monthlyEvaluationUsage.wordSentencePoints.toLocaleString('en-US')} pts) · paragraph ${monthlyEvaluationUsage.paragraphCalls.toLocaleString('en-US')} (${monthlyEvaluationUsage.paragraphPoints.toLocaleString('en-US')} pts)`,
             `${formatCalls(monthlyEvaluationUsage.calls)} 次调用 · 字词句 ${monthlyEvaluationUsage.wordSentenceCalls.toLocaleString('en-US')} 次（${monthlyEvaluationUsage.wordSentencePoints.toLocaleString('en-US')} 积分）· 段落 ${monthlyEvaluationUsage.paragraphCalls.toLocaleString('en-US')} 次（${monthlyEvaluationUsage.paragraphPoints.toLocaleString('en-US')} 积分）`,
           )}
         />
@@ -182,7 +183,7 @@ export default function BillingPage() {
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {t(
-                'Every key drains the same point pool — see calls and the word/sentence versus paragraph point split for each key.',
+                'Every key drains the same point pool — see calls and the word/phrase/sentence versus paragraph point split for each key.',
                 '所有 Key 共用同一积分池；下方按 Key 展示调用次数，以及字词句与段落的积分消耗。',
               )}
             </p>
@@ -207,7 +208,7 @@ export default function BillingPage() {
               <div className="grid grid-cols-[minmax(220px,1.5fr)_120px_175px_155px_145px] gap-5 border-b border-border bg-muted/20 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <div>{tx('Key')}</div>
                 <div className="text-right">{t('Total calls', '总调用')}</div>
-                <div className="text-right">{t('Word / sentence', '字词句')}</div>
+                <div className="text-right">{t('Word / phrase / sentence', '字词句')}</div>
                 <div className="text-right">{t('Paragraph', '段落')}</div>
                 <div className="text-right">{t('Points consumed', '消耗积分')}</div>
               </div>
@@ -332,7 +333,8 @@ function PointExpiryBreakdown({
   lang: string;
   t: (en: string, zh: string) => string;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [hoveredBatchId, setHoveredBatchId] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
   const activeBatches = useMemo(
     () =>
@@ -357,6 +359,7 @@ function PointExpiryBreakdown({
   );
   const availablePercentages = allocateWholePercentages(expiryBatches, availablePoints);
   const nextExpiry = expiryBatches[0];
+  const hoveredBatch = expiryBatches.find((batch) => batch.id === hoveredBatchId) ?? null;
   const locale = lang === 'zh' ? 'zh-CN' : 'en-US';
   const daysUntilNextExpiry = nextExpiry
     ? Math.max(0, Math.ceil((Date.parse(nextExpiry.expiresAt) - now) / 86400000))
@@ -406,6 +409,9 @@ function PointExpiryBreakdown({
             availablePoints={availablePoints}
             displayPercentages={availablePercentages}
             colors={chartColors}
+            hoveredBatchId={hoveredBatchId}
+            onHoverBatch={setHoveredBatchId}
+            locale={locale}
             t={t}
           />
           <div className="min-w-0 flex-1">
@@ -417,15 +423,78 @@ function PointExpiryBreakdown({
                 {availablePoints.toLocaleString('en-US')} {t('pts', '积分')}
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {t('Each color represents one top-up batch; the percentage is its share of available points.', '每种颜色代表一笔充值批次；百分比为该批次占可用积分的比例。')}
-            </p>
+            {hoveredBatch ? (
+              <div className="rounded-xl border border-border bg-background px-3 py-2.5 shadow-sm animate-in fade-in duration-150">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-sm"
+                    style={{
+                      backgroundColor:
+                        chartColors[
+                          Math.max(
+                            0,
+                            expiryBatches.findIndex((batch) => batch.id === hoveredBatch.id),
+                          ) % chartColors.length
+                        ],
+                    }}
+                  />
+                  <span className="text-[11px] font-semibold tabular-nums leading-tight">
+                    {formatExpiryTimestamp(hoveredBatch.expiresAt, locale)}
+                  </span>
+                </div>
+                <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                  <div className="flex justify-between gap-2">
+                    <span>{t('Remaining', '剩余')}</span>
+                    <span className="font-medium tabular-nums text-foreground">
+                      {hoveredBatch.remainingPoints.toLocaleString('en-US')} {t('pts', '积分')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span>{t('Share', '占比')}</span>
+                    <span className="font-medium tabular-nums text-foreground">
+                      {availablePercentages.get(hoveredBatch.id) ?? 0}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span>{t('Expires in', '到期')}</span>
+                    <span className="font-medium tabular-nums text-foreground">
+                      {t(
+                        `${Math.max(0, Math.ceil((Date.parse(hoveredBatch.expiresAt) - now) / 86400000))}d`,
+                        `${Math.max(0, Math.ceil((Date.parse(hoveredBatch.expiresAt) - now) / 86400000))} 天`,
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span>{t('Used', '已用')}</span>
+                    <span className="font-medium tabular-nums text-foreground">
+                      {hoveredBatch.usedPoints.toLocaleString('en-US')} {t('pts', '积分')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                {t(
+                  'Each color represents one top-up batch; the percentage is its share of available points. Hover a slice for details.',
+                  '每种颜色代表一笔充值批次；百分比为该批次占可用积分的比例。悬停扇区可查看详情。',
+                )}
+              </p>
+            )}
         <div className="mt-3 grid gap-x-5 gap-y-1.5 text-[11px] text-muted-foreground sm:grid-cols-2">
           {expiryBatches.map((batch, index) => {
             const percentage = availablePercentages.get(batch.id) ?? 0;
+            const isHovered = hoveredBatchId === batch.id;
             return (
-            <span key={batch.id} className="inline-flex min-w-0 items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-sm ${colors[index % colors.length]}`} />
+            <span
+              key={batch.id}
+              onMouseEnter={() => setHoveredBatchId(batch.id)}
+              onMouseLeave={() => setHoveredBatchId(null)}
+              className={cn(
+                'inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 cursor-default transition-colors',
+                isHovered && 'bg-background text-foreground shadow-sm',
+              )}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-sm ${colors[index % colors.length]}`} />
               <span className="truncate">{formatExpiryTimestamp(batch.expiresAt, locale)}</span>
               {' · '}
               {batch.remainingPoints.toLocaleString('en-US')} {t('pts', '积分')} ({percentage}%)
@@ -507,31 +576,57 @@ function ExpiryDonut({
   availablePoints,
   displayPercentages,
   colors,
+  hoveredBatchId,
+  onHoverBatch,
+  locale,
   t,
 }: {
   batches: EvaluationPointBatch[];
   availablePoints: number;
   displayPercentages: Map<string, number>;
   colors: string[];
+  hoveredBatchId: string | null;
+  onHoverBatch: (id: string | null) => void;
+  locale: string;
   t: (en: string, zh: string) => string;
 }) {
-  const centerX = 84;
+  // Leave room on both sides for outside callout labels. Previous cx=84
+  // crushed left labels into the ring (e.g. "17%" sitting on the arc).
+  const centerX = 150;
   const centerY = 85;
+  const ringR = 44;
+  const ringStroke = 18;
+  const innerR = ringR - ringStroke / 2;
+  const outerR = ringR + ringStroke / 2;
+  const touchR = outerR + 2;
+  const elbowPad = 14;
+  const leftLabelX = 36;
+  const leftLineEndX = 40;
+  const rightLabelX = 264;
+  const rightLineEndX = 260;
+  const labelMinY = 14;
+  const labelMaxY = 156;
+  const labelGap = 20;
+  const liftPx = 6;
+
   const segments = batches.map((batch, index) => {
     const percent = availablePoints > 0 ? (batch.remainingPoints / availablePoints) * 100 : 0;
     const previousPercent = batches
       .slice(0, index)
       .reduce((total, item) => total + (availablePoints > 0 ? (item.remainingPoints / availablePoints) * 100 : 0), 0);
-    const labelAngle = ((previousPercent + percent / 2) / 100) * Math.PI * 2 - Math.PI / 2;
+    const startAngle = (previousPercent / 100) * Math.PI * 2 - Math.PI / 2;
+    const endAngle = ((previousPercent + percent) / 100) * Math.PI * 2 - Math.PI / 2;
+    const labelAngle = (startAngle + endAngle) / 2;
     const side = Math.cos(labelAngle) >= 0 ? 'right' : 'left';
     return {
       batch,
       index,
       percent,
-      dashOffset: -previousPercent,
+      startAngle,
+      endAngle,
       labelAngle,
       side,
-      rawLabelY: centerY + Math.sin(labelAngle) * 64,
+      rawLabelY: centerY + Math.sin(labelAngle) * (outerR + 18),
     };
   });
 
@@ -541,17 +636,34 @@ function ExpiryDonut({
     const onSide = segments
       .filter((segment) => segment.side === side)
       .sort((a, b) => a.rawLabelY - b.rawLabelY);
-    let previousY = 18;
-    const positioned = onSide.map((segment) => {
-      const labelY = Math.max(segment.rawLabelY, previousY + 22);
+    if (onSide.length === 0) return [];
+
+    let previousY = labelMinY - labelGap;
+    const packed = onSide.map((segment) => {
+      const labelY = Math.max(
+        labelMinY,
+        Math.min(labelMaxY, Math.max(segment.rawLabelY, previousY + labelGap)),
+      );
       previousY = labelY;
       return { ...segment, labelY };
     });
-    const overflow = Math.max(0, (positioned.at(-1)?.labelY ?? 0) - 152);
-    return positioned.map((segment) => ({ ...segment, labelY: segment.labelY - overflow }));
+
+    const lastY = packed.at(-1)?.labelY ?? labelMinY;
+    if (lastY <= labelMaxY) return packed;
+
+    if (packed.length === 1) {
+      return [{ ...packed[0], labelY: (labelMinY + labelMaxY) / 2 }];
+    }
+    return packed.map((segment, i) => ({
+      ...segment,
+      labelY: labelMinY + (i * (labelMaxY - labelMinY)) / (packed.length - 1),
+    }));
   };
-  const labeledSegments = [...placeLabels('left'), ...placeLabels('right')]
-    .sort((a, b) => a.index - b.index);
+  const labeledSegments = [...placeLabels('left'), ...placeLabels('right')].sort(
+    (a, b) => a.index - b.index,
+  );
+
+  const hovered = labeledSegments.find((segment) => segment.batch.id === hoveredBatchId) ?? null;
 
   return (
     <div
@@ -560,49 +672,106 @@ function ExpiryDonut({
       aria-label={t('Available points split by individual expiry batch', '按单笔有效期批次划分的可用积分')}
     >
       <svg viewBox="0 0 300 170" className="h-full w-full overflow-visible">
-        <g transform={`rotate(-90 ${centerX} ${centerY})`}>
-          <circle cx={centerX} cy={centerY} r="44" fill="none" stroke="currentColor" strokeOpacity="0.08" strokeWidth="18" />
-          {segments.map(({ batch, percent, dashOffset }, index) => (
-            <circle
-              key={batch.id}
-              cx={centerX}
-              cy={centerY}
-              r="44"
-              fill="none"
-              pathLength="100"
-              stroke={colors[index % colors.length]}
-              strokeDasharray={`${percent} ${100 - percent}`}
-              strokeDashoffset={dashOffset}
-              strokeWidth="18"
-            />
-          ))}
-        </g>
-        {labeledSegments.map(({ batch, index, percent, labelAngle, labelY, side }) => {
-          const direction = side === 'right' ? 1 : -1;
-          const startX = centerX + Math.cos(labelAngle) * 54;
-          const startY = centerY + Math.sin(labelAngle) * 54;
-          const bendX = centerX + Math.cos(labelAngle) * 66;
-          const bendY = centerY + Math.sin(labelAngle) * 66;
-          const lineEndX = side === 'right' ? 204 : 52;
-          const labelX = side === 'right' ? 210 : 46;
+        {/* Track */}
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={ringR}
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity="0.08"
+          strokeWidth={ringStroke}
+        />
+        {labeledSegments.map(({ batch, index, percent, startAngle, endAngle, labelAngle }) => {
+          const isHovered = hoveredBatchId === batch.id;
+          const dimmed = hoveredBatchId !== null && !isHovered;
+          const dx = isHovered ? Math.cos(labelAngle) * liftPx : 0;
+          const dy = isHovered ? Math.sin(labelAngle) * liftPx : 0;
+          const r0 = isHovered ? innerR - 1 : innerR;
+          const r1 = isHovered ? outerR + 3 : outerR;
           return (
-            <g key={batch.id}>
+            <g
+              key={batch.id}
+              style={{
+                transform: `translate(${dx}px, ${dy}px)`,
+                transition: 'transform 180ms ease, opacity 180ms ease',
+              }}
+              opacity={dimmed ? 0.38 : 1}
+              onMouseEnter={() => onHoverBatch(batch.id)}
+              onMouseLeave={() => onHoverBatch(null)}
+              className="cursor-pointer"
+            >
+              <title>
+                {`${formatExpiryTimestamp(batch.expiresAt, locale)} · ${batch.remainingPoints.toLocaleString('en-US')} ${t('pts', '积分')} · ${displayPercentages.get(batch.id) ?? Math.round(percent)}%`}
+              </title>
+              <path
+                d={donutSlicePath(centerX, centerY, r0, r1, startAngle, endAngle)}
+                fill={colors[index % colors.length]}
+                style={{
+                  transition: 'opacity 180ms ease',
+                  filter: isHovered
+                    ? 'drop-shadow(0 4px 8px rgba(15, 23, 42, 0.22))'
+                    : undefined,
+                }}
+              />
+              {/* Wider invisible hit area for thin slices */}
+              <path
+                d={donutSlicePath(centerX, centerY, innerR - 4, outerR + 8, startAngle, endAngle)}
+                fill="transparent"
+              />
+            </g>
+          );
+        })}
+        {labeledSegments.map(({ batch, index, percent, labelAngle, labelY, side }) => {
+          const isHovered = hoveredBatchId === batch.id;
+          const dimmed = hoveredBatchId !== null && !isHovered;
+          const liftX = isHovered ? Math.cos(labelAngle) * liftPx : 0;
+          const liftY = isHovered ? Math.sin(labelAngle) * liftPx : 0;
+          const startX = centerX + Math.cos(labelAngle) * touchR + liftX;
+          const startY = centerY + Math.sin(labelAngle) * touchR + liftY;
+          const elbowX =
+            side === 'right'
+              ? Math.min(
+                  Math.max(
+                    centerX + Math.cos(labelAngle) * (touchR + elbowPad) + liftX,
+                    centerX + outerR + elbowPad,
+                  ),
+                  rightLineEndX - 8,
+                )
+              : Math.max(
+                  Math.min(
+                    centerX + Math.cos(labelAngle) * (touchR + elbowPad) + liftX,
+                    centerX - outerR - elbowPad,
+                  ),
+                  leftLineEndX + 8,
+                );
+          const lineEndX = side === 'right' ? rightLineEndX : leftLineEndX;
+          const labelX = side === 'right' ? rightLabelX : leftLabelX;
+          return (
+            <g
+              key={`label-${batch.id}`}
+              opacity={dimmed ? 0.35 : 1}
+              style={{ transition: 'opacity 180ms ease' }}
+              onMouseEnter={() => onHoverBatch(batch.id)}
+              onMouseLeave={() => onHoverBatch(null)}
+              className="cursor-pointer"
+            >
               <polyline
-                points={`${startX},${startY} ${bendX},${bendY} ${lineEndX},${labelY}`}
+                points={`${startX},${startY} ${elbowX},${labelY} ${lineEndX},${labelY}`}
                 fill="none"
                 stroke={colors[index % colors.length]}
-                strokeWidth="1.5"
+                strokeWidth={isHovered ? 2 : 1.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                opacity="0.8"
+                opacity={isHovered ? 1 : 0.8}
               />
               <text
                 x={labelX}
                 y={labelY}
                 fill="currentColor"
-                fontSize="12"
+                fontSize={isHovered ? 13 : 12}
                 fontWeight="700"
-                textAnchor={direction === 1 ? 'start' : 'end'}
+                textAnchor={side === 'right' ? 'start' : 'end'}
                 dominantBaseline="middle"
               >
                 {displayPercentages.get(batch.id) ?? Math.round(percent)}%
@@ -611,14 +780,50 @@ function ExpiryDonut({
           );
         })}
       </svg>
-      <div className="absolute left-[84px] top-1/2 flex w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-center">
+
+      <div className="pointer-events-none absolute left-1/2 top-1/2 flex w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-center">
         <span className="text-base font-semibold tabular-nums leading-none">
-          {availablePoints.toLocaleString('en-US')}
+          {(hovered?.batch.remainingPoints ?? availablePoints).toLocaleString('en-US')}
         </span>
-        <span className="mt-1 text-[10px] text-muted-foreground">{t('Available', '可用积分')}</span>
+        <span className="mt-1 text-[10px] text-muted-foreground">
+          {hovered
+            ? t('This batch', '此批次')
+            : t('Available', '可用积分')}
+        </span>
       </div>
     </div>
   );
+}
+
+/** SVG donut slice path from startAngle → endAngle (radians, 0 = east, CCW). */
+function donutSlicePath(
+  cx: number,
+  cy: number,
+  rInner: number,
+  rOuter: number,
+  startAngle: number,
+  endAngle: number,
+): string {
+  const sweep = endAngle - startAngle;
+  if (sweep <= 0.0001) return '';
+  // Near-full ring: draw as two half-arcs to avoid SVG full-circle edge cases.
+  const clampedEnd = sweep >= Math.PI * 2 - 0.0001 ? startAngle + Math.PI * 2 - 0.0001 : endAngle;
+  const large = clampedEnd - startAngle > Math.PI ? 1 : 0;
+  const polar = (r: number, angle: number) => [
+    cx + Math.cos(angle) * r,
+    cy + Math.sin(angle) * r,
+  ] as const;
+  const [ox0, oy0] = polar(rOuter, startAngle);
+  const [ox1, oy1] = polar(rOuter, clampedEnd);
+  const [ix1, iy1] = polar(rInner, clampedEnd);
+  const [ix0, iy0] = polar(rInner, startAngle);
+  return [
+    `M ${ox0} ${oy0}`,
+    `A ${rOuter} ${rOuter} 0 ${large} 1 ${ox1} ${oy1}`,
+    `L ${ix1} ${iy1}`,
+    `A ${rInner} ${rInner} 0 ${large} 0 ${ix0} ${iy0}`,
+    'Z',
+  ].join(' ');
 }
 
 /**

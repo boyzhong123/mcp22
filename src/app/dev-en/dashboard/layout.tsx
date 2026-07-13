@@ -10,6 +10,7 @@ import { DevEnCommandPalette } from '../_components/command-palette';
 import { DataHydrator } from '../_components/data-hydrator';
 import { OnboardingTour } from '../_components/onboarding-tour';
 import { BrandLoader } from '../_components/brand-loader';
+import { NavigationProgress } from '../_components/navigation-progress';
 import { useUi } from '../_lib/use-ui-store';
 
 export default function DevEnDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -44,6 +45,7 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
   //    reflows when the sidebar collapses / expands.
   return (
     <div className="min-h-dvh bg-background">
+      <NavigationProgress />
       <DevEnSidebar />
       <main
         className={cn(

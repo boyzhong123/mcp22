@@ -508,7 +508,10 @@ export const DICT: Record<string, string> = {
   // Filters / time / KPIs
   Today: '今日',
   'Peak day': '峰值日',
+  'Peak calls': '峰值调用',
   'Avg / day': '日均',
+  'Avg calls / day': '日均调用',
+  pts: '积分',
   'Net cost': '净消费',
   Cost: '消费',
   'Spend MTD': '本月至今消费',

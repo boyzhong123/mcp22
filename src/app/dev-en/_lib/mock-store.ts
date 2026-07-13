@@ -355,7 +355,10 @@ export const VOLUME_TIERS: VolumeTier[] = [
 // v22: expiry-batch demo data includes same-day, different-time top-ups.
 // v23: usage records include word/sentence and paragraph point breakdowns.
 // v24: account and key guardrails are evaluation points, not money.
-const SCHEMA_VERSION = 24;
+// v25: seed an expired point batch with leftover points for billing history UI.
+// v26: reliably link the voided (30-day unused) batch to the oldest top-up and
+// stamp usage fields on transactions so history always shows 已作废.
+const SCHEMA_VERSION = 26;
 const SCHEMA_KEY = 'dev-en:schema-version';
 
 const STORAGE = {
@@ -869,26 +872,35 @@ function seedIfNeeded() {
   // overseas checkout supports PayPal only.
   const existingTxn = read<Transaction[] | null>(STORAGE.transactions, null);
   if (!existingTxn) {
-    const mkTxn = (o: Omit<Transaction, 'id'>): Transaction => {
+    const mkTxn = (
+      o: Omit<Transaction, 'id'> & { id?: string },
+    ): Transaction => {
       const basePoints = Math.floor((o.amountCents / 100) * 250);
       const bonusPct = o.amountCents >= 19_990 ? 20 : o.amountCents >= 9_990 ? 10 : 0;
       const bonusPoints = Math.round(basePoints * (bonusPct / 100));
+      const credited = basePoints + bonusPoints;
+      const { id: preferredId, usedPoints, remainingPoints, ...rest } = o;
       return {
-        ...o,
-        id: uuid('txn_'),
+        ...rest,
+        id: preferredId ?? uuid('txn_'),
         packageId: bonusPct === 20 ? 'flagship' : bonusPct === 10 ? 'advanced' : 'standard',
         basePoints,
         bonusPoints,
-        creditedPoints: basePoints + bonusPoints,
+        creditedPoints: credited,
         balanceBeforePoints: Math.floor(((o.balanceBeforeCents ?? 0) / 100) * 250),
         balanceAfterPoints: Math.floor(((o.balanceAfterCents ?? 0) / 100) * 250),
         pointsExpireAt: new Date(new Date(o.createdAt).getTime() + 30 * 86400000).toISOString(),
+        // Usage snapshot mirrors the matching point batch (fallback when
+        // batch join misses). Remaining > 0 past expiry → voided in UI.
+        usedPoints: usedPoints ?? 0,
+        remainingPoints: remainingPoints ?? credited,
       };
     };
 
     const seeded: Transaction[] = [
-      // newest first
+      // newest first — usage numbers stay in sync with point batches below
       mkTxn({
+        id: 'txn_seed_d1',
         createdAt: new Date(now - 1 * 86400000).toISOString(),
         amountCents: 2000,
         status: 'succeeded',
@@ -899,8 +911,11 @@ function seedIfNeeded() {
         balanceBeforeCents: 24500,
         balanceAfterCents: 26500,
         kind: 'credit-topup',
+        usedPoints: 2_000,
+        remainingPoints: 3_000,
       }),
       mkTxn({
+        id: 'txn_seed_d6',
         createdAt: new Date(now - 6 * 86400000).toISOString(),
         amountCents: 10000,
         status: 'succeeded',
@@ -911,8 +926,11 @@ function seedIfNeeded() {
         balanceBeforeCents: 14500,
         balanceAfterCents: 24500,
         kind: 'credit-topup',
+        usedPoints: 27_500,
+        remainingPoints: 0,
       }),
       mkTxn({
+        id: 'txn_seed_d10',
         createdAt: new Date(now - 10 * 86400000).toISOString(),
         amountCents: 2000,
         status: 'succeeded',
@@ -923,8 +941,11 @@ function seedIfNeeded() {
         balanceBeforeCents: 12500,
         balanceAfterCents: 14500,
         kind: 'credit-topup',
+        usedPoints: 2_000,
+        remainingPoints: 3_000,
       }),
       mkTxn({
+        id: 'txn_seed_d14',
         createdAt: new Date(now - 14 * 86400000).toISOString(),
         amountCents: 2500,
         status: 'succeeded',
@@ -935,8 +956,11 @@ function seedIfNeeded() {
         balanceBeforeCents: 10000,
         balanceAfterCents: 12500,
         kind: 'credit-topup',
+        usedPoints: 1_125,
+        remainingPoints: 5_125,
       }),
       mkTxn({
+        id: 'txn_seed_d18',
         createdAt: new Date(now - 18 * 86400000).toISOString(),
         amountCents: 5000,
         status: 'succeeded',
@@ -947,9 +971,13 @@ function seedIfNeeded() {
         balanceBeforeCents: 5000,
         balanceAfterCents: 10000,
         kind: 'credit-topup',
+        usedPoints: 5_500,
+        remainingPoints: 7_000,
       }),
+      // Oldest top-up: 30-day window elapsed with leftover points → voided.
       mkTxn({
-        createdAt: new Date(now - 30 * 86400000).toISOString(),
+        id: 'txn_seed_d30',
+        createdAt: new Date(now - 35 * 86400000).toISOString(),
         amountCents: 5000,
         status: 'succeeded',
         method: 'paypal',
@@ -959,6 +987,8 @@ function seedIfNeeded() {
         balanceBeforeCents: 0,
         balanceAfterCents: 5000,
         kind: 'credit-topup',
+        usedPoints: 10_000,
+        remainingPoints: 2_500,
       }),
     ];
     write(STORAGE.transactions, seeded);
@@ -987,9 +1017,11 @@ function seedIfNeeded() {
   const existingWallet = read<AccountWallet | null>(STORAGE.wallet, null);
   if (!existingWallet) {
     const seeded: AccountWallet = {
-      // Canonical point balance: 68,750 credited, 50,625 used.
+      // Canonical point balance: 68,750 credited, 48,125 used.
+      // Active remaining stays 18,125; the oldest batch is expired with
+      // 2,500 leftover points (forfeited, not counted as available).
       paidEvaluationPoints: 68_750,
-      usedEvaluationPoints: 50_625,
+      usedEvaluationPoints: 48_125,
       // Total credits ever loaded.
       paidCreditsCents: 26_500,
       // Already consumed: $265 - $72.50 remaining = $192.50
@@ -1010,40 +1042,48 @@ function seedIfNeeded() {
     null,
   );
   if (!existingPointBatches) {
-    const transactionByAge = cache.transactions ?? [];
-    const txForAge = (daysAgo: number) =>
-      transactionByAge.find((transaction) => {
-        const age = Math.round((now - new Date(transaction.createdAt).getTime()) / 86400000);
-        return age === daysAgo;
-      })?.id ?? `txn_seed_${daysAgo}`;
+    const txId = (id: string) =>
+      (cache.transactions ?? []).find((transaction) => transaction.id === id)?.id ?? id;
     const mkBatch = (
+      transactionId: string,
       daysAgo: number,
       creditedPoints: number,
       remainingPoints: number,
       daysUntilExpiry: number,
       packageId: EvaluationPointBatch['packageId'],
       expiryHourOffset = 0,
-    ): EvaluationPointBatch => ({
-      id: uuid('point_batch_'),
-      transactionId: txForAge(daysAgo),
-      packageId,
-      creditedPoints,
-      usedPoints: creditedPoints - remainingPoints,
-      remainingPoints,
-      createdAt: new Date(now - daysAgo * 86400000).toISOString(),
-      expiresAt: new Date(now + daysUntilExpiry * 86400000 + expiryHourOffset * 3600000).toISOString(),
-      status: remainingPoints > 0 ? 'active' : 'exhausted',
-    });
+    ): EvaluationPointBatch => {
+      const pastExpiry = daysUntilExpiry < 0;
+      const status: EvaluationPointBatch['status'] = pastExpiry
+        ? remainingPoints > 0
+          ? 'expired'
+          : 'exhausted'
+        : remainingPoints > 0
+          ? 'active'
+          : 'exhausted';
+      return {
+        id: uuid('point_batch_'),
+        transactionId: txId(transactionId),
+        packageId,
+        creditedPoints,
+        usedPoints: creditedPoints - remainingPoints,
+        remainingPoints,
+        createdAt: new Date(now - daysAgo * 86400000).toISOString(),
+        expiresAt: new Date(now + daysUntilExpiry * 86400000 + expiryHourOffset * 3600000).toISOString(),
+        status,
+      };
+    };
     const seeded = [
-      mkBatch(30, 12_500, 0, -1, 'standard'),
-      mkBatch(18, 12_500, 7_000, 12, 'standard'),
+      // Voided: 30-day window ended with leftover points (not counted as available).
+      mkBatch('txn_seed_d30', 35, 12_500, 2_500, -5, 'standard'),
+      mkBatch('txn_seed_d18', 18, 12_500, 7_000, 12, 'standard'),
       // Two independent top-ups expire on the same day but at different
       // times, so the billing UI demonstrates why date-only grouping loses
       // real batch information.
-      mkBatch(14, 6_250, 5_125, 16, 'standard', -3),
-      mkBatch(10, 5_000, 3_000, 16, 'standard', 4),
-      mkBatch(6, 27_500, 0, 24, 'advanced'),
-      mkBatch(1, 5_000, 3_000, 29, 'standard'),
+      mkBatch('txn_seed_d14', 14, 6_250, 5_125, 16, 'standard', -3),
+      mkBatch('txn_seed_d10', 10, 5_000, 3_000, 16, 'standard', 4),
+      mkBatch('txn_seed_d6', 6, 27_500, 0, 24, 'advanced'),
+      mkBatch('txn_seed_d1', 1, 5_000, 3_000, 29, 'standard'),
     ];
     write(STORAGE.evaluationPointBatches, seeded);
     cache.evaluationPointBatches = seeded;

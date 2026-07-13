@@ -30,7 +30,7 @@ import {
 } from '../_lib/mock-store';
 import { useMockStore } from '../_lib/use-mock-store';
 import { useLang } from '../_lib/use-lang';
-import { closePalette, openPalette, togglePalette } from '../_lib/ui-store';
+import { closePalette, openPalette, startNavigation, togglePalette } from '../_lib/ui-store';
 import { useUi } from '../_lib/use-ui-store';
 import { StripeCheckoutModal } from './stripe-checkout-modal';
 
@@ -77,6 +77,7 @@ export function DevEnCommandPalette() {
 
   const go = (href: string) => {
     closePalette();
+    startNavigation(href);
     router.push(href);
   };
 
@@ -250,6 +251,7 @@ export function DevEnCommandPalette() {
         run: () => {
           closePalette();
           logout();
+          startNavigation('/login');
           router.push('/login');
         },
       },

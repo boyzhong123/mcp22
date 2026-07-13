@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   Activity,
@@ -10,21 +10,26 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  Check,
   CheckCircle2,
   Clock,
   Coins,
+  Copy,
   CreditCard,
   Gauge,
+  Info,
   Key,
   Receipt,
   Sparkles,
   Wallet,
+  X,
   XOctagon,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMockAuth } from '../../_lib/mock-auth';
 import {
+  createKey,
   formatCalls,
   formatDate,
   getAccountAlert,
@@ -102,7 +107,50 @@ export default function OverviewPage() {
   });
 
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
+  const [createKeyOpen, setCreateKeyOpen] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [justCreatedKey, setJustCreatedKey] = useState<ApiKey | null>(null);
+  const [copiedFreshId, setCopiedFreshId] = useState<string | null>(null);
   const openAddCredits = () => setAddCreditsOpen(true);
+  const openCreateKey = () => {
+    setNewKeyName('');
+    setCreateKeyOpen(true);
+  };
+  const handleCreateKey = (event: FormEvent) => {
+    event.preventDefault();
+    const created = createKey(newKeyName);
+    setCreateKeyOpen(false);
+    setJustCreatedKey(created);
+  };
+  const copyFreshKey = async (secret: string, id: string) => {
+    let ok = false;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(secret);
+        ok = true;
+      } catch {
+        /* secure-context only */
+      }
+    }
+    if (!ok) {
+      const ta = document.createElement('textarea');
+      ta.value = secret;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        ok = document.execCommand('copy');
+      } catch {
+        /* noop */
+      }
+      document.body.removeChild(ta);
+    }
+    if (ok) {
+      setCopiedFreshId(id);
+      window.setTimeout(() => setCopiedFreshId((current) => (current === id ? null : current)), 1500);
+    }
+  };
 
   const activeKeys = keys.filter((k) => k.status === 'active');
   const monthlyUsage = useMemo(() => {
@@ -200,18 +248,19 @@ export default function OverviewPage() {
             <button
               type="button"
               onClick={openAddCredits}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-foreground px-3.5 text-xs font-medium text-background transition-[filter] hover:brightness-110"
+              className="inline-flex h-9 min-w-[7.25rem] items-center justify-center gap-1.5 rounded-md bg-foreground px-5 text-xs font-medium text-background transition-[filter] hover:brightness-110"
             >
               <Wallet className="h-3.5 w-3.5" />
               {tx('Add points')}
             </button>
-            <Link
-              href="/dashboard/keys"
+            <button
+              type="button"
+              onClick={openCreateKey}
               className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background/70 px-3.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted/50"
             >
               <Key className="h-3.5 w-3.5" />
               {tx('Create key')}
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -273,7 +322,7 @@ export default function OverviewPage() {
           label={t('Evaluation points used this month', '本月消耗评测积分')}
           value={monthlyUsage.totalPoints.toLocaleString('en-US')}
           sub={t(
-            `Word/sentence ${monthlyUsage.wordSentencePoints.toLocaleString('en-US')} pts · paragraph ${monthlyUsage.paragraphPoints.toLocaleString('en-US')} pts`,
+            `Word/phrase/sentence ${monthlyUsage.wordSentencePoints.toLocaleString('en-US')} pts · paragraph ${monthlyUsage.paragraphPoints.toLocaleString('en-US')} pts`,
             `字词句 ${monthlyUsage.wordSentencePoints.toLocaleString('en-US')} 积分 · 段落 ${monthlyUsage.paragraphPoints.toLocaleString('en-US')} 积分`,
           )}
           href="/dashboard/billing"
@@ -340,12 +389,13 @@ export default function OverviewPage() {
                   '创建第一把 API 密钥即可开始接入，免费试用次数自动解锁。',
                 )}
               </p>
-              <Link
-                href="/dashboard/keys"
+              <button
+                type="button"
+                onClick={openCreateKey}
                 className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-foreground hover:underline underline-offset-4"
               >
                 {tx('Create a key')} <ArrowUpRight className="h-3 w-3" />
-              </Link>
+              </button>
             </div>
           ) : usedKeys.length === 0 ? (
             <div className="text-center py-10 rounded-lg border border-dashed border-border">
@@ -584,6 +634,141 @@ export default function OverviewPage() {
         open={addCreditsOpen}
         onClose={() => setAddCreditsOpen(false)}
       />
+
+      {createKeyOpen && (
+        <OverviewModal
+          title={t('Create API key', '创建 API Key')}
+          onClose={() => setCreateKeyOpen(false)}
+        >
+          <form onSubmit={handleCreateKey} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                {tx('Name')}
+              </label>
+              <input
+                autoFocus
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                placeholder={tx('e.g. Mobile app, Staging, CI')}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-foreground/30 focus:outline-none focus:ring-2 focus:ring-ring/20"
+              />
+            </div>
+            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                {t(
+                  'Every key on this account shares the same signup trial package and evaluation-point pool.',
+                  '账户内所有 Key 共享同一份注册试用包和评测积分池。',
+                )}
+              </span>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setCreateKeyOpen(false)}
+                className="h-9 rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-muted/50"
+              >
+                {tx('Cancel')}
+              </button>
+              <button
+                type="submit"
+                className="h-9 rounded-lg bg-foreground px-4 text-sm font-medium text-background hover:brightness-110"
+              >
+                {t('Create key', '创建 Key')}
+              </button>
+            </div>
+          </form>
+        </OverviewModal>
+      )}
+
+      {justCreatedKey && (
+        <OverviewModal
+          title={t('API key created', 'API Key 已创建')}
+          onClose={() => setJustCreatedKey(null)}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "Copy the secret now — for security, we won't show it in full again.",
+                '请立即复制密钥 — 出于安全考虑，之后不会再完整展示。',
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-md border border-border bg-muted/30 px-3 py-2 font-mono text-[12px]">
+                {justCreatedKey.secret}
+              </code>
+              <button
+                type="button"
+                onClick={() => copyFreshKey(justCreatedKey.secret, justCreatedKey.id)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-muted/50"
+              >
+                {copiedFreshId === justCreatedKey.id ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    {tx('Copied')}
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    {tx('Copy')}
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Link
+                href="/dashboard/keys"
+                className="h-9 inline-flex items-center rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-muted/50"
+              >
+                {t('View keys', '查看 Keys')}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setJustCreatedKey(null)}
+                className="h-9 rounded-lg bg-foreground px-4 text-sm font-medium text-background hover:brightness-110"
+              >
+                {tx('Done')}
+              </button>
+            </div>
+          </div>
+        </OverviewModal>
+      )}
+    </div>
+  );
+}
+
+function OverviewModal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  const { tx } = useLang();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label={tx('Close')}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/25"
+      />
+      <div className="relative w-full max-w-[440px] rounded-xl border border-border bg-background shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            aria-label={tx('Close')}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-5 py-5">{children}</div>
+      </div>
     </div>
   );
 }

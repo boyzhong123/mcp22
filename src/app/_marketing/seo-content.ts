@@ -3,7 +3,24 @@ export type MarketingSection = {
   title: string;
   body: string;
   points: string[];
+  /**
+   * Optional editorial image for the section block.
+   * Layout (cards / spotlight / alternating / mosaic) decides how it is framed.
+   * Path is relative to /public. Provide `imageAlt` for accessibility.
+   */
+  image?: string;
+  imageAlt?: string;
 };
+
+/**
+ * Per-page section composition — keeps the shared page shell but prevents
+ * Products + AI Solutions detail pages from reading as six clones of one grid.
+ * - cards: equal three-up (Mandarin)
+ * - spotlight: large featured lead + two supporting bands (English, Function calling)
+ * - alternating: full-width image/copy rows that flip sides (MCP)
+ * - mosaic: tall lead + two stacked companions (Kids, AI tutor)
+ */
+export type MarketingSectionLayout = 'cards' | 'spotlight' | 'alternating' | 'mosaic';
 
 export type MarketingFaq = {
   question: string;
@@ -16,6 +33,36 @@ export type MarketingPayload = {
   body: string;
   filename: string;
   code: string;
+};
+
+/** Per-page visual identity: editorial accent colour + hero artwork. Keeps the
+ *  shared template but gives each product/solution page its own look so the
+ *  detail pages don't read as one recoloured template. Brand-green CTAs stay put. */
+export type MarketingTheme = {
+  /** Solid accent for eyebrows, section icons and workflow markers. */
+  accent: string;
+  /** Translucent accent for icon tiles and soft fills. */
+  accentSoft: string;
+  hero: {
+    src: string;
+    alt: string;
+    /** Small mono kicker shown over the hero image. */
+    kicker: string;
+    /** One-line caption shown over the hero image. */
+    caption: string;
+  };
+};
+
+/** Fallback identity — the original emerald + editorial-webp look. */
+export const DEFAULT_MARKETING_THEME: MarketingTheme = {
+  accent: '#047857',
+  accentSoft: 'rgba(16,185,129,0.10)',
+  hero: {
+    src: '/editorial/speech-assessment-data-dark.webp',
+    alt: 'Western learner using Chivox speech assessment with waveform, phoneme scores and pitch evidence',
+    kicker: 'Speech → evidence → action',
+    caption: 'One assessment layer, structured for product logic and AI reasoning.',
+  },
 };
 
 /** Default payload — the shared response shape every scoring tool returns (see /docs). */
@@ -60,8 +107,12 @@ export type MarketingPageData = {
   workflow: string[];
   faq: MarketingFaq[];
   related: Array<{ href: string; label: string; description: string }>;
+  /** Optional per-page accent + hero artwork; falls back to DEFAULT_MARKETING_THEME. */
+  theme?: MarketingTheme;
   /** Optional page-specific code sample; falls back to DEFAULT_MARKETING_PAYLOAD. */
   payload?: MarketingPayload;
+  /** How the three middle sections are composed. Defaults to `cards`. */
+  sectionLayout?: MarketingSectionLayout;
 };
 
 export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
@@ -69,6 +120,17 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     slug: 'english-speech-assessment',
     path: '/products/english-speech-assessment',
     group: 'Product',
+    sectionLayout: 'spotlight',
+    theme: {
+      accent: '#0369a1',
+      accentSoft: 'rgba(2,132,199,0.10)',
+      hero: {
+        src: '/products/hero/english.jpg',
+        alt: 'A learner practicing English pronunciation aloud at a laptop',
+        kicker: 'Phoneme-level accuracy',
+        caption: 'Score pronunciation, fluency and stress down to individual phonemes.',
+      },
+    },
     eyebrow: 'English speech assessment',
     title: 'English speech assessment and pronunciation scoring for EdTech',
     seoTitle: 'English Speech Assessment & Speech Scoring for EdTech | Chivox AI',
@@ -88,6 +150,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'What you can score',
         title: 'Feedback that goes beyond a single percentage',
         body: 'A useful learning experience needs to explain what happened, not merely return a pass or fail.',
+        image: '/products/english/score-detail.jpg',
+        imageAlt: 'Adult English learner reviewing phoneme-level pronunciation highlights on a laptop',
         points: [
           'Pronunciation accuracy at utterance, word and phoneme level',
           'Fluency, speaking rate, pauses, rhythm and stress signals',
@@ -99,6 +163,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'For product teams',
         title: 'One engine for practice, tutoring and assessment flows',
         body: 'Use the same assessment layer across short drills, guided conversation and longer reading tasks while keeping your product experience consistent.',
+        image: '/products/english/product-flows.jpg',
+        imageAlt: 'Language product designer comparing drill, tutor and reading practice flows on a large monitor',
         points: [
           'AI language tutors and pronunciation coaches',
           'Reading, speaking and exam-preparation practice',
@@ -110,6 +176,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Integration',
         title: 'Keep your pedagogy and interface in control',
         body: 'Chivox returns evidence. Your application decides how much feedback to show, when to retry and how an LLM should explain the result.',
+        image: '/products/english/integration.jpg',
+        imageAlt: 'Product engineer mapping assessment scores to learner-facing coaching cues on a whiteboard and laptop',
         points: [
           'Call through MCP or your existing service workflow',
           'Map scores to your own levels, rubrics and lesson logic',
@@ -139,6 +207,17 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     slug: 'mandarin-chinese-assessment',
     path: '/products/mandarin-chinese-assessment',
     group: 'Product',
+    sectionLayout: 'cards',
+    theme: {
+      accent: '#be123c',
+      accentSoft: 'rgba(225,29,72,0.10)',
+      hero: {
+        src: '/editorial/mandarin-lifestyle-hero.webp',
+        alt: 'Western Mandarin learner with headset reviewing tone contours and Pinyin scores for nǐ hǎo',
+        kicker: 'Tone → Pinyin → fluency',
+        caption: 'Tone-level evidence for every syllable, aligned to Pinyin.',
+      },
+    },
     eyebrow: 'Mandarin Chinese assessment',
     title: 'Mandarin Chinese pronunciation assessment with tone-level detail',
     seoTitle: 'Mandarin Chinese Pronunciation Assessment & Evaluation MCP | Chivox AI',
@@ -158,6 +237,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Mandarin depth',
         title: 'Treat tones as meaning-bearing signals',
         body: 'A generic speech score can hide the difference between a segment error and a tone error. The response keeps those signals available for better diagnosis.',
+        image: '/products/mandarin/depth.jpg',
+        imageAlt: 'A young child practicing the four Mandarin tones of 妈 (mā má mǎ mà) aloud from a tablet',
         points: [
           'Tone-level evidence for each evaluated syllable',
           'Pinyin-aligned detail that is easier to explain to learners',
@@ -169,6 +250,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Learning experience',
         title: 'Turn a tonal error into an actionable retry',
         body: 'Use the structured result to highlight the precise syllable, compare the expected contour and prompt a focused second attempt.',
+        image: '/products/mandarin/experience.jpg',
+        imageAlt: 'A young woman with headphones speaking into her phone to retry a pronunciation exercise',
         points: [
           'Chinese-learning apps and HSK-oriented practice',
           'AI tutors that explain tones in the learner’s preferred language',
@@ -180,6 +263,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'One payload',
         title: 'Add Mandarin without building a separate agent architecture',
         body: 'English and Mandarin responses follow a consistent product integration model, while preserving the language-specific fields each assessment needs.',
+        image: '/products/mandarin/payload.jpg',
+        imageAlt: 'A developer integrating a multilingual speech-assessment API, JSON visible in the editor',
         points: [
           'Reuse authentication, limits and observability across languages',
           'Keep one orchestration layer for multilingual tutoring',
@@ -235,6 +320,17 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     slug: 'kids-speech-assessment',
     path: '/products/kids-speech-assessment',
     group: 'Product',
+    sectionLayout: 'mosaic',
+    theme: {
+      accent: '#b45309',
+      accentSoft: 'rgba(217,119,6,0.10)',
+      hero: {
+        src: '/editorial/kids-lifestyle-hero.webp',
+        alt: 'Young Western learner practicing pronunciation with headset, phoneme tips and a newly unlocked star',
+        kicker: 'Practice → retry → unlock',
+        caption: 'Turn structured scores into encouraging, game-like practice loops.',
+      },
+    },
     eyebrow: 'Kids speech assessment',
     title: 'Kids speech assessment for engaging pronunciation practice',
     seoTitle: 'Kids Speech Assessment API | Pronunciation Practice | Chivox AI',
@@ -254,6 +350,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Designed for practice',
         title: 'Keep feedback specific without making it discouraging',
         body: 'Detailed scoring can stay behind the scenes while the learner receives a small, clear next step.',
+        image: '/products/kids/practice.jpg',
+        imageAlt: 'Young child smiling at a tablet after unlocking a star for a pronunciation retry',
         points: [
           'Friendly retry flows for words, sentences and reading activities',
           'Audio-quality checks before blaming the learner’s pronunciation',
@@ -265,6 +363,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Product patterns',
         title: 'Fit assessment into the activity children already enjoy',
         body: 'Use speech assessment as a quiet layer inside stories, games, reading practice and tutor conversations.',
+        image: '/products/kids/patterns.jpg',
+        imageAlt: 'Child reading aloud from a colorful storybook app with a soft microphone prompt on screen',
         points: [
           'Read-aloud and early literacy products',
           'Game-like pronunciation and vocabulary practice',
@@ -276,6 +376,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Responsible UX',
         title: 'Separate technical confidence from learner-facing judgment',
         body: 'Your product can use confidence and recording-quality signals to decide when to ask for a clean retry instead of presenting an unreliable correction.',
+        image: '/products/kids/responsible.jpg',
+        imageAlt: 'Parent reviewing a simple progress summary on a tablet while a child practices softly in the background',
         points: [
           'Use neutral retry language for noisy or incomplete recordings',
           'Show one or two priorities instead of every detected issue',
@@ -305,6 +407,17 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     slug: 'mcp-server',
     path: '/products/mcp-server',
     group: 'Product',
+    sectionLayout: 'alternating',
+    theme: {
+      accent: '#047857',
+      accentSoft: 'rgba(16,185,129,0.10)',
+      hero: {
+        src: '/products/hero/mcp-server.jpg',
+        alt: 'A developer integrating the Chivox assessment MCP at a workstation',
+        kicker: 'Structured JSON, agent-ready',
+        caption: 'One tool layer returning deterministic scores for any MCP client.',
+      },
+    },
     eyebrow: 'Speech assessment MCP server',
     title: 'Pronunciation MCP server for voice AI and language agents',
     seoTitle: 'Speech MCP Server – Pronunciation MCP for Voice AI | Chivox AI',
@@ -324,6 +437,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Agent-native',
         title: 'Make speech assessment callable',
         body: 'The agent selects an assessment tool, supplies the audio and reference context, then receives a result designed for downstream reasoning.',
+        image: '/products/mcp/agent-native.jpg',
+        imageAlt: 'Developer IDE showing an MCP agent calling a speech-assessment tool and receiving structured scores',
         points: [
           'Use with MCP-compatible clients and custom agent loops',
           'Return pronunciation, fluency and audio-quality evidence together',
@@ -335,6 +450,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Developer control',
         title: 'Clear responsibilities at every layer',
         body: 'Chivox scores speech, your application enforces product rules, and the LLM turns approved evidence into a useful response.',
+        image: '/products/mcp/developer-control.jpg',
+        imageAlt: 'Whiteboard sketch of scoring, product rules and LLM explanation layers next to a laptop',
         points: [
           'Validate input and choose the correct language or task mode',
           'Apply score thresholds outside the model prompt',
@@ -346,6 +463,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'From trial to production',
         title: 'Prototype quickly without hiding day-two concerns',
         body: 'The quickstart is intentionally small, while the surrounding runtime covers authentication, usage controls, observability and deployment choices.',
+        image: '/products/mcp/production.jpg',
+        imageAlt: 'Ops dashboard with API keys, spend limits and latency charts beside a laptop running a quickstart demo',
         points: [
           'Start with the live demo and documented sample payload',
           'Add API keys, spend limits and alerts before broad rollout',
@@ -392,6 +511,18 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
     slug: 'function-calling',
     path: '/solutions/function-calling',
     group: 'AI solution',
+    // Alternating rows (vs English spotlight / Mandarin cards) — same shell, different rhythm.
+    sectionLayout: 'alternating',
+    theme: {
+      accent: '#6d28d9',
+      accentSoft: 'rgba(124,58,237,0.10)',
+      hero: {
+        src: '/use-cases/voice-v4.jpg',
+        alt: 'Voice agent returning an overall and fluency score with a pronunciation tip',
+        kicker: 'Typed tool → structured result',
+        caption: 'Expose assessment as one reliable function in your agent loop.',
+      },
+    },
     eyebrow: 'Function calling',
     title: 'Function calling for voice-agent pronunciation scoring',
     seoTitle: 'Function Calling – Voice Agent Pronunciation Scoring | Chivox AI',
@@ -411,6 +542,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Contract first',
         title: 'Give the model a narrow, reliable tool',
         body: 'A focused function definition helps the agent know when assessment is appropriate and what information it must provide.',
+        image: '/solutions/function-calling/contract.jpg',
+        imageAlt: 'Clean function-definition panel for assess_speech floating above an agent chat transcript',
         points: [
           'Define language, reference text, task type and audio input clearly',
           'Validate tool arguments before sending an assessment request',
@@ -422,6 +555,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Grounded feedback',
         title: 'Let the LLM explain evidence, not invent it',
         body: 'Select the returned words, phonemes, tones or fluency signals that matter, then ask the model to turn them into concise coaching.',
+        image: '/solutions/function-calling/grounded.jpg',
+        imageAlt: 'Voice-agent UI citing a specific phoneme tip pulled from a structured assessment result',
         points: [
           'Cite the exact problem segment in the user response',
           'Limit advice to the most important one or two corrections',
@@ -433,6 +568,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Operational safety',
         title: 'Design the failure path before the happy path scales',
         body: 'Production voice agents need explicit behavior for missing audio, unsupported tasks, timeouts and uncertain results.',
+        image: '/solutions/function-calling/safety.jpg',
+        imageAlt: 'Engineering ops view showing timeout, retry and spend-limit policies for a speech tool',
         points: [
           'Use schema validation and deterministic error handling',
           'Set retry, timeout and spend policies at the application layer',
@@ -476,6 +613,17 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
     slug: 'ai-language-tutor',
     path: '/solutions/ai-language-tutor',
     group: 'AI solution',
+    sectionLayout: 'mosaic',
+    theme: {
+      accent: '#0f766e',
+      accentSoft: 'rgba(20,184,166,0.10)',
+      hero: {
+        src: '/products/hero/ai-language-tutor.jpg',
+        alt: 'A learner in a friendly online language-tutoring session with headphones and a laptop',
+        kicker: 'Listen → diagnose → coach',
+        caption: 'Grounded coaching that responds from real speech evidence.',
+      },
+    },
     eyebrow: 'AI language tutor',
     title: 'Speech scoring for AI language tutors and voice agents',
     seoTitle: 'AI Language Tutor – Voice Agent Pronunciation Assessment | Chivox AI',
@@ -495,6 +643,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Tutor loop',
         title: 'Keep conversation and assessment in one flow',
         body: 'The learner speaks naturally, the assessment runs behind the interaction, and the tutor responds with a correction tied to actual evidence.',
+        image: '/solutions/ai-tutor/tutor-loop.jpg',
+        imageAlt: 'Adult learner on a video tutoring call receiving a precise pronunciation tip mid-conversation',
         points: [
           'Use phoneme, word, tone and fluency detail when it is pedagogically useful',
           'Adjust the amount of feedback to the learner’s level and task',
@@ -506,6 +656,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Learning design',
         title: 'Turn scores into decisions, not dashboards alone',
         body: 'Scores become valuable when they influence the next prompt, example, hint or practice activity.',
+        image: '/solutions/ai-tutor/learning-design.jpg',
+        imageAlt: 'Tutor interface prioritizing one coaching cue before suggesting the next practice prompt',
         points: [
           'Prioritize repeated or meaning-changing errors',
           'Distinguish recording problems from pronunciation problems',
@@ -517,6 +669,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
         eyebrow: 'Product architecture',
         title: 'Keep the tutor flexible and the assessment stable',
         body: 'The assessment response supplies a consistent source of truth while prompts, lesson design and interface copy can evolve independently.',
+        image: '/solutions/ai-tutor/architecture.jpg',
+        imageAlt: 'Split desk scene with evolving lesson cards on one side and a stable assessment payload panel on the other',
         points: [
           'Use MCP or function calling based on the agent stack',
           'Store only the fields needed for progress and support',

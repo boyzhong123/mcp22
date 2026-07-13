@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { BrandLoader } from './brand-loader';
 import { useMockAuth, type MockUser } from '../_lib/mock-auth';
 import { useLang } from '../_lib/use-lang';
 import { openPalette, toggleSidebar } from '../_lib/ui-store';
@@ -69,15 +68,7 @@ export function DevEnSidebar() {
   const { user, logout } = useMockAuth();
   const { t } = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Track the link the user just clicked so we can swap its icon for the
-  // brand loader until the new route commits. Cleared whenever the pathname
-  // settles (navigation done) below.
-  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const collapsed = useUi((s) => s.sidebarCollapsed);
-
-  useEffect(() => {
-    setPendingHref(null);
-  }, [pathname]);
 
   // ⌘B toggles the sidebar (Linear / Notion convention). We attach the
   // listener once at mount — keyboard shortcut conflicts get adjudicated
@@ -109,18 +100,6 @@ export function DevEnSidebar() {
         <Menu className="h-4 w-4" />
       </button>
 
-      {/* Navigation loading hint — appears the instant a section is clicked and
-          clears when the new route commits (pendingHref resets on pathname
-          change). A small centered card with our brand mark, not a full-screen
-          mask: the page stays visible and interactive underneath. */}
-      {pendingHref && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
-          <div className="rounded-2xl border border-border bg-background/95 shadow-xl px-8 py-6 animate-in fade-in zoom-in-95 duration-150">
-            <BrandLoader size={48} label={t('Loading…', '加载中…')} />
-          </div>
-        </div>
-      )}
-
       {mobileOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/25"
@@ -139,25 +118,25 @@ export function DevEnSidebar() {
         {/* Brand row */}
         <div
           className={cn(
-            'flex items-center h-[88px] border-b border-white/5',
+            'flex items-center h-16 border-b border-white/5',
             collapsed ? 'lg:justify-center lg:px-0 px-4 justify-between' : 'px-4 justify-between',
           )}
         >
           <Link
             href="/global"
             className={cn(
-              'flex items-center gap-[5px] group whitespace-nowrap flex-1 min-w-0',
+              'flex items-center gap-1 group whitespace-nowrap flex-1 min-w-0',
               collapsed && 'lg:gap-0',
             )}
             aria-label="Chivox MCP"
           >
-            <div className="relative h-[3.6rem] w-[3.6rem] shrink-0">
+            <div className="relative h-9 w-9 shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
             </div>
             <span
               className={cn(
-                'font-semibold tracking-[-0.02em] text-[22px] leading-none flex items-center gap-0.5 text-white min-w-0 whitespace-nowrap',
+                'font-semibold tracking-[-0.02em] text-[16px] leading-none flex items-center gap-0.5 text-white min-w-0 whitespace-nowrap',
                 collapsed && 'lg:hidden',
               )}
             >
@@ -244,7 +223,6 @@ export function DevEnSidebar() {
                 collapsed={collapsed}
                 onNavigate={() => {
                   setMobileOpen(false);
-                  if (!isActiveHref(pathname, item.href)) setPendingHref(item.href);
                 }}
                 label={t(item.label, item.zhLabel)}
               />
@@ -270,7 +248,6 @@ export function DevEnSidebar() {
               label={t('API Docs', 'API 文档')}
               onNavigate={() => {
                 setMobileOpen(false);
-                setPendingHref('/global/docs?from=dev');
               }}
             />
           </div>

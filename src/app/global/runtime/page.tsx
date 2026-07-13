@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   Activity,
@@ -27,6 +28,8 @@ const TILES = [
       'Free credits on signup. Flip to paid without re-integrating — same endpoint, same JSON. Keys scoped per environment, rotated from the dashboard.',
     chip: 'Free → paid · no migration',
     tone: 'emerald',
+    art: '/runtime/keys.jpg',
+    artAlt: 'Brushed steel key on warm cream paper with emerald glass light',
   },
   {
     icon: Gauge,
@@ -36,6 +39,8 @@ const TILES = [
       'Hard monthly ceilings per key. When the cap is hit, calls return a structured 429 — your agent can surface billing state to users instead of failing opaquely.',
     chip: 'Hard cap · structured 429',
     tone: 'amber',
+    art: '/runtime/budgets.jpg',
+    artAlt: 'Frosted amber glass gauge on warm cream paper',
   },
   {
     icon: Bell,
@@ -45,6 +50,8 @@ const TILES = [
       'Email notifications at 80% / 90% / 100% of spend or credit balance. Webhook delivery available for Slack, PagerDuty, or internal billing systems.',
     chip: '80 · 90 · 100% thresholds',
     tone: 'rose',
+    art: '/runtime/alerts.jpg',
+    artAlt: 'Rose-gold notification bell on warm cream paper with leaf shadows',
   },
   {
     icon: BarChart3,
@@ -54,6 +61,8 @@ const TILES = [
       'Per-key usage, latency percentiles, tool breakdown, error reasons — live in dashboard, exportable via API. Debug integrations without opening a ticket.',
     chip: 'Dashboard + export API',
     tone: 'sky',
+    art: '/runtime/observability.jpg',
+    artAlt: 'Frosted glass tablet with sky-blue charts on warm cream paper',
   },
   {
     icon: Zap,
@@ -63,6 +72,8 @@ const TILES = [
       'Audio scored in-memory, never stockpiled, never used for training. You own the data — JSON out, zero audio copies. GDPR · CCPA · SOC 2 aligned.',
     chip: 'TTL: 0s · GDPR · CCPA · SOC 2',
     tone: 'violet',
+    art: '/runtime/privacy.jpg',
+    artAlt: 'Translucent violet glass shield with dissolving waveform on cream paper',
   },
   {
     icon: Activity,
@@ -72,6 +83,8 @@ const TILES = [
       '9.2B+ evaluations per year, p50 240 ms, 99.95% uptime SLA on enterprise tier. Same payload whether you wire it into GPT-4o, Claude 3.5 or Gemini 2.0.',
     chip: '9.2B/yr · p50 240 ms · 99.95% SLA',
     tone: 'indigo',
+    art: '/runtime/scale.jpg',
+    artAlt: 'Indigo frosted glass nodes connected on warm cream paper',
   },
 ] as const;
 
@@ -143,24 +156,36 @@ export default function GlobalRuntimePage() {
               const t = TONE_MAP[tile.tone];
               return (
                 <StaggerItem key={tile.title}>
-                  <div className="group relative h-full rounded-2xl border border-zinc-900/[0.08] bg-white/70 backdrop-blur-md p-5 md:p-6 hover:-translate-y-[2px] hover:border-zinc-900/[0.15] hover:shadow-[0_18px_48px_-24px_rgba(0,0,0,0.18)] transition-all duration-300 flex flex-col">
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className={`h-9 w-9 rounded-lg ${t.iconBg} inline-flex items-center justify-center`}>
-                        <tile.icon className={`h-4 w-4 ${t.iconFg}`} />
+                  <div className="group relative h-full rounded-2xl border border-zinc-900/[0.08] bg-white/70 backdrop-blur-md overflow-hidden hover:-translate-y-[2px] hover:border-zinc-900/[0.15] hover:shadow-[0_18px_48px_-24px_rgba(0,0,0,0.18)] transition-all duration-300 flex flex-col">
+                    <div className="relative aspect-[5/3.4] w-full border-b border-zinc-900/[0.06] overflow-hidden bg-[#f5f1e8]">
+                      <Image
+                        src={tile.art}
+                        alt={tile.artAlt}
+                        fill
+                        quality={88}
+                        className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                    </div>
+                    <div className="p-5 md:p-6 flex flex-col flex-1">
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <div className={`h-9 w-9 rounded-lg ${t.iconBg} inline-flex items-center justify-center`}>
+                          <tile.icon className={`h-4 w-4 ${t.iconFg}`} />
+                        </div>
+                        <span className={`text-[10.5px] font-mono tracking-wide uppercase ${t.eyebrow}`}>
+                          /{tile.eyebrow}
+                        </span>
                       </div>
-                      <span className={`text-[10.5px] font-mono tracking-wide uppercase ${t.eyebrow}`}>
-                        /{tile.eyebrow}
+                      <h3 className="text-[16.5px] font-semibold tracking-[-0.01em] mb-2 text-zinc-900">
+                        {tile.title}
+                      </h3>
+                      <p className="text-[13px] text-muted-foreground leading-relaxed mb-4">
+                        {tile.body}
+                      </p>
+                      <span className={`mt-auto self-start inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-mono ${t.chipBorder}`}>
+                        {tile.chip}
                       </span>
                     </div>
-                    <h3 className="text-[16.5px] font-semibold tracking-[-0.01em] mb-2 text-zinc-900">
-                      {tile.title}
-                    </h3>
-                    <p className="text-[13px] text-muted-foreground leading-relaxed mb-4">
-                      {tile.body}
-                    </p>
-                    <span className={`mt-auto self-start inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-mono ${t.chipBorder}`}>
-                      {tile.chip}
-                    </span>
                   </div>
                 </StaggerItem>
               );

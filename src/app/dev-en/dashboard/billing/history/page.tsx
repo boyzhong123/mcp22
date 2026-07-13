@@ -374,6 +374,16 @@ function TransactionDetailDrawer({
                 label={t('Points remaining', '剩余积分')}
                 value={formatPoints(pointUsage?.remainingPoints ?? creditedPoints(transaction))}
               />
+              <DetailRow
+                label={t('Usage status', '使用状态')}
+                value={
+                  pointUsage?.state === 'expired'
+                    ? t('Voided (unused after 30 days)', '已作废（30 天未用完）')
+                    : pointUsage?.state === 'exhausted'
+                      ? t('Used up', '已用完')
+                      : t('In use', '使用中')
+                }
+              />
             </div>
             <div className="mt-3 rounded-xl border border-border bg-muted/20 p-4">
               <PointUsageProgress
@@ -381,6 +391,7 @@ function TransactionDetailDrawer({
                 usage={pointUsage ?? {
                   usedPoints: 0,
                   remainingPoints: creditedPoints(transaction),
+                  state: 'active',
                 }}
                 detailed
               />
@@ -424,7 +435,26 @@ function creditedPoints(transaction: Transaction): number {
 type PointUsage = {
   usedPoints: number;
   remainingPoints: number;
+  /** Lifecycle of this top-up's point batch(es). */
+  state: 'active' | 'exhausted' | 'expired';
+  expiresAt?: string;
 };
+
+function batchLifecycle(batch: EvaluationPointBatch): PointUsage['state'] {
+  // Prefer the stored batch status when the API/mock already classified it.
+  if (batch.status === 'expired') return 'expired';
+  if (batch.status === 'exhausted') return 'exhausted';
+  if (batch.status === 'active') {
+    const pastExpiry = Date.now() >= Date.parse(batch.expiresAt);
+    if (pastExpiry && batch.remainingPoints > 0) return 'expired';
+    if (batch.remainingPoints <= 0) return 'exhausted';
+    return 'active';
+  }
+  const pastExpiry = Date.now() >= Date.parse(batch.expiresAt);
+  if (pastExpiry && batch.remainingPoints > 0) return 'expired';
+  if (batch.remainingPoints <= 0) return 'exhausted';
+  return 'active';
+}
 
 function PointUsageProgress({
   creditedPoints: credited,
@@ -439,6 +469,63 @@ function PointUsageProgress({
   const usedPercent = credited > 0
     ? Math.min(100, Math.max(0, (usage.usedPoints / credited) * 100))
     : 0;
+  const voidedPercent =
+    usage.state === 'expired' && credited > 0
+      ? Math.min(100, Math.max(0, (usage.remainingPoints / credited) * 100))
+      : 0;
+
+  const theme =
+    usage.state === 'expired'
+      ? {
+          badge: t('Voided', '已作废'),
+          badgeClass:
+            'bg-amber-500/12 text-amber-800 dark:bg-amber-400/10 dark:text-amber-300',
+          track: 'bg-stone-200 dark:bg-stone-500/20',
+          fill: 'bg-stone-500 dark:bg-stone-400',
+          voidFill: 'bg-amber-400/80 dark:bg-amber-500/70',
+          percent: 'text-amber-800 dark:text-amber-300',
+          aria: t(
+            'Unused points voided after the 30-day window',
+            '30 天有效期内未用完的积分已作废',
+          ),
+        }
+      : usage.state === 'exhausted'
+        ? {
+            badge: t('Used up', '已用完'),
+            badgeClass:
+              'bg-emerald-600/10 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-300',
+            track: 'bg-emerald-100 dark:bg-emerald-500/15',
+            fill: 'bg-emerald-600 dark:bg-emerald-500',
+            voidFill: '',
+            percent: 'text-emerald-800 dark:text-emerald-300',
+            aria: t('Points fully used from this top-up', '本次充值积分已用完'),
+          }
+        : {
+            badge: t('In use', '使用中'),
+            badgeClass:
+              'bg-sky-500/10 text-sky-700 dark:bg-sky-400/10 dark:text-sky-300',
+            track: 'bg-emerald-100 dark:bg-emerald-500/15',
+            fill: 'bg-emerald-500',
+            voidFill: '',
+            percent: 'text-emerald-700 dark:text-emerald-400',
+            aria: t('Points used from this top-up', '本次充值已用积分'),
+          };
+
+  const footer =
+    usage.state === 'expired'
+      ? t(
+          `${formatPoints(usage.remainingPoints)} voided · ${formatPoints(usage.usedPoints)} used · ${formatPoints(credited)} credited`,
+          `作废 ${formatPoints(usage.remainingPoints)} · 已用 ${formatPoints(usage.usedPoints)} · 到账 ${formatPoints(credited)}`,
+        )
+      : usage.state === 'exhausted'
+        ? t(
+            `Used up · ${formatPoints(credited)} credited`,
+            `已用完 · 到账 ${formatPoints(credited)}`,
+          )
+        : t(
+            `${formatPoints(usage.remainingPoints)} remaining of ${formatPoints(credited)}`,
+            `剩余 ${formatPoints(usage.remainingPoints)} / 到账 ${formatPoints(credited)}`,
+          );
 
   return (
     <div className={cn('min-w-0', detailed ? 'space-y-2' : 'py-0.5')}>
@@ -449,29 +536,43 @@ function PointUsageProgress({
             {t('used', '已用')}
           </span>
         </span>
-        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-          {usedPercent.toFixed(0)}%
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className={cn(
+              'rounded px-1.5 py-0.5 text-[10px] font-semibold',
+              theme.badgeClass,
+            )}
+          >
+            {theme.badge}
+          </span>
+          <span className={cn('text-[11px] font-medium', theme.percent)}>
+            {usage.state === 'expired'
+              ? t('30d void', '30天作废')
+              : `${usedPercent.toFixed(0)}%`}
+          </span>
         </span>
       </div>
       <div
-        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-500/15"
+        className={cn('mt-1.5 flex h-1.5 overflow-hidden rounded-full', theme.track)}
         role="progressbar"
-        aria-label={t('Points used from this top-up', '本次充值已用积分')}
+        aria-label={theme.aria}
         aria-valuemin={0}
         aria-valuemax={credited}
         aria-valuenow={usage.usedPoints}
       >
         <div
-          className="h-full rounded-full bg-emerald-500 transition-[width]"
+          className={cn('h-full transition-[width]', theme.fill)}
           style={{ width: `${usedPercent}%` }}
         />
-      </div>
-      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-        {t(
-          `${formatPoints(usage.remainingPoints)} remaining of ${formatPoints(credited)}`,
-          `剩余 ${formatPoints(usage.remainingPoints)} / 到账 ${formatPoints(credited)}`,
+        {voidedPercent > 0 && (
+          <div
+            className={cn('h-full transition-[width]', theme.voidFill)}
+            style={{ width: `${voidedPercent}%` }}
+            title={t('Voided unused points', '未用完作废的积分')}
+          />
         )}
       </div>
+      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">{footer}</div>
     </div>
   );
 }
@@ -479,21 +580,45 @@ function PointUsageProgress({
 function pointUsage(transaction: Transaction, batches: EvaluationPointBatch[]): PointUsage {
   const matchingBatches = batches.filter((batch) => batch.transactionId === transaction.id);
   if (matchingBatches.length > 0) {
-    return matchingBatches.reduce(
+    const usage = matchingBatches.reduce(
       (total, batch) => ({
         usedPoints: total.usedPoints + batch.usedPoints,
         remainingPoints: total.remainingPoints + batch.remainingPoints,
       }),
       { usedPoints: 0, remainingPoints: 0 },
     );
+    const states = matchingBatches.map(batchLifecycle);
+    const state: PointUsage['state'] = states.includes('active')
+      ? 'active'
+      : states.includes('expired')
+        ? 'expired'
+        : 'exhausted';
+    const expiresAt = matchingBatches
+      .map((batch) => batch.expiresAt)
+      .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
+    return { ...usage, state, expiresAt };
   }
+
   const usedPoints = Math.max(0, transaction.usedPoints ?? 0);
+  const remainingPoints = Math.max(
+    0,
+    transaction.remainingPoints ?? creditedPoints(transaction) - usedPoints,
+  );
+  const pastExpiry = transaction.pointsExpireAt
+    ? Date.now() >= Date.parse(transaction.pointsExpireAt)
+    : false;
+  const state: PointUsage['state'] =
+    pastExpiry && remainingPoints > 0
+      ? 'expired'
+      : remainingPoints <= 0
+        ? 'exhausted'
+        : 'active';
+
   return {
     usedPoints,
-    remainingPoints: Math.max(
-      0,
-      transaction.remainingPoints ?? creditedPoints(transaction) - usedPoints,
-    ),
+    remainingPoints,
+    state,
+    expiresAt: transaction.pointsExpireAt,
   };
 }
 
