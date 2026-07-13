@@ -7,8 +7,8 @@ const TABS: SectionTab[] = [
     label: 'Overview',
     zhLabel: '概览',
     description:
-      'Evaluation point balance, usage, and account limits.',
-    zhDescription: '评测积分余额、消耗与账户上限。',
+      'Available evaluation points, usage, and account limits.',
+    zhDescription: '可用评测积分、消耗与账户上限。',
   },
   {
     href: '/dashboard/billing/history',
@@ -23,8 +23,8 @@ const TABS: SectionTab[] = [
     label: 'Rates',
     zhLabel: '费率',
     description:
-      'Tiered per-call pricing by monthly usage — $0.007 down to $0.005/call.',
-    zhDescription: '按月用量阶梯计价 — $0.007 起，最低 $0.005/次。',
+      'Point deductions for word, sentence, and paragraph evaluations.',
+    zhDescription: '字、词、句与段落评测的积分扣减规则。',
   },
 ];
 

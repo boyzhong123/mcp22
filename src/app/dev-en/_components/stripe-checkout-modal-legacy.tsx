@@ -393,8 +393,8 @@ function OpenedCheckoutModal({
   const modalTitle = tx('Add points');
 
   const subtitle = t(
-    'Top up via PayPal — every key shares the same wallet balance.',
-    '通过 PayPal 充值 — 所有 Key 共享同一钱包余额。',
+    'Top up via PayPal — evaluation points are shared across every key.',
+    '通过 PayPal 充值 — 所有 Key 共享同一评测积分池。',
   );
 
   const card = (
@@ -488,7 +488,7 @@ function OpenedCheckoutModal({
                 <div className="flex items-baseline justify-between gap-2">
                   <SectionLabel>{t('How much to top up?', '充值多少？')}</SectionLabel>
                   <div className="text-[11px] text-muted-foreground">
-                    {t('Wallet balance:', '钱包余额：')}{' '}
+                    {t('Available evaluation points:', '可用评测积分：')}{' '}
                     <strong className="text-foreground tabular-nums">
                       {formatCents(accountBalance)}
                     </strong>

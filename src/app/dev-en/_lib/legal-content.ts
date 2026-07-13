@@ -351,8 +351,8 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         zh: '账户数据：姓名、邮箱、身份认证标识、机构信息及偏好设置。',
       },
       {
-        en: 'Usage and billing data: API call metadata, timestamps, project/key identifiers, wallet balances, invoices, and payment references (processed by payment providers; we do not store full card numbers).',
-        zh: '使用与账单数据：API 调用元数据、时间戳、项目/Key 标识、钱包余额、发票及支付参考号（由支付机构处理；我们不存储完整卡号）。',
+        en: 'Usage and billing data: API call metadata, timestamps, project/key identifiers, available evaluation points, invoices, and payment references (processed by payment providers; we do not store full card numbers).',
+        zh: '使用与账单数据：API 调用元数据、时间戳、项目/Key 标识、可用评测积分、发票及支付参考号（由支付机构处理；我们不存储完整卡号）。',
       },
       {
         en: 'Content you submit: audio, text, or other inputs sent to evaluation endpoints, solely to provide the Service and as described below.',

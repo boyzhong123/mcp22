@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, CircleDollarSign, Gauge, Zap } from 'lucide-react';
+import { ArrowRight, Gauge, Sparkles, Zap } from 'lucide-react';
 import {
   formatCalls,
-  formatCents,
   getSpendLimit,
   type SpendLimit,
 } from '../_lib/mock-store';
@@ -12,9 +11,9 @@ import { useMockStore } from '../_lib/use-mock-store';
 import { useLang } from '../_lib/use-lang';
 
 const EMPTY_LIMIT: SpendLimit = {
-  monthlyCapCents: null,
+  monthlyPointCap: null,
   monthlyCallCap: null,
-  dailyCapCents: null,
+  dailyPointCap: null,
   dailyCallCap: null,
   resetDay: 1,
   warnAtPercents: [50, 75, 90],
@@ -22,7 +21,7 @@ const EMPTY_LIMIT: SpendLimit = {
 
 /**
  * Read-only summary of the four account-level caps (daily / monthly ×
- * spend / calls). Designed for display surfaces (API Keys page) — the
+ * evaluation points / calls). Designed for display surfaces (API Keys page) — the
  * actual editor lives at `/dashboard/limits`. The whole card is a link
  * so users can drill into the editor with one click.
  *
@@ -36,13 +35,13 @@ export function AccountLimitsSummary({ className }: { className?: string }) {
 
   const cells: { label: string; value: string; icon: typeof Gauge; on: boolean }[] = [
     {
-      icon: CircleDollarSign,
-      label: t('Daily spend', '每日消费'),
+      icon: Sparkles,
+      label: t('Daily points', '每日积分'),
       value:
-        limit.dailyCapCents != null
-          ? `${formatCents(limit.dailyCapCents)} / ${t('day', '天')}`
+        limit.dailyPointCap != null
+          ? `${formatCalls(limit.dailyPointCap)} ${t('points', '积分')} / ${t('day', '天')}`
           : t('Unlimited', '不限'),
-      on: limit.dailyCapCents != null,
+      on: limit.dailyPointCap != null,
     },
     {
       icon: Zap,
@@ -54,13 +53,13 @@ export function AccountLimitsSummary({ className }: { className?: string }) {
       on: limit.dailyCallCap != null,
     },
     {
-      icon: CircleDollarSign,
-      label: t('Monthly spend', '月度消费'),
+      icon: Sparkles,
+      label: t('Monthly points', '月度积分'),
       value:
-        limit.monthlyCapCents != null
-          ? `${formatCents(limit.monthlyCapCents)} / ${t('mo', '月')}`
+        limit.monthlyPointCap != null
+          ? `${formatCalls(limit.monthlyPointCap)} ${t('points', '积分')} / ${t('mo', '月')}`
           : t('Unlimited', '不限'),
-      on: limit.monthlyCapCents != null,
+      on: limit.monthlyPointCap != null,
     },
     {
       icon: Zap,
@@ -93,8 +92,8 @@ export function AccountLimitsSummary({ className }: { className?: string }) {
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               {t(
-                'No daily or monthly caps configured — every key uses the wallet without a ceiling.',
-                '尚未配置日 / 月上限——所有 Key 仅受钱包余额限制。',
+                'No daily or monthly caps configured — every key draws from the shared point pool without a ceiling.',
+                '尚未配置日 / 月上限——所有 Key 共享评测积分池，未设置调用或积分上限。',
               )}
             </p>
           </div>

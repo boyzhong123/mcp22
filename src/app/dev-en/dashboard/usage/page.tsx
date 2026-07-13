@@ -21,9 +21,9 @@ import {
   type ApiKey,
   type UsagePoint,
 } from '../../_lib/mock-store';
-import { formatMills } from '../../_lib/format';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { useLang } from '../../_lib/use-lang';
+import { toEvaluationUsage } from '../../_lib/evaluation-usage';
 
 type Period = 7 | 14 | 28 | 90;
 const PERIODS: Period[] = [7, 14, 28, 90];
@@ -50,17 +50,17 @@ export default function UsagePage() {
   const [period, setPeriod] = useState<Period>(28);
   const [keyFilter, setKeyFilter] = useState<string>('all');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  // Chart Y-axis dimension toggle: stack daily *calls* (count) or daily
-  // *spend* (USD cents). Both share the same X-axis and per-key colour
+  // Chart Y-axis dimension toggle: stack daily *calls* (count) or consumed
+  // *evaluation points*. Both share the same X-axis and per-key colour
   // mapping so users can flip between them mid-investigation without
   // losing context.
-  const [chartMetric, setChartMetric] = useState<'calls' | 'cost'>('calls');
+  const [chartMetric, setChartMetric] = useState<'calls' | 'points'>('calls');
   const [chartView, setChartView] = useState<'bars' | 'heatmap'>('bars');
   // Per-key breakdown table sort. `column` selects which numeric column
   // drives the order; `dir` toggles ascending/descending. Default is
   // calls-desc, matching the natural "biggest spender first" expectation.
   const [breakdownSort, setBreakdownSort] = useState<{
-    column: 'calls' | 'cost';
+    column: 'calls' | 'points';
     dir: 'asc' | 'desc';
   }>({ column: 'calls', dir: 'desc' });
 
@@ -128,10 +128,11 @@ export default function UsagePage() {
       let totalCostMills = 0;
       let totalSavingsMills = 0;
       for (const p of filteredUsage.filter((x) => x.date === date)) {
-        perKey[p.keyId] = (perKey[p.keyId] ?? 0) + p.calls;
-        perKeyCost[p.keyId] = (perKeyCost[p.keyId] ?? 0) + p.costMills;
-        totalCalls += p.calls;
-        totalCostMills += p.costMills;
+        const evaluationUsage = toEvaluationUsage(p);
+        perKey[p.keyId] = (perKey[p.keyId] ?? 0) + evaluationUsage.calls;
+        perKeyCost[p.keyId] = (perKeyCost[p.keyId] ?? 0) + evaluationUsage.totalPoints;
+        totalCalls += evaluationUsage.calls;
+        totalCostMills += evaluationUsage.totalPoints;
         totalSavingsMills += p.savingsMills;
       }
       days.push({ date, perKey, perKeyCost, totalCalls, totalCostMills, totalSavingsMills });
@@ -153,24 +154,28 @@ export default function UsagePage() {
   // Helpers: pick the right per-key value getter and the right axis
   // formatter based on the active metric. Centralised so the rendering
   // code below stays metric-agnostic.
-  const isCostMetric = chartMetric === 'cost';
+  const isCostMetric = chartMetric === 'points';
   const yMax = isCostMetric ? maxDayCost : maxDay;
   const dayTotal = (d: (typeof stackedData)[number]) =>
     isCostMetric ? d.totalCostMills : d.totalCalls;
   const dayPerKey = (d: (typeof stackedData)[number], keyId: string) =>
     isCostMetric ? (d.perKeyCost[keyId] ?? 0) : (d.perKey[keyId] ?? 0);
   const formatAxis = (v: number) =>
-    isCostMetric ? formatMills(Math.round(v)) : Math.round(v).toLocaleString('en-US');
+    isCostMetric ? `${Math.round(v).toLocaleString('en-US')} pts` : Math.round(v).toLocaleString('en-US');
   const formatTooltipValue = (v: number) =>
-    isCostMetric ? formatMills(v) : v.toLocaleString('en-US');
+    isCostMetric ? `${Math.round(v).toLocaleString('en-US')} pts` : v.toLocaleString('en-US');
 
   const perKeyBreakdown = useMemo(() => {
-    const map = new Map<string, { calls: number; cost: number; savings: number }>();
+    const map = new Map<string, { calls: number; points: number; wordCalls: number; paragraphCalls: number; wordPoints: number; paragraphPoints: number }>();
     for (const p of filteredUsage) {
-      const d = map.get(p.keyId) ?? { calls: 0, cost: 0, savings: 0 };
-      d.calls += p.calls;
-      d.cost += p.costMills;
-      d.savings += p.savingsMills;
+      const evaluationUsage = toEvaluationUsage(p);
+      const d = map.get(p.keyId) ?? { calls: 0, points: 0, wordCalls: 0, paragraphCalls: 0, wordPoints: 0, paragraphPoints: 0 };
+      d.calls += evaluationUsage.calls;
+      d.points += evaluationUsage.totalPoints;
+      d.wordCalls += evaluationUsage.wordSentenceCalls;
+      d.paragraphCalls += evaluationUsage.paragraphCalls;
+      d.wordPoints += evaluationUsage.wordSentencePoints;
+      d.paragraphPoints += evaluationUsage.paragraphPoints;
       map.set(p.keyId, d);
     }
     return Array.from(map.entries())
@@ -183,13 +188,13 @@ export default function UsagePage() {
       })
       .filter((row) => row.key)
       .sort((a, b) => {
-        const av = breakdownSort.column === 'calls' ? a.calls : a.cost;
-        const bv = breakdownSort.column === 'calls' ? b.calls : b.cost;
+        const av = breakdownSort.column === 'calls' ? a.calls : a.points;
+        const bv = breakdownSort.column === 'calls' ? b.calls : b.points;
         return breakdownSort.dir === 'desc' ? bv - av : av - bv;
       });
   }, [filteredUsage, keys, breakdownSort]);
 
-  const toggleBreakdownSort = (column: 'calls' | 'cost') => {
+  const toggleBreakdownSort = (column: 'calls' | 'points') => {
     setBreakdownSort((prev) =>
       prev.column === column
         ? { column, dir: prev.dir === 'desc' ? 'asc' : 'desc' }
@@ -212,8 +217,8 @@ export default function UsagePage() {
         <h1 className="text-2xl font-semibold tracking-[-0.02em]">{t('Usage', '用量')}</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {t(
-            'Operational view — MCP call volume sliced by key. For spend, points, and payment head to ',
-            '运营视角 — 按 Key 切分的 MCP 调用量。消费、评测积分、付款请前往 ',
+            'Operational view — calls and evaluation-point consumption sliced by key. For top-ups and expiry details, head to ',
+            '运营视角 — 按 Key 切分调用量与评测积分消耗。充值和有效期明细请前往 ',
           )}
           <Link
             href="/dashboard/billing"
@@ -280,7 +285,7 @@ export default function UsagePage() {
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Kpi label={tx('Total calls')} value={kpiTotalCalls.toLocaleString('en-US')} />
-        <Kpi label={tx('Net cost')} value={formatMills(kpiTotalCost)} />
+        <Kpi label={t('Points consumed', '消耗积分')} value={kpiTotalCost.toLocaleString('en-US')} />
         <Kpi label={tx('Avg / day')} value={kpiAvgPerDay.toLocaleString('en-US')} />
         <Kpi
           label={tx('Peak day')}
@@ -296,18 +301,18 @@ export default function UsagePage() {
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {chartView === 'heatmap'
                 ? isCostMetric
-                  ? t('Daily spend', '每日花费')
+                  ? t('Daily points', '每日消耗积分')
                   : t('Daily calls', '每日调用')
                 : isCostMetric
-                  ? t('Daily spend by key', '按 KEY 查看每日花费')
+                  ? t('Daily points by key', '按 KEY 查看每日积分消耗')
                   : t('Daily calls by key', '按 KEY 查看每日调用')}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
               {chartView === 'heatmap'
                 ? isCostMetric
                   ? t(
-                      `${formatMills(kpiTotalCost)} spend · ${period} days · one square per day`,
-                      `过去 ${period} 天 · 共花费 ${formatMills(kpiTotalCost)} · 每格一天`,
+                      `${kpiTotalCost.toLocaleString('en-US')} points · ${period} days · one square per day`,
+                      `过去 ${period} 天 · 共消耗 ${kpiTotalCost.toLocaleString('en-US')} 积分 · 每格一天`,
                     )
                   : t(
                       `${kpiTotalCalls.toLocaleString('en-US')} calls · ${period} days · one square per day`,
@@ -315,8 +320,8 @@ export default function UsagePage() {
                     )
                 : isCostMetric
                   ? t(
-                      `${formatMills(kpiTotalCost)} spend · last ${period} days`,
-                      `过去 ${period} 天 · 共花费 ${formatMills(kpiTotalCost)}`,
+                      `${kpiTotalCost.toLocaleString('en-US')} points · last ${period} days`,
+                      `过去 ${period} 天 · 共消耗 ${kpiTotalCost.toLocaleString('en-US')} 积分`,
                     )
                   : t(
                       `${kpiTotalCalls.toLocaleString('en-US')} calls · last ${period} days`,
@@ -356,7 +361,7 @@ export default function UsagePage() {
                 {t('Heatmap', '热图')}
               </button>
             </div>
-            {/* Metric toggle — calls vs spend; shared by both chart types */}
+            {/* Metric toggle — calls vs evaluation points; shared by both chart types */}
             <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5 text-[11px] font-medium">
               <button
                 type="button"
@@ -372,7 +377,7 @@ export default function UsagePage() {
               </button>
               <button
                 type="button"
-                onClick={() => setChartMetric('cost')}
+                onClick={() => setChartMetric('points')}
                 className={cn(
                   'h-6 px-2.5 rounded-md transition-colors',
                   isCostMetric
@@ -380,7 +385,7 @@ export default function UsagePage() {
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {t('Spend', '金额')}
+                {t('Points', '积分')}
               </button>
             </div>
           </div>
@@ -408,7 +413,7 @@ export default function UsagePage() {
               }))}
               formatValue={formatTooltipValue}
               metricLabel={
-                isCostMetric ? t('spent', '消费') : t('calls', '次调用')
+                isCostMetric ? t('points consumed', '消耗积分') : t('calls', '次调用')
               }
             />
           </div>
@@ -558,12 +563,12 @@ export default function UsagePage() {
                           tooltip surfaces total calls. */}
                       <div className="flex items-center justify-between py-0.5">
                         <span className="text-muted-foreground">
-                          {isCostMetric ? tx('Calls') : tx('Cost')}
+                          {isCostMetric ? tx('Calls') : t('Points', '积分')}
                         </span>
                         <span className="tabular-nums">
                           {isCostMetric
                             ? d.totalCalls.toLocaleString('en-US')
-                            : formatMills(d.totalCostMills)}
+                            : `${d.totalCostMills.toLocaleString('en-US')} pts`}
                         </span>
                       </div>
                     </>
@@ -581,7 +586,7 @@ export default function UsagePage() {
         <div className="px-5 py-4 border-b border-border/60">
           <div className="text-sm font-semibold">{tx('Per-key breakdown')}</div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {tx('Lifetime usage per key within the current filter.')}
+            {t('Calls and evaluation points per key within the current filter.', '当前筛选范围内，按 Key 展示调用次数与评测积分拆分。')}
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -600,18 +605,20 @@ export default function UsagePage() {
                 </th>
                 <th className="text-right px-5 py-2.5 font-semibold">
                   <SortHeader
-                    label={tx('Cost')}
-                    active={breakdownSort.column === 'cost'}
+                    label={t('Points', '积分')}
+                    active={breakdownSort.column === 'points'}
                     dir={breakdownSort.dir}
-                    onClick={() => toggleBreakdownSort('cost')}
+                    onClick={() => toggleBreakdownSort('points')}
                   />
                 </th>
+                <th className="text-right px-5 py-2.5 font-semibold">{t('Word / sentence', '字词句')}</th>
+                <th className="text-right px-5 py-2.5 font-semibold">{t('Paragraph', '段落')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {perKeyBreakdown.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-muted-foreground">
                     {tx('No usage in this window.')}
                   </td>
                 </tr>
@@ -625,7 +632,13 @@ export default function UsagePage() {
                     <td className="px-5 py-3 text-right tabular-nums">
                       {row.calls.toLocaleString('en-US')}
                     </td>
-                    <td className="px-5 py-3 text-right tabular-nums">{formatMills(row.cost)}</td>
+                    <td className="px-5 py-3 text-right tabular-nums font-medium">{row.points.toLocaleString('en-US')} pts</td>
+                    <td className="px-5 py-3 text-right tabular-nums text-xs">
+                      {row.wordCalls.toLocaleString('en-US')} / {row.wordPoints.toLocaleString('en-US')} pts
+                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums text-xs">
+                      {row.paragraphCalls.toLocaleString('en-US')} / {row.paragraphPoints.toLocaleString('en-US')} pts
+                    </td>
                   </tr>
                 ))
               )}
@@ -756,26 +769,30 @@ function exportUsageCsv(input: {
     'key_name',
     'key_masked',
     'calls',
-    'cost_mills',
-    'savings_mills',
-    'net_cost_mills',
+    'word_sentence_calls',
+    'paragraph_calls',
+    'word_sentence_points',
+    'paragraph_points',
+    'evaluation_points',
   ];
 
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const lines: string[] = [header.join(',')];
   for (const r of sorted) {
     const key = keyById.get(r.keyId);
-    const net = r.costMills - r.savingsMills;
+    const evaluationUsage = toEvaluationUsage(r);
     lines.push(
       [
         r.date,
         r.keyId,
         key?.name ?? '',
         key?.maskedSecret ?? '',
-        String(r.calls),
-        String(r.costMills),
-        String(r.savingsMills),
-        String(net),
+        String(evaluationUsage.calls),
+        String(evaluationUsage.wordSentenceCalls),
+        String(evaluationUsage.paragraphCalls),
+        String(evaluationUsage.wordSentencePoints),
+        String(evaluationUsage.paragraphPoints),
+        String(evaluationUsage.totalPoints),
       ]
         .map(csvEscape)
         .join(','),

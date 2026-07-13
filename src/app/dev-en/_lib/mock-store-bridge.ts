@@ -96,9 +96,9 @@ function mapKey(k: RealApiKey): MockApiKey {
     lastUsedAt: k.last_used_at ?? null,
     status,
     isStarter,
-    spendCapCents: capOrNull(limits?.monthly_spend_cap_mills != null ? Math.round(limits.monthly_spend_cap_mills / 10) : undefined),
+    monthlyPointCap: capOrNull(limits?.monthly_evaluation_point_cap),
     monthlyCallCap: capOrNull(limits?.monthly_call_cap),
-    dailySpendCapCents: capOrNull(limits?.daily_spend_cap_mills != null ? Math.round(limits.daily_spend_cap_mills / 10) : undefined),
+    dailyPointCap: capOrNull(limits?.daily_evaluation_point_cap),
     dailyCallCap: capOrNull(limits?.daily_call_cap),
     // ── Legacy fields (account-wallet model) ──────────────────────────────
     freeDailyLimit: 0,
@@ -177,6 +177,8 @@ function mapTransaction(t: RealTransaction): MockTransaction {
     balanceBeforePoints: t.point_balance_before,
     balanceAfterPoints: t.point_balance_after,
     pointsExpireAt: t.points_expire_at ?? undefined,
+    usedPoints: t.used_points,
+    remainingPoints: t.remaining_points,
     kind,
   };
 }
@@ -201,9 +203,9 @@ function mapEvaluationPointBatch(batch: RealEvaluationPointBatch): MockEvaluatio
 
 function mapLimits(s: RealAccountLimits): MockSpendLimit {
   return {
-    monthlyCapCents: capOrNull(s.monthly_spend_cap_mills != null ? Math.round(s.monthly_spend_cap_mills / 10) : undefined),
+    monthlyPointCap: capOrNull(s.monthly_evaluation_point_cap),
     monthlyCallCap: capOrNull(s.monthly_call_cap),
-    dailyCapCents: capOrNull(s.daily_spend_cap_mills != null ? Math.round(s.daily_spend_cap_mills / 10) : undefined),
+    dailyPointCap: capOrNull(s.daily_evaluation_point_cap),
     dailyCallCap: capOrNull(s.daily_call_cap),
     resetDay: 1,
     warnAtPercents: s.warn_at_percents?.length ? s.warn_at_percents : [50, 75, 90],
@@ -223,7 +225,8 @@ function mapNotifications(n: Partial<RealNotifications>): MockNotifications {
 function mapAccountAlert(n: Partial<RealNotifications>): AccountLowBalanceAlert {
   return {
     enabled: n.low_balance_alerts_master ?? true,
-    thresholdCents: n.low_balance_threshold_cents ?? 1000,
+    thresholdPoints: n.low_evaluation_points_threshold
+      ?? centsToWalletPoints(n.low_balance_threshold_cents ?? 500),
   };
 }
 
@@ -233,6 +236,11 @@ function mapUsagePoint(p: RealUsagePoint): MockUsagePoint {
     keyId: p.key_id != null ? mockKeyId(p.key_id) : 'key_*',
     model: p.model || 'mcp-call',
     calls: p.calls ?? 0,
+    wordSentenceCalls: p.word_sentence_calls,
+    paragraphCalls: p.paragraph_calls,
+    wordSentencePoints: p.word_sentence_points,
+    paragraphPoints: p.paragraph_points,
+    evaluationPoints: p.evaluation_points,
     costMills: p.cost_mills ?? 0,
     savingsMills: p.savings_mills ?? 0,
   };
@@ -291,7 +299,7 @@ export function installMutationProxy(): void {
       safe(
         notifApi.patch({
           low_balance_alerts_master: alert.enabled,
-          low_balance_threshold_cents: alert.thresholdCents,
+          low_evaluation_points_threshold: alert.thresholdPoints,
         }),
       );
     },
@@ -302,17 +310,17 @@ export function installMutationProxy(): void {
       const apiPatch: Partial<{
         daily_call_cap: number;
         monthly_call_cap: number;
-        daily_spend_cap_mills: number;
-        monthly_spend_cap_mills: number;
+        daily_evaluation_point_cap: number;
+        monthly_evaluation_point_cap: number;
       }> = {};
-      if (patch.spendCapCents !== undefined) {
-        apiPatch.monthly_spend_cap_mills = (patch.spendCapCents ?? 0) * 10;
+      if (patch.monthlyPointCap !== undefined) {
+        apiPatch.monthly_evaluation_point_cap = patch.monthlyPointCap ?? 0;
       }
       if (patch.monthlyCallCap !== undefined) {
         apiPatch.monthly_call_cap = patch.monthlyCallCap ?? 0;
       }
-      if (patch.dailySpendCapCents !== undefined) {
-        apiPatch.daily_spend_cap_mills = (patch.dailySpendCapCents ?? 0) * 10;
+      if (patch.dailyPointCap !== undefined) {
+        apiPatch.daily_evaluation_point_cap = patch.dailyPointCap ?? 0;
       }
       if (patch.dailyCallCap !== undefined) {
         apiPatch.daily_call_cap = patch.dailyCallCap ?? 0;
@@ -334,9 +342,9 @@ export function installMutationProxy(): void {
       // = 0 to the backend.
       safe(
         billing.setLimits({
-          monthly_spend_cap_mills: (limit.monthlyCapCents ?? 0) * 10,
+          monthly_evaluation_point_cap: limit.monthlyPointCap ?? 0,
           monthly_call_cap: limit.monthlyCallCap ?? 0,
-          daily_spend_cap_mills: (limit.dailyCapCents ?? 0) * 10,
+          daily_evaluation_point_cap: limit.dailyPointCap ?? 0,
           daily_call_cap: limit.dailyCallCap ?? 0,
           warn_at_percents: limit.warnAtPercents,
         }),

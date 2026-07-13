@@ -188,7 +188,7 @@ export function DevEnCommandPalette() {
       {
         id: 'act:spend-limit',
         section: 'Actions',
-        label: t('Adjust spend & call limits', '调整调用 / 消费上限'),
+        label: t('Adjust point & call limits', '调整积分 / 调用上限'),
         icon: CreditCard,
         keywords: 'cap monthly safety daily limits throttle',
         run: () => go('/dashboard/limits'),

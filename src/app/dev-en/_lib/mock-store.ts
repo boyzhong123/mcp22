@@ -25,10 +25,10 @@
  *   is provisioned automatically at signup; it has no special billing
  *   behaviour (no per-key free allowance) and cannot be deleted. Optional
  *   per-key safety nets:
- *     - `spendCapCents`: monthly spend cap in cents (null = uncapped)
+ *     - `monthlyPointCap`: monthly evaluation-point cap (null = uncapped)
  *     - `monthlyCallCap`: monthly call-count cap (null = uncapped)
  *
- *   Account-level state also covers the global monthly spend limit (cross-
+ *   Account-level state also covers the global monthly point limit (cross-
  *   key safety net) and saved payment methods.
  *
  * An in-memory cache + observable pattern powers `useSyncExternalStore`
@@ -86,11 +86,8 @@ export interface ApiKey {
    * to false for legacy snapshots.
    */
   pinned?: boolean;
-  /**
-   * Optional monthly spend cap in cents (per-key safety net). `null` =
-   * uncapped. Independent from the account-wide `SpendLimit`.
-   */
-  spendCapCents: number | null;
+  /** Optional monthly evaluation-point cap (per-key safety net). */
+  monthlyPointCap: number | null;
   /**
    * Optional monthly call-count cap (per-key safety net). `null` = uncapped.
    * When the key's calls in the current month hit this cap, it stops
@@ -98,11 +95,10 @@ export interface ApiKey {
    */
   monthlyCallCap: number | null;
   /**
-   * Optional daily $ cap for this key; `null` = uncapped. Resets at
-   * midnight UTC. Useful when a key is exposed to user traffic that can
-   * spike unexpectedly.
+   * Optional daily evaluation-point cap for this key; `null` = uncapped.
+   * Resets at midnight UTC.
    */
-  dailySpendCapCents?: number | null;
+  dailyPointCap?: number | null;
   /**
    * Optional daily call-count cap for this key; `null` = uncapped.
    * Resets at midnight UTC.
@@ -174,7 +170,8 @@ export const TRIAL_DEFAULT_VALID_DAYS = 30;
  */
 export interface AccountLowBalanceAlert {
   enabled: boolean;
-  thresholdCents: number;
+  /** Product alert threshold. Money is only retained for payment reconciliation. */
+  thresholdPoints: number;
 }
 
 export interface UsagePoint {
@@ -182,6 +179,13 @@ export interface UsagePoint {
   keyId: string;
   model: string;
   calls: number;
+  /** Successful word / phrase / sentence evaluations. */
+  wordSentenceCalls?: number;
+  /** Successful paragraph evaluations. */
+  paragraphCalls?: number;
+  wordSentencePoints?: number;
+  paragraphPoints?: number;
+  evaluationPoints?: number;
   costMills: number;
   savingsMills: number;
 }
@@ -189,30 +193,27 @@ export interface UsagePoint {
 /**
  * Account-wide guardrails.
  *
- * Mirrors the per-key shape (`spendCapCents` / `monthlyCallCap`) but adds
+ * Mirrors the per-key shape (`monthlyPointCap` / `monthlyCallCap`) but adds
  * daily counterparts so users can throttle a noisy day without blowing
  * the entire month. Every cap is independently nullable — `null` means
  * "no limit on that axis", which is what the UI surfaces as
  * "Unlimited".
  *
- * Historical note: the original schema only had `monthlyCapCents`, and
- * for a stretch the field was overloaded as "monthly call cap" (with 1
- * cent ≡ 1 call). That hack is gone now: dollars and calls live in
- * separate fields. The legacy field is still read so older
- * localStorage snapshots migrate cleanly via `seedIfNeeded`.
+ * Evaluation points and calls are deliberately separate axes. Payment money
+ * is only retained in recharge receipts; it never controls traffic.
  */
 export interface SpendLimit {
-  /** Monthly $ cap; null = unlimited. */
-  monthlyCapCents: number | null;
+  /** Monthly evaluation-point cap; null = unlimited. */
+  monthlyPointCap: number | null;
   /** Monthly call-count cap; null = unlimited. */
   monthlyCallCap: number | null;
-  /** Daily $ cap; null = unlimited. */
-  dailyCapCents: number | null;
+  /** Daily evaluation-point cap; null = unlimited. */
+  dailyPointCap: number | null;
   /** Daily call-count cap; null = unlimited. */
   dailyCallCap: number | null;
   /** Day-of-month the monthly counter resets. Always 1 today. */
   resetDay: number;
-  /** Email warning thresholds for the monthly $ cap (e.g. [50, 75, 90]). */
+  /** Email warning thresholds for an active point/call cap (e.g. [50, 75, 90]). */
   warnAtPercents: number[];
 }
 
@@ -257,6 +258,9 @@ export interface Transaction {
   balanceBeforePoints?: number;
   balanceAfterPoints?: number;
   pointsExpireAt?: string;
+  /** Current usage snapshot for this top-up's point batch/batches. */
+  usedPoints?: number;
+  remainingPoints?: number;
   kind: TransactionKind;
   keyId?: string;
 }
@@ -347,7 +351,11 @@ export const VOLUME_TIERS: VolumeTier[] = [
 // demo reseeds with full-plaintext mock keys (copy must yield plaintext).
 // v19: wallet and recharge records are evaluation-point based.
 // v20: paid points are tracked as expiring recharge batches.
-const SCHEMA_VERSION = 20;
+// v21: low-credit alerts are denominated in evaluation points, not dollars.
+// v22: expiry-batch demo data includes same-day, different-time top-ups.
+// v23: usage records include word/sentence and paragraph point breakdowns.
+// v24: account and key guardrails are evaluation points, not money.
+const SCHEMA_VERSION = 24;
 const SCHEMA_KEY = 'dev-en:schema-version';
 
 const STORAGE = {
@@ -459,9 +467,9 @@ type MutationProxy = {
   updateKeySettings?: (
     mockId: string,
     patch: {
-      spendCapCents?: number | null;
+      monthlyPointCap?: number | null;
       monthlyCallCap?: number | null;
-      dailySpendCapCents?: number | null;
+      dailyPointCap?: number | null;
       dailyCallCap?: number | null;
       lowBalanceAlert?: LowBalanceAlert | null;
     },
@@ -475,7 +483,7 @@ type MutationProxy = {
   /** Account-level low-balance alert update. */
   updateAccountAlert?: (alert: AccountLowBalanceAlert) => void;
   updateNotificationSettings?: (patch: Partial<NotificationSettings>) => void;
-  setSpendLimitCents?: (cents: number, warnAtPercents?: number[]) => void;
+  setMonthlyPointLimit?: (points: number, warnAtPercents?: number[]) => void;
   /** Full four-axis account-limit update (account-wide guardrails). */
   updateAccountLimits?: (limit: SpendLimit) => void;
 };
@@ -604,7 +612,7 @@ function seedIfNeeded() {
         lastUsedAt: new Date(now - 15 * 60000).toISOString(),
         status: 'active',
         isStarter: false,
-        spendCapCents: null,
+        monthlyPointCap: null,
         monthlyCallCap: null,
         // Legacy fields (deprecated, kept for back-compat with bridge/UI).
         freeDailyLimit: 0,
@@ -631,14 +639,14 @@ function seedIfNeeded() {
         lastUsedAt: new Date(now - 42 * 60000).toISOString(),
         isStarter: true,
       }),
-      // 1. Healthy production key with a per-key spend cap. The wallet
+      // 1. Healthy production key with a per-key point cap. The wallet
       //    funds it; the cap protects against a runaway bug on this key.
       mk({
         name: 'Web App — Prod',
         env: 'production',
         createdAt: new Date(now - 85 * 86400000).toISOString(),
         lastUsedAt: new Date(now - 2 * 60000).toISOString(),
-        spendCapCents: 15000, // $150/mo cap
+        monthlyPointCap: 25_000,
         monthlyCallCap: 20000, // 20K calls/mo cap
       }),
       // 2. Mobile prod — high-traffic key bumping into its monthly call
@@ -698,7 +706,7 @@ function seedIfNeeded() {
       lastUsedAt: null,
       status: 'active',
       isStarter: true,
-      spendCapCents: null,
+      monthlyPointCap: null,
       monthlyCallCap: null,
       // Legacy fields stay zeroed under the new account-wallet model.
       freeDailyLimit: 0,
@@ -758,6 +766,8 @@ function seedIfNeeded() {
 
         const calls = Math.round(keyDailyTotal);
         if (calls <= 0) continue;
+        const paragraphCalls = Math.max(1, Math.round(calls * 0.18));
+        const wordSentenceCalls = Math.max(0, calls - paragraphCalls);
         const grossMills = Math.round((calls / 1000) * MCP_CALL_RATE_PER_K * 1000);
         const savingsMills =
           key.env === 'production' ? Math.round(grossMills * 0.12) : 0;
@@ -766,6 +776,11 @@ function seedIfNeeded() {
           keyId: key.id,
           model: MCP_CALL_MODEL_ID,
           calls,
+          wordSentenceCalls,
+          paragraphCalls,
+          wordSentencePoints: wordSentenceCalls,
+          paragraphPoints: paragraphCalls * 2,
+          evaluationPoints: wordSentenceCalls + paragraphCalls * 2,
           costMills: grossMills - savingsMills,
           savingsMills,
         });
@@ -777,19 +792,13 @@ function seedIfNeeded() {
     cache.usage = existingUsage;
   }
 
-  // ── Spend limit ──
-  // Migration note: legacy snapshots stored a single `monthlyCapCents`
-  // number (sometimes overloaded as "monthly calls"). We read whatever is
-  // there, then fill the new daily / call-cap fields with `null`
-  // (unlimited) so older sessions don't suddenly start rejecting traffic.
+  // ── Account limits ──
   const existingLimit = read<Partial<SpendLimit> | null>(STORAGE.spendLimit, null);
   if (!existingLimit) {
     const seeded: SpendLimit = {
-      // $300 default lets the demo's ~$150-170/mo spend land at ~50% used
-      // (meaningful amber zone for the Overview KPI and Billing chart).
-      monthlyCapCents: 300_00,
+      monthlyPointCap: 30_000,
       monthlyCallCap: null,
-      dailyCapCents: null,
+      dailyPointCap: null,
       dailyCallCap: null,
       resetDay: 1,
       warnAtPercents: [50, 75, 90],
@@ -798,16 +807,16 @@ function seedIfNeeded() {
     cache.spendLimit = seeded;
   } else {
     const migrated: SpendLimit = {
-      monthlyCapCents:
-        existingLimit.monthlyCapCents != null
-          ? existingLimit.monthlyCapCents
+      monthlyPointCap:
+        existingLimit.monthlyPointCap != null
+          ? existingLimit.monthlyPointCap
           : null,
       monthlyCallCap:
         existingLimit.monthlyCallCap != null
           ? existingLimit.monthlyCallCap
           : null,
-      dailyCapCents:
-        existingLimit.dailyCapCents != null ? existingLimit.dailyCapCents : null,
+      dailyPointCap:
+        existingLimit.dailyPointCap != null ? existingLimit.dailyPointCap : null,
       dailyCallCap:
         existingLimit.dailyCallCap != null ? existingLimit.dailyCallCap : null,
       resetDay: existingLimit.resetDay ?? 1,
@@ -885,7 +894,7 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'paypal',
         last4: 'ppal',
-        description: 'PayPal · Wallet top-up · $20.00',
+        description: 'PayPal · Evaluation points · $20.00',
         paypalOrderId: 'PAYPAL-ORDER-260531-001',
         balanceBeforeCents: 24500,
         balanceAfterCents: 26500,
@@ -897,7 +906,7 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'paypal',
         last4: 'ppal',
-        description: 'PayPal · Wallet top-up · $100.00',
+        description: 'PayPal · Evaluation points · $100.00',
         paypalOrderId: 'PAYPAL-ORDER-260526-002',
         balanceBeforeCents: 14500,
         balanceAfterCents: 24500,
@@ -909,7 +918,7 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'paypal',
         last4: 'ppal',
-        description: 'PayPal · Wallet top-up · $20.00',
+        description: 'PayPal · Evaluation points · $20.00',
         paypalOrderId: 'PAYPAL-ORDER-260522-003',
         balanceBeforeCents: 12500,
         balanceAfterCents: 14500,
@@ -921,7 +930,7 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'paypal',
         last4: 'ppal',
-        description: 'PayPal · Wallet top-up · $25.00',
+        description: 'PayPal · Evaluation points · $25.00',
         paypalOrderId: 'PAYPAL-ORDER-260518-004',
         balanceBeforeCents: 10000,
         balanceAfterCents: 12500,
@@ -933,7 +942,7 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'paypal',
         last4: 'ppal',
-        description: 'PayPal · Wallet top-up · $50.00',
+        description: 'PayPal · Evaluation points · $50.00',
         paypalOrderId: 'PAYPAL-ORDER-260514-005',
         balanceBeforeCents: 5000,
         balanceAfterCents: 10000,
@@ -945,7 +954,7 @@ function seedIfNeeded() {
         status: 'succeeded',
         method: 'paypal',
         last4: 'ppal',
-        description: 'PayPal · Wallet top-up · $50.00',
+        description: 'PayPal · Evaluation points · $50.00',
         paypalOrderId: 'PAYPAL-ORDER-260502-006',
         balanceBeforeCents: 0,
         balanceAfterCents: 5000,
@@ -1013,6 +1022,7 @@ function seedIfNeeded() {
       remainingPoints: number,
       daysUntilExpiry: number,
       packageId: EvaluationPointBatch['packageId'],
+      expiryHourOffset = 0,
     ): EvaluationPointBatch => ({
       id: uuid('point_batch_'),
       transactionId: txForAge(daysAgo),
@@ -1021,14 +1031,17 @@ function seedIfNeeded() {
       usedPoints: creditedPoints - remainingPoints,
       remainingPoints,
       createdAt: new Date(now - daysAgo * 86400000).toISOString(),
-      expiresAt: new Date(now + daysUntilExpiry * 86400000).toISOString(),
+      expiresAt: new Date(now + daysUntilExpiry * 86400000 + expiryHourOffset * 3600000).toISOString(),
       status: remainingPoints > 0 ? 'active' : 'exhausted',
     });
     const seeded = [
       mkBatch(30, 12_500, 0, -1, 'standard'),
       mkBatch(18, 12_500, 7_000, 12, 'standard'),
-      mkBatch(14, 6_250, 5_125, 16, 'standard'),
-      mkBatch(10, 5_000, 3_000, 20, 'standard'),
+      // Two independent top-ups expire on the same day but at different
+      // times, so the billing UI demonstrates why date-only grouping loses
+      // real batch information.
+      mkBatch(14, 6_250, 5_125, 16, 'standard', -3),
+      mkBatch(10, 5_000, 3_000, 16, 'standard', 4),
       mkBatch(6, 27_500, 0, 24, 'advanced'),
       mkBatch(1, 5_000, 3_000, 29, 'standard'),
     ];
@@ -1053,12 +1066,12 @@ function seedIfNeeded() {
     cache.trial = existingTrial;
   }
 
-  // ── Account-level low-balance alert ── ($5 threshold, enabled)
+  // ── Account-level low-points alert ── (1,250-point threshold, enabled)
   const existingAlert = read<AccountLowBalanceAlert | null>(STORAGE.accountAlert, null);
   if (!existingAlert) {
     const seeded: AccountLowBalanceAlert = {
       enabled: true,
-      thresholdCents: 500,
+      thresholdPoints: 1_250,
     };
     write(STORAGE.accountAlert, seeded);
     cache.accountAlert = seeded;
@@ -1148,7 +1161,7 @@ const DEFAULT_TRIAL: TrialAllowance = {
 };
 const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
   enabled: false,
-  thresholdCents: 500,
+  thresholdPoints: 1_250,
 };
 
 export function getWallet(): AccountWallet {
@@ -1283,12 +1296,17 @@ export function getAccountCallsTotal(): number {
   return trial.totalLimit + walletCalls;
 }
 
-/** True if wallet balance has dropped below the configured alert threshold. */
-export function isAccountLowBalance(): boolean {
+/** True if available evaluation points have dropped below the configured alert threshold. */
+export function isAccountLowPoints(): boolean {
   const a = getAccountAlert();
   if (!a.enabled) return false;
-  const bal = getAccountBalanceCents();
-  return bal > 0 && bal <= a.thresholdCents;
+  const points = getAccountEvaluationPoints();
+  return points > 0 && points <= a.thresholdPoints;
+}
+
+/** @deprecated Use `isAccountLowPoints` for product-facing alerts. */
+export function isAccountLowBalance(): boolean {
+  return isAccountLowPoints();
 }
 
 /** This-month call count for one key, derived from usage history. */
@@ -1614,7 +1632,7 @@ export function createKey(
     lastUsedAt: null,
     status: 'active',
     isStarter: false,
-    spendCapCents: null,
+    monthlyPointCap: null,
     monthlyCallCap: null,
     // Legacy fields zeroed under the wallet model.
     freeDailyLimit: 0,
@@ -1675,9 +1693,9 @@ export function rotateKeySecret(id: string): ApiKey | undefined {
 export function updateKeySettings(
   id: string,
   patch: {
-    spendCapCents?: number | null;
+    monthlyPointCap?: number | null;
     monthlyCallCap?: number | null;
-    dailySpendCapCents?: number | null;
+    dailyPointCap?: number | null;
     dailyCallCap?: number | null;
     /** @deprecated Account-level alert replaces this. Field ignored. */
     lowBalanceAlert?: LowBalanceAlert | null;
@@ -1688,14 +1706,14 @@ export function updateKeySettings(
     if (k.id !== id) return k;
     return {
       ...k,
-      ...(patch.spendCapCents !== undefined
-        ? { spendCapCents: patch.spendCapCents }
+      ...(patch.monthlyPointCap !== undefined
+        ? { monthlyPointCap: patch.monthlyPointCap }
         : {}),
       ...(patch.monthlyCallCap !== undefined
         ? { monthlyCallCap: patch.monthlyCallCap }
         : {}),
-      ...(patch.dailySpendCapCents !== undefined
-        ? { dailySpendCapCents: patch.dailySpendCapCents }
+      ...(patch.dailyPointCap !== undefined
+        ? { dailyPointCap: patch.dailyPointCap }
         : {}),
       ...(patch.dailyCallCap !== undefined
         ? { dailyCallCap: patch.dailyCallCap }
@@ -1795,14 +1813,14 @@ export function topupAccount(input: { baseCents: number; creditedPoints?: number
 }
 
 /**
- * Update the account-level low-balance alert. Passing `enabled: false`
- * disables it; setting `thresholdCents` updates the trip wire.
+ * Update the account-level low-points alert. Passing `enabled: false`
+ * disables it; setting `thresholdPoints` updates the trip wire.
  */
 export function updateAccountAlert(alert: AccountLowBalanceAlert): AccountLowBalanceAlert {
   seedIfNeeded();
   const next: AccountLowBalanceAlert = {
     enabled: !!alert.enabled,
-    thresholdCents: Math.max(0, Math.round(alert.thresholdCents ?? 0)),
+    thresholdPoints: Math.max(0, Math.round(alert.thresholdPoints ?? 0)),
   };
   cache.accountAlert = next;
   write(STORAGE.accountAlert, next);
@@ -1931,23 +1949,23 @@ export function formatCalls(n: number): string {
  * "Modify call limit" modal. New UI should call `updateSpendLimit` with
  * the full set of axes.
  */
-export function setSpendLimitCents(monthlyCapCents: number, warnAtPercents?: number[]): void {
+export function setMonthlyPointLimit(monthlyPointCap: number, warnAtPercents?: number[]): void {
   // updateSpendLimit fires the full-axis `updateAccountLimits` proxy hook,
   // so we don't dispatch a second backend write here.
   updateSpendLimit({
-    monthlyCapCents:
-      monthlyCapCents > 0 ? Math.max(0, Math.round(monthlyCapCents)) : null,
+    monthlyPointCap:
+      monthlyPointCap > 0 ? Math.max(0, Math.round(monthlyPointCap)) : null,
     warnAtPercents,
   });
 }
 
 /**
- * Update one or more axes of the account-wide spend limit. Pass `null`
+ * Update one or more axes of the account-wide point/call limit. Pass `null`
  * for an axis to mark it unlimited; omit it entirely to leave it
  * unchanged.
  */
 export function updateSpendLimit(
-  patch: Partial<Pick<SpendLimit, 'monthlyCapCents' | 'monthlyCallCap' | 'dailyCapCents' | 'dailyCallCap' | 'warnAtPercents' | 'resetDay'>>,
+  patch: Partial<Pick<SpendLimit, 'monthlyPointCap' | 'monthlyCallCap' | 'dailyPointCap' | 'dailyCallCap' | 'warnAtPercents' | 'resetDay'>>,
 ): void {
   seedIfNeeded();
   const current = cache.spendLimit!;
@@ -1959,9 +1977,9 @@ export function updateSpendLimit(
   };
   const next: SpendLimit = {
     ...current,
-    monthlyCapCents: sanitiseCap(patch.monthlyCapCents, current.monthlyCapCents),
+    monthlyPointCap: sanitiseCap(patch.monthlyPointCap, current.monthlyPointCap),
     monthlyCallCap: sanitiseCap(patch.monthlyCallCap, current.monthlyCallCap),
-    dailyCapCents: sanitiseCap(patch.dailyCapCents, current.dailyCapCents),
+    dailyPointCap: sanitiseCap(patch.dailyPointCap, current.dailyPointCap),
     dailyCallCap: sanitiseCap(patch.dailyCallCap, current.dailyCallCap),
     resetDay: patch.resetDay ?? current.resetDay,
     warnAtPercents: patch.warnAtPercents ?? current.warnAtPercents,

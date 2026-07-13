@@ -1,10 +1,9 @@
 'use client';
 
-import { CircleDollarSign, Info, X, Zap } from 'lucide-react';
+import { Info, Sparkles, X, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  formatCents,
   getSpendLimit,
   updateSpendLimit,
   type SpendLimit,
@@ -21,9 +20,9 @@ interface SpendLimitModalProps {
 const WARN_PRESETS = [50, 75, 90];
 
 const DEFAULT_LIMIT: SpendLimit = {
-  monthlyCapCents: null,
+  monthlyPointCap: null,
   monthlyCallCap: null,
-  dailyCapCents: null,
+  dailyPointCap: null,
   dailyCallCap: null,
   resetDay: 1,
   warnAtPercents: WARN_PRESETS,
@@ -52,23 +51,19 @@ export function SpendLimitForm({
   const { tx, t } = useLang();
   const limit = useMockStore<SpendLimit>(getSpendLimit, DEFAULT_LIMIT);
 
-  const [monthlyDollarsOn, setMonthlyDollarsOn] = useState(
-    limit.monthlyCapCents != null,
+  const [monthlyPointsOn, setMonthlyPointsOn] = useState(
+    limit.monthlyPointCap != null,
   );
-  const [monthlyDollars, setMonthlyDollars] = useState(
-    limit.monthlyCapCents != null
-      ? String(Math.round(limit.monthlyCapCents / 100))
-      : '200',
+  const [monthlyPoints, setMonthlyPoints] = useState(
+    limit.monthlyPointCap != null ? String(limit.monthlyPointCap) : '50000',
   );
   const [monthlyCallsOn, setMonthlyCallsOn] = useState(limit.monthlyCallCap != null);
   const [monthlyCalls, setMonthlyCalls] = useState(
     limit.monthlyCallCap != null ? String(limit.monthlyCallCap) : '100000',
   );
-  const [dailyDollarsOn, setDailyDollarsOn] = useState(limit.dailyCapCents != null);
-  const [dailyDollars, setDailyDollars] = useState(
-    limit.dailyCapCents != null
-      ? String(Math.round(limit.dailyCapCents / 100))
-      : '20',
+  const [dailyPointsOn, setDailyPointsOn] = useState(limit.dailyPointCap != null);
+  const [dailyPoints, setDailyPoints] = useState(
+    limit.dailyPointCap != null ? String(limit.dailyPointCap) : '5000',
   );
   const [dailyCallsOn, setDailyCallsOn] = useState(limit.dailyCallCap != null);
   const [dailyCalls, setDailyCalls] = useState(
@@ -85,11 +80,6 @@ export function SpendLimitForm({
     );
   };
 
-  const parseDollars = (raw: string): number | null => {
-    const f = parseFloat(raw.replace(/[^0-9.]/g, ''));
-    if (!Number.isFinite(f) || f <= 0) return null;
-    return Math.round(f * 100);
-  };
   const parseCalls = (raw: string): number | null => {
     const n = parseInt(raw.replace(/[^0-9]/g, ''), 10);
     if (!Number.isFinite(n) || n <= 0) return null;
@@ -98,9 +88,9 @@ export function SpendLimitForm({
 
   const handleSave = () => {
     updateSpendLimit({
-      monthlyCapCents: monthlyDollarsOn ? parseDollars(monthlyDollars) : null,
+      monthlyPointCap: monthlyPointsOn ? parseCalls(monthlyPoints) : null,
       monthlyCallCap: monthlyCallsOn ? parseCalls(monthlyCalls) : null,
-      dailyCapCents: dailyDollarsOn ? parseDollars(dailyDollars) : null,
+      dailyPointCap: dailyPointsOn ? parseCalls(dailyPoints) : null,
       dailyCallCap: dailyCallsOn ? parseCalls(dailyCalls) : null,
       warnAtPercents: warn,
     });
@@ -112,22 +102,22 @@ export function SpendLimitForm({
     <>
       <div className="space-y-6">
         <CapSection
-          icon={CircleDollarSign}
-          title={t('Monthly spend cap', '月度消费上限')}
+          icon={Sparkles}
+          title={t('Monthly evaluation-point cap', '月度评测积分上限')}
           description={t(
-            'Hard stop once spend across all keys hits this dollar cap in a calendar month.',
-            '当月所有 Key 累计消费达到此金额后立即停止服务。',
+            'Hard stop once evaluation points used across all keys hit this cap in a calendar month.',
+            '当月所有 Key 累计消耗的评测积分达到此上限后立即停止服务。',
           )}
-          enabled={monthlyDollarsOn}
-          setEnabled={setMonthlyDollarsOn}
-          value={monthlyDollars}
-          setValue={setMonthlyDollars}
+          enabled={monthlyPointsOn}
+          setEnabled={setMonthlyPointsOn}
+          value={monthlyPoints}
+          setValue={setMonthlyPoints}
           currentLabel={
-            limit.monthlyCapCents != null
-              ? `${tx('Currently')} ${formatCents(limit.monthlyCapCents)} / ${tx('month')}`
+            limit.monthlyPointCap != null
+              ? `${tx('Currently')} ${limit.monthlyPointCap.toLocaleString()} ${t('points', '积分')} / ${tx('month')}`
               : null
           }
-          unit="dollars"
+          unit="points"
           unitSuffix={tx('per month')}
         />
 
@@ -154,22 +144,22 @@ export function SpendLimitForm({
         <div className="h-px bg-border" />
 
         <CapSection
-          icon={CircleDollarSign}
-          title={t('Daily spend cap', '每日消费上限')}
+          icon={Sparkles}
+          title={t('Daily evaluation-point cap', '每日评测积分上限')}
           description={t(
-            'Resets at midnight (UTC). Useful to bound a runaway day without touching monthly spend.',
-            '每天 UTC 0 点重置。可在不调整月度上限的前提下限制单日支出。',
+            'Resets at midnight (UTC). Useful to bound a runaway day without changing the monthly point cap.',
+            '每天 UTC 0 点重置。可在不调整月度积分上限的前提下限制单日消耗。',
           )}
-          enabled={dailyDollarsOn}
-          setEnabled={setDailyDollarsOn}
-          value={dailyDollars}
-          setValue={setDailyDollars}
+          enabled={dailyPointsOn}
+          setEnabled={setDailyPointsOn}
+          value={dailyPoints}
+          setValue={setDailyPoints}
           currentLabel={
-            limit.dailyCapCents != null
-              ? `${tx('Currently')} ${formatCents(limit.dailyCapCents)} / ${tx('day')}`
+            limit.dailyPointCap != null
+              ? `${tx('Currently')} ${limit.dailyPointCap.toLocaleString()} ${t('points', '积分')} / ${tx('day')}`
               : null
           }
-          unit="dollars"
+          unit="points"
           unitSuffix={tx('per day')}
         />
 
@@ -285,7 +275,7 @@ export function SpendLimitModal({ open, onClose, onSaved }: SpendLimitModalProps
         <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
           <div>
             <div className="text-sm font-semibold flex items-center gap-2">
-              {t('Account spend & call limits', '账户消费与调用上限')}
+              {t('Account point & call limits', '账户积分与调用上限')}
               <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">
                 {tx('Experimental')}
               </span>
@@ -339,14 +329,14 @@ function CapSection({
   unitSuffix,
   currentLabel,
 }: {
-  icon: typeof CircleDollarSign;
+  icon: typeof Sparkles;
   title: string;
   description: string;
   enabled: boolean;
   setEnabled: (v: boolean) => void;
   value: string;
   setValue: (v: string) => void;
-  unit: 'dollars' | 'calls';
+  unit: 'points' | 'calls';
   unitSuffix: string;
   currentLabel: string | null;
 }) {
@@ -390,29 +380,29 @@ function CapSection({
           <span className="text-sm flex items-center gap-2">
             {tx('Cap at')}
             <span className="inline-flex items-center h-8 rounded-md border border-border bg-background focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
-              {unit === 'dollars' && (
-                <span className="pl-2.5 text-[11px] text-muted-foreground">$</span>
-              )}
               <input
                 type="text"
-                inputMode={unit === 'dollars' ? 'decimal' : 'numeric'}
+                inputMode="numeric"
                 value={value}
                 onChange={(e) =>
                   setValue(
-                    unit === 'dollars'
-                      ? e.target.value.replace(/[^0-9.]/g, '')
-                      : e.target.value.replace(/[^0-9]/g, ''),
+                    e.target.value.replace(/[^0-9]/g, ''),
                   )
                 }
                 onFocus={() => setEnabled(true)}
                 className={cn(
                   'h-full text-sm bg-transparent tabular-nums outline-none',
-                  unit === 'dollars' ? 'w-20 px-1.5' : 'w-24 px-2.5',
+                  'w-24 px-2.5',
                 )}
               />
               {unit === 'calls' && (
                 <span className="pr-2.5 text-[11px] text-muted-foreground">
                   {t('calls', '次')}
+                </span>
+              )}
+              {unit === 'points' && (
+                <span className="pr-2.5 text-[11px] text-muted-foreground">
+                  {t('points', '积分')}
                 </span>
               )}
             </span>

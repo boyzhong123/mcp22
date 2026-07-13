@@ -14,8 +14,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         icon={Bell}
         title="Settings"
         zhTitle="设置"
-        description="Email preferences and account-level low-balance alert. Personal info lives on your profile."
-        zhDescription="邮件提醒偏好以及账户级余额不足提醒。个人资料请前往个人资料页。"
+        description="Email preferences and account-level low-points alert. Personal info lives on your profile."
+        zhDescription="邮件提醒偏好以及账户级评测积分不足提醒。个人资料请前往个人资料页。"
       />
       {children}
     </div>

@@ -18,6 +18,7 @@ import {
   Play,
   Plus,
   Settings,
+  Sparkles,
   X,
   Zap,
 } from 'lucide-react';
@@ -26,7 +27,6 @@ import { cn } from '@/lib/utils';
 import {
   createKey,
   formatCalls,
-  formatCents,
   formatDateShort,
   getAccountCallsRemaining,
   getAccountTrialRemaining,
@@ -148,8 +148,8 @@ export default function KeysPage() {
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">{t('API Keys', 'API 密钥')}</h1>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
             {t(
-              'Create as many keys as you need — every key on the account shares the same signup trial package and wallet balance. The trial expires when its time window ends or its calls are used up.',
-              '按需创建任意数量的 Key — 账户内所有 Key 共享同一份注册试用包和钱包余额；试用包到期或次数用完即失效。',
+              'Create as many keys as you need — every key on the account shares the same signup trial package and evaluation-point pool. The trial expires when its time window ends or its calls are used up.',
+              '按需创建任意数量的 Key — 账户内所有 Key 共享同一份注册试用包和评测积分池；试用包到期或次数用完即失效。',
             )}
           </p>
         </div>
@@ -205,8 +205,8 @@ export default function KeysPage() {
           icon={Key}
           title={t('Your keys', '你的 Key')}
           subtitle={t(
-            'All keys consume the same trial points and wallet balance. Set per-key spend / call caps in Settings if you want to throttle a specific key.',
-            '所有 Key 共享同一份试用评测积分与钱包余额。如需限流可在「设置」中为单个 Key 配置消费 / 调用上限。',
+            'All keys consume the same trial points and evaluation-point pool. Set per-key point / call caps in Settings if you want to throttle a specific key.',
+            '所有 Key 共享同一份试用评测积分与评测积分池。如需限流可在「设置」中为单个 Key 配置积分 / 调用上限。',
           )}
           toneClass="text-foreground"
         />
@@ -263,8 +263,8 @@ export default function KeysPage() {
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
                 {t(
-                  'Every key on this account shares the same signup trial package and wallet balance. You can create as many as you need — no environment or per-key billing setup required.',
-                  '账户内所有 Key 共享同一份注册试用包和钱包余额。可按需创建任意数量，无需选择环境或单独设置计费。',
+                  'Every key on this account shares the same signup trial package and evaluation-point pool. You can create as many as you need — no environment or per-key billing setup required.',
+                  '账户内所有 Key 共享同一份注册试用包和评测积分池。可按需创建任意数量，无需选择环境或单独设置计费。',
                 )}
               </span>
             </div>
@@ -498,8 +498,8 @@ function EmptyPaidKeysState({ onCreate }: { onCreate: () => void }) {
       <p className="text-sm font-medium">{t('No keys yet', '暂无 API Key')}</p>
       <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
         {t(
-          'Create your first key to start integrating. The free trial unlocks automatically — top up your wallet whenever you need more.',
-          '创建第一把 Key 即可开始接入。免费试用次数自动解锁；用完后随时充值即可继续。',
+          'Create your first key to start integrating. The free trial unlocks automatically — add evaluation points whenever you need more.',
+          '创建第一把 Key 即可开始接入。免费试用次数自动解锁；用完后随时充值评测积分即可继续。',
         )}
       </p>
       <button
@@ -552,9 +552,9 @@ function PaidKeyRow({
       ? Math.min(100, (monthCalls / callCap) * 100)
       : null;
 
-  const hasSpendCap = k.spendCapCents !== null && k.spendCapCents > 0;
+  const hasPointCap = k.monthlyPointCap !== null && k.monthlyPointCap > 0;
   const hasCallCap = callCap != null && callCap > 0;
-  const hasAnyCap = hasSpendCap || hasCallCap;
+  const hasAnyCap = hasPointCap || hasCallCap;
 
   return (
     <li
@@ -691,12 +691,12 @@ function PaidKeyRow({
             onClick={onSettings}
             disabled={isRevoked}
             className="flex flex-wrap items-center gap-1 -mx-1 px-1 py-1 rounded-md text-left transition-colors hover:bg-muted/40 disabled:opacity-40 disabled:pointer-events-none"
-            title={tx('Configure spend cap & monthly call cap')}
+            title={tx('Configure point cap & monthly call cap')}
           >
-            {hasSpendCap && (
+            {hasPointCap && (
               <CapChip
-                icon={DollarSign}
-                label={`${formatCents(k.spendCapCents ?? 0)}/${t('mo', '月')}`}
+                icon={Sparkles}
+                label={`${formatCalls(k.monthlyPointCap ?? 0)} ${t('points', '积分')}/${t('mo', '月')}`}
               />
             )}
             {hasCallCap && (
@@ -705,12 +705,12 @@ function PaidKeyRow({
                 label={`${formatCalls(callCap ?? 0)}/${t('mo', '月')}`}
               />
             )}
-            {(!hasSpendCap || !hasCallCap) && (
+            {(!hasPointCap || !hasCallCap) && (
               <span className="text-[10.5px] text-muted-foreground/70">
-                {!hasSpendCap && !hasCallCap
+                {!hasPointCap && !hasCallCap
                   ? null
-                  : !hasSpendCap
-                    ? t('· no $ cap', '· 不限金额')
+                  : !hasPointCap
+                    ? t('· no point cap', '· 不限积分')
                     : t('· no call cap', '· 不限次数')}
               </span>
             )}
@@ -721,7 +721,7 @@ function PaidKeyRow({
             onClick={onSettings}
             disabled={isRevoked}
             className="inline-flex items-center gap-1 h-6 px-2 -mx-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:pointer-events-none border border-dashed border-border/70"
-            title={tx('Configure spend cap & monthly call cap')}
+            title={tx('Configure point cap & monthly call cap')}
           >
             <Plus className="h-3 w-3" />
             {t('Set limits', '设置上限')}
@@ -1028,13 +1028,13 @@ function TrialExhaustedBanner({ onAddCredits }: { onAddCredits: () => void }) {
                 {t('Account out of points', '账户评测积分已耗尽')}
               </h3>
               <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                {t('Wallet & trial empty', '钱包与试用均已用完')}
+                {t('Points & trial empty', '积分与试用均已用完')}
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
                 {t(
-                'The signup trial package is no longer available and your wallet balance is spent. Top up to unblock every key on your account.',
-                '注册试用包已不可用，钱包余额也已用完。充值后账户内所有 Key 立即恢复服务。',
+                'The signup trial package is no longer available and the evaluation-point pool is empty. Top up to unblock every key on your account.',
+                '注册试用包已不可用，评测积分也已用完。充值后账户内所有 Key 立即恢复服务。',
               )}
             </p>
           </div>

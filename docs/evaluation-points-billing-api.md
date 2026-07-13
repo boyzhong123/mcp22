@@ -99,6 +99,8 @@
   "point_balance_before": 18125,
   "point_balance_after": 59375,
   "points_expire_at": "2026-08-11T00:00:00Z",
+  "used_points": 12500,
+  "remaining_points": 28750,
   "created_at": "2026-07-12T10:30:00Z"
 }
 ```
@@ -125,7 +127,7 @@
 
 `GET /api/billing/transactions?page=1&page_size=50&kind=credit-topup`
 
-沿用分页 envelope：`{ transactions, total, page, page_size }`。每个列表项必须包含 `amount_cents`、`credited_points`、`package_id`、`status`、`method`、`created_at`；列表可不返回 `base_points`、`bonus_points`、余额前后值，前端点击详情时再取完整记录。
+沿用分页 envelope：`{ transactions, total, page, page_size }`。每个列表项必须包含 `amount_cents`、`credited_points`、`used_points`、`remaining_points`、`package_id`、`status`、`method`、`created_at`；`created_at` 必须为 ISO 8601 完整时间（含时分秒与时区），用于区分同日多笔充值。`used_points` 与 `remaining_points` 是请求时刻的当前批次使用快照。列表可不返回 `base_points`、`bonus_points`、余额前后值，前端点击详情时再取完整记录。
 
 ## 6. 积分批次与有效期（新增）
 
@@ -157,7 +159,62 @@
 - `status`：`active`、`exhausted`、`expired`。
 - 调用扣分时，服务端按 `expires_at ASC`（最早到期优先）跨批次扣减；若同日到期，再按 `created_at ASC`。
 - 余额、消耗记录、扣减与批次状态更新必须在同一个数据库事务中完成。
-- 前端账单页以该接口展示可展开的批次明细和到期分布图；`evaluation_points_balance` 仍是账户总览的权威汇总值。
+- 前端账单页以该接口展示可展开的批次明细和到期分布图；**不得按日期合并**同日的多笔充值。每个批次须使用 `expires_at` 的完整时间（精确到秒）单独展示，并同时展示 `remaining_points / credited_points` 的批次剩余百分比，以及该批次占当前可用积分的比例；`evaluation_points_balance` 仍是账户总览的权威汇总值。
+
+## 7. 积分不足提醒
+
+`GET/PATCH /api/notifications/settings` 增加 `low_evaluation_points_threshold`（整数，单位：积分），与已有 `low_balance_alerts_master` 一起控制提醒。`low_balance_threshold_cents` 可以保留一段兼容期，但不得再驱动前端提醒或通知文案。
+
+```json
+{
+  "low_balance_alerts_master": true,
+  "low_evaluation_points_threshold": 1250
+}
+```
+
+## 8. 按 Key 的积分消耗明细
+
+`GET /api/usage/points` 的每个日粒度记录除 `calls` 外，增加以下字段。前端不再以美元消费作为主展示；所有 Key 的消耗均以积分和评测对象拆分展示。
+
+```json
+{
+  "date": "2026-07-13",
+  "key_id": 12,
+  "calls": 860,
+  "word_sentence_calls": 706,
+  "paragraph_calls": 154,
+  "word_sentence_points": 706,
+  "paragraph_points": 308,
+  "evaluation_points": 1014
+}
+```
+
+- `calls = word_sentence_calls + paragraph_calls`。
+- `evaluation_points = word_sentence_points + paragraph_points`。
+- 当前规则下字 / 词 / 句每次成功评测扣 1 积分，段落每次成功评测扣 2 积分；真实值仍以服务端返回为准。
+- 金额字段可保留用于财务对账，不得作为开发者控制台“本月消耗”“按 Key 消耗”或用量图的主指标。
+
+## 9. 账户与 Key 的积分 / 调用上限
+
+调用护栏的计量单位必须是评测积分和调用次数，**不得再用美元金额作为流量停止条件**。支付金额只属于充值订单与财务对账。
+
+`GET /api/billing/limits`、`PUT /api/billing/limits` 使用以下字段；`0` 表示不限：
+
+```json
+{
+  "monthly_evaluation_point_cap": 30000,
+  "daily_evaluation_point_cap": 5000,
+  "monthly_call_cap": 100000,
+  "daily_call_cap": 5000,
+  "warn_at_percents": [50, 75, 90]
+}
+```
+
+每个 Key 的 `GET/PATCH /api/keys/:id/settings`（或 `limits` 对象）使用同名四个 cap 字段。服务端分别按 UTC 日、UTC 自然月累计 `evaluation_points` 与 `calls`；任一已配置上限达到后停止该账户或该 Key 的后续调用，并返回稳定的限额错误码。
+
+- 警告百分比针对已配置的积分或调用上限计算；通知需指明触发的是哪一个维度。
+- `*_spend_cap_mills` 仅可作为短期兼容读字段，不能再写入、不能驱动前端表单或拦截逻辑。
+- 旧客户端传入金额上限时，服务端应明确拒绝或按版本兼容处理，不能把金额静默换算为积分。
 
 ## 前端接线点
 
@@ -166,3 +223,6 @@
 - `src/app/dev-en/_lib/mock-store-bridge.ts`：已映射 summary 与交易的积分字段。
 - `src/app/dev-en/_components/stripe-checkout-modal-packages.tsx`：当前仅使用这一套套餐充值流程。
 - `src/app/dev-en/dashboard/billing/history/page.tsx`：以到账积分为记录主列，金额只作支付对账。
+- `src/app/dev-en/dashboard/billing/page.tsx`、`src/app/dev-en/dashboard/usage/page.tsx` 与概览：以消耗积分展示 Key 用量，并拆分字词句 / 段落次数与积分。
+- `src/app/dev-en/dashboard/settings/page.tsx` 与概览提醒：统一使用“评测积分不足”及积分阈值。
+- `src/app/dev-en/dashboard/limits/page.tsx`、Key 设置与接口桥接：统一提交 `*_evaluation_point_cap` 与调用上限。

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Activity,
@@ -12,6 +12,7 @@ import {
   BookOpen,
   CheckCircle2,
   Clock,
+  Coins,
   CreditCard,
   Gauge,
   Key,
@@ -25,19 +26,16 @@ import { cn } from '@/lib/utils';
 import { useMockAuth } from '../../_lib/mock-auth';
 import {
   formatCalls,
-  formatCents,
   formatDate,
   getAccountAlert,
-  getAccountBalanceCents,
-  getAccountCallsThisMonth,
-  getAccountSpendThisMonthMills,
+  getAccountEvaluationPoints,
   getAccountTrialRemaining,
   getKeyMonthlyCalls,
-  getKeyMonthlySpendMills,
   getSpendLimit,
   getTransactions,
+  getUsage,
   getWallet,
-  isAccountLowBalance,
+  isAccountLowPoints,
   keyLast4,
   listKeys,
   type AccountLowBalanceAlert,
@@ -45,6 +43,7 @@ import {
   type AccountWallet,
   type ApiKey,
   type Transaction,
+  type UsagePoint,
   TRIAL_DEFAULT_TOTAL,
   TRIAL_DEFAULT_VALID_DAYS,
 } from '../../_lib/mock-store';
@@ -53,8 +52,11 @@ import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { StatCard } from '../../_components/stat-card';
 import { useLang } from '../../_lib/use-lang';
-import { formatMills } from '../../_lib/format';
-import { formatBaseWalletPoints } from '../../_lib/topup';
+import {
+  aggregateEvaluationUsage,
+  aggregateEvaluationUsageByKey,
+} from '../../_lib/evaluation-usage';
+import { centsToWalletPoints } from '../../_lib/topup';
 
 const DEFAULT_WALLET: AccountWallet = {
   paidEvaluationPoints: 0,
@@ -73,28 +75,27 @@ const DEFAULT_TRIAL_REMAINING: AccountTrialRemaining = {
 
 const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
   enabled: true,
-  thresholdCents: 500,
+  thresholdPoints: 1_250,
 };
 
 export default function OverviewPage() {
   const { user } = useMockAuth();
   const { t, tx, lang } = useLang();
-  const calls = useMockStore(getAccountCallsThisMonth, 0);
-  const spend = useMockStore(getAccountSpendThisMonthMills, 0);
+  const usage = useMockStore(getUsage, [] as UsagePoint[]);
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
-  const balanceCents = useMockStore(getAccountBalanceCents, 0);
+  const evaluationPoints = useMockStore(getAccountEvaluationPoints, 0);
   const trialRemaining = useMockStore(
     getAccountTrialRemaining,
     DEFAULT_TRIAL_REMAINING,
   );
   const accountAlert = useMockStore(getAccountAlert, DEFAULT_ACCOUNT_ALERT);
-  const lowBalance = useMockStore(isAccountLowBalance, false);
+  const lowPoints = useMockStore(isAccountLowPoints, false);
   const keys = useMockStore(listKeys, [] as ApiKey[]);
   const transactions = useMockStore(getTransactions, [] as Transaction[]);
   const spendLimit = useMockStore(getSpendLimit, {
-    monthlyCapCents: 5000_00,
+    monthlyPointCap: 30_000,
     monthlyCallCap: null,
-    dailyCapCents: null,
+    dailyPointCap: null,
     dailyCallCap: null,
     resetDay: 1,
     warnAtPercents: [50, 75, 90],
@@ -104,6 +105,15 @@ export default function OverviewPage() {
   const openAddCredits = () => setAddCreditsOpen(true);
 
   const activeKeys = keys.filter((k) => k.status === 'active');
+  const monthlyUsage = useMemo(() => {
+    const month = new Date().toISOString().slice(0, 7);
+    return aggregateEvaluationUsage(usage.filter((point) => point.date.startsWith(month)));
+  }, [usage]);
+  const usageByKeyThisMonth = useMemo(() => {
+    const month = new Date().toISOString().slice(0, 7);
+    return aggregateEvaluationUsageByKey(usage.filter((point) => point.date.startsWith(month)));
+  }, [usage]);
+  const calls = monthlyUsage.calls;
   // Only top-ups in the "近期充值" sidebar — `card-added` rows aren't
   // financial activity, they cluttered the list and the section title
   // now reads as money-in only. `failed` top-ups never landed, so they're
@@ -118,8 +128,8 @@ export default function OverviewPage() {
   // the user has genuinely blown past the limit, but clamp the UI bar.
   // The "call limit used" tile compares against the account-wide monthly
   // **call** cap (semantically correct), falling back to the legacy
-  // dollar cap purely so older snapshots without the new field still
-  // show *something*.
+  // point cap is tracked separately; this tile intentionally reports the
+  // call-count axis only.
   const monthlyCallCap = spendLimit.monthlyCallCap ?? null;
   const hasSpendLimit = monthlyCallCap != null && monthlyCallCap > 0;
   const limitUsedPctRaw = hasSpendLimit
@@ -137,7 +147,10 @@ export default function OverviewPage() {
     { month: 'short', day: 'numeric' },
   );
 
-  const rankedKeys = rankActiveKeysThisMonth(keys, getKeyMonthlyCalls);
+  const rankedKeys = rankActiveKeysThisMonth(
+    keys,
+    (keyId) => usageByKeyThisMonth.get(keyId)?.calls ?? 0,
+  );
   // "Top keys this month" should only list keys that actually saw traffic —
   // a key with 0 calls isn't "active". We still surface the three distinct
   // states below: no keys at all, keys-but-no-usage, and real usage.
@@ -145,26 +158,62 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6" translate="no" lang="en">
-      <div>
-        <p className="text-sm text-muted-foreground">
-          {new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </p>
-        <h1 className="text-2xl font-semibold tracking-[-0.02em] mt-0.5">
-          {t(
-            `Welcome back${user ? `, ${user.name.split(' ')[0]}` : ''}.`,
-            `欢迎回来${user ? `，${user.name.split(' ')[0]}` : ''}。`,
-          )}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {t(
-            "Here's a snapshot of your Chivox MCP workspace — one shared point pool, free trial points, and top-ups from there.",
-            '你的 Chivox MCP 工作区概览 — 一个共享积分池 + 免费试用积分，用完随时充值。',
-          )}
-        </p>
+      {/* Welcome hero banner — abstract emerald brand art (no people, no
+           text) faded into the card from the right so the copy stays
+           legible in both light and dark themes. Art lives at
+           public/overview/hero-brand.jpg. */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-emerald-500/[0.06] via-background to-background">
+        {/* brand art — right side, cropped to the rich-green corner and
+             masked so it dissolves into the copy area. */}
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 w-[68%] bg-cover bg-right-bottom sm:w-[54%]"
+          style={{
+            backgroundImage: 'url(/overview/hero-brand.jpg)',
+            maskImage: 'linear-gradient(to right, transparent, black 48%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent, black 48%)',
+          }}
+        />
+        {/* dark-mode veil — pull the bright art back so it reads as an
+             accent, not a spotlight, against the dark card. */}
+        <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-background via-background/75 to-background/25 dark:block" />
+        <div className="relative max-w-xl p-6 sm:p-7">
+          <p className="text-sm text-muted-foreground">
+            {new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-[-0.02em]">
+            {t(
+              `Welcome back${user ? `, ${user.name.split(' ')[0]}` : ''}.`,
+              `欢迎回来${user ? `，${user.name.split(' ')[0]}` : ''}。`,
+            )}
+          </h1>
+          <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+            {t(
+              "Here's a snapshot of your Chivox MCP workspace — one shared point pool, free trial points, and top-ups from there.",
+              '你的 Chivox MCP 工作区概览 — 一个共享积分池 + 免费试用积分，用完随时充值。',
+            )}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={openAddCredits}
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-foreground px-3.5 text-xs font-medium text-background transition-[filter] hover:brightness-110"
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              {tx('Add points')}
+            </button>
+            <Link
+              href="/dashboard/keys"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background/70 px-3.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted/50"
+            >
+              <Key className="h-3.5 w-3.5" />
+              {tx('Create key')}
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Account-wide alert stack — surface every account-level limit
@@ -173,10 +222,10 @@ export default function OverviewPage() {
            data already loaded above; no new endpoints. */}
       <AccountAlerts
         wallet={wallet}
-        balanceCents={balanceCents}
+        evaluationPoints={evaluationPoints}
         trialRemaining={trialRemaining}
         accountAlert={accountAlert}
-        lowBalance={lowBalance}
+        lowPoints={lowPoints}
         activeKeys={activeKeys}
         callsThisMonth={calls}
         callsLimit={monthlyCallCap ?? 0}
@@ -191,12 +240,12 @@ export default function OverviewPage() {
            pages don't read as duplicates. */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          icon={Sparkles}
+          icon={Coins}
           label={t('Evaluation points', '评测积分')}
-          value={formatBaseWalletPoints(balanceCents)}
+          value={evaluationPoints.toLocaleString('en-US')}
           sub={t(
-            `${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} used · ${formatBaseWalletPoints(wallet.paidCreditsCents)} topped up · worth ${formatCents(balanceCents)}`,
-            `已用 ${formatBaseWalletPoints(wallet.paidCreditsUsedCents)} · 累计获得 ${formatBaseWalletPoints(wallet.paidCreditsCents)} · 价值 ${formatCents(balanceCents)}`,
+            `${wallet.usedEvaluationPoints.toLocaleString('en-US')} used · ${wallet.paidEvaluationPoints.toLocaleString('en-US')} credited`,
+            `已用 ${wallet.usedEvaluationPoints.toLocaleString('en-US')} · 累计到账 ${wallet.paidEvaluationPoints.toLocaleString('en-US')}`,
           )}
           onClick={openAddCredits}
           cta={tx('Add points')}
@@ -221,11 +270,11 @@ export default function OverviewPage() {
         />
         <StatCard
           icon={Receipt}
-          label={t('Spent this month', '本月消费')}
-          value={formatMills(spend)}
+          label={t('Evaluation points used this month', '本月消耗评测积分')}
+          value={monthlyUsage.totalPoints.toLocaleString('en-US')}
           sub={t(
-            `${formatCalls(calls)} calls · ${activeKeys.length} active key${activeKeys.length === 1 ? '' : 's'}`,
-            `${formatCalls(calls)} 次调用 · ${activeKeys.length} 把活跃 Key`,
+            `Word/sentence ${monthlyUsage.wordSentencePoints.toLocaleString('en-US')} pts · paragraph ${monthlyUsage.paragraphPoints.toLocaleString('en-US')} pts`,
+            `字词句 ${monthlyUsage.wordSentencePoints.toLocaleString('en-US')} 积分 · 段落 ${monthlyUsage.paragraphPoints.toLocaleString('en-US')} 积分`,
           )}
           href="/dashboard/billing"
           cta={t('View billing', '查看账单')}
@@ -268,8 +317,8 @@ export default function OverviewPage() {
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {t(
-                  'Ranked by call volume. Every key shares the same wallet.',
-                  '按本月调用量排序。所有 Key 共享同一钱包。',
+                  'Ranked by call volume. Every key shares the same evaluation-point pool.',
+                  '按本月调用量排序。所有 Key 共享同一评测积分池。',
                 )}
               </p>
             </div>
@@ -320,7 +369,7 @@ export default function OverviewPage() {
           ) : (
             <ul className="space-y-3">
               {usedKeys.map(({ key, monthCalls }) => {
-                const monthSpend = getKeyMonthlySpendMills(key.id);
+                const monthUsage = usageByKeyThisMonth.get(key.id);
                 const cap = key.monthlyCallCap ?? null;
                 const capUsedPct = cap && cap > 0
                   ? Math.min(100, (monthCalls / cap) * 100)
@@ -355,7 +404,7 @@ export default function OverviewPage() {
                           )}
                         </div>
                         <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
-                          {formatMills(monthSpend)} {t('this month', '本月')}
+                          {(monthUsage?.totalPoints ?? 0).toLocaleString('en-US')} {t('pts this month', '积分（本月）')}
                         </div>
                       </div>
                     </div>
@@ -442,7 +491,9 @@ export default function OverviewPage() {
                         isPending && 'text-muted-foreground font-normal',
                       )}
                     >
-                      {isPending ? formatCents(tr.amountCents) : `+${formatCents(tr.amountCents)}`}
+                      {isPending
+                        ? t('Pending', '待处理')
+                        : `+${(tr.creditedPoints ?? centsToWalletPoints(tr.amountCents)).toLocaleString('en-US')} ${t('pts', '积分')}`}
                     </span>
                   </li>
                 );
@@ -466,31 +517,34 @@ export default function OverviewPage() {
           </div>
           <Sparkles className="h-4 w-4 text-muted-foreground" />
         </div>
+        {/* The two primary "do" actions (Add points / Create key) now live
+             in the hero banner above, so this row stays complementary —
+             the "manage & explore" destinations instead of repeating them. */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <QuickAction
-            href="/dashboard/keys"
-            title={tx('Create key')}
+            href="/dashboard/usage"
+            title={t('View usage', '查看用量')}
             desc={t(
-              'Spin up a new API key for this account.',
-              '为当前账户新建 API Key。',
+              'Requests and evaluation-point spend over time.',
+              '调用量与评测积分消费趋势。',
             )}
-            icon={Key}
+            icon={BarChart3}
           />
           <QuickAction
-            onClick={openAddCredits}
-            title={tx('Add points')}
+            href="/dashboard/limits"
+            title={t('Set limits', '设置上限')}
             desc={t(
-              'Top up the shared account wallet.',
-              '为账户共享钱包充值。',
+              'Cap monthly calls and points per account or key.',
+              '设置账户 / 单 Key 的月度调用与积分上限。',
             )}
-            icon={Wallet}
+            icon={Gauge}
           />
           <QuickAction
             href="/dashboard/billing"
             title={tx('Review billing')}
             desc={t(
-              'Wallet, top-ups, and per-key spend this month.',
-              '钱包余额、充值历史、本月各 Key 消费。',
+              'Evaluation points, top-ups, and per-key spend this month.',
+              '可用评测积分、充值历史、本月各 Key 消耗。',
             )}
             icon={Receipt}
           />
@@ -559,10 +613,10 @@ interface AlertRow {
 
 interface AlertInputs {
   wallet: AccountWallet;
-  balanceCents: number;
+  evaluationPoints: number;
   trialRemaining: AccountTrialRemaining;
   accountAlert: AccountLowBalanceAlert;
-  lowBalance: boolean;
+  lowPoints: boolean;
   activeKeys: ApiKey[];
   callsThisMonth: number;
   callsLimit: number;
@@ -587,10 +641,10 @@ interface AlertInputs {
 function buildAccountAlerts(i: AlertInputs): AlertRow[] {
   const {
     wallet,
-    balanceCents,
+    evaluationPoints,
     trialRemaining,
     accountAlert,
-    lowBalance,
+    lowPoints,
     activeKeys,
     callsThisMonth,
     callsLimit,
@@ -616,7 +670,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
       ),
       actions: [
         {
-          label: t('Raise spend limit', '提高上限'),
+          label: t('Raise account limit', '提高账户上限'),
           href: '/dashboard/limits',
           primary: true,
         },
@@ -625,21 +679,21 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     });
   }
 
-  // 2 ── Wallet empty AND trial gone → every key on the account is now
+  // 2 ── Paid points empty AND trial gone → every key on the account is now
   // failing INSUFFICIENT_CREDITS. This is the single most important
   // signal under the wallet model.
-  if (balanceCents === 0 && trialRemaining.totalExhausted) {
+  if (evaluationPoints === 0 && trialRemaining.totalExhausted) {
     const reason = trialRemaining.expired
       ? t('the signup trial window has expired', '注册试用已过期')
       : t('the signup trial calls are spent', '注册试用次数已用完');
     rows.push({
-      id: 'wallet-empty',
+      id: 'points-empty',
       severity: 'critical',
       icon: AlertTriangle,
       title: t('Account out of points', '账户评测积分已耗尽'),
       desc: t(
-        `Wallet is $0 and ${reason}. Every key returns INSUFFICIENT_CREDITS until you top up.`,
-        `钱包余额为 $0，且${reason}。所有 Key 都会返回 INSUFFICIENT_CREDITS，请充值。`,
+        `Available evaluation points are 0 and ${reason}. Every key returns INSUFFICIENT_CREDITS until you top up.`,
+        `可用评测积分为 0，且${reason}。所有 Key 都会返回 INSUFFICIENT_CREDITS，请充值。`,
       ),
       actions: [
         { label: tx('Add points'), onClick: onAddCredits, primary: true },
@@ -648,12 +702,11 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     });
   }
 
-  // 3 ── Trial exhausted but wallet still has dollars left. Not blocking,
+  // 3 ── Trial exhausted but paid points remain. Not blocking,
   // just a heads-up that all calls now bill against paid credits.
   if (
     trialRemaining.totalExhausted &&
-    balanceCents > 0 &&
-    !(balanceCents === 0)
+    evaluationPoints > 0
   ) {
     const reason = trialRemaining.expired
       ? t('The signup trial window has expired', '注册试用已过期')
@@ -666,8 +719,8 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
         ? t('Free trial expired', '免费试用已过期')
         : t('Free trial exhausted', '免费试用已用完'),
       desc: t(
-        `${reason}. From here on calls draw from your wallet (${formatCents(balanceCents)} left).`,
-        `${reason}。后续调用从钱包扣费（剩余 ${formatCents(balanceCents)}）。`,
+        `${reason}. From here on calls use your point pool (${evaluationPoints.toLocaleString('en-US')} points left).`,
+        `${reason}。后续调用从评测积分池扣除（剩余 ${evaluationPoints.toLocaleString('en-US')} 积分）。`,
       ),
       actions: [
         { label: tx('Add points'), onClick: onAddCredits, primary: true },
@@ -675,18 +728,18 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     });
   }
 
-  // 4 ── Wallet under user-configured low-balance threshold. Only when
-  // the user opted into the alert and balance > 0 (the empty case is
+  // 4 ── Point pool under the user-configured threshold. Only when
+  // the user opted into the alert and points > 0 (the empty case is
   // already covered by alert 2).
-  if (lowBalance && balanceCents > 0) {
+  if (lowPoints && evaluationPoints > 0) {
     rows.push({
-      id: 'wallet-low',
+      id: 'points-low',
       severity: 'warning',
       icon: Bell,
-      title: t('Account balance low', '账户余额偏低'),
+      title: t('Evaluation points low', '评测积分不足'),
       desc: t(
-        `Wallet is at ${formatCents(balanceCents)}, below your alert threshold of ${formatCents(accountAlert.thresholdCents)}. Top up before traffic stalls.`,
-        `钱包剩余 ${formatCents(balanceCents)}，已低于阈值 ${formatCents(accountAlert.thresholdCents)}。请尽快充值。`,
+        `Available evaluation points are ${evaluationPoints.toLocaleString('en-US')}, below your alert threshold of ${accountAlert.thresholdPoints.toLocaleString('en-US')}. Top up before traffic stalls.`,
+        `可用评测积分为 ${evaluationPoints.toLocaleString('en-US')}，已低于阈值 ${accountAlert.thresholdPoints.toLocaleString('en-US')}。请尽快充值。`,
       ),
       actions: [
         { label: tx('Add points'), onClick: onAddCredits, primary: true },
@@ -698,7 +751,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
     });
   }
 
-  // 5 ── Account spend cap approaching (≥ 90%). KPI tile already turns
+  // 5 ── Account call cap approaching (≥ 90%). KPI tile already turns
   // amber at 75%; we only banner at 90% to avoid noise.
   if (limitUsedPctRaw >= 90 && limitUsedPctRaw < 100) {
     rows.push({

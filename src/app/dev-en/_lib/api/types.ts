@@ -24,8 +24,12 @@ export interface ApiUser {
 export interface KeyLimits {
   daily_call_cap: number; // 0 = unlimited
   monthly_call_cap: number; // 0 = unlimited
-  daily_spend_cap_mills: number; // 0 = unlimited
-  monthly_spend_cap_mills: number; // 0 = unlimited
+  daily_evaluation_point_cap: number; // 0 = unlimited
+  monthly_evaluation_point_cap: number; // 0 = unlimited
+  /** @deprecated Legacy money cap; clients must not use this for traffic. */
+  daily_spend_cap_mills?: number;
+  /** @deprecated Legacy money cap; clients must not use this for traffic. */
+  monthly_spend_cap_mills?: number;
 }
 
 export interface ApiKey {
@@ -71,6 +75,11 @@ export interface UsagePoint {
   date: string; // ISO 8601, day precision
   model: string; // default "mcp-call"
   calls: number;
+  word_sentence_calls?: number;
+  paragraph_calls?: number;
+  word_sentence_points?: number;
+  paragraph_points?: number;
+  evaluation_points?: number;
   cost_mills: number;
   savings_mills: number;
 }
@@ -152,11 +161,15 @@ export interface EvaluationPointBatchListResponse {
 
 // doc §5.8 / §5.9 — account-level four-axis limits.
 export interface AccountLimits {
-  monthly_spend_cap_mills: number; // 0 = unlimited
-  daily_spend_cap_mills: number;
+  monthly_evaluation_point_cap: number; // 0 = unlimited
+  daily_evaluation_point_cap: number;
   daily_call_cap: number;
   monthly_call_cap: number;
   warn_at_percents: number[];
+  /** @deprecated Legacy money cap; clients must not use this for traffic. */
+  monthly_spend_cap_mills?: number;
+  /** @deprecated Legacy money cap; clients must not use this for traffic. */
+  daily_spend_cap_mills?: number;
 }
 
 // doc §5.10 GET /billing/summary
@@ -211,6 +224,9 @@ export interface Transaction {
   point_balance_before?: number;
   point_balance_after?: number;
   points_expire_at?: string | null;
+  /** Current usage snapshot for the batch/batches created by this top-up. */
+  used_points?: number;
+  remaining_points?: number;
   created_at: string;
 }
 
@@ -238,6 +254,9 @@ export interface NotificationSettings {
   invoice_ready?: boolean;
   spend_limit_alerts: boolean;
   low_balance_alerts_master: boolean;
+  /** Canonical user-facing low-credit threshold. */
+  low_evaluation_points_threshold?: number;
+  /** @deprecated Monetary compatibility field; do not drive product UI from it. */
   low_balance_threshold_cents: number;
   product_updates: boolean;
   security_alerts: boolean;

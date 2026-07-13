@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils';
 import {
   formatCents,
   formatDate,
+  getEvaluationPointBatches,
   getTransactions,
+  type EvaluationPointBatch,
   type Transaction,
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
@@ -18,8 +20,9 @@ import { centsToWalletPoints } from '../../../_lib/topup';
 type StatusFilter = 'all' | Transaction['status'];
 
 export default function RechargeHistoryPage() {
-  const { t, tx } = useLang();
+  const { t, tx, lang } = useLang();
   const all = useMockStore(getTransactions, [] as Transaction[]);
+  const pointBatches = useMockStore(getEvaluationPointBatches, [] as EvaluationPointBatch[]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -50,6 +53,14 @@ export default function RechargeHistoryPage() {
                 description: detail.description ?? current.description,
                 balanceBeforeCents: detail.balance_before ?? current.balanceBeforeCents,
                 balanceAfterCents: detail.balance_after ?? current.balanceAfterCents,
+                basePoints: detail.base_points ?? current.basePoints,
+                bonusPoints: detail.bonus_points ?? current.bonusPoints,
+                creditedPoints: detail.credited_points ?? current.creditedPoints,
+                balanceBeforePoints: detail.point_balance_before ?? current.balanceBeforePoints,
+                balanceAfterPoints: detail.point_balance_after ?? current.balanceAfterPoints,
+                pointsExpireAt: detail.points_expire_at ?? current.pointsExpireAt,
+                usedPoints: detail.used_points ?? current.usedPoints,
+                remainingPoints: detail.remaining_points ?? current.remainingPoints,
               }
             : current,
         );
@@ -144,12 +155,12 @@ export default function RechargeHistoryPage() {
           </div>
         </div>
 
-        <div className="hidden md:grid grid-cols-[1.45fr_0.9fr_0.7fr_0.85fr_0.75fr_0.7fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/20 border-b border-border">
+        <div className="hidden md:grid grid-cols-[1.45fr_0.82fr_0.65fr_0.8fr_1.25fr_0.65fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/20 border-b border-border">
           <div>{tx('Description')}</div>
           <div>{tx('Date')}</div>
           <div>{t('Paid', '支付金额')}</div>
           <div>{t('Points credited', '到账积分')}</div>
-          <div>{tx('Method')}</div>
+          <div>{t('Point usage progress', '积分使用进度')}</div>
           <div>{tx('Status')}</div>
           <div />
         </div>
@@ -166,43 +177,46 @@ export default function RechargeHistoryPage() {
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {filtered.map((t) => (
-              <li key={t.id}>
+            {filtered.map((transaction) => {
+              const usage = pointUsage(transaction, pointBatches);
+              return (
+              <li key={transaction.id}>
                 <button
                   type="button"
-                  onClick={() => openTransaction(t)}
-                  className="w-full px-5 py-3.5 md:grid md:grid-cols-[1.45fr_0.9fr_0.7fr_0.85fr_0.75fr_0.7fr_auto] md:gap-4 md:items-center flex flex-col gap-1.5 text-left hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 transition-colors"
+                  onClick={() => openTransaction(transaction)}
+                  className="w-full px-5 py-3.5 md:grid md:grid-cols-[1.45fr_0.82fr_0.65fr_0.8fr_1.25fr_0.65fr_auto] md:gap-4 md:items-center flex flex-col gap-1.5 text-left hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{t.description}</p>
+                    <p className="text-sm font-medium truncate">{transaction.description}</p>
                   </div>
-                  <div className="text-xs text-muted-foreground">{formatDate(t.createdAt)}</div>
+                  <div className="text-xs text-muted-foreground tabular-nums">{formatTransactionTimestamp(transaction.createdAt, lang)}</div>
                   <div className="text-sm font-semibold tabular-nums">
-                    {formatCents(t.amountCents)}
+                    {formatCents(transaction.amountCents)}
                   </div>
                   <div className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                    +{formatPoints(creditedPoints(t))}
+                    <span className="mr-1 text-[11px] font-medium text-muted-foreground md:hidden">
+                      {t('Credited', '到账')}
+                    </span>
+                    +{formatPoints(creditedPoints(transaction))}
                   </div>
-                  <div className="text-xs text-muted-foreground capitalize">
-                    {(() => {
-                      const m = methodLabel(t.method, t.last4);
-                      if (m === 'Wire transfer') return tx('Wire transfer');
-                      if (m.startsWith('Card ')) return `${tx('Card')} •••• ${t.last4}`;
-                      return m;
-                    })()}
-                  </div>
+                  <PointUsageProgress
+                    creditedPoints={creditedPoints(transaction)}
+                    usage={usage}
+                  />
                   <div>
-                    <StatusPill status={t.status} />
+                    <StatusPill status={transaction.status} />
                   </div>
                   <ChevronRight className="hidden md:block h-4 w-4 text-muted-foreground/60" />
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>
       <TransactionDetailDrawer
         transaction={selectedTransaction}
+        pointUsage={selectedTransaction ? pointUsage(selectedTransaction, pointBatches) : null}
         loading={detailLoading}
         onClose={() => setSelectedTransaction(null)}
       />
@@ -235,14 +249,16 @@ function SummaryCard({
 
 function TransactionDetailDrawer({
   transaction,
+  pointUsage,
   loading,
   onClose,
 }: {
   transaction: Transaction | null;
+  pointUsage: PointUsage | null;
   loading: boolean;
   onClose: () => void;
 }) {
-  const { t, tx } = useLang();
+  const { t, tx, lang } = useLang();
   if (!transaction) return null;
 
   return (
@@ -268,6 +284,7 @@ function TransactionDetailDrawer({
               {t('Transaction details', '交易详情')}
             </h2>
           </div>
+
           <button
             type="button"
             onClick={onClose}
@@ -295,7 +312,7 @@ function TransactionDetailDrawer({
           <div className="rounded-xl border border-border divide-y divide-border">
             <DetailRow label={t('Paid amount', '支付金额')} value={formatCents(transaction.amountCents)} />
             <DetailRow label={t('Payment method', '支付方式')} value={methodLabel(transaction.method, transaction.last4)} />
-            <DetailRow label={t('Transaction time', '交易时间')} value={formatDate(transaction.createdAt)} />
+            <DetailRow label={t('Transaction time', '交易时间')} value={formatTransactionTimestamp(transaction.createdAt, lang)} />
             <DetailRow label={t('PayPal order ID', 'PayPal 订单号')} value={transaction.paypalOrderId ?? '—'} mono />
             <DetailRow label={t('Transaction ID', '交易 ID')} value={transaction.id} mono />
           </div>
@@ -330,16 +347,42 @@ function TransactionDetailDrawer({
 
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('Evaluation point balance change', '评测积分余额变化')}
+              {t('Available point change', '可用积分变化')}
             </h3>
             <div className="rounded-xl border border-border divide-y divide-border">
               <DetailRow
-                label={t('Balance before', '充值前余额')}
+                label={t('Available before top-up', '充值前可用积分')}
                 value={formatOptionalPoints(transaction.balanceBeforePoints)}
               />
               <DetailRow
-                label={t('Balance after', '充值后余额')}
+                label={t('Available after top-up', '充值后可用积分')}
                 value={formatOptionalPoints(transaction.balanceAfterPoints)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('Current usage for this top-up', '本次充值当前使用情况')}
+            </h3>
+            <div className="rounded-xl border border-border divide-y divide-border">
+              <DetailRow
+                label={t('Points used', '已用积分')}
+                value={formatPoints(pointUsage?.usedPoints ?? 0)}
+              />
+              <DetailRow
+                label={t('Points remaining', '剩余积分')}
+                value={formatPoints(pointUsage?.remainingPoints ?? creditedPoints(transaction))}
+              />
+            </div>
+            <div className="mt-3 rounded-xl border border-border bg-muted/20 p-4">
+              <PointUsageProgress
+                creditedPoints={creditedPoints(transaction)}
+                usage={pointUsage ?? {
+                  usedPoints: 0,
+                  remainingPoints: creditedPoints(transaction),
+                }}
+                detailed
               />
             </div>
           </div>
@@ -378,12 +421,100 @@ function creditedPoints(transaction: Transaction): number {
   return Math.max(0, transaction.creditedPoints ?? centsToWalletPoints(transaction.amountCents));
 }
 
+type PointUsage = {
+  usedPoints: number;
+  remainingPoints: number;
+};
+
+function PointUsageProgress({
+  creditedPoints: credited,
+  usage,
+  detailed = false,
+}: {
+  creditedPoints: number;
+  usage: PointUsage;
+  detailed?: boolean;
+}) {
+  const { t } = useLang();
+  const usedPercent = credited > 0
+    ? Math.min(100, Math.max(0, (usage.usedPoints / credited) * 100))
+    : 0;
+
+  return (
+    <div className={cn('min-w-0', detailed ? 'space-y-2' : 'py-0.5')}>
+      <div className="flex items-baseline justify-between gap-2 tabular-nums">
+        <span className={cn('font-semibold', detailed ? 'text-sm' : 'text-[12px]')}>
+          {formatPoints(usage.usedPoints)}
+          <span className="ml-1 font-normal text-muted-foreground">
+            {t('used', '已用')}
+          </span>
+        </span>
+        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+          {usedPercent.toFixed(0)}%
+        </span>
+      </div>
+      <div
+        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-500/15"
+        role="progressbar"
+        aria-label={t('Points used from this top-up', '本次充值已用积分')}
+        aria-valuemin={0}
+        aria-valuemax={credited}
+        aria-valuenow={usage.usedPoints}
+      >
+        <div
+          className="h-full rounded-full bg-emerald-500 transition-[width]"
+          style={{ width: `${usedPercent}%` }}
+        />
+      </div>
+      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+        {t(
+          `${formatPoints(usage.remainingPoints)} remaining of ${formatPoints(credited)}`,
+          `剩余 ${formatPoints(usage.remainingPoints)} / 到账 ${formatPoints(credited)}`,
+        )}
+      </div>
+    </div>
+  );
+}
+
+function pointUsage(transaction: Transaction, batches: EvaluationPointBatch[]): PointUsage {
+  const matchingBatches = batches.filter((batch) => batch.transactionId === transaction.id);
+  if (matchingBatches.length > 0) {
+    return matchingBatches.reduce(
+      (total, batch) => ({
+        usedPoints: total.usedPoints + batch.usedPoints,
+        remainingPoints: total.remainingPoints + batch.remainingPoints,
+      }),
+      { usedPoints: 0, remainingPoints: 0 },
+    );
+  }
+  const usedPoints = Math.max(0, transaction.usedPoints ?? 0);
+  return {
+    usedPoints,
+    remainingPoints: Math.max(
+      0,
+      transaction.remainingPoints ?? creditedPoints(transaction) - usedPoints,
+    ),
+  };
+}
+
 function formatPoints(points: number): string {
   return `${Math.max(0, Math.round(points)).toLocaleString('en-US')} pts`;
 }
 
 function formatOptionalPoints(points?: number): string {
   return typeof points === 'number' ? formatPoints(points) : '—';
+}
+
+function formatTransactionTimestamp(value: string, lang: string): string {
+  return new Date(value).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: lang !== 'zh',
+  });
 }
 
 function packageLabel(

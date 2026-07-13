@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleDollarSign, Info, X, Zap } from 'lucide-react';
+import { Info, Sparkles, X, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,7 @@ interface KeySettingsModalProps {
  * Per-key settings modal.
  *
  * Mirrors the account-wide `SpendLimitModal` shape: four independent
- * caps (daily / monthly × $ / calls). Each axis can be opted out with
+ * caps (daily / monthly × evaluation points / calls). Each axis can be opted out with
  * the "Unlimited" radio. Account-level low-balance alerts live in
  * `dashboard/settings`; this modal is purely about per-key
  * guardrails.
@@ -36,11 +36,9 @@ function OpenedKeySettingsModal({
 }) {
   const { tx, t } = useLang();
 
-  const [monthlyDollarsOn, setMonthlyDollarsOn] = useState(apiKey.spendCapCents != null);
-  const [monthlyDollars, setMonthlyDollars] = useState(
-    apiKey.spendCapCents != null
-      ? String(Math.round((apiKey.spendCapCents ?? 0) / 100))
-      : '250',
+  const [monthlyPointsOn, setMonthlyPointsOn] = useState(apiKey.monthlyPointCap != null);
+  const [monthlyPoints, setMonthlyPoints] = useState(
+    apiKey.monthlyPointCap != null ? String(apiKey.monthlyPointCap) : '50000',
   );
 
   const [monthlyCallsOn, setMonthlyCallsOn] = useState(apiKey.monthlyCallCap != null);
@@ -48,13 +46,11 @@ function OpenedKeySettingsModal({
     apiKey.monthlyCallCap != null ? String(apiKey.monthlyCallCap) : '50000',
   );
 
-  const [dailyDollarsOn, setDailyDollarsOn] = useState(
-    apiKey.dailySpendCapCents != null,
+  const [dailyPointsOn, setDailyPointsOn] = useState(
+    apiKey.dailyPointCap != null,
   );
-  const [dailyDollars, setDailyDollars] = useState(
-    apiKey.dailySpendCapCents != null
-      ? String(Math.round((apiKey.dailySpendCapCents ?? 0) / 100))
-      : '20',
+  const [dailyPoints, setDailyPoints] = useState(
+    apiKey.dailyPointCap != null ? String(apiKey.dailyPointCap) : '5000',
   );
 
   const [dailyCallsOn, setDailyCallsOn] = useState(apiKey.dailyCallCap != null);
@@ -62,11 +58,6 @@ function OpenedKeySettingsModal({
     apiKey.dailyCallCap != null ? String(apiKey.dailyCallCap) : '5000',
   );
 
-  const parseDollars = (raw: string): number | null => {
-    const f = parseFloat(raw.replace(/[^0-9.]/g, ''));
-    if (!Number.isFinite(f) || f <= 0) return null;
-    return Math.round(f * 100);
-  };
   const parseCalls = (raw: string): number | null => {
     const n = parseInt(raw.replace(/[^0-9]/g, ''), 10);
     if (!Number.isFinite(n) || n <= 0) return null;
@@ -75,9 +66,9 @@ function OpenedKeySettingsModal({
 
   const save = () => {
     updateKeySettings(apiKey.id, {
-      spendCapCents: monthlyDollarsOn ? parseDollars(monthlyDollars) : null,
+      monthlyPointCap: monthlyPointsOn ? parseCalls(monthlyPoints) : null,
       monthlyCallCap: monthlyCallsOn ? parseCalls(monthlyCalls) : null,
-      dailySpendCapCents: dailyDollarsOn ? parseDollars(dailyDollars) : null,
+      dailyPointCap: dailyPointsOn ? parseCalls(dailyPoints) : null,
       dailyCallCap: dailyCallsOn ? parseCalls(dailyCalls) : null,
     });
     onClose();
@@ -114,17 +105,17 @@ function OpenedKeySettingsModal({
 
         <div className="px-5 py-5 space-y-6">
           <CapSection
-            icon={CircleDollarSign}
-            title={t('Monthly spend cap', '月度消费上限')}
+            icon={Sparkles}
+            title={t('Monthly evaluation-point cap', '月度评测积分上限')}
             description={t(
-              "Hard stop once this key's spend in a month hits the cap. Resets on your billing cycle.",
-              '此 Key 当月消费达到上限后立即停止服务，下个计费周期重置。',
+              "Hard stop once this key's evaluation-point usage in a month hits the cap. Resets on your billing cycle.",
+              '此 Key 当月消耗的评测积分达到上限后立即停止服务，下个计费周期重置。',
             )}
-            enabled={monthlyDollarsOn}
-            setEnabled={setMonthlyDollarsOn}
-            value={monthlyDollars}
-            setValue={setMonthlyDollars}
-            unit="dollars"
+            enabled={monthlyPointsOn}
+            setEnabled={setMonthlyPointsOn}
+            value={monthlyPoints}
+            setValue={setMonthlyPoints}
+            unit="points"
             unitSuffix={tx('per month')}
           />
 
@@ -146,17 +137,17 @@ function OpenedKeySettingsModal({
           <div className="h-px bg-border" />
 
           <CapSection
-            icon={CircleDollarSign}
-            title={t('Daily spend cap', '每日消费上限')}
+            icon={Sparkles}
+            title={t('Daily evaluation-point cap', '每日评测积分上限')}
             description={t(
               'Resets at midnight (UTC). Useful for keys exposed to spiky user traffic.',
               '每天 UTC 0 点重置。适合面向波动较大的终端用户流量的 Key。',
             )}
-            enabled={dailyDollarsOn}
-            setEnabled={setDailyDollarsOn}
-            value={dailyDollars}
-            setValue={setDailyDollars}
-            unit="dollars"
+            enabled={dailyPointsOn}
+            setEnabled={setDailyPointsOn}
+            value={dailyPoints}
+            setValue={setDailyPoints}
+            unit="points"
             unitSuffix={tx('per day')}
           />
 
@@ -227,7 +218,7 @@ function CapSection({
   setEnabled: (v: boolean) => void;
   value: string;
   setValue: (v: string) => void;
-  unit: 'dollars' | 'calls';
+  unit: 'points' | 'calls';
   unitSuffix: string;
 }) {
   const { tx, t } = useLang();
@@ -269,29 +260,29 @@ function CapSection({
           <span className="text-sm flex items-center gap-2">
             {tx('Cap at')}
             <span className="inline-flex items-center h-8 rounded-md border border-border bg-background focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/20 transition-colors">
-              {unit === 'dollars' && (
-                <span className="pl-2.5 text-[11px] text-muted-foreground">$</span>
-              )}
               <input
                 type="text"
-                inputMode={unit === 'dollars' ? 'decimal' : 'numeric'}
+                inputMode="numeric"
                 value={value}
                 onChange={(e) =>
                   setValue(
-                    unit === 'dollars'
-                      ? e.target.value.replace(/[^0-9.]/g, '')
-                      : e.target.value.replace(/[^0-9]/g, ''),
+                    e.target.value.replace(/[^0-9]/g, ''),
                   )
                 }
                 onFocus={() => setEnabled(true)}
                 className={cn(
                   'h-full text-sm bg-transparent tabular-nums outline-none',
-                  unit === 'dollars' ? 'w-20 px-1.5' : 'w-24 px-2.5',
+                  'w-24 px-2.5',
                 )}
               />
               {unit === 'calls' && (
                 <span className="pr-2.5 text-[11px] text-muted-foreground">
                   {t('calls', '次')}
+                </span>
+              )}
+              {unit === 'points' && (
+                <span className="pr-2.5 text-[11px] text-muted-foreground">
+                  {t('points', '积分')}
                 </span>
               )}
             </span>

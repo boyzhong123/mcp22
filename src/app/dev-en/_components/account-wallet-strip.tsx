@@ -5,9 +5,7 @@ import { ArrowRight, CalendarDays, Gauge, Sparkles, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import {
   formatCalls,
-  formatCents,
   getAccountEvaluationPoints,
-  getAccountBalanceCents,
   getAccountCallsThisMonth,
   getAccountCallsToday,
   getAccountTrialRemaining,
@@ -44,9 +42,9 @@ const DEFAULT_TRIAL_PACKAGE: TrialAllowance = {
   expiresAt: new Date().toISOString(),
 };
 const EMPTY_LIMIT: SpendLimit = {
-  monthlyCapCents: null,
+  monthlyPointCap: null,
   monthlyCallCap: null,
-  dailyCapCents: null,
+  dailyPointCap: null,
   dailyCallCap: null,
   resetDay: 1,
   warnAtPercents: [50, 75, 90],
@@ -56,8 +54,7 @@ const EMPTY_LIMIT: SpendLimit = {
  * Account-level paid points + trial summary strip.
  *
  * Two zones: paid evaluation points on the left, free-trial points on the
- * right. Dollar amounts appear only as secondary "worth about $X" copy —
- * the hero number is always points.
+ * right. Product-facing availability is expressed only in evaluation points.
  */
 export function AccountWalletStrip({
   onAddCredits,
@@ -70,7 +67,6 @@ export function AccountWalletStrip({
   className?: string;
 }) {
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
-  const balance = useMockStore(getAccountBalanceCents, 0);
   const evaluationPoints = useMockStore(getAccountEvaluationPoints, 0);
   const trial = useMockStore(getAccountTrialRemaining, DEFAULT_TRIAL);
   const trialPackage = useMockStore(getTrial, DEFAULT_TRIAL_PACKAGE);
@@ -128,12 +124,6 @@ export function AccountWalletStrip({
           <span className="text-sm font-semibold tabular-nums">
             {evaluationPoints.toLocaleString('en-US')}
           </span>
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            {t(
-              `worth ${formatCents(balance)}`,
-              `价值 ${formatCents(balance)}`,
-            )}
-          </span>
         </div>
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
@@ -176,9 +166,7 @@ export function AccountWalletStrip({
         className,
       )}
     >
-      {/* ── Zone A · Paid evaluation points ───────────────────────
-          Premium dark card: points are the hero number; dollar value
-          is secondary "worth about $X" copy under the supporting row. */}
+      {/* ── Zone A · Paid evaluation points ─────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-100 p-5 shadow-sm">
         {/* Decorative底纹 — a faint dot-grid weave + a diagonal sheen so the
             dark panel reads as textured stock rather than a flat fill. */}
@@ -226,8 +214,8 @@ export function AccountWalletStrip({
 
           <div className="mt-2 text-[11.5px] text-slate-400 tabular-nums">
             {t(
-              `${wallet.usedEvaluationPoints.toLocaleString('en-US')} used · ${wallet.paidEvaluationPoints.toLocaleString('en-US')} credited · worth ${formatCents(balance)}`,
-              `已用 ${wallet.usedEvaluationPoints.toLocaleString('en-US')} · 累计到账 ${wallet.paidEvaluationPoints.toLocaleString('en-US')} · 价值 ${formatCents(balance)}`,
+              `${wallet.usedEvaluationPoints.toLocaleString('en-US')} used · ${wallet.paidEvaluationPoints.toLocaleString('en-US')} credited`,
+              `已用 ${wallet.usedEvaluationPoints.toLocaleString('en-US')} · 累计到账 ${wallet.paidEvaluationPoints.toLocaleString('en-US')}`,
             )}
           </div>
 

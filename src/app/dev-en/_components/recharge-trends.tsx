@@ -33,7 +33,7 @@ function ymd(d: Date): string {
 }
 
 /**
- * Recharge (wallet top-up) trends. Buckets succeeded top-ups by day / month /
+ * Evaluation-point top-up trends. Buckets succeeded top-ups by day / month /
  * year — or by a user-picked custom date range (auto day/month/year depending
  * on span) — and renders a single-series bar chart plus period KPIs.
  *
@@ -47,8 +47,8 @@ export function RechargeTrends() {
   const [granularity, setGranularity] = useState<Granularity>('month');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  // Only succeeded wallet top-ups count as "recharge". Card-added events and
-  // failed/pending charges never moved money into the wallet.
+  // Only succeeded point top-ups count as "recharge". Card-added events and
+  // failed/pending charges never credited evaluation points.
   const topUps = useMemo(
     () =>
       transactions
@@ -106,8 +106,8 @@ export function RechargeTrends() {
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {t(
-              'Succeeded wallet top-ups grouped by period.',
-              '按周期统计已成功的钱包充值。',
+              'Succeeded evaluation-point top-ups grouped by period.',
+              '按周期统计已成功的评测积分充值。',
             )}
           </p>
         </div>

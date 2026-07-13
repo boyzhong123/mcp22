@@ -2,7 +2,6 @@
 
 import {
   ArrowLeftRight,
-  BarChart3,
   Building2,
   Check,
   ChevronDown,
@@ -13,6 +12,8 @@ import {
   Crown,
   FileText,
   Gift,
+  Handshake,
+  Headset,
   Landmark,
   Lock,
   Mail,
@@ -24,6 +25,7 @@ import {
   Smartphone,
   Sparkles,
   Star,
+  Wrench,
   X,
   Zap,
   type LucideIcon,
@@ -551,8 +553,8 @@ function OpenedCheckoutModal({
                     `账号已有 ${TRIAL_CALLS} 免费评测积分 · ${TRIAL_VALID_DAYS} 天有效 · 无需付费。`,
                   )
                 : method === 'wire'
-                  ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Points will land in your wallet once funds arrive (usually 1–3 business days).', '。款项到账后评测积分将立即入账(通常 1–3 个工作日)。')}`
-                  : `+${walletPointsLabel(quote.totalCents, t, selectedBonusTier)} ${t('added to your wallet.', '已入账钱包。')} ${pointPricingSummary(t, selectedBonusTier)}. ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
+                  ? `${t('We emailed wiring instructions to', '我们已将汇款说明发送至')} ${receiptEmail}${t('. Points will be credited to your account once funds arrive (usually 1–3 business days).', '。款项到账后评测积分将立即入账（通常 1–3 个工作日）。')}`
+                  : `+${walletPointsLabel(quote.totalCents, t, selectedBonusTier)} ${t('evaluation points credited.', '评测积分已到账。')} ${pointPricingSummary(t, selectedBonusTier)}. ${t('Charged', '扣款')} ${formatCents(totalCents)}.`}
             </p>
           </div>
         ) : (
@@ -807,7 +809,7 @@ function OpenedCheckoutModal({
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg bg-emerald-500/[0.06] px-2.5 py-1.5">
                       <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                        {t('Wallet points', '入账评测积分')}
+                        {t('Evaluation points credited', '入账评测积分')}
                       </div>
                       <div className="text-sm font-bold tabular-nums text-emerald-800 dark:text-emerald-300">
                         ≈ {walletPointsLabel(quote.totalCents, t, selectedBonusTier)}
@@ -848,7 +850,7 @@ function OpenedCheckoutModal({
               {step === 1 && buyerMode === 'business' ? (
                 <div className="space-y-2">
                   <a
-                    href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Chivox MCP enterprise volume pricing')}`}
+                    href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Chivox MCP enterprise API partnership')}`}
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition-colors hover:bg-emerald-600"
                   >
                     <Mail className="h-4 w-4" />
@@ -856,8 +858,8 @@ function OpenedCheckoutModal({
                   </a>
                   <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
                     {t(
-                      'Share expected monthly volume plus billing and security needs — we reply within one business day.',
-                      '告诉我们预计月用量，以及开票与安全需求，通常一个工作日内回复。',
+                      'Share expected monthly volume and partnership needs — a dedicated contact reaches out within one business day.',
+                      '留下预计月用量与合作需求，专属对接人通常在一个工作日内与您联系。',
                     )}
                   </p>
                   <button
@@ -1226,7 +1228,7 @@ function Step2Recap({
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[11px] text-muted-foreground leading-tight">
-          {t('Topping up wallet', '充值钱包')}
+          {t('Topping up evaluation points', '充值评测积分')}
         </div>
         <div className="text-sm font-semibold tabular-nums leading-tight mt-0.5">
           {formatCents(quote.totalCents)}{' '}
@@ -1357,8 +1359,8 @@ function TopupIntroPanel({
                 '对比套餐、设置金额、确认付款。',
               )
             : t(
-                'For volume pricing, invoices, procurement, and security review.',
-                '适合需要用量定价、发票、采购与安全评审的团队。',
+                'API partnership: custom volume plans and invoicing, with a dedicated account manager and integration support.',
+                '以 API 合作方式接入：定制用量方案与发票账期，并配备专属客服与技术对接人。',
               )}
         </p>
       </div>
@@ -1378,7 +1380,7 @@ function TopupIntroPanel({
           active={buyerMode === 'business'}
           icon={<Building2 className="h-3.5 w-3.5" />}
           label={t('Team / Enterprise', '团队 / 企业')}
-          hint={t('Volume & invoice', '用量与发票')}
+          hint={t('API partnership', 'API 合作')}
           onClick={() => onBuyerModeChange('business')}
         />
       </div>
@@ -1395,16 +1397,16 @@ function BusinessTopupPanel() {
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-              <Building2 className="h-3 w-3" />
-              {t('For procurement & security review', '采购与安全评审友好')}
+              <Handshake className="h-3 w-3" />
+              {t('API partnership · dedicated support', 'API 合作 · 专属服务')}
             </div>
             <h3 className="mt-2 text-[15px] font-bold tracking-tight text-foreground">
-              {t('Enterprise volume pricing', '企业用量定价')}
+              {t('Enterprise API partnership', '企业 API 合作')}
             </h3>
             <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted-foreground">
               {t(
-                'Built for $200+/mo teams that need invoices, POs, Net terms, and a security / DPA review.',
-                '适合月消耗 $200+、需要发票 / 采购单 / 账期，以及安全与 DPA 评审的团队。',
+                'More than a top-up: partner with us via API — custom volume plans and billing terms, plus a dedicated account manager and integration engineer from evaluation to launch.',
+                '不只是充值：以 API 合作方式接入评测服务，定制用量与结算方案，并配备专属客服与技术对接人，从评估到上线全程陪跑。',
               )}
             </p>
           </div>
@@ -1420,6 +1422,30 @@ function BusinessTopupPanel() {
       </div>
 
       <div className="grid gap-2 p-3.5 sm:grid-cols-3">
+        <BusinessFeature
+          icon={<Handshake className="h-3.5 w-3.5" />}
+          title={t('API partnership model', 'API 合作模式')}
+          body={t(
+            'Integrate under a partnership agreement: custom volume plans and commercial terms, with monthly settlement — not limited to prepaid top-ups.',
+            '以合作协议方式接入评测 API：定制用量方案与商务条款，支持按月结算，不局限于预付充值。',
+          )}
+        />
+        <BusinessFeature
+          icon={<Headset className="h-3.5 w-3.5" />}
+          title={t('Dedicated support & contact', '专属客服与对接人')}
+          body={t(
+            'A named account manager and a dedicated support channel — questions go straight to the person in charge, not a ticket queue.',
+            '指定专属客服与商务对接人，专属服务群实时响应，问题直达负责人而非工单队列。',
+          )}
+        />
+        <BusinessFeature
+          icon={<Wrench className="h-3.5 w-3.5" />}
+          title={t('1-on-1 integration support', '1 对 1 技术对接')}
+          body={t(
+            'Engineers work with your team during integration — API samples, best practices, joint debugging, and acceptance support to speed up launch.',
+            '集成阶段由工程师协助联调，提供接口示例与最佳实践，协助测试验收，加速正式上线。',
+          )}
+        />
         <BusinessFeature
           icon={<Zap className="h-3.5 w-3.5" />}
           title={t('Volume discounts', '规模用量折扣')}
@@ -1440,37 +1466,48 @@ function BusinessTopupPanel() {
           icon={<ShieldCheck className="h-3.5 w-3.5" />}
           title={t('Security, DPA & SLA', '安全、DPA 与 SLA')}
           body={t(
-            'GDPR-friendly defaults, SOC 2 aligned controls, enterprise uptime SLA, and a dedicated contact.',
-            'GDPR 友好默认、SOC 2 对齐控制、企业级可用性 SLA，并配备专属对接。',
-          )}
-        />
-        <BusinessFeature
-          icon={<Building2 className="h-3.5 w-3.5" />}
-          title={t('Shared wallet & multiple keys', '统一账户与多 Key 管理')}
-          body={t(
-            'Create separate keys for apps, environments, or business lines; share one balance while tracking usage independently.',
-            '可按应用、环境或业务线创建多个 Key；统一共享余额、分别追踪用量，管理更清晰。',
-          )}
-        />
-        <BusinessFeature
-          icon={<Lock className="h-3.5 w-3.5" />}
-          title={t('Budgets, caps & alerts', '预算上限与风险提醒')}
-          body={t(
-            'Set daily or monthly spend and call caps at account or key level, with threshold alerts to prevent surprises.',
-            '支持账户级与 Key 级日/月消费、调用上限及阈值提醒，降低异常流量与超支风险。',
-          )}
-        />
-        <BusinessFeature
-          icon={<BarChart3 className="h-3.5 w-3.5" />}
-          title={t('Usage & cost visibility', '用量洞察与成本归因')}
-          body={t(
-            'Break down calls and cost by date and key, compare trends, and export the current view to CSV.',
-            '按时间与 Key 查看调用量、成本趋势和明细，并可将当前视图导出为 CSV。',
+            'GDPR-friendly defaults, SOC 2 aligned controls, and an enterprise uptime SLA to pass security review faster.',
+            'GDPR 友好默认、SOC 2 对齐控制、企业级可用性 SLA，帮助更快通过安全评审。',
           )}
         />
       </div>
 
+      <div className="border-t border-emerald-500/10 px-3.5 py-3">
+        <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-800/80 dark:text-emerald-300/80">
+          {t('How the partnership starts', '合作流程')}
+        </div>
+        <ol className="mt-2.5 flex flex-col gap-3.5 sm:flex-row sm:gap-0">
+          <BusinessStep
+            index={1}
+            title={t('Contact sales', '联系销售')}
+            body={t(
+              'Share your expected monthly volume, billing and security needs.',
+              '留下预计月用量、开票与安全等合作需求。',
+            )}
+          />
+          <BusinessStep
+            index={2}
+            title={t('Plan & pilot', '方案与试用')}
+            body={t(
+              'Your dedicated contact follows up with a tailored plan and test credits for a pilot.',
+              '专属对接人跟进，定制用量方案并提供测试额度先行验证。',
+            )}
+          />
+          <BusinessStep
+            index={3}
+            isLast
+            title={t('Sign & launch', '签约上线')}
+            body={t(
+              'Sign the agreement, integrate with 1-on-1 engineering support, and go live.',
+              '签署合作协议，工程师协助联调验收，正式接入上线。',
+            )}
+          />
+        </ol>
+      </div>
+
       <div className="flex flex-wrap gap-1.5 border-t border-emerald-500/10 bg-emerald-500/[0.03] px-3.5 py-2.5">
+        <TrustPill>{t('Dedicated account manager', '专属客服 / 对接人')}</TrustPill>
+        <TrustPill>{t('1-on-1 integration', '1对1 技术对接')}</TrustPill>
         <TrustPill>{t('USD invoice', '美元发票')}</TrustPill>
         <TrustPill>{t('Net terms / PO', '账期 / 采购单')}</TrustPill>
         <TrustPill>{t('GDPR & DPA', 'GDPR 与 DPA')}</TrustPill>
@@ -1482,6 +1519,46 @@ function BusinessTopupPanel() {
         <TrustPill>{t('Usage export', '用量导出')}</TrustPill>
       </div>
     </div>
+  );
+}
+
+function BusinessStep({
+  index,
+  title,
+  body,
+  isLast = false,
+}: {
+  index: number;
+  title: string;
+  body: string;
+  isLast?: boolean;
+}) {
+  return (
+    <li className="relative flex-1 sm:pr-3">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white shadow-[0_1px_3px_rgba(5,150,105,0.45)]">
+          {index}
+        </span>
+        <span className="shrink-0 text-[12px] font-semibold leading-snug text-foreground">
+          {title}
+        </span>
+        {!isLast ? (
+          <span aria-hidden className="ml-0.5 hidden min-w-0 flex-1 items-center sm:flex">
+            <span className="h-px flex-1 border-t border-dashed border-emerald-500/45" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-emerald-600/70 dark:text-emerald-400/70" />
+          </span>
+        ) : null}
+      </div>
+      {!isLast ? (
+        <span
+          aria-hidden
+          className="absolute bottom-[-14px] left-3 top-7 w-px border-l border-dashed border-emerald-500/40 sm:hidden"
+        />
+      ) : null}
+      <p className="mt-1 pl-8 text-[10.5px] leading-relaxed text-muted-foreground sm:pr-5">
+        {body}
+      </p>
+    </li>
   );
 }
 
@@ -2890,7 +2967,7 @@ function TierQuoteCard({
   if (amountCents <= 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-background px-3 py-3 text-[11px] text-muted-foreground">
-        {t('Pick an amount to compare wallet dollars and evaluation points.', '选择金额后对比钱包金额和到账评测积分。')}
+        {t('Pick an amount to compare the payment amount and credited evaluation points.', '选择金额后对比支付金额和到账评测积分。')}
       </div>
     );
   }

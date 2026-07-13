@@ -4,11 +4,10 @@ import {
   Bell,
   Check,
   CreditCard,
-  DollarSign,
   Lock,
   Rss,
+  Sparkles,
   TrendingDown,
-  Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -33,13 +32,13 @@ const DEFAULT_NOTIF: NotificationSettings = {
 
 const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
   enabled: true,
-  thresholdCents: 500,
+  thresholdPoints: 1_250,
 };
 
 // NOTE: Personal info (avatar, name, email, sign-in method) lives on
 // /dashboard/profile and is reachable via the sidebar user chip. The
 // Settings surface is intentionally scoped to *workspace* preferences
-// — notifications + the account-level low-balance alert — so the two
+// — notifications + the account-level low-points alert — so the two
 // concerns stop fighting for the same page.
 export default function SettingsPage() {
   const { t } = useLang();
@@ -86,11 +85,11 @@ export default function SettingsPage() {
             onChange={(v) => patch({ paymentReceipts: v })}
           />
           <Toggle
-            icon={DollarSign}
-            label={t('Spend limit alerts', '支出上限提醒')}
+            icon={Sparkles}
+            label={t('Point and call limit alerts', '积分与调用上限提醒')}
             desc={t(
-              'Warn at 50 / 75 / 90% of monthly cap, and when auto-cutoff fires.',
-              '月度上限 50 / 75 / 90% 以及自动熔断时提醒。',
+              'Warn at 50 / 75 / 90% of an active monthly point or call cap, and when auto-cutoff fires.',
+              '月度积分或调用上限达到 50 / 75 / 90% 以及自动熔断时提醒。',
             )}
             on={notif.spendLimitAlerts}
             onChange={(v) => patch({ spendLimitAlerts: v })}
@@ -123,9 +122,9 @@ export default function SettingsPage() {
 }
 
 /**
- * Account-level low-balance alert. Replaces the old per-key alert config:
- * one threshold for the whole wallet (every Key consumes the same balance),
- * with a quick toggle + dollar threshold input. Persisted via
+ * Account-level low-points alert. Replaces the old per-key alert config:
+ * one threshold for the shared evaluation-point pool, with a quick toggle +
+ * point threshold input. Persisted via
  * `updateAccountAlert` so other surfaces (Overview banner, sidebar nudge)
  * pick up the change immediately.
  */
@@ -138,43 +137,43 @@ function AccountAlertSection({
 }) {
   const { t } = useLang();
   const [draft, setDraft] = useState<string>(
-    () => (alert.thresholdCents / 100).toFixed(2),
+    () => alert.thresholdPoints.toString(),
   );
 
   const commitThreshold = () => {
-    const dollars = Number.parseFloat(draft);
-    if (!Number.isFinite(dollars) || dollars < 0) {
-      setDraft((alert.thresholdCents / 100).toFixed(2));
+    const points = Number.parseInt(draft, 10);
+    if (!Number.isFinite(points) || points < 0) {
+      setDraft(alert.thresholdPoints.toString());
       return;
     }
-    const cents = Math.round(dollars * 100);
-    onChange({ ...alert, thresholdCents: cents });
-    setDraft((cents / 100).toFixed(2));
+    const nextPoints = Math.round(points);
+    onChange({ ...alert, thresholdPoints: nextPoints });
+    setDraft(nextPoints.toString());
   };
 
   return (
     <Section
-      icon={Wallet}
-      title={t('Account low-balance alert', '账户余额不足提醒')}
+      icon={Sparkles}
+      title={t('Account low-points alert', '账户评测积分不足提醒')}
       subtitle={t(
-        'All your keys share one wallet. We email you (and show an in-app banner) once the balance drops below the threshold below.',
-        '所有 Key 共享一个钱包。当余额低于下方阈值时，我们会发送邮件并在应用内显示提示。',
+        'All your keys share one evaluation-point pool. We email you (and show an in-app banner) once available points reach the threshold below.',
+        '所有 Key 共享同一评测积分池。当可用积分低于下方阈值时，我们会发送邮件并在应用内显示提示。',
       )}
     >
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <Toggle
           icon={Bell}
-          label={t('Notify me when balance is low', '余额不足时通知我')}
+          label={t('Notify me when evaluation points are low', '评测积分不足时通知我')}
           desc={t(
-            'Triggers as soon as your wallet drops at or below the threshold. We never spam — at most one email per drop event.',
-            '钱包余额低于阈值时立即触发，每次跌破最多一封邮件。',
+            'Triggers as soon as available points reach or fall below the threshold. We never spam — at most one email per drop event.',
+            '可用评测积分低于或等于阈值时立即触发，每次跌破最多一封邮件。',
           )}
           on={alert.enabled}
           onChange={(v) => onChange({ ...alert, enabled: v })}
         />
         <div className="flex items-start gap-4 px-4 py-3.5 border-t border-border">
           <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-            <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
             <label
@@ -185,8 +184,8 @@ function AccountAlertSection({
             </label>
             <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
               {t(
-                'Common picks: $5 (heads-up), $20 (refill soon), $50 (paid account default).',
-                '常用值：$5（提前预警）、$20（尽快充值）、$50（付费账户默认）。',
+                'Common picks: 1,250 (heads-up), 5,000 (refill soon), 12,500 (paid account default).',
+                '常用值：1,250（提前预警）、5,000（尽快充值）、12,500（付费账户默认）。',
               )}
             </p>
           </div>
@@ -196,12 +195,11 @@ function AccountAlertSection({
               !alert.enabled && 'opacity-60',
             )}
           >
-            <span className="text-xs text-muted-foreground">$</span>
             <input
               id="account-alert-threshold"
               type="number"
               min={0}
-              step="0.01"
+              step="1"
               value={draft}
               disabled={!alert.enabled}
               onChange={(e) => setDraft(e.target.value)}
@@ -213,6 +211,7 @@ function AccountAlertSection({
               }}
               className="w-20 bg-transparent text-sm font-semibold tabular-nums focus:outline-none disabled:cursor-not-allowed"
             />
+            <span className="text-xs text-muted-foreground">{t('pts', '积分')}</span>
           </div>
         </div>
       </div>

@@ -164,8 +164,8 @@ export const DICT: Record<string, string> = {
   'Good afternoon': '下午好',
   'Good evening': '晚上好',
   "Here's what's happening across your keys.": '以下是你账号下 key 的整体情况。',
-  'Account balance': '账户余额',
-  'Total balance': '总余额',
+  'Account balance': '可用评测积分',
+  'Total balance': '可用评测积分总数',
   'Points remaining': '剩余评测积分',
   'Total points': '总评测积分',
   'Points left': '剩余评测积分',
@@ -237,7 +237,7 @@ export const DICT: Record<string, string> = {
   'Spend cap': '消费上限',
   'Spend limit': '消费上限',
   'Monthly spend cap': '月度消费上限',
-  'Low-balance alert': '低余额提醒',
+  'Low-balance alert': '低积分提醒',
   'No spend cap': '未设上限',
   'No call cap': '无调用上限',
   'Call cap': '调用上限',
@@ -246,7 +246,7 @@ export const DICT: Record<string, string> = {
   'Currently': '当前',
   'month': '月',
   'day': '日',
-  'No low-balance alert': '未设低余额提醒',
+  'No low-balance alert': '未设低积分提醒',
   'No cap': '未设上限',
   'No alert': '未设提醒',
   'Cap reached': '已触达上限',
@@ -299,8 +299,8 @@ export const DICT: Record<string, string> = {
   'Free requests per day': '每日免费请求数',
   'Free requests total': '免费请求总数',
   Configure: '配置',
-  'Configure spend cap and low-balance alerts': '配置消费上限与低余额提醒',
-  'Spend cap & low-balance alerts': '消费上限与低余额提醒',
+  'Configure spend cap and low-balance alerts': '配置积分上限与低积分提醒',
+  'Spend cap & low-balance alerts': '积分上限与低积分提醒',
   'Needs points': '需充值',
   'Needs credits': '需充值',
   'Top up to activate': '充值后即可启用',
@@ -308,8 +308,8 @@ export const DICT: Record<string, string> = {
   'Credits needed': '需要充值',
   'Fund this key': '为此 key 充值',
   Status: '状态',
-  Balance: '余额',
-  'Balance remaining': '剩余余额',
+  Balance: '可用积分',
+  'Balance remaining': '剩余积分',
   'Your Starter Key': '你的入门 Key',
   'Pre-provisioned — no signup required':
     '账号预置 —— 无需手动创建',
@@ -418,7 +418,7 @@ export const DICT: Record<string, string> = {
   'Points land in your wallet as soon as PayPal confirms the payment.':
     'PayPal 确认付款后，评测积分会立即到账。',
   'Top up via PayPal — every key shares the same wallet balance.':
-    '通过 PayPal 充值 — 所有 Key 共享同一钱包余额。',
+    '通过 PayPal 充值 — 所有 Key 共享同一评测积分池。',
   'Demo checkout — PayPal only, no real charge. Taxes via Stripe Tax where applicable.':
     '演示结账 — 仅 PayPal，不会真实扣款。税费由 Stripe Tax 按需处理。',
   'Funds will draw from your PayPal balance. A confirmation email will be sent to your PayPal address.':
@@ -435,7 +435,7 @@ export const DICT: Record<string, string> = {
   Total: '合计',
   'Runway estimate': '评测积分可用时长预估',
   'of runway at your current pace': '够你以当前速率继续使用',
-  'Balance after': '充值后余额',
+  'Balance after': '充值后可用积分',
   'Daily burn': '日均消耗',
   'Last 28d': '最近 28 天',
   'Not enough history yet': '历史数据不足',
@@ -463,7 +463,7 @@ export const DICT: Record<string, string> = {
   'Email notifications': '邮件通知',
   'Weekly usage report': '周度用量报告',
   'Spend limit alerts': '消费上限提醒',
-  'Low-balance alerts': '低余额提醒',
+  'Low-balance alerts': '低积分提醒',
   'Product updates': '产品更新',
   'Security alerts': '安全告警',
   'Always on — cannot be disabled.': '始终开启 —— 不可关闭。',
@@ -537,9 +537,9 @@ export const DICT: Record<string, string> = {
   'Monthly cap enforced across all your API keys':
     '针对你所有 API key 统一执行的月度上限',
   'Cap at': '上限',
-  'Email me when balance drops below': '余额低于以下值时邮件提醒',
-  'Low-balance email alert': '低余额邮件提醒',
-  'Email warnings at': '以下余额时邮件提醒',
+  'Email me when balance drops below': '可用积分低于以下值时邮件提醒',
+  'Low-balance email alert': '低积分邮件提醒',
+  'Email warnings at': '以下积分阈值时邮件提醒',
 
   // Pricing / plans
   'Amount (USD)': '金额（USD）',
@@ -700,7 +700,7 @@ export const DICT: Record<string, string> = {
     '暂无成功充值。首次充值后会显示在这里。',
   'Adjust your filters or add funds from the billing page.':
     '调整筛选条件，或在账单页面充值。',
-  'Current balance:': '当前余额：',
+  'Current balance:': '当前可用积分：',
   Exhausted: '已用尽',
   'Your Starter key is used up': '入门 Key 已用尽',
   'The signup trial package on your Starter key is no longer available. To keep your integrations running, fund a paid key — no subscription, just pay per 1,000 calls with volume discounts.':
@@ -718,7 +718,7 @@ export const DICT: Record<string, string> = {
     '尚未充值 —— 充值后即可启用此 key。',
   'Your most active paid keys': '最活跃的付费 Key',
   'Balance, spend cap and low-balance alerts at a glance.':
-    '一眼看清余额、消费上限与低余额提醒。',
+    '一眼看清可用积分、积分上限与低积分提醒。',
   'Spend, limit, point balances per key.': '按 key 查看消费、上限与评测积分。',
   'Spend, limit, credit balances per key.': '按 key 查看消费、上限与评测积分。',
   'Each paid key has its own balance — top up the ones running low. Your starter key is listed on the':
@@ -736,7 +736,7 @@ export const DICT: Record<string, string> = {
   'Disable key': '停用 Key',
   Limits: '上限',
   'Limits & alerts': '上限与提醒',
-  'Configure spend cap & low-balance alert': '配置消费上限与余额不足提醒',
+  'Configure spend cap & low-balance alert': '配置积分上限与积分不足提醒',
   Key: 'Key',
   Env: '环境',
   Prod: '生产',
