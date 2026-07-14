@@ -2,13 +2,14 @@ import type { CSSProperties } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Check, Code2, MessageSquareText, ShieldCheck, Sparkles } from 'lucide-react';
-import { AmbientBackdrop, ContactSection, SiteFooter, TopNav } from '@/app/global/_chrome';
+import { AmbientBackdrop, BreadcrumbPill, ContactSection, SiteFooter, TopNav } from '@/app/global/_chrome';
 import { absoluteUrl } from '@/lib/site';
 import {
   DEFAULT_MARKETING_PAYLOAD,
   DEFAULT_MARKETING_THEME,
   type MarketingClosingLayout,
   type MarketingFaq,
+  type MarketingExample,
   type MarketingPageData,
   type MarketingSection,
   type MarketingSectionLayout,
@@ -237,6 +238,117 @@ function SectionsBlock({
   }
 }
 
+const AGENT_INTEGRATION_COMPARISON = [
+  {
+    label: 'Best-fit scenario',
+    mcp: 'Expose the same speech tools to MCP-compatible clients and agent environments.',
+    functionCalling: 'Add speech assessment inside a custom voice agent or an existing LLM workflow.',
+  },
+  {
+    label: 'Best-fit teams',
+    mcp: 'Developer-tool teams, platform teams, and products supporting several MCP clients.',
+    functionCalling: 'Voice-agent teams, AI application engineers, and product teams with their own orchestration layer.',
+  },
+  {
+    label: 'Integration style',
+    mcp: 'Configure one standardized MCP server that publishes discoverable assessment tools.',
+    functionCalling: 'Define and invoke a typed function contract in your chosen model or agent SDK.',
+  },
+  {
+    label: 'Portability',
+    mcp: 'Higher across compatible MCP clients; the tool definition stays consistent.',
+    functionCalling: 'Depends on the provider or framework, but fits deeply into a custom application loop.',
+  },
+  {
+    label: 'Application control',
+    mcp: 'The client discovers and calls tools while your server controls assessment behavior and output.',
+    functionCalling: 'Your application directly controls validation, routing, retries, thresholds, and response handling.',
+  },
+  {
+    label: 'Choose it when…',
+    mcp: 'You want the fastest reusable path into MCP ecosystems or need one tool layer for several clients.',
+    functionCalling: 'You already own the agent loop and need precise control over when and how assessment runs.',
+  },
+] as const;
+
+function AgentIntegrationComparison({ currentSlug }: { currentSlug: string }) {
+  const isMcp = currentSlug === 'mcp-server';
+  return (
+    <section className="border-b border-[#e9e2d2]/70 py-20 md:py-24">
+      <div className="container mx-auto max-w-6xl px-6">
+        <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+          <div className="max-w-2xl">
+            <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-[var(--accent)]">
+              /choose-your-integration
+            </div>
+            <h2 className="mt-3 heading-display text-3xl tracking-[-0.025em] md:text-[40px]">
+              MCP server or function calling?
+            </h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+              Both use the same Chivox speech-assessment capability. The right choice depends on
+              where the tool should live and how much of the agent loop your application controls.
+            </p>
+          </div>
+          <div className="rounded-full border border-[color-mix(in_srgb,var(--accent)_22%,transparent)] bg-white/75 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.14em] text-[var(--accent)]">
+            Current page · {isMcp ? 'MCP server' : 'Function calling'}
+          </div>
+        </div>
+
+        <div className="mt-9 overflow-hidden rounded-[26px] border border-zinc-900/[0.09] bg-white/75 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.38)]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-zinc-900/[0.09]">
+                  <th scope="col" className="w-[22%] bg-zinc-50/70 px-5 py-5 text-[10px] font-mono uppercase tracking-[0.16em] text-zinc-500 md:px-6">
+                    Compare
+                  </th>
+                  <th scope="col" className={`w-[39%] px-5 py-5 md:px-6 ${isMcp ? 'bg-[var(--accent-soft)]' : ''}`}>
+                    <Link href="/products/mcp-server" className="group inline-flex items-center gap-2 text-[17px] font-semibold text-zinc-900">
+                      MCP server
+                      <ArrowRight className="h-3.5 w-3.5 text-emerald-700 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                    <p className="mt-1 text-[11.5px] font-normal leading-relaxed text-muted-foreground">Standardized tool layer for compatible clients.</p>
+                  </th>
+                  <th scope="col" className={`w-[39%] border-l border-zinc-900/[0.07] px-5 py-5 md:px-6 ${!isMcp ? 'bg-[var(--accent-soft)]' : ''}`}>
+                    <Link href="/solutions/function-calling" className="group inline-flex items-center gap-2 text-[17px] font-semibold text-zinc-900">
+                      Function calling
+                      <ArrowRight className="h-3.5 w-3.5 text-violet-700 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                    <p className="mt-1 text-[11.5px] font-normal leading-relaxed text-muted-foreground">Typed function inside your own agent stack.</p>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {AGENT_INTEGRATION_COMPARISON.map((row) => (
+                  <tr key={row.label} className="border-b border-zinc-900/[0.07] last:border-b-0">
+                    <th scope="row" className="bg-zinc-50/55 px-5 py-5 align-top text-[11px] font-mono uppercase tracking-[0.12em] text-zinc-600 md:px-6">
+                      {row.label}
+                    </th>
+                    <td className={`px-5 py-5 align-top text-[13px] leading-relaxed text-zinc-700 md:px-6 ${isMcp ? 'bg-[color-mix(in_srgb,var(--accent-soft)_42%,white)]' : ''}`}>
+                      {row.mcp}
+                    </td>
+                    <td className={`border-l border-zinc-900/[0.07] px-5 py-5 align-top text-[13px] leading-relaxed text-zinc-700 md:px-6 ${!isMcp ? 'bg-[color-mix(in_srgb,var(--accent-soft)_42%,white)]' : ''}`}>
+                      {row.functionCalling}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-start gap-2 rounded-2xl border border-zinc-900/[0.07] bg-white/55 px-4 py-3 text-[12px] leading-relaxed text-muted-foreground">
+          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--accent)]" strokeWidth={3} />
+          <span>
+            You can support both: use MCP for compatible clients and function calling inside your
+            proprietary agent, while keeping one shared assessment service underneath.
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** Show-not-tell: the concrete request/response behind the page's claims. */
 function PayloadSection({ payload }: { payload: NonNullable<MarketingPageData['payload']> }) {
   return (
@@ -266,6 +378,74 @@ function PayloadSection({ payload }: { payload: NonNullable<MarketingPageData['p
               </span>
             </div>
             <pre className="overflow-x-auto px-5 py-5 text-[12.5px] leading-[1.7] text-emerald-100/90"><code>{payload.code}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductExample({ example }: { example: MarketingExample }) {
+  return (
+    <section className="border-b border-[#e9e2d2]/70 bg-[linear-gradient(180deg,white_0%,color-mix(in_srgb,var(--accent-soft)_34%,white)_100%)] py-20 md:py-24">
+      <div className="container mx-auto max-w-6xl px-6">
+        <div className="grid gap-10 lg:grid-cols-12 lg:items-start lg:gap-14">
+          <div className="lg:col-span-5 lg:sticky lg:top-28">
+            <div className="flex flex-wrap items-center gap-3">
+              <SectionEyebrow text={example.eyebrow} />
+              <span className="rounded-full border border-zinc-900/[0.08] bg-white/80 px-2.5 py-1 text-[9px] font-mono uppercase tracking-[0.12em] text-muted-foreground">
+                Illustrative walkthrough
+              </span>
+            </div>
+            <h2 className="mt-3 heading-display text-3xl leading-tight tracking-[-0.03em] text-zinc-900 md:text-[42px]">
+              {example.title}
+            </h2>
+            <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground md:text-[16px]">{example.body}</p>
+
+            <div className="mt-7 rounded-2xl border border-[color-mix(in_srgb,var(--accent)_20%,transparent)] bg-white/85 p-5 shadow-[0_20px_50px_-42px_rgba(15,23,42,0.5)]">
+              <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--accent)]">{example.learnerLabel}</div>
+              <blockquote className="mt-3 text-[19px] font-semibold leading-relaxed tracking-[-0.015em] text-zinc-900">
+                {example.learnerText}
+              </blockquote>
+            </div>
+          </div>
+
+          <div className="lg:col-span-7">
+            <div className="overflow-hidden rounded-[28px] border border-zinc-900/[0.08] bg-white/85 shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)]">
+              <div className="border-b border-zinc-900/[0.08] px-6 py-4 md:px-8">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
+                  Attempt → evidence → next action
+                </div>
+              </div>
+
+              <div className="divide-y divide-zinc-900/[0.08]">
+                {example.evidence.map((item, index) => (
+                  <article key={item.label} className="grid gap-3 px-6 py-5 sm:grid-cols-[84px_1fr] md:px-8 md:py-6">
+                    <div className="flex items-baseline gap-2 sm:block">
+                      <span className="font-mono text-[10px] text-[var(--accent)]">0{index + 1}</span>
+                      <div className="mt-1 text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">{item.label}</div>
+                    </div>
+                    <div>
+                      <div className="text-[16px] font-semibold text-zinc-900">{item.value}</div>
+                      <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{item.detail}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="bg-zinc-950 px-6 py-7 text-white md:px-8 md:py-8">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--accent)_65%,white)]">
+                  <MessageSquareText className="h-3.5 w-3.5" />
+                  {example.feedbackLabel}
+                </div>
+                <blockquote className="mt-4 text-[17px] font-medium leading-relaxed text-white/90 md:text-[19px]">{example.feedback}</blockquote>
+              </div>
+            </div>
+
+            <p className="mt-5 border-l-2 border-[var(--accent)] pl-4 text-[12.5px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-foreground/80">Implementation note.</span> {example.note}
+            </p>
           </div>
         </div>
       </div>
@@ -705,15 +885,18 @@ function ClosingBlock({
 
 function HeroBreadcrumb({ page }: { page: MarketingPageData }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-      <Link href="/" className="hover:text-emerald-800">Home</Link>
-      <span aria-hidden>/</span>
-      <span>{page.group}s</span>
-      <span aria-hidden>/</span>
-      <span className="text-foreground/75">{page.eyebrow}</span>
-    </nav>
+    <BreadcrumbPill
+      items={[
+        { label: 'Home', href: '/' },
+        { label: `${page.group}s` },
+        { label: page.eyebrow },
+      ]}
+    />
   );
 }
+
+/** Matches TopNav's document-flow spacer so tinted heroes can paint under the fixed bar. */
+const NAV_SPACER_PULL = '-mt-[84px] pt-[84px]';
 
 function HeroCopy({ page, compact = false }: { page: MarketingPageData; compact?: boolean }) {
   return (
@@ -783,8 +966,8 @@ function DetailHero({ page }: { page: MarketingPageData }) {
   if (layout === 'editorial') {
     return (
       <section className="border-b border-[#e9e2d2]/70">
-        <div className="container mx-auto max-w-6xl px-6 pb-20 pt-12 md:pb-24 md:pt-20">
-          <HeroBreadcrumb page={page} />
+        <HeroBreadcrumb page={page} />
+        <div className="container mx-auto max-w-6xl px-6 pb-20 pt-8 md:pb-24 md:pt-10">
           <div className="mb-4 text-[11px] font-mono uppercase tracking-[0.22em] text-[var(--accent)]">/{page.slug}</div>
           <div className="grid gap-7 lg:grid-cols-12 lg:gap-12">
             <h1 className="text-crisp max-w-4xl text-[40px] font-black leading-[1.02] tracking-[-0.04em] text-zinc-900 sm:text-[52px] lg:col-span-7 lg:text-[60px]">
@@ -806,9 +989,11 @@ function DetailHero({ page }: { page: MarketingPageData }) {
 
   if (layout === 'contract') {
     return (
-      <section className="border-b border-[#e9e2d2]/70 bg-[linear-gradient(145deg,color-mix(in_srgb,var(--accent-soft)_72%,white),white_58%)]">
-        <div className="container mx-auto max-w-6xl px-6 pb-20 pt-12 md:pb-24 md:pt-20">
-          <HeroBreadcrumb page={page} />
+      <section
+        className={`${NAV_SPACER_PULL} border-b border-[#e9e2d2]/70 bg-[linear-gradient(145deg,color-mix(in_srgb,var(--accent-soft)_72%,white),white_58%)]`}
+      >
+        <HeroBreadcrumb page={page} />
+        <div className="container mx-auto max-w-6xl px-6 pb-20 pt-8 md:pb-24 md:pt-10">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-7">
               <HeroCopy page={page} compact />
@@ -848,9 +1033,11 @@ function DetailHero({ page }: { page: MarketingPageData }) {
 
   if (layout === 'technical') {
     return (
-      <section className="border-b border-[#e9e2d2]/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent-soft)_55%,white),white_60%)]">
-        <div className="container mx-auto max-w-6xl px-6 pb-20 pt-12 md:pb-24 md:pt-20">
-          <HeroBreadcrumb page={page} />
+      <section
+        className={`${NAV_SPACER_PULL} border-b border-[#e9e2d2]/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent-soft)_55%,white),white_60%)]`}
+      >
+        <HeroBreadcrumb page={page} />
+        <div className="container mx-auto max-w-6xl px-6 pb-20 pt-8 md:pb-24 md:pt-10">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-7">
               <HeroCopy page={page} compact />
@@ -868,8 +1055,8 @@ function DetailHero({ page }: { page: MarketingPageData }) {
 
   return (
     <section className="border-b border-[#e9e2d2]/70">
-      <div className="container mx-auto max-w-6xl px-6 pb-20 pt-12 md:pb-24 md:pt-20">
-        <HeroBreadcrumb page={page} />
+      <HeroBreadcrumb page={page} />
+      <div className="container mx-auto max-w-6xl px-6 pb-20 pt-8 md:pb-24 md:pt-10">
         <div className="grid gap-12 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-7">
             <HeroCopy page={page} />
@@ -938,6 +1125,12 @@ export function SeoDetailPage({ page }: { page: MarketingPageData }) {
             <SectionsBlock sections={page.sections} layout={sectionLayout} />
           </div>
         </section>
+
+        {page.example ? <ProductExample example={page.example} /> : null}
+
+        {page.slug === 'mcp-server' || page.slug === 'function-calling' ? (
+          <AgentIntegrationComparison currentSlug={page.slug} />
+        ) : null}
 
         <PayloadSection payload={page.payload ?? DEFAULT_MARKETING_PAYLOAD} />
 

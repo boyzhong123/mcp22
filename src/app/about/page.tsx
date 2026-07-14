@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Check, FlaskConical, Globe2, Layers3 } from 'lucide-react';
 import { CustomerTrustSection } from '@/app/_marketing/customer-trust';
-import { AmbientBackdrop, ContactSection, SiteFooter, TopNav } from '@/app/global/_chrome';
+import { AmbientBackdrop, BackToOverview, ContactSection, SiteFooter, TopNav } from '@/app/global/_chrome';
 import { absoluteUrl } from '@/lib/site';
 
 const WORK_PILLARS = [
@@ -63,9 +63,13 @@ export default function AboutPage() {
     <div translate="no" lang="en" className="min-h-screen bg-background text-foreground">
       <AmbientBackdrop />
       <TopNav />
+      <BackToOverview
+        current="Why Chivox"
+        containerClassName="container mx-auto px-6 max-w-7xl pt-6"
+      />
       <main className="marketing-page">
         <section className="border-b border-[#e9e2d2]/70">
-          <div className="container mx-auto grid max-w-7xl gap-10 px-6 pb-14 pt-12 md:pb-16 md:pt-16 lg:grid-cols-12 lg:items-center lg:gap-16">
+          <div className="container mx-auto grid max-w-7xl gap-10 px-6 pb-14 pt-8 md:pb-16 md:pt-10 lg:grid-cols-12 lg:items-center lg:gap-16">
             <div className="min-w-0 lg:col-span-7">
               <div className="flex items-center gap-3 text-[11px] font-mono uppercase tracking-[0.22em] text-emerald-700">
                 <span className="h-px w-8 bg-emerald-600/60" aria-hidden="true" />

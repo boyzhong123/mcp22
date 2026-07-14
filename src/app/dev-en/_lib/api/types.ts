@@ -125,19 +125,48 @@ export interface PricingInfo {
   pricing_mode: string;
   trial_calls: number;
   trial_days: number;
+  /** Config version metadata from admin pricing. */
+  version_id?: number;
+  version?: number;
+  currency?: string;
+  validity_days?: number;
   evaluation_point_rules?: {
-    base_points_per_usd: number;
+    /** @deprecated Prefer per-tier points_per_usd on recharge_tiers. */
+    base_points_per_usd?: number;
     word_sentence_points_per_use: number;
     paragraph_points_per_use: number;
     valid_days: number;
   };
+  /**
+   * Canonical recharge tiers: amount range + points_per_usd.
+   * Prefer this key when volume `tiers` (unit_cents ladder) is also present.
+   * If the API only returns recharge bands as `tiers` (items with `code` +
+   * `points_per_usd`), the FE catalog mapper accepts that shape too.
+   */
+  recharge_tiers?: RechargePricingTier[];
+  /** @deprecated Prefer recharge_tiers / tiers with points_per_usd. */
   topup_packages?: EvaluationPointPackage[];
+}
+
+/** One admin-configured recharge tier (amount band → pts per USD). */
+export interface RechargePricingTier {
+  code: 'standard' | 'advanced' | 'flagship';
+  min_amount_cents: number;
+  /** Exclusive upper bound; null = unlimited. */
+  max_amount_cents: number | null;
+  points_per_usd: number;
+  preset_amount_cents?: number[];
 }
 
 export interface EvaluationPointPackage {
   id: 'standard' | 'advanced' | 'flagship';
   min_amount_cents: number;
-  bonus_percent: number;
+  /** @deprecated Prefer points_per_usd on RechargePricingTier. */
+  bonus_percent?: number;
+  /** Optional exclusive max for range display. */
+  max_amount_cents?: number | null;
+  /** Preferred when present — credited ≈ usd × points_per_usd. */
+  points_per_usd?: number;
   preset_amount_cents: number[];
 }
 
@@ -246,6 +275,7 @@ export interface TopupOrder {
   paypal_order_id: string;
   transaction_id: number;
   amount_cents: number;
+  /** Server-decided tier from amount_cents thresholds (not a request field). */
   package_id: 'standard' | 'advanced' | 'flagship';
   /** Server-authoritative points credited if this order captures successfully. */
   quoted_points: number;

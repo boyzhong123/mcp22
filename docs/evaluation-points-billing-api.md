@@ -11,50 +11,64 @@
 | 项目 | 规则 |
 | --- | --- |
 | 账户范围 | 一次充值到账户积分池，所有 API Key 共享 |
-| 套餐 | `standard` / `advanced` / `flagship`；支持套餐内预设金额与自定义金额 |
-| 到账 | `credited_points = base_points + bonus_points` |
+| 套餐档位 | `standard` / `advanced` / `flagship`；由**充值金额落入的区间**决定 |
+| 到账 | `credited_points ≈ amount_usd × 该档 points_per_usd`（正式值以下单/capture 返回为准） |
 | 扣减 | 字 / 词 / 句成功评测扣 1 积分；段落成功评测扣 2 积分 |
-| 有效期 | 每笔到账积分返回独立的 `points_expire_at`；扣减使用最早到期批次 |
+| 有效期 | 配置项 `validity_days`；每笔到账有独立 `points_expire_at`；扣减 FIFO |
 | 状态 | 仅 `succeeded` 的交易计入余额；`pending` 不加积分 |
 
-## 1. 获取充值规则
+## 1. 获取充值规则（价格机制 / 档位表）
 
 `GET /api/billing/pricing`
 
-在现有价格信息基础上增加：
+用于 Rates 页、「当前充值档位」表、充值弹窗套餐对比等**展示**。后台配置各档金额上下限与每美元积分；折扣文案等可由前端对比各档 `points_per_usd` 自行计算展示。
 
 ```json
 {
+  "version_id": 12,
+  "version": 3,
+  "currency": "USD",
+  "validity_days": 30,
+  "trial_calls": 600,
+  "trial_days": 30,
   "evaluation_point_rules": {
-    "base_points_per_usd": 250,
     "word_sentence_points_per_use": 1,
     "paragraph_points_per_use": 2,
     "valid_days": 30
   },
-  "topup_packages": [
+  "tiers": [
     {
-      "id": "standard",
+      "code": "standard",
       "min_amount_cents": 1990,
-      "bonus_percent": 0,
+      "max_amount_cents": 9990,
+      "points_per_usd": 250,
       "preset_amount_cents": [1990, 5000, 9000]
     },
     {
-      "id": "advanced",
+      "code": "advanced",
       "min_amount_cents": 9990,
-      "bonus_percent": 10,
+      "max_amount_cents": 19990,
+      "points_per_usd": 275,
       "preset_amount_cents": [9990, 15000, 19900]
     },
     {
-      "id": "flagship",
+      "code": "flagship",
       "min_amount_cents": 19990,
-      "bonus_percent": 20,
+      "max_amount_cents": null,
+      "points_per_usd": 300,
       "preset_amount_cents": [19990, 30000, 50000]
     }
   ]
 }
 ```
 
-前端不应自行决定赠送比例、可选档位和有效期；这些值以本接口为准。
+区间约定：金额落入档位满足 `min_amount_cents ≤ amount_cents`，且（`max_amount_cents == null` 或 `amount_cents < max_amount_cents`）；边界金额归入更高档（与下单 preview 一致）。
+
+- 前端**不应**硬编码档位区间与 `points_per_usd`。
+- 正式到账积分仍以 `POST /billing/topups/order` 的 `quoted_points` / capture 为准；前端本地预估仅作展示。
+- 字段名：契约以 `tiers[]`（含 `code` / `points_per_usd`）为准；若与用量阶梯 `tiers`（`unit_cents`）并存，可用 `recharge_tiers` 区分。前端两种都可读。
+
+兼容说明：旧字段 `topup_packages[].bonus_percent` + 全局 `base_points_per_usd` 可短期并存；新契约以 `tiers[].points_per_usd` + 金额区间为准。折扣/% 文案由前端对比各档 `points_per_usd` 计算，不作为计费输入。
 
 ## 2. 创建 PayPal 订单
 
@@ -62,12 +76,13 @@
 
 ```json
 {
-  "amount_cents": 15000,
-  "package_id": "advanced"
+  "amount_cents": 15000
 }
 ```
 
-服务端须校验金额是否满足套餐最低金额，按服务端规则计算报价，并返回：
+**档位由服务端根据金额落入的 `tiers` 区间判定**，前端**不必**传 `package_id`（传入亦可被忽略）。
+
+服务端返回实际档位与到账积分，例如：
 
 ```json
 {
@@ -79,7 +94,7 @@
 }
 ```
 
-`quoted_points` 仅用于支付前确认。支付捕获成功后必须以捕获返回的交易字段为准。
+（示例：`$150 × 275 pts/$ = 41250`。）`quoted_points` 仅用于支付前确认；capture 成功后以交易字段为准。
 
 ## 3. 捕获订单与交易详情
 
@@ -219,7 +234,7 @@
 ## 前端接线点
 
 - `src/app/dev-en/_lib/api/types.ts`：已增加积分字段类型。
-- `src/app/dev-en/_lib/api/billing.ts`：创建订单会提交 `package_id`。
+- `src/app/dev-en/_lib/api/billing.ts`：创建订单只提交 `amount_cents`；套餐由服务端按金额判定并在响应中返回 `package_id`。
 - `src/app/dev-en/_lib/mock-store-bridge.ts`：已映射 summary 与交易的积分字段。
 - `src/app/dev-en/_components/stripe-checkout-modal-packages.tsx`：当前仅使用这一套套餐充值流程。
 - `src/app/dev-en/dashboard/billing/history/page.tsx`：以到账积分为记录主列，金额只作支付对账。

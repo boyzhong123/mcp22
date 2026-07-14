@@ -76,7 +76,7 @@ import { useBillingPricing } from '../_lib/use-billing-pricing';
 import { billing, describeError } from '../_lib/api';
 import { hydrateFromApi } from '../_lib/mock-store-bridge';
 import { usePaymentConfig } from '../_lib/payment-config';
-import { useUi } from '../_lib/use-ui-store';
+import { EvaluationKernelInfo } from './evaluation-kernel-info';
 
 interface StripeCheckoutModalPackagesProps {
   open: boolean;
@@ -250,7 +250,6 @@ function OpenedCheckoutModal({
   const { tx, t } = useLang();
   const { user } = useMockAuth();
   const { paypalClientId } = usePaymentConfig();
-  const sidebarCollapsed = useUi((s) => s.sidebarCollapsed);
   const { catalog } = useBillingPricing();
   const paidPackages = catalog.packages.length ? catalog.packages : TOPUP_BONUS_TIERS;
 
@@ -1102,7 +1101,6 @@ function OpenedCheckoutModal({
                   </div>
                   <PayPalTopupButtons
                     amountCents={effectiveCents}
-                    packageId={selectedBonusTier.id}
                     disabled={!formValid || processing}
                     onProcessing={setProcessing}
                     onError={(msg) => {
@@ -1172,13 +1170,8 @@ function OpenedCheckoutModal({
           className="absolute inset-0 bg-black/40 dark:bg-black/70"
           onClick={() => !processing && onClose()}
         />
-        {/* Optically center the card in the main column (sidebar is fixed). */}
-        <div
-          className={cn(
-            'relative flex h-full items-center justify-center p-4 pointer-events-none',
-            sidebarCollapsed ? 'lg:pl-[60px]' : 'lg:pl-60',
-          )}
-        >
+        {/* Center against the full viewport, independent of dashboard sidebar width. */}
+        <div className="relative flex h-full items-center justify-center p-4 pointer-events-none">
           <div className="pointer-events-auto w-full max-w-[980px] flex justify-center">
             {paypalClientId ? (
               <PayPalScriptProvider
@@ -1200,7 +1193,6 @@ function OpenedCheckoutModal({
 
 function PayPalTopupButtons({
   amountCents,
-  packageId,
   disabled,
   onProcessing,
   onError,
@@ -1208,7 +1200,6 @@ function PayPalTopupButtons({
   onServerQuote,
 }: {
   amountCents: number;
-  packageId: TopupBonusTier['id'];
   disabled: boolean;
   onProcessing: (v: boolean) => void;
   onError: (msg: string) => void;
@@ -1242,13 +1233,13 @@ function PayPalTopupButtons({
       <PayPalButtons
         style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', tagline: false }}
         disabled={disabled}
-        forceReRender={[amountCents, packageId]}
+        forceReRender={[amountCents]}
         createOrder={async () => {
           onProcessing(true);
           try {
+            // Tier/package is decided by the backend from amount_cents.
             const order = await billing.createTopupOrder({
               amount_cents: amountCents,
-              package_id: packageId,
             });
             txnIdRef.current = order.transaction_id;
             // Authoritative credit amount — drives the checkout summary.
@@ -1471,8 +1462,12 @@ function FreeTierBanner() {
           <Sparkles className="h-3.5 w-3.5" />
         </span>
         <div className="min-w-0 space-y-1">
-          <div className="text-[13px] font-semibold tracking-tight text-foreground">
+          <div className="flex items-center gap-1.5 text-[13px] font-semibold tracking-tight text-foreground">
             {t('How points are deducted', '评测积分怎么扣')}
+            <EvaluationKernelInfo
+              wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+              paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+            />
           </div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
             {t(
@@ -2251,6 +2246,7 @@ function TierComparePanel({
     },
     {
       label: t('Word, phrase & sentence evaluation', '字、词、句评测'),
+      evaluationInfo: true,
       sub: t('Published reference price', '公布参考价'),
       value: (packageId) => {
         if (packageId === 'free') {
@@ -2271,6 +2267,7 @@ function TierComparePanel({
     },
     {
       label: t('Paragraph evaluation', '段落评测'),
+      evaluationInfo: true,
       sub: t('Published reference price', '公布参考价'),
       value: (packageId) => {
         if (packageId === 'free') {
@@ -2405,8 +2402,12 @@ function TierComparePanel({
     >
       <div className="px-0.5">
         <div>
-          <div className="text-sm font-semibold text-foreground">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             {t('Compare packages', '套餐对比')}
+            <EvaluationKernelInfo
+              wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+              paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+            />
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
             {t(
@@ -2592,10 +2593,10 @@ function TierComparePanel({
                     packageId === 'free'
                       ? selected
                         ? 'bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-sky-500/30'
-                        : 'border border-sky-500/35 bg-sky-500/[0.08] text-sky-800 hover:border-sky-500/50 hover:bg-sky-500/[0.14] dark:text-sky-200 focus-visible:ring-sky-500/30'
+                        : 'border border-sky-500/35 bg-sky-50 text-sky-800 hover:border-sky-500/50 hover:bg-sky-100 dark:bg-sky-950 dark:text-sky-200 dark:hover:bg-sky-900 focus-visible:ring-sky-500/30'
                       : selected
                         ? 'bg-emerald-500 text-white hover:bg-emerald-600 focus-visible:ring-emerald-500/30'
-                        : 'border border-border bg-muted/25 text-foreground hover:border-emerald-500/30 hover:text-emerald-700 dark:hover:text-emerald-400 focus-visible:ring-emerald-500/30',
+                        : 'border border-border bg-background text-foreground hover:border-emerald-500/30 hover:bg-muted hover:text-emerald-700 dark:hover:text-emerald-400 focus-visible:ring-emerald-500/30',
                   )}
                 >
                   {packageId === 'free'
@@ -2639,6 +2640,7 @@ function TierComparePanel({
 
 type CompareDataRow = {
   label: string;
+  evaluationInfo?: boolean;
   sub?: string;
   value: (packageId: ComparePackageId) => string;
   badge?: (packageId: ComparePackageId) => string | null;
@@ -2830,13 +2832,21 @@ function CompareLabelCell({
         !isLast && 'border-b border-border/40',
       )}
     >
-      <span
-        className={cn(
-          'text-[11px] font-semibold leading-snug sm:text-[12px]',
-          row.pricing ? 'text-emerald-800 dark:text-emerald-300' : 'text-foreground',
-        )}
-      >
-        {row.label}
+      <span className="flex items-center gap-1">
+        <span
+          className={cn(
+            'text-[11px] font-semibold leading-snug sm:text-[12px]',
+            row.pricing ? 'text-emerald-800 dark:text-emerald-300' : 'text-foreground',
+          )}
+        >
+          {row.label}
+        </span>
+        {row.evaluationInfo ? (
+          <EvaluationKernelInfo
+            wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+            paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+          />
+        ) : null}
       </span>
       {row.sub && (
         <span
@@ -3260,6 +3270,7 @@ function TierQuoteCard({
           hint={t(`ref. ${wordPrice}/use`, `参考 ${wordPrice}/次`)}
           icon={MessageSquareText}
           compact
+          evaluationInfo
         />
         <QuoteLine
           label={t(
@@ -3270,6 +3281,7 @@ function TierQuoteCard({
           hint={t(`ref. ${paragraphPrice}/use`, `参考 ${paragraphPrice}/次`)}
           icon={FileText}
           compact
+          evaluationInfo
         />
         <p className="pt-0.5 text-[9.5px] leading-snug text-muted-foreground">
           {t(
@@ -3300,6 +3312,7 @@ function QuoteLine({
   tone,
   icon: Icon,
   compact = false,
+  evaluationInfo = false,
 }: {
   label: string;
   value: string;
@@ -3307,6 +3320,7 @@ function QuoteLine({
   tone?: 'bonus';
   icon?: LucideIcon;
   compact?: boolean;
+  evaluationInfo?: boolean;
 }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
@@ -3322,6 +3336,12 @@ function QuoteLine({
         >
           {label}
         </span>
+        {evaluationInfo ? (
+          <EvaluationKernelInfo
+            wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+            paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+          />
+        ) : null}
         {hint && !compact && (
           <span className="truncate text-[10px] tabular-nums text-zinc-400 dark:text-white/70">· {hint}</span>
         )}

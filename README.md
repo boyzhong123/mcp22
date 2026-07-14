@@ -284,13 +284,15 @@ Plus: **streaming + inline** modes · **TLS 1.3** end-to-end · audio discarded 
 
 ## 💳 Pricing
 
-Honest defaults. Start with **600 free calls** (30 days) and **all 16 tools unlocked** — no feature gates, no card. When you need more, pay per successful call at **tiered rates** — the more you ship, the cheaper each call gets.
+Honest defaults. Start with **600 free evaluation points** (30 days) and **all 16 tools unlocked** — no feature gates, no card. When you need more, top up with published packs — bigger packs lower the unit price.
 
 <p align="center">
-  <img src="./assets/pricing-v17-2x.png" alt="Pricing: Free trial · Pay as you go tiered · Enterprise custom" width="720" />
+  <img src="./assets/pricing-v20-apinebula.jpg" alt="Pricing: Free · Standard · Advanced · Flagship" width="860" />
 </p>
 
-> **Free tier ≠ crippled tier.** Every new account gets **600 free calls valid for 30 days** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. After the trial window or when calls are used up, top up from **$10** and let the **volume tiers** do the rest. Failed calls are never billed.
+> **Free tier ≠ crippled tier.** Every new account gets **600 evaluation points valid for 30 days** with the **full 16-tool catalog** — same engine, same JSON, same SLA as paid keys. After the trial window or when points are used up, top up from **$19.90** (Standard / Advanced / Flagship).
+
+**Billing rules:** **1 point** / word, phrase or sentence · **2 points** / paragraph · **0 points** on failed calls. Points expire **30 days** after they land (earliest-expiring first). Pack rates: Standard **250 pts/$**, Advanced **275 pts/$ (+10%)**, Flagship **300 pts/$ (+20%)**.
 
 ---
 
@@ -321,7 +323,7 @@ For quick demos, yes — but production traffic should flow through your backend
 ## 🤝 Star us · say hi
 
 <p align="center">
-  <a href="https://github.com/boyzhong123/mcp22">
+  <a href="https://github.com/chivox-developer/chivox-speech-eval-mcp">
     <img
       src="./assets/community-v17-2x.png"
       alt="Friendly hello from the Chivox team — drop a star on GitHub, open an issue and we usually reply the same day."

@@ -46,14 +46,40 @@ export const PARAGRAPH_POINTS_PER_USE = 2;
 export interface TopupBonusTier {
   id: 'standard' | 'advanced' | 'flagship';
   minCents: number;
+  /** Exclusive upper bound; null = unlimited. */
+  maxCents?: number | null;
+  /** Credited ≈ usd × pointsPerUsd (preferred over bonusPct math). */
+  pointsPerUsd?: number;
+  /** Display uplift vs baseline 250 pts/$; derived when using pointsPerUsd. */
   bonusPct: number;
   presetCents: number[];
 }
 
 export const TOPUP_BONUS_TIERS: TopupBonusTier[] = [
-  { id: 'standard', minCents: 1_990, bonusPct: 0, presetCents: [1_990, 5_000, 9_000] },
-  { id: 'advanced', minCents: 9_990, bonusPct: 10, presetCents: [9_990, 15_000, 19_900] },
-  { id: 'flagship', minCents: 19_990, bonusPct: 20, presetCents: [19_990, 30_000, 50_000] },
+  {
+    id: 'standard',
+    minCents: 1_990,
+    maxCents: 9_990,
+    pointsPerUsd: 250,
+    bonusPct: 0,
+    presetCents: [1_990, 5_000, 9_000],
+  },
+  {
+    id: 'advanced',
+    minCents: 9_990,
+    maxCents: 19_990,
+    pointsPerUsd: 275,
+    bonusPct: 10,
+    presetCents: [9_990, 15_000, 19_900],
+  },
+  {
+    id: 'flagship',
+    minCents: 19_990,
+    maxCents: null,
+    pointsPerUsd: 300,
+    bonusPct: 20,
+    presetCents: [19_990, 30_000, 50_000],
+  },
 ];
 
 /** Package columns in the checkout compare table (free + paid tiers). */
@@ -155,16 +181,21 @@ export function formatBonusPercent(bonusPct: number): string {
 
 export function getTopupBonusTier(amountCents: number): TopupBonusTier {
   const safeCents = Math.max(0, Math.round(amountCents || 0));
-  return [...TOPUP_BONUS_TIERS]
-    .reverse()
-    .find((tier) => safeCents >= tier.minCents) ?? TOPUP_BONUS_TIERS[0];
+  const sorted = [...TOPUP_BONUS_TIERS].sort((a, b) => a.minCents - b.minCents);
+  let matched = sorted[0] ?? TOPUP_BONUS_TIERS[0];
+  for (const tier of sorted) {
+    const underMax = tier.maxCents == null || safeCents < tier.maxCents;
+    if (safeCents >= tier.minCents && underMax) matched = tier;
+  }
+  return matched;
 }
 
 export function getTopupPointMath(amountCents: number, tier = getTopupBonusTier(amountCents)) {
   const safeCents = Math.max(0, Math.round(amountCents || 0));
+  const pointsPerUsd = tier.pointsPerUsd ?? BASE_POINTS_PER_USD * (1 + tier.bonusPct / 100);
+  const totalPoints = Math.floor((safeCents / 100) * pointsPerUsd);
   const basePoints = Math.floor((safeCents / 100) * BASE_POINTS_PER_USD);
-  const bonusPoints = Math.round(basePoints * (tier.bonusPct / 100));
-  const totalPoints = basePoints + bonusPoints;
+  const bonusPoints = Math.max(0, totalPoints - basePoints);
 
   return {
     amountCents: safeCents,
@@ -172,7 +203,7 @@ export function getTopupPointMath(amountCents: number, tier = getTopupBonusTier(
     basePoints,
     bonusPoints,
     totalPoints,
-    pointsPerUsd: BASE_POINTS_PER_USD * (1 + tier.bonusPct / 100),
+    pointsPerUsd,
   };
 }
 

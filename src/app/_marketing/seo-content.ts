@@ -56,6 +56,21 @@ export type MarketingPayload = {
   code: string;
 };
 
+/** A concrete learner moment that shows how raw assessment evidence becomes
+ *  product-facing feedback. Kept editorial rather than executable: thresholds,
+ *  wording and lesson logic remain decisions for the integrating product. */
+export type MarketingExample = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  learnerLabel: string;
+  learnerText: string;
+  evidence: Array<{ label: string; value: string; detail: string }>;
+  feedbackLabel: string;
+  feedback: string;
+  note: string;
+};
+
 /** Per-page visual identity: editorial accent colour + hero artwork. Keeps the
  *  shared template but gives each product/solution page its own look so the
  *  detail pages don't read as one recoloured template. Brand-green CTAs stay put. */
@@ -134,6 +149,8 @@ export type MarketingPageData = {
   theme?: MarketingTheme;
   /** Optional page-specific code sample; falls back to DEFAULT_MARKETING_PAYLOAD. */
   payload?: MarketingPayload;
+  /** Optional show-not-tell product scenario, used by learner-facing pages. */
+  example?: MarketingExample;
   /** How the first screen is composed. Defaults to `split`. */
   heroLayout?: MarketingHeroLayout;
   /** How the three middle sections are composed. Defaults to `cards`. */
@@ -201,6 +218,7 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
           'AI language tutors and pronunciation coaches',
           'Reading, speaking and exam-preparation practice',
           'Voice-agent quality checks and conversational feedback',
+          'Focused retries that keep the learner inside the conversation',
           'Learner progress views built from stable structured fields',
         ],
       },
@@ -214,6 +232,7 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
           'Call through MCP or your existing service workflow',
           'Map scores to your own levels, rubrics and lesson logic',
           'Use the detailed payload for explanations without exposing raw complexity to learners',
+          'Keep assessment stable while prompts, lessons and interface copy evolve independently',
           'Add safeguards for low-quality audio and incomplete attempts',
         ],
       },
@@ -230,9 +249,13 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         question: 'Does the learner have to see every score?',
         answer: 'No. Most products translate the detailed response into a smaller set of age- and task-appropriate coaching cues.',
       },
+      {
+        question: 'How should we choose a retry threshold?',
+        answer: 'Start with the learning objective, activity length and your own learner audio. A short pronunciation drill can use a tighter threshold than open speaking, while low-quality or incomplete audio should trigger a recording retry before a pronunciation correction.',
+      },
     ],
     related: [
-      { href: '/solutions/ai-language-tutor', label: 'AI language tutor', description: 'Design the feedback loop around the scores.' },
+      { href: '/solutions/function-calling', label: 'Function calling', description: 'Connect scoring evidence to an agent response.' },
       { href: '/products/mcp-server', label: 'MCP server', description: 'Connect assessment tools to an agent.' },
       { href: '/demo', label: 'Live demo', description: 'See the scoring experience in action.' },
     ],
@@ -254,6 +277,21 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     ]
   }]
 }`,
+    },
+    example: {
+      eyebrow: 'A real product moment',
+      title: 'From “think” to one correction the learner can act on',
+      body: 'Imagine a B1 learner reading “I think the train leaves at three.” The sentence is understandable, but the first sound in “think” is consistently replaced with /s/. The product does not need to interrupt the whole sentence or show six scores.',
+      learnerLabel: 'Learner says',
+      learnerText: '“I sink the train leaves at three.”',
+      evidence: [
+        { label: 'Target', value: 'think · /θɪŋk/', detail: 'Expected voiceless dental fricative at the start.' },
+        { label: 'Detected', value: '/θ/ scored 54', detail: 'The remaining sounds and sentence rhythm are usable.' },
+        { label: 'Priority', value: 'Coach one sound', detail: 'Pronunciation is more useful to address than pace on this turn.' },
+      ],
+      feedbackLabel: 'Tutor can respond',
+      feedback: '“Almost there. For think, let a little air pass over the tip of your tongue: th-ink. Try just the word once, then we’ll put it back in the sentence.”',
+      note: 'The score identifies the location; your lesson rules and tutor voice decide the explanation, retry length and success threshold.',
     },
   },
   'mandarin-chinese-assessment': {
@@ -311,6 +349,7 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         points: [
           'Chinese-learning apps and HSK-oriented practice',
           'AI tutors that explain tones in the learner’s preferred language',
+          'One teaching priority and a focused retry inside the conversation',
           'Reading practice with word- and sentence-level progression',
           'Teacher dashboards that surface recurring problem patterns',
         ],
@@ -341,10 +380,14 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         question: 'Can Mandarin and English live in the same tutor?',
         answer: 'Yes. A shared integration can route each activity to the appropriate assessment while keeping the rest of the agent workflow consistent.',
       },
+      {
+        question: 'How should the product handle tone sandhi?',
+        answer: 'Keep the reference text, detected tone and returned verdict together, then apply the result in context. For example, the surface tone in 你好 should not be explained as if each character were spoken in isolation.',
+      },
     ],
     related: [
-      { href: '/solutions/ai-language-tutor', label: 'AI language tutor', description: 'Build multilingual coaching experiences.' },
-      { href: '/reasoning', label: 'Reasoning engine', description: 'See how an LLM can use detailed evidence.' },
+      { href: '/products/english-speech-assessment', label: 'English assessment', description: 'Build a shared multilingual coaching flow.' },
+      { href: '/reasoning', label: 'AI feedback engine', description: 'Turn detailed speech evidence into grounded feedback.' },
       { href: '/demo', label: 'Live demo', description: 'Try the assessment flow.' },
     ],
     payload: {
@@ -372,6 +415,21 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     }
   ]
 }`,
+    },
+    example: {
+      eyebrow: 'A tonal example',
+      title: 'Explain why “我想买咖啡” sounds close—but not quite right',
+      body: 'A beginner orders coffee in a role-play. Most syllables are clear, but 买 (mǎi) is produced with a falling contour. Instead of returning “74/100,” the tutor can preserve the successful sentence and focus the retry on the meaning-bearing tone.',
+      learnerLabel: 'Role-play prompt',
+      learnerText: '“我想买一杯咖啡。” — I’d like to buy a cup of coffee.',
+      evidence: [
+        { label: 'Target', value: '买 · mǎi · T3', detail: 'A low, dipping third tone in this phrase.' },
+        { label: 'Detected', value: 'mài · T4', detail: 'The initial and final are clear; the contour is the mismatch.' },
+        { label: 'Priority', value: 'Retry 买一杯', detail: 'Keep the word in a short phrase so the tone remains conversational.' },
+      ],
+      feedbackLabel: 'Tutor can respond',
+      feedback: '“Your sentence was clear. On 买, let your voice dip low before 一杯: mǎi yì bēi. Listen once, then order the coffee again.”',
+      note: 'Tone evidence can be combined with your own vocabulary, translation and HSK lesson logic; it does not force a single teaching method.',
     },
   },
   'kids-speech-assessment': {
@@ -459,10 +517,14 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
         question: 'Can it work inside games and stories?',
         answer: 'Yes. The same structured response can drive progress, hints or teacher summaries without interrupting the activity.',
       },
+      {
+        question: 'What happens when the room is noisy?',
+        answer: 'Use recording-quality and completeness signals before presenting a correction. A friendly “I couldn’t hear the whole sentence” retry is more appropriate than assigning a low pronunciation score to an unreliable recording.',
+      },
     ],
     related: [
       { href: '/products/english-speech-assessment', label: 'English assessment', description: 'Explore the underlying scoring dimensions.' },
-      { href: '/solutions/ai-language-tutor', label: 'AI language tutor', description: 'Plan a helpful coaching loop.' },
+      { href: '/reasoning', label: 'AI feedback engine', description: 'Turn evidence into one helpful coaching cue.' },
       { href: '/faq', label: 'FAQ', description: 'Review integration and privacy questions.' },
     ],
     payload: {
@@ -478,6 +540,21 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     };
 
 // Product copy, rewards and thresholds stay in your control.`,
+    },
+    example: {
+      eyebrow: 'A child-friendly example',
+      title: 'Know when to coach—and when to simply ask for a cleaner recording',
+      body: 'A seven-year-old reads a story line while a television is playing nearby. The first recording is incomplete, so the app protects the child from an unreliable correction. On the clean retry, it finds one sound worth practicing and keeps the story moving.',
+      learnerLabel: 'Story line',
+      learnerText: '“The rabbit jumps over the log.”',
+      evidence: [
+        { label: 'Attempt 1', value: 'Audio quality 58', detail: 'Background speech and a clipped ending make the result unreliable.' },
+        { label: 'Attempt 2', value: 'Audio quality 91', detail: 'The sentence is complete; /r/ in “rabbit” is the clearest practice target.' },
+        { label: 'Product rule', value: 'One cue + reward', detail: 'Avoid a list of errors and reward the focused retry.' },
+      ],
+      feedbackLabel: 'App can respond',
+      feedback: '“I couldn’t hear the ending—let’s try once more.” Then: “Great clear voice! Make rabbit start with a strong rrr sound to unlock the next page.”',
+      note: 'Your team controls age bands, thresholds, reward mechanics, consent and data retention. The assessment supplies evidence, not a judgment about the child.',
     },
   },
   'mcp-server': {
@@ -568,8 +645,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     ],
     related: [
       { href: '/docs', label: 'Developer docs', description: 'Follow the quickstart and inspect the schema.' },
-      { href: '/reasoning', label: 'Reasoning engine', description: 'See how the payload grounds feedback.' },
-      { href: '/runtime', label: 'Runtime', description: 'Plan limits, keys and observability.' },
+      { href: '/reasoning', label: 'AI feedback engine', description: 'See how the payload grounds feedback.' },
+      { href: '/runtime', label: 'Runtime & operations', description: 'Plan limits, keys and observability.' },
     ],
     payload: {
       title: 'One config block. Every MCP client.',
@@ -644,6 +721,7 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
         imageAlt: 'Voice-agent UI citing a specific phoneme tip pulled from a structured assessment result',
         points: [
           'Cite the exact problem segment in the user response',
+          'Prioritize repeated or meaning-changing errors before generating advice',
           'Limit advice to the most important one or two corrections',
           'Ask for a retry when audio quality is insufficient',
           'Preserve raw results for analytics without exposing them in the UI',
@@ -679,7 +757,7 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
     related: [
       { href: '/products/mcp-server', label: 'MCP server', description: 'Use a standardized agent tool layer.' },
       { href: '/docs', label: 'Developer docs', description: 'Review response fields and integration patterns.' },
-      { href: '/runtime', label: 'Runtime', description: 'Add production controls around the tool.' },
+      { href: '/runtime', label: 'Runtime & operations', description: 'Add production controls around the tool.' },
     ],
     payload: {
       title: 'One tool call inside your agent loop',
@@ -807,4 +885,7 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
   },
 };
 
-export const ALL_MARKETING_PAGES = [...Object.values(PRODUCT_PAGES), ...Object.values(SOLUTION_PAGES)];
+export const ALL_MARKETING_PAGES = [
+  ...Object.values(PRODUCT_PAGES),
+  ...Object.values(SOLUTION_PAGES).filter((page) => page.slug !== 'ai-language-tutor'),
+];

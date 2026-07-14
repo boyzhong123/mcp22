@@ -22,7 +22,8 @@ import {
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
 import { useBillingPricing } from '../../../_lib/use-billing-pricing';
-import { previewQuotedPoints } from '../../../_lib/billing-pricing';
+import { formatTierAmountRange, previewQuotedPoints } from '../../../_lib/billing-pricing';
+import { EvaluationKernelInfo } from '../../../_components/evaluation-kernel-info';
 import {
   TOPUP_BONUS_TIERS,
   formatBonusPercent,
@@ -132,11 +133,11 @@ export default function PricingPage() {
 
       <div className="rounded-2xl border border-border overflow-hidden">
         <div className="px-5 py-3 border-b border-border bg-muted/30">
-          <h3 className="text-sm font-semibold">{t('Top-up packages', '充值套餐')}</h3>
+          <h3 className="text-sm font-semibold">{t('Current recharge tiers', '当前充值档位')}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {t(
-              'Minimums, bonus %, and presets come from GET /billing/pricing.',
-              '最低金额、赠送比例与预设档位来自 GET /billing/pricing。',
+              'Amount ranges and points per USD from GET /billing/pricing. Discount-style labels are computed on the frontend.',
+              '金额区间与每美元积分来自 GET /billing/pricing；折扣等展示文案由前端计算。',
             )}
           </p>
         </div>
@@ -144,10 +145,10 @@ export default function PricingPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-5 py-3 font-semibold">{t('Package', '套餐')}</th>
-                <th className="px-5 py-3 font-semibold">{t('Min top-up', '最低充值')}</th>
-                <th className="px-5 py-3 font-semibold">{t('Bonus', '赠送')}</th>
-                <th className="px-5 py-3 font-semibold">{t('Presets', '预设金额')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Tier', '档位')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Amount range', '金额范围')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Points per USD', '每美元积分')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Display uplift', '展示增益')}</th>
                 <th className="px-5 py-3 font-semibold">{t('Ref. unit price', '参考单价')}</th>
               </tr>
             </thead>
@@ -155,10 +156,12 @@ export default function PricingPage() {
               {packages.map((pkg) => {
                 const unit = getEvaluationUnitPrices(pkg.id);
                 const label = PACKAGE_LABELS[pkg.id];
+                const pts = pkg.pointsPerUsd ?? catalog.rules.basePointsPerUsd;
                 return (
                   <tr key={pkg.id} className="border-b border-border/70 last:border-0">
                     <td className="px-5 py-3 font-medium">{t(label.en, label.zh)}</td>
-                    <td className="px-5 py-3 tabular-nums">{formatCents(pkg.minCents)}</td>
+                    <td className="px-5 py-3 tabular-nums">{formatTierAmountRange(pkg)}</td>
+                    <td className="px-5 py-3 tabular-nums font-semibold">{pts}</td>
                     <td className="px-5 py-3 tabular-nums">
                       {pkg.bonusPct > 0 ? (
                         <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
@@ -167,9 +170,6 @@ export default function PricingPage() {
                       ) : (
                         t('Base', '基准')
                       )}
-                    </td>
-                    <td className="px-5 py-3 tabular-nums text-muted-foreground">
-                      {pkg.presetCents.map((c) => formatCents(c)).join(' · ')}
                     </td>
                     <td className="px-5 py-3 text-muted-foreground">
                       {formatEvaluationUnitDollars(unit.wordSentenceDollars)} /{' '}
@@ -192,17 +192,31 @@ export default function PricingPage() {
           <ul className="text-sm text-muted-foreground space-y-1.5">
             <li className="flex gap-2">
               <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-              {t(
-                `Word / phrase / sentence: ${catalog.rules.wordSentencePointsPerUse} pt each`,
-                `字 / 词 / 句：每次 ${catalog.rules.wordSentencePointsPerUse} 积分`,
-              )}
+              <span>
+                {t(
+                  `Word / phrase / sentence: ${catalog.rules.wordSentencePointsPerUse} pt each`,
+                  `字 / 词 / 句：每次 ${catalog.rules.wordSentencePointsPerUse} 积分`,
+                )}
+              </span>
+              <EvaluationKernelInfo
+                wordSentencePoints={catalog.rules.wordSentencePointsPerUse}
+                paragraphPoints={catalog.rules.paragraphPointsPerUse}
+                className="-my-1"
+              />
             </li>
             <li className="flex gap-2">
               <AlignLeft className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-              {t(
-                `Paragraph: ${catalog.rules.paragraphPointsPerUse} pts each`,
-                `段落：每次 ${catalog.rules.paragraphPointsPerUse} 积分`,
-              )}
+              <span>
+                {t(
+                  `Paragraph: ${catalog.rules.paragraphPointsPerUse} pts each`,
+                  `段落：每次 ${catalog.rules.paragraphPointsPerUse} 积分`,
+                )}
+              </span>
+              <EvaluationKernelInfo
+                wordSentencePoints={catalog.rules.wordSentencePointsPerUse}
+                paragraphPoints={catalog.rules.paragraphPointsPerUse}
+                className="-my-1"
+              />
             </li>
             <li className="flex gap-2">
               <Wallet className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />

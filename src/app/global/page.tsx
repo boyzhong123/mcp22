@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Mail,
   MessageSquareText,
+  Maximize2,
   Sparkles,
   Terminal,
   Waves,
@@ -54,7 +55,6 @@ import {
   AmbientBackdrop,
   SAMPLE_MCP_RICH_JSON,
 } from './_chrome';
-import { CustomerTrustSection } from '@/app/_marketing/customer-trust';
 
 /* ─────────────────────────────────────────────────────────────
  * Standalone English landing for overseas developers.
@@ -148,49 +148,76 @@ const CORE_CAPABILITIES: {
   eyebrow: string;
   title: string;
   body: string;
+  chipLabel: string;
   chips: string[];
   tone: CapabilityTone;
   visual: CapabilityVisual;
 }[] = [
   {
     icon: Mic2,
-    eyebrow: 'assess',
-    title: 'Score a learner\u2019s speech',
+    eyebrow: 'assessment',
+    title: 'Score guided speech',
     body:
-      'Stream mic audio or post a file. Get overall / accuracy / integrity / fluency / rhythm scores, plus word and phoneme-level diagnostics.',
-    chips: ['overall', 'accuracy', 'fluency', 'rhythm', 'phoneme'],
+      'Stream live audio or post a file. Get overall, word and phoneme-level evidence in one response.',
+    chipLabel: 'signals',
+    chips: ['accuracy', 'fluency', 'phoneme'],
     tone: 'emerald',
     visual: 'meters',
   },
   {
-    icon: Languages,
-    eyebrow: 'languages',
-    title: 'Mandarin &amp; English, natively',
-    body:
-      'Tones, pinyin, neutral tone, erhua, tone sandhi for Chinese. Stress, rhythm, CEFR-aligned scoring for English. One flag switches between them.',
-    chips: ['zh-CN', 'en-US', 'pinyin', 'tones', 'CEFR'],
-    tone: 'sky',
-    visual: 'bilingual',
-  },
-  {
     icon: MessageSquareText,
-    eyebrow: 'converse',
-    title: 'Score free-flow dialogue',
+    eyebrow: 'conversation',
+    title: 'Evaluate open dialogue',
     body:
-      'Open-ended AI-talk evaluation returns 5-dimensional scores on fluency, content, grammar, accuracy and rhythm — ready for the next LLM turn.',
-    chips: ['AI-talk', 'open-question', '5-dim', 'streaming'],
+      'Score free-flow responses across fluency, content, grammar, accuracy and rhythm — turn by turn.',
+    chipLabel: 'mode',
+    chips: ['AI-talk', '5-dim', 'streaming'],
     tone: 'violet',
     visual: 'dialogue',
   },
   {
-    icon: Sparkles,
-    eyebrow: 'drill',
-    title: 'Personalize the next practice',
+    icon: Languages,
+    eyebrow: 'language depth',
+    title: 'Diagnose English and Mandarin natively',
     body:
-      'Feed the JSON straight to GPT / Claude / Gemini. Use the shipped prompt-skill to generate targeted drills for weak phonemes or tones.',
-    chips: ['GPT', 'Claude', 'Gemini', 'Qwen', 'DeepSeek'],
+      'Inspect tones and pinyin in Chinese; stress, rhythm and CEFR-aligned evidence in English.',
+    chipLabel: 'coverage',
+    chips: ['zh-CN', 'en-US', 'CEFR'],
+    tone: 'sky',
+    visual: 'bilingual',
+  },
+  {
+    icon: Sparkles,
+    eyebrow: 'agent outcome',
+    title: 'Turn evidence into the next practice',
+    body:
+      'Give the structured JSON to any LLM to coach, route or generate targeted drills for the next turn.',
+    chipLabel: 'works with',
+    chips: ['GPT', 'Claude', 'Gemini'],
     tone: 'amber',
     visual: 'target',
+  },
+];
+
+const ASSESSMENT_LOOP: {
+  icon: LucideIcon;
+  label: string;
+  title: string;
+}[] = [
+  {
+    icon: Mic2,
+    label: 'Speech in',
+    title: 'Capture the learner',
+  },
+  {
+    icon: Waves,
+    label: 'Evidence out',
+    title: 'Return acoustic detail',
+  },
+  {
+    icon: Sparkles,
+    label: 'Next action',
+    title: 'Let the agent respond',
   },
 ];
 
@@ -255,25 +282,21 @@ const CAPABILITY_TONE: Record<CapabilityTone, {
   },
 };
 
-/* ── use-case cards — AI-generated editorial stills in public/use-cases/ ─── */
-type UseCaseArt = 'mandarin' | 'voice' | 'podcast' | 'games';
+/* ── product cards — aligned 1:1 with Products nav (English / Mandarin / Kids) ── */
+type UseCaseArt = 'english' | 'mandarin' | 'kids';
 
 const USE_CASE_ART: Record<UseCaseArt, { src: string; alt: string }> = {
+  english: {
+    src: '/use-cases/voice-v4.jpg',
+    alt: 'English learner with overall score 84, fluency 78, and /θ/ pronunciation tip',
+  },
   mandarin: {
     src: '/use-cases/mandarin-v4.jpg',
     alt: 'Learner practicing Mandarin tones with pinyin chips and score 88',
   },
-  voice: {
-    src: '/use-cases/voice-v4.jpg',
-    alt: 'Candidate in a video interview with overall 84 and /θ/ coaching tip overlay',
-  },
-  podcast: {
-    src: '/use-cases/podcast-v4.jpg',
-    alt: 'Contact-center agent with QA waveform and coaching highlight',
-  },
-  games: {
-    src: '/use-cases/games-v4.jpg',
-    alt: 'Player practicing voice-gated gameplay with PASS, latency, and unlock HUD',
+  kids: {
+    src: '/products/kids/practice.jpg',
+    alt: 'Young learner unlocking a star after pronunciation practice on a tablet',
   },
 };
 
@@ -282,34 +305,31 @@ const USE_CASES: {
   tag: string;
   title: string;
   body: string;
+  href: string;
 }[] = [
   {
+    art: 'english',
+    tag: 'English assessment',
+    title: 'Pronunciation, fluency and phoneme feedback',
+    body:
+      'Score English speech with explainable dimensions — so tutors and agents can coach the exact sound, not a black-box percentage.',
+    href: '/products/english-speech-assessment',
+  },
+  {
     art: 'mandarin',
-    tag: 'Mandarin Depth',
-    title: 'The only MCP that feeds LLMs phoneme-level Mandarin',
+    tag: 'Mandarin assessment',
+    title: 'Tone, Pinyin and fluency scoring',
     body:
-      'Tone objects, sandhi resolution and per-phoneme windows returned in the same payload shape every other language ships. Your agent reasons over <span class="font-zh">睡觉</span> vs. <span class="font-zh">水饺</span> at the acoustic layer, not the transcript — signal a Whisper-stack integration simply can&rsquo;t surface.',
+      'Give agents tones, sandhi and phoneme-level Mandarin — acoustic detail a transcript-only stack cannot surface.',
+    href: '/products/mandarin-chinese-assessment',
   },
   {
-    art: 'voice',
-    tag: 'AI Interviewer',
-    title: 'Score candidate speech, not just transcripts',
+    art: 'kids',
+    tag: 'Kids speech assessment',
+    title: 'Structured feedback for young learners',
     body:
-      'Screen English fluency, pronunciation confidence and rhythm at scale. Your LLM reasons over numbers, not vibes — explainable rubrics every HR team will trust.',
-  },
-  {
-    art: 'podcast',
-    tag: 'Contact Center QA',
-    title: 'Agent training &amp; call-script compliance',
-    body:
-      'Evaluate standard-phrase delivery, articulation, pacing and keyword hits for call-center reps. Flag exactly which second drifted off-script and auto-generate coaching drills.',
-  },
-  {
-    art: 'games',
-    tag: 'Serious Games &amp; XR',
-    title: 'Voice-gated NPCs and pronunciation-powered gameplay',
-    body:
-      'Players unlock spells, dialogues or levels by saying the phrase correctly. Get a pass/fail plus the exact phoneme that missed, at <300 ms p95 — fast enough for real-time game loops.',
+      'Keep the raw scores behind the scenes; surface one clear next step so practice stays encouraging and age-appropriate.',
+    href: '/products/kids-speech-assessment',
   },
 ];
 
@@ -329,7 +349,7 @@ type BenchmarkTab = {
 const BENCHMARK_TABS: BenchmarkTab[] = [
   {
     id: 'correlation',
-    label: 'Expert correlation',
+    label: 'Expert match',
     metric: '95%+',
     metricLabel: 'agreement with human experts',
     body:
@@ -504,11 +524,10 @@ export default function GlobalLandingPage() {
               </FadeUp>
 
               <FadeUp delay={0.14}>
-                <p className="text-[15.5px] md:text-[17px] text-muted-foreground leading-relaxed max-w-2xl mb-8">
+                <p className="text-[15.5px] md:text-[17px] text-muted-foreground leading-relaxed max-w-xl mb-8">
                   Chivox MCP turns raw speech into a{' '}
                   <strong className="text-foreground/90 font-semibold">dense, agent-ready payload</strong>{' '}
-                  &mdash; phoneme scores, stress, tone, fluency, audio quality &mdash; all in one MCP
-                  call, any LLM. The listening layer under every voice-native agent you&rsquo;re about to ship.
+                  &mdash; phoneme scores, stress, tone and fluency in one MCP call, ready for any LLM.
                 </p>
               </FadeUp>
 
@@ -542,42 +561,34 @@ export default function GlobalLandingPage() {
                 </div>
               </FadeUp>
 
-              {/* 3-value benefit strip */}
+              {/* Compact benefit strip */}
               <FadeUp delay={0.26}>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-[12.5px] font-medium text-foreground/75">
                   {[
                     {
                       icon: Waves,
                       title: 'Deep linguistic understanding',
-                      sub: 'Go beyond transcripts.',
                       bg: 'bg-emerald-500/10',
                       fg: 'text-emerald-600',
                     },
                     {
                       icon: ShieldCheck,
                       title: 'Enterprise-ready',
-                      sub: 'Secure. Scalable. Reliable.',
                       bg: 'bg-sky-500/10',
                       fg: 'text-sky-600',
                     },
                     {
                       icon: Zap,
                       title: 'Real-time intelligence',
-                      sub: 'React in the moment.',
                       bg: 'bg-amber-500/10',
                       fg: 'text-amber-600',
                     },
                   ].map((v) => (
-                    <div key={v.title} className="flex items-start gap-2.5">
-                      <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${v.bg}`}>
-                        <v.icon className={`h-4 w-4 ${v.fg}`} />
+                    <div key={v.title} className="flex items-center gap-2">
+                      <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${v.bg}`}>
+                        <v.icon className={`h-3.5 w-3.5 ${v.fg}`} />
                       </span>
-                      <div className="min-w-0">
-                        <div className="text-[13px] font-semibold tracking-[-0.005em] text-foreground leading-tight">
-                          {v.title}
-                        </div>
-                        <div className="text-[12px] text-muted-foreground mt-0.5">{v.sub}</div>
-                      </div>
+                      <span>{v.title}</span>
                     </div>
                   ))}
                 </div>
@@ -592,16 +603,14 @@ export default function GlobalLandingPage() {
             </FadeUp>
           </div>
 
-          {/* deep-dive carousel — below the fold.
-           * Soft gradient hairline + centered eyebrow acts as a section
-           * separator without the harshness of a plain <hr>. */}
+          {/* Keep the visual product proof: it explains the acoustic depth faster than copy can. */}
           <FadeUp delay={0.4}>
-            <div className="mt-16 md:mt-20 max-w-6xl xl:max-w-7xl mx-auto">
-              <div className="flex items-center gap-4 mb-8 md:mb-10">
+            <div className="mt-14 md:mt-16 max-w-6xl xl:max-w-7xl mx-auto">
+              <div className="flex items-center gap-4 mb-7 md:mb-8">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-foreground/12 to-foreground/15" />
                 <span className="inline-flex items-center gap-2 text-[10.5px] font-mono uppercase tracking-[0.22em] text-muted-foreground whitespace-nowrap">
                   <span className="h-1 w-1 rounded-full bg-foreground/35" />
-                  /highlights
+                  /product highlights
                   <span className="text-foreground/30 normal-case tracking-normal">5 frames</span>
                 </span>
                 <div className="h-px flex-1 bg-gradient-to-l from-transparent via-foreground/12 to-foreground/15" />
@@ -609,33 +618,78 @@ export default function GlobalLandingPage() {
               <HeroCarousel />
             </div>
           </FadeUp>
+
         </div>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       * CORE CAPABILITIES — what the MCP can do, in 4 tiles
+       * ASSESSMENT LOOP — from audio input to the agent's next action
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section id="capabilities" className="relative py-16 md:py-20 border-b border-[#e9e2d2]/70 scroll-mt-24">
         <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl">
-          <FadeUp className="mb-10 text-center max-w-2xl mx-auto">
-            <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/what-it-does</div>
-            <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3">
-              The listening layer, as four MCP tools
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Twenty years of pronunciation-assessment R&amp;D, exposed as a structured payload your LLM
-              can reason over. Drop into LangChain, LlamaIndex, the OpenAI Agents SDK or any custom loop —
-              skip the months of DSP work.
-            </p>
-          </FadeUp>
+          <div className="mb-9 grid gap-7 lg:grid-cols-[0.88fr_1.12fr] lg:items-end lg:gap-10 md:mb-10">
+            <FadeUp className="max-w-xl">
+              <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/the-feedback-loop</div>
+              <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3 leading-[1.1]">
+                From speech to the next best practice
+              </h2>
+              <p className="text-muted-foreground leading-relaxed max-w-lg">
+                Chivox handles the acoustic judgment. Your LLM receives structured evidence it can explain,
+                reason over and turn into the learner&rsquo;s next action.
+              </p>
+            </FadeUp>
 
-          <StaggerContainer className="grid md:grid-cols-2 gap-4">
+            <FadeUp delay={0.05}>
+              <div className="mb-2 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.18em] text-foreground/45">
+                <span className="h-px flex-1 bg-zinc-900/[0.08]" aria-hidden />
+                The feedback path
+              </div>
+              <ol
+                className="grid overflow-hidden rounded-[22px] border border-zinc-900/[0.08] bg-white/70 shadow-[0_18px_48px_-42px_rgba(15,23,42,0.55)] backdrop-blur-sm sm:grid-cols-3"
+                aria-label="Chivox assessment loop"
+              >
+                {ASSESSMENT_LOOP.map(({ icon: Icon, label, title }, index) => (
+                  <li
+                    key={label}
+                    className={cn(
+                      'relative min-w-0 px-4 py-4 transition-colors duration-200',
+                      index > 0 && 'border-t border-zinc-900/[0.07] sm:border-l sm:border-t-0',
+                      index === 1 && 'bg-emerald-500/[0.035]',
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={cn(
+                        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-emerald-700',
+                        index === 1
+                          ? 'border-emerald-500/25 bg-emerald-500/[0.11]'
+                          : 'border-emerald-500/18 bg-emerald-500/[0.065]',
+                      )}>
+                        <Icon className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-[9.5px] font-mono uppercase tracking-[0.12em] text-emerald-700">
+                        <span>{String(index + 1).padStart(2, '0')}</span>
+                        <span className="opacity-35">/</span>
+                        <span className="truncate">{label}</span>
+                      </div>
+                        <div className="mt-0.5 truncate text-[12.5px] font-semibold tracking-[-0.015em] text-zinc-950">
+                          {title}
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </FadeUp>
+          </div>
+
+          <StaggerContainer className="grid gap-3 md:grid-cols-2 md:gap-4">
             {CORE_CAPABILITIES.map((c) => {
               const tone = CAPABILITY_TONE[c.tone];
               return (
                 <StaggerItem key={c.eyebrow}>
                   <div
-                    className={`group relative glass-card h-full p-5 md:p-6 flex flex-col sm:flex-row gap-5 overflow-hidden transition-all duration-300 hover:-translate-y-[2px] ring-1 ring-transparent ${tone.ring}`}
+                    className={`group relative glass-card h-full p-4 sm:p-5 flex flex-col sm:flex-row gap-4 overflow-hidden transition-all duration-300 hover:-translate-y-[2px] ring-1 ring-transparent ${tone.ring}`}
                   >
                     {/* colored corner glow */}
                     <div
@@ -649,13 +703,13 @@ export default function GlobalLandingPage() {
                     />
 
                     {/* LEFT — editorial still */}
-                    <div className="sm:w-[190px] sm:shrink-0 self-start">
+                    <div className="w-full max-w-[210px] self-start sm:w-[164px] sm:max-w-none sm:shrink-0 lg:w-[174px]">
                       <CapabilityVisual id={c.visual} />
                     </div>
 
                     {/* RIGHT — header + body + chips */}
                     <div className="flex-1 min-w-0 flex flex-col">
-                      <div className="flex items-center gap-2.5 mb-2">
+                      <div className="mb-2 flex items-center gap-2.5">
                         <div className={`h-8 w-8 rounded-lg border ${tone.iconBg} flex items-center justify-center`}>
                           <c.icon className={`h-4 w-4 ${tone.iconColor}`} />
                         </div>
@@ -665,20 +719,25 @@ export default function GlobalLandingPage() {
                       </div>
 
                       <h3
-                        className="text-[17px] font-semibold tracking-[-0.01em] mb-1.5"
+                        className="mb-1.5 text-[16px] font-semibold leading-snug tracking-[-0.01em]"
                         dangerouslySetInnerHTML={{ __html: c.title }}
                       />
-                      <p className="text-[13px] text-muted-foreground leading-relaxed mb-3">{c.body}</p>
+                      <p className="text-[12.5px] leading-relaxed text-muted-foreground">{c.body}</p>
 
-                      <div className="mt-auto flex flex-wrap gap-1.5">
-                        {c.chips.map((chip) => (
-                          <span
-                            key={chip}
-                            className="inline-flex items-center rounded-md border border-zinc-900/[0.08] bg-white/60 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-mono text-foreground/70"
-                          >
-                            {chip}
-                          </span>
-                        ))}
+                      <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-2 border-t border-zinc-900/[0.065] pt-3">
+                        <span className={`text-[8.5px] font-mono uppercase tracking-[0.14em] ${tone.eyebrow}`}>
+                          {c.chipLabel}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.chips.map((chip) => (
+                            <span
+                              key={chip}
+                              className="inline-flex items-center rounded-md border border-zinc-900/[0.08] bg-white/60 px-1.5 py-0.5 font-mono text-[9.5px] text-foreground/70 backdrop-blur-sm"
+                            >
+                              {chip}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -691,9 +750,7 @@ export default function GlobalLandingPage() {
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        * PROOF — combined depth (Mandarin) + scale (research benchmarks)
-       * Comes BEFORE Quickstart so we earn credibility before asking
-       * the reader to install anything. Two halves of the same
-       * credibility story on a single screen.
+       * Earn credibility before asking the reader to integrate.
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         id="proof"
@@ -702,16 +759,17 @@ export default function GlobalLandingPage() {
         <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl relative">
           <FadeUp className="mb-8 max-w-2xl">
             <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
-              /proof
+              /evidence-you-can-inspect
             </div>
             <h2 className="heading-display text-3xl md:text-[38px] tracking-[-0.02em] mb-3 leading-[1.12]">
-              Mandarin depth, production scale &mdash; same payload.
+              Acoustic depth you can inspect. Scale you can trust.
             </h2>
             <p className="text-muted-foreground leading-relaxed text-[15px]">
-              Toggle zh / en to see the same{' '}
+              Twenty years of speech-assessment R&amp;D, exposed through one stable contract. Toggle zh / en
+              to inspect the same{' '}
               <span className="font-mono text-foreground/80">pron.*</span> /{' '}
-              <span className="font-mono text-foreground/80">details[]</span> contract. Benchmarks on the
-              right are live numbers you can sanity-check against your own eval harness.
+              <span className="font-mono text-foreground/80">details[]</span> structure; use the benchmarks
+              beside it to sanity-check Chivox against your own evaluation harness.
             </p>
           </FadeUp>
 
@@ -727,23 +785,40 @@ export default function GlobalLandingPage() {
             {/* RIGHT — Scale (benchmarks) */}
             <div className="lg:col-span-5">
               <FadeUp delay={0.12}>
-                <div className="flex gap-1 overflow-x-auto mb-3 -mx-1 px-1">
-                  {BENCHMARK_TABS.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setBenchmark(t.id)}
-                      className={`relative text-left px-3 py-2 rounded-lg text-[12.5px] whitespace-nowrap transition-all ${
-                        t.id === benchmark
-                          ? 'bg-background text-foreground border border-border/60 shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-background/60 border border-transparent'
-                      }`}
-                    >
-                      <span className="font-medium">{t.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background p-6 md:p-7">
+                <div className="overflow-hidden rounded-2xl border border-border/60 bg-background">
+                  <div
+                    className="grid grid-cols-4 gap-1 border-b border-border/60 bg-zinc-950/[0.018] p-1.5"
+                    role="tablist"
+                    aria-label="Benchmark metrics"
+                  >
+                    {BENCHMARK_TABS.map((t, index) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={t.id === benchmark}
+                        onClick={() => setBenchmark(t.id)}
+                        className={`group flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg px-1.5 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/35 ${
+                          t.id === benchmark
+                            ? 'bg-white text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] ring-1 ring-zinc-900/[0.055]'
+                            : 'text-muted-foreground hover:bg-white/65 hover:text-foreground'
+                        }`}
+                      >
+                        <span
+                          className={`hidden font-mono text-[9px] tabular-nums sm:inline ${
+                            t.id === benchmark ? 'text-emerald-700' : 'text-muted-foreground/55'
+                          }`}
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="whitespace-nowrap text-[10.5px] font-medium tracking-[-0.01em] sm:text-[11.5px]">
+                          {t.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="p-6 md:p-7">
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="min-w-0">
                       <div className="text-4xl md:text-5xl heading-display tracking-[-0.03em] leading-none mb-2">
@@ -793,6 +868,7 @@ export default function GlobalLandingPage() {
                     <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-emerald-500/60 shrink-0" />
                     <span>{activeBench.footnote}</span>
                   </div>
+                  </div>
                 </div>
               </FadeUp>
             </div>
@@ -802,22 +878,16 @@ export default function GlobalLandingPage() {
         </div>
       </section>
 
-      <CustomerTrustSection compact />
-
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       * QUICKSTART — 3 steps, dead simple. Sits AFTER /proof so the
-       * reader has already seen the credibility story by the time we
-       * hand them an install command.
-       * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section id="quickstart" className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 scroll-mt-24">
+      {/* QUICKSTART — after value and proof, show the shortest path to a first result. */}
+      <section id="quickstart" className="relative py-16 md:py-20 border-b border-[#e9e2d2]/70 scroll-mt-24">
         <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl">
-          <FadeUp className="mb-12 text-center">
+          <FadeUp className="mb-10 text-center">
             <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/quickstart</div>
             <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3">
-              Production-ready in 3 steps
+              Get the first structured score in 3 steps
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              Watch it run. Paste config → server connects → your LLM calls a tool and gets structured scores back.
+            <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Paste the config, connect Chivox, then call one assessment tool from your agent loop.
             </p>
             <div className="mt-4 flex items-center justify-center">
               <Link
@@ -840,29 +910,36 @@ export default function GlobalLandingPage() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       * USE CASES — with real imagery
+       * ASSESSMENT SUITE — 1:1 with Products nav
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section id="use-cases" className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 scroll-mt-24">
         <div className="container mx-auto px-6 max-w-6xl xl:max-w-7xl">
           <FadeUp className="mb-12 max-w-2xl">
-            <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/use-cases</div>
+            <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">/product paths</div>
             <h2 className="heading-display text-3xl md:text-4xl tracking-[-0.02em] mb-3">
-              Built for what developers actually ship
+              Start with the learner you are building for
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              Tutors, coaches, companions, QA tooling — pick the scenario that\u2019s yours and see how the
-              agent loop looks in practice.
+              English, Mandarin and Kids share one MCP contract, while each product path gives your agent the
+              language and learner context it needs.
             </p>
           </FadeUp>
 
-          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StaggerContainer className="grid md:grid-cols-3 gap-4">
             {USE_CASES.map((u) => (
               <StaggerItem key={u.tag}>
-                <div className="group rounded-2xl border border-zinc-900/[0.08] bg-white/80 backdrop-blur-sm overflow-hidden h-full flex flex-col hover:border-zinc-900/25 hover:-translate-y-[2px] hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.12)] transition-all duration-300">
+                <Link
+                  href={u.href}
+                  aria-label={`Explore ${u.tag}`}
+                  className="group rounded-2xl border border-zinc-900/[0.08] bg-white/80 backdrop-blur-sm overflow-hidden h-full flex flex-col hover:border-emerald-500/35 hover:-translate-y-[2px] hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.12)] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-3"
+                >
                   <div className="relative aspect-[16/10] w-full border-b border-zinc-900/[0.06] overflow-hidden">
                     <UseCaseArtwork id={u.art} />
                   </div>
                   <div className="p-5 flex-1 flex flex-col">
+                    <div className="text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground mb-2">
+                      {u.tag}
+                    </div>
                     <h3
                       className="text-[15px] font-semibold tracking-[-0.01em] mb-2 leading-snug"
                       dangerouslySetInnerHTML={{ __html: u.title }}
@@ -871,8 +948,12 @@ export default function GlobalLandingPage() {
                       className="text-[13px] text-muted-foreground leading-relaxed"
                       dangerouslySetInnerHTML={{ __html: u.body }}
                     />
+                    <span className="mt-5 inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-800">
+                      Explore product
+                      <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </span>
                   </div>
-                </div>
+                </Link>
               </StaggerItem>
             ))}
           </StaggerContainer>
@@ -967,11 +1048,36 @@ function formatPackagePrice(cents: number) {
 }
 
 function PricingUsageStory() {
+  const [compareOpen, setCompareOpen] = useState(false);
+  const compareTriggerRef = useRef<HTMLButtonElement>(null);
+
   const pricingFacts = [
     { icon: Check, label: 'Successful evaluations only' },
     { icon: KeyRound, label: 'Shared across every API key' },
     { icon: CalendarDays, label: `Points stay valid for ${TRIAL_VALID_DAYS} days` },
   ];
+
+  useEffect(() => {
+    if (!compareOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const trigger = compareTriggerRef.current;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCompareOpen(false);
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+      trigger?.focus();
+    };
+  }, [compareOpen]);
 
   return (
     <section
@@ -1016,13 +1122,18 @@ function PricingUsageStory() {
                   <ArrowRight className="h-3.5 w-3.5" />
                 </span>
               </Link>
-              <Link
-                href="/pricing"
-                className="group inline-flex h-11 items-center gap-1.5 px-1 text-sm font-semibold text-emerald-800 transition-colors hover:text-emerald-950"
+              <button
+                ref={compareTriggerRef}
+                type="button"
+                onClick={() => setCompareOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={compareOpen}
+                aria-controls="pricing-compare-dialog"
+                className="group inline-flex h-11 items-center gap-2 rounded-full border border-zinc-900/[0.1] bg-white/70 px-4 text-sm font-semibold text-zinc-800 shadow-sm transition-all hover:-translate-y-px hover:border-emerald-700/25 hover:bg-white hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/35"
               >
-                Full pricing details
+                Compare packages
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              </button>
             </div>
           </FadeUp>
 
@@ -1077,72 +1188,8 @@ function PricingUsageStory() {
           </FadeUp>
         </div>
 
-        <FadeUp delay={0.12} className="mt-12 min-w-0 rounded-[30px] border border-zinc-900/[0.08] bg-white/45 p-4 shadow-[0_28px_75px_-56px_rgba(15,23,42,0.5)] backdrop-blur-sm sm:p-6">
-          <div className="flex flex-col gap-3 border-b border-zinc-900/[0.07] pb-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-700">Top-up packs</div>
-              <h3 className="mt-1.5 text-[24px] font-semibold tracking-[-0.03em] text-zinc-950">Choose the volume that fits now.</h3>
-              <p className="mt-1 text-[12.5px] text-zinc-500">Every pack unlocks the same assessment capabilities.</p>
-            </div>
-            <Link href="/pricing" className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-emerald-800 hover:text-emerald-950">
-              Compare all pricing
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {FIXED_TOPUP_PLANS.map((plan) => {
-                const copy = PRICING_PACKAGE_COPY[plan.id];
-                const rates = EVALUATION_UNIT_PRICES[plan.id];
-                const recommended = plan.id === 'advanced';
-                return (
-                  <article
-                    key={plan.id}
-                    className={cn(
-                      'relative flex min-h-[280px] flex-col rounded-2xl border bg-white/75 p-5 transition-all duration-300',
-                      recommended
-                        ? 'border-emerald-500/30 shadow-[0_20px_50px_-36px_rgba(16,125,88,0.55)] md:-translate-y-1'
-                        : 'border-zinc-900/[0.08] hover:-translate-y-1 hover:border-zinc-900/[0.14]',
-                    )}
-                  >
-                    {recommended && (
-                      <span className="absolute right-4 top-4 rounded-full bg-emerald-700 px-2.5 py-1 text-[8.5px] font-semibold uppercase tracking-[0.12em] text-white">
-                        Recommended
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <span aria-hidden className={cn('h-2 w-2 rounded-full border-2', copy.border, recommended && 'bg-emerald-600')} />
-                      <h4 className={cn('text-[15px] font-semibold', copy.tone)}>{copy.label}</h4>
-                    </div>
-                    <p className="mt-2 max-w-[15rem] text-[11.5px] leading-5 text-zinc-500">{copy.blurb}</p>
-
-                    <div className="mt-5 flex flex-wrap items-baseline gap-2">
-                      <span className={cn('text-crisp text-[32px] font-bold tracking-[-0.04em]', copy.tone)}>
-                        {formatPackagePrice(plan.amountCents)}
-                      </span>
-                      <span className={cn('rounded-full border px-2 py-0.5 text-[9px] font-semibold', copy.badge)}>
-                        {copy.bonus}
-                      </span>
-                    </div>
-
-                    <div className="mt-5 divide-y divide-zinc-900/[0.06] rounded-xl bg-zinc-50/80 px-3 text-[10.5px] text-zinc-600">
-                      <div className="flex items-center justify-between gap-3 py-2.5"><span>Word or sentence</span><strong className="font-semibold tabular-nums text-zinc-900">{formatEvaluationUnitDollars(rates.wordSentenceDollars)}</strong></div>
-                      <div className="flex items-center justify-between gap-3 py-2.5"><span>Paragraph</span><strong className="font-semibold tabular-nums text-zinc-900">{formatEvaluationUnitDollars(rates.paragraphDollars)}</strong></div>
-                    </div>
-
-                    <Link href="/pricing" className={cn('group mt-auto inline-flex items-center gap-1.5 pt-5 text-[11.5px] font-semibold', copy.tone)}>
-                      View {copy.label}
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </Link>
-                  </article>
-                );
-              })}
-          </div>
-
-          <PricingPackIncludes />
-        </FadeUp>
       </div>
+      {compareOpen ? <PricingCompareModal onClose={() => setCompareOpen(false)} /> : null}
     </section>
   );
 }
@@ -1324,6 +1371,7 @@ function PricingCompareModal({ onClose }: { onClose: () => void }) {
 
       <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
         <div
+          id="pricing-compare-dialog"
           role="dialog"
           aria-modal="true"
           aria-labelledby="pricing-compare-title"
@@ -1347,7 +1395,8 @@ function PricingCompareModal({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-900/10 bg-white/80 text-foreground/70 transition-colors hover:bg-white hover:text-foreground"
+              autoFocus
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zinc-900/10 bg-white/80 text-foreground/70 transition-colors hover:bg-white hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/35"
             >
               <X className="h-4 w-4" strokeWidth={2} />
             </button>
@@ -2641,6 +2690,9 @@ function HeroCarousel() {
   const [reduceMotion, setReduceMotion] = useState(false);
 
   const pausedRef = useRef(false);
+  const zoomTriggerRef = useRef<HTMLButtonElement>(null);
+  const zoomCloseRef = useRef<HTMLButtonElement>(null);
+  const zoomDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -2652,11 +2704,36 @@ function HeroCarousel() {
 
   useEffect(() => {
     if (!zoomOpen) return;
+    const previousOverflow = document.body.style.overflow;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setZoomOpen(false);
+      if (e.key === 'Tab') {
+        const focusable = Array.from(
+          zoomDialogRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+          ) ?? [],
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!first || !last) return;
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
+    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    const focusFrame = window.requestAnimationFrame(() => zoomCloseRef.current?.focus());
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+      window.cancelAnimationFrame(focusFrame);
+      zoomTriggerRef.current?.focus();
+    };
   }, [zoomOpen]);
 
   // Auto-advance (unless user prefers reduced motion). We pause on hover
@@ -2664,18 +2741,23 @@ function HeroCarousel() {
   useEffect(() => {
     if (reduceMotion) return;
     const id = window.setInterval(() => {
-      if (pausedRef.current) return;
+      if (pausedRef.current || zoomOpen) return;
       setActive((cur) => {
         const i = HERO_SLIDES.findIndex((s) => s.id === cur);
         return HERO_SLIDES[(i + 1) % HERO_SLIDES.length]!.id;
       });
     }, HERO_CAROUSEL_MS);
     return () => window.clearInterval(id);
-  }, [reduceMotion]);
+  }, [reduceMotion, zoomOpen]);
 
   const activeIdx = HERO_SLIDES.findIndex((s) => s.id === active);
 
   const activeSlide = HERO_SLIDES[Math.max(0, activeIdx)]!;
+
+  const openZoom = (event: React.MouseEvent<HTMLButtonElement>) => {
+    zoomTriggerRef.current = event.currentTarget;
+    setZoomOpen(true);
+  };
 
   const goPrev = () => {
     const n = HERO_SLIDES.length;
@@ -2704,8 +2786,11 @@ function HeroCarousel() {
         <div className="lg:col-span-6">
           <button
             type="button"
-            onClick={() => setZoomOpen(true)}
+            onClick={openZoom}
             aria-label="Open screenshot preview"
+            aria-haspopup="dialog"
+            aria-expanded={zoomOpen}
+            aria-controls="hero-preview-dialog"
             className="group block w-full max-w-[500px] mx-auto lg:mx-0 lg:mr-auto text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-2xl"
           >
             <HeroSlideCard slide={activeSlide} isActive />
@@ -2829,41 +2914,52 @@ function HeroCarousel() {
             </span>
             <button
               type="button"
-              onClick={() => setZoomOpen(true)}
+              onClick={openZoom}
+              aria-haspopup="dialog"
+              aria-expanded={zoomOpen}
+              aria-controls="hero-preview-dialog"
               className="ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium border border-border bg-background/70 hover:bg-background transition-colors"
             >
               View larger
-              <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+              <Maximize2 className="h-3.5 w-3.5 opacity-70" />
             </button>
           </div>
         </div>
       </div>
 
-      {zoomOpen && (
-        <div className="fixed inset-0 z-[100]">
+      {zoomOpen && typeof document !== 'undefined' ? createPortal(
+        <div className="fixed inset-0 z-[200]">
           <button
             type="button"
             aria-label="Close preview"
             onClick={() => setZoomOpen(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-md"
           />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="w-full max-w-6xl">
+          <div className="absolute inset-0 flex items-center justify-center overflow-y-auto p-3 sm:p-6">
+            <div
+              ref={zoomDialogRef}
+              id="hero-preview-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${activeSlide.label} enlarged preview`}
+              className="relative my-auto w-full max-w-[1500px]"
+            >
               <div className="relative rounded-2xl">
                 <button
+                  ref={zoomCloseRef}
                   type="button"
                   onClick={() => setZoomOpen(false)}
-                  className="absolute right-2 top-2 z-20 h-9 w-9 rounded-full border border-white/15 bg-black/55 text-white hover:bg-black/70 backdrop-blur flex items-center justify-center"
+                  className="absolute right-2 top-2 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/65 text-white backdrop-blur transition-colors hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                   aria-label="Close"
                 >
-                  ×
+                  <X className="h-4 w-4" />
                 </button>
 
                 <div className="grid lg:grid-cols-12 gap-4 items-center">
-                  <div className="lg:col-span-8">
+                  <div className="lg:col-span-9 overflow-hidden rounded-2xl border border-white/10 bg-black/20 shadow-2xl">
                     <HeroSlideCard slide={activeSlide} isActive />
                   </div>
-                  <div className="lg:col-span-4 self-center rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md p-4 lg:p-5 text-white">
+                  <div className="lg:col-span-3 self-center rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md p-4 lg:p-5 text-white">
                     <div className="flex items-start gap-3">
                       <span className="mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[12px] font-mono font-semibold border border-white/15 bg-white/10">
                         {String(activeSlide.order).padStart(2, '0')}
@@ -2930,8 +3026,9 @@ function HeroCarousel() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body,
+      ) : null}
     </div>
   );
 }

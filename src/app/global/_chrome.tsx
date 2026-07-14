@@ -15,6 +15,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
+  Fragment,
   Suspense,
   useEffect,
   useRef,
@@ -145,40 +146,32 @@ export const NAV_GROUPS: readonly {
         icon: 'kids',
         accent: 'from-amber-500/15 to-amber-500/0',
       },
-      {
-        href: '/products/mcp-server',
-        label: 'MCP server',
-        summary: 'Speech tools for agent workflows.',
-        eyebrow: 'Product',
-        icon: 'mcp',
-        accent: 'from-emerald-500/15 to-emerald-500/0',
-      },
     ],
   },
   {
     label: 'AI Solutions',
     items: [
       {
-        href: '/solutions/function-calling',
-        label: 'Function calling',
-        summary: 'Typed speech-assessment tools for LLM agents.',
-        eyebrow: 'Solution',
-        icon: 'function',
-        accent: 'from-violet-500/15 to-violet-500/0',
-      },
-      {
         href: '/solutions/ai-language-tutor',
         label: 'AI language tutor',
-        summary: 'Grounded pronunciation coaching in conversation.',
+        summary: 'Listen, diagnose, and coach inside one learner conversation.',
         eyebrow: 'Solution',
         icon: 'tutor',
         accent: 'from-teal-500/15 to-teal-500/0',
+      },
+      {
+        href: '/reasoning',
+        label: 'AI feedback engine',
+        summary: 'Turn speech evidence into grounded feedback and drills.',
+        eyebrow: 'Solution',
+        icon: 'reasoning',
+        accent: 'from-violet-500/15 to-violet-500/0',
       },
     ],
   },
 ];
 
-/** Shared desktop mega-menu chrome — keep Products / Solutions / Resources identical. */
+/** Shared desktop mega-menu chrome — keep all navigation groups visually consistent. */
 const NAV_PANEL_SURFACE = {
   background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(252,248,240,0.98) 100%)',
   backdropFilter: 'blur(28px) saturate(180%)',
@@ -202,8 +195,8 @@ function navMenuItemClass(isOn: boolean) {
     'group/item relative flex min-h-[72px] items-start gap-3 rounded-xl px-2.5 py-2.5',
     'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
     isOn
-      ? 'bg-emerald-500/[0.09] ring-1 ring-emerald-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'
-      : 'hover:bg-white/80 hover:ring-1 hover:ring-emerald-500/15 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_16px_-10px_rgba(16,185,129,0.30)] hover:-translate-y-[1px]',
+      ? 'bg-emerald-500/[0.09] ring-1 ring-emerald-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] hover:bg-emerald-500/[0.14]'
+      : 'hover:bg-emerald-500/[0.06] hover:ring-1 hover:ring-emerald-500/20 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_16px_-10px_rgba(16,185,129,0.30)] hover:-translate-y-[1px]',
   );
 }
 
@@ -221,13 +214,12 @@ function navIconTileClass(accent: string) {
  *  two dropdown groups above, while these high-intent destinations stay
  *  one click away. */
 const NAV_ITEMS: readonly NavItem[] = [
-  { href: '/about', label: 'Why Chivox', external: true },
+  { href: '/demo', label: 'Demo', external: true },
   { href: '/pricing', label: 'Pricing', external: true },
-  { href: '/docs', label: 'Docs', external: true },
 ] as const;
 
-/** Deep-dive sub-pages, surfaced as a "Resources ▾" dropdown. */
-export const RESOURCE_ITEMS: readonly {
+/** Developer implementation and production-operation destinations. */
+export const DEVELOPER_ITEMS: readonly {
   href: string;
   label: string;
   summary: string;
@@ -236,28 +228,55 @@ export const RESOURCE_ITEMS: readonly {
   accent: string;
 }[] = [
   {
-    href: '/demo',
-    label: 'Live demo',
-    summary: 'Record speech and inspect the assessment experience before integrating.',
-    eyebrow: 'Try it',
-    icon: 'demo',
-    accent: 'from-rose-500/15 to-rose-500/0',
+    href: '/docs',
+    label: 'Documentation',
+    summary: 'Quickstarts, API reference, response fields, and integration guides.',
+    eyebrow: 'Build',
+    icon: 'docs',
+    accent: 'from-sky-500/15 to-sky-500/0',
   },
   {
-    href: '/reasoning',
-    label: 'Reasoning engine',
-    summary: 'See the payload, diagnosis, and drill-generation loop.',
-    eyebrow: 'Understand',
-    icon: 'reasoning',
+    href: '/products/mcp-server',
+    label: 'MCP server',
+    summary: 'Connect through a standardized agent-tool protocol.',
+    eyebrow: 'Integrate',
+    icon: 'mcp',
     accent: 'from-emerald-500/15 to-emerald-500/0',
   },
   {
+    href: '/solutions/function-calling',
+    label: 'Function calling API',
+    summary: 'Call speech assessment from your own agent stack.',
+    eyebrow: 'Integrate',
+    icon: 'function',
+    accent: 'from-violet-500/15 to-violet-500/0',
+  },
+  {
     href: '/runtime',
-    label: 'Runtime',
+    label: 'Runtime & operations',
     summary: 'Plan keys, budgets, alerts, privacy, and production scale.',
     eyebrow: 'Operate',
     icon: 'runtime',
     accent: 'from-amber-500/15 to-amber-500/0',
+  },
+] as const;
+
+/** Company and editorial pages, grouped under the top-level "About" entry. */
+export const ABOUT_ITEMS: readonly {
+  href: string;
+  label: string;
+  summary: string;
+  eyebrow: string;
+  icon: NavMegaIconId;
+  accent: string;
+}[] = [
+  {
+    href: '/about',
+    label: 'Why Chivox',
+    summary: '20 years of speech assessment and voice AI R&D.',
+    eyebrow: 'Company',
+    icon: 'english',
+    accent: 'from-emerald-500/15 to-emerald-500/0',
   },
   {
     href: '/faq',
@@ -269,12 +288,18 @@ export const RESOURCE_ITEMS: readonly {
   },
   {
     href: '/blog',
-    label: 'Guides & insights',
-    summary: 'Choose a practical guide by product question or build stage.',
-    eyebrow: 'Explore',
+    label: 'Blog',
+    summary:
+      'Deep dives on speech evidence, tutor loops, Mandarin tone feedback, and production speech APIs.',
+    eyebrow: 'Insights',
     icon: 'docs',
     accent: 'from-violet-500/15 to-violet-500/0',
   },
+] as const;
+
+const SECONDARY_NAV_GROUPS = [
+  { label: 'Developers', eyebrow: 'build, integrate & operate', items: DEVELOPER_ITEMS },
+  { label: 'About', eyebrow: 'company', items: ABOUT_ITEMS },
 ] as const;
 
 /* ══ Lightweight auth-state hook ═════════════════════════════
@@ -552,8 +577,6 @@ export function TopNav() {
   }, [mobileOpen]);
 
   const anchorHref = (hash: string) => (onLanding ? hash : `/${hash}`);
-  const resourceActive = RESOURCE_ITEMS.some((r) => pathname.startsWith(r.href));
-
   return (
     <>
       <div aria-hidden className="h-[84px] shrink-0" />
@@ -647,7 +670,7 @@ export function TopNav() {
                         <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-emerald-700/85">/{group.label}</span>
                         <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-zinc-400">{group.label === 'Products' ? 'assessment suite' : 'agent patterns'}</span>
                       </div>
-                      <div className="px-2 pb-3">
+                      <div className="px-2 pt-1 pb-3">
                       {group.items.map((item) => {
                         const isOn = pathname.startsWith(item.href);
                         return (
@@ -724,112 +747,110 @@ export function TopNav() {
                 );
               })}
 
-              {/* Resources ▾ dropdown — collapsed deep-dive pages */}
-              <div
-                className="relative"
-                onMouseEnter={() => openNavMenu('Resources')}
-                onMouseLeave={scheduleCloseNavMenu}
-                onFocusCapture={() => openNavMenu('Resources')}
-                onBlurCapture={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-                    scheduleCloseNavMenu();
-                  }
-                }}
-              >
-                <button
-                  type="button"
-                  aria-haspopup="menu"
-                  aria-expanded={openMenu === 'Resources'}
-                  className={navTriggerClass(scrolled, resourceActive || openMenu === 'Resources')}
-                >
-                  Resources
-                  <ChevronDown
-                    className={cn(
-                      'h-3.5 w-3.5 opacity-60 transition-transform duration-200',
-                      openMenu === 'Resources' && 'rotate-180',
-                    )}
-                  />
-                </button>
-                <div
-                  role="menu"
-                  className={cn(
-                    'resources-pop absolute right-0 top-full z-50 w-[360px] origin-top-right overflow-hidden rounded-2xl border border-emerald-500/[0.16] pt-3 transition-[opacity,transform] duration-150',
-                    openMenu === 'Resources'
-                      ? 'visible opacity-100 translate-y-0 pointer-events-auto'
-                      : 'invisible opacity-0 -translate-y-1 pointer-events-none',
-                  )}
-                    style={NAV_PANEL_SURFACE}
+              {SECONDARY_NAV_GROUPS.map((group) => {
+                const isOpen = openMenu === group.label;
+                return (
+                  <div
+                    key={group.label}
+                    className="relative"
+                    onMouseEnter={() => openNavMenu(group.label)}
+                    onMouseLeave={scheduleCloseNavMenu}
+                    onFocusCapture={() => openNavMenu(group.label)}
+                    onBlurCapture={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                        scheduleCloseNavMenu();
+                      }
+                    }}
                   >
-                    {/* notch pointing to the trigger */}
-                    <span
-                      aria-hidden
-                      className="absolute top-[6px] right-7 h-3 w-3 rotate-45 border-l border-t border-emerald-500/[0.18]"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(252,248,240,0.98))',
-                      }}
-                    />
-
-                    {/* header eyebrow */}
-                    <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-                      <span className="text-[10px] font-mono tracking-[0.22em] uppercase text-emerald-700/85">
-                        /resources
-                      </span>
-                      <span className="text-[10px] font-mono tracking-[0.14em] uppercase text-zinc-400">
-                        deep dives
-                      </span>
-                    </div>
-
-                    <div className="px-2 pb-3">
-                      {RESOURCE_ITEMS.map((r, i) => {
-                        const isOn = pathname.startsWith(r.href);
-                        return (
-                          <Link
-                            key={r.href}
-                            href={r.href}
-                            role="menuitem"
-                            style={{ animationDelay: `${60 + i * 55}ms` }}
-                            className={cn(navMenuItemClass(isOn), 'resources-row')}
-                          >
-                            <span aria-hidden className={navIconTileClass(r.accent)}>
-                              <NavMegaIcon id={r.icon} />
-                            </span>
-
-                            <div className="min-w-0 flex-1 pr-4">
-                              <div className="flex items-baseline justify-between gap-2">
-                                <span className="text-[14px] font-semibold text-zinc-900 tracking-[-0.005em]">
-                                  {r.label}
-                                </span>
-                                {isOn ? (
-                                  <span className="text-[10px] font-mono text-emerald-700">● current</span>
-                                ) : (
-                                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 group-hover/item:text-emerald-700/80 transition-colors">
-                                    {r.eyebrow}
+                    <button
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={isOpen}
+                      className={navTriggerClass(scrolled, isOpen)}
+                    >
+                      {group.label}
+                      <ChevronDown
+                        className={cn(
+                          'h-3.5 w-3.5 opacity-60 transition-transform duration-200',
+                          isOpen && 'rotate-180',
+                        )}
+                      />
+                    </button>
+                    <div
+                      role="menu"
+                      className={cn(
+                        'resources-pop absolute right-0 top-full z-50 w-[360px] origin-top-right overflow-hidden rounded-2xl border border-emerald-500/[0.16] pt-3 transition-[opacity,transform] duration-150',
+                        isOpen
+                          ? 'visible opacity-100 translate-y-0 pointer-events-auto'
+                          : 'invisible opacity-0 -translate-y-1 pointer-events-none',
+                      )}
+                      style={NAV_PANEL_SURFACE}
+                    >
+                      <span
+                        aria-hidden
+                        className="absolute top-[6px] right-7 h-3 w-3 rotate-45 border-l border-t border-emerald-500/[0.18]"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(252,248,240,0.98))',
+                        }}
+                      />
+                      <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+                        <span className="text-[10px] font-mono tracking-[0.22em] uppercase text-emerald-700/85">
+                          /{group.label}
+                        </span>
+                        <span className="text-[10px] font-mono tracking-[0.14em] uppercase text-zinc-400">
+                          {group.eyebrow}
+                        </span>
+                      </div>
+                      <div className="px-2 pt-1 pb-3">
+                        {group.items.map((item, i) => {
+                          const isOn = pathname.startsWith(item.href);
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              role="menuitem"
+                              style={{ animationDelay: `${60 + i * 55}ms` }}
+                              className={cn(navMenuItemClass(isOn), 'resources-row')}
+                            >
+                              <span aria-hidden className={navIconTileClass(item.accent)}>
+                                <NavMegaIcon id={item.icon} />
+                              </span>
+                              <div className="min-w-0 flex-1 pr-4">
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <span className="text-[14px] font-semibold text-zinc-900 tracking-[-0.005em]">
+                                    {item.label}
                                   </span>
-                                )}
+                                  {isOn ? (
+                                    <span className="text-[10px] font-mono text-emerald-700">● current</span>
+                                  ) : (
+                                    <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 group-hover/item:text-emerald-700/80 transition-colors">
+                                      {item.eyebrow}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+                                  {item.summary}
+                                </p>
                               </div>
-                              <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
-                                {r.summary}
-                              </p>
-                            </div>
-
-                            <ArrowUpRight
-                              className={cn(
-                                'absolute right-2.5 bottom-2.5 h-3.5 w-3.5 text-zinc-400',
-                                'transition-all duration-300',
-                                'group-hover/item:text-emerald-700 group-hover/item:translate-x-[2px] group-hover/item:-translate-y-[2px]',
-                                isOn && 'opacity-0',
-                              )}
-                            />
-                          </Link>
-                        );
-                      })}
+                              <ArrowUpRight
+                                className={cn(
+                                  'absolute right-2.5 bottom-2.5 h-3.5 w-3.5 text-zinc-400 transition-all duration-300',
+                                  'group-hover/item:text-emerald-700 group-hover/item:translate-x-[2px] group-hover/item:-translate-y-[2px]',
+                                  isOn && 'opacity-0',
+                                )}
+                              />
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-              </div>
+                );
+              })}
 
               <a
-                href="https://github.com/boyzhong123/mcp22"
+                href="https://github.com/chivox-developer/chivox-speech-eval-mcp"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Chivox MCP on GitHub"
@@ -911,7 +932,7 @@ export function TopNav() {
             aria-label="Mobile navigation"
             className="absolute inset-x-3 top-[84px] max-h-[calc(100vh-96px)] overflow-y-auto rounded-3xl border border-emerald-500/[0.18] bg-[#fffdf8]/95 p-4 shadow-[0_30px_70px_-28px_rgba(16,52,33,0.45)] backdrop-blur-2xl"
           >
-            {NAV_GROUPS.map((group) => (
+            {[...NAV_GROUPS, ...SECONDARY_NAV_GROUPS].map((group) => (
               <div key={group.label} className="mb-5 last:mb-0">
                 <div className="px-2 text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-700">/{group.label}</div>
                 <div className="mt-2 grid gap-1">
@@ -925,7 +946,7 @@ export function TopNav() {
               </div>
             ))}
             <div className="grid grid-cols-2 gap-2 border-t border-zinc-900/[0.08] pt-4">
-              {[...NAV_ITEMS, ...RESOURCE_ITEMS.map((item) => ({ href: item.href, label: item.label, external: true }))].map((item) => (
+              {NAV_ITEMS.map((item) => (
                 <Link key={`${item.href}-${item.label}`} href={item.href} className="rounded-xl border border-zinc-900/[0.08] bg-white/65 px-3 py-2.5 text-[13px] font-semibold text-zinc-800">
                   {item.label}
                 </Link>
@@ -1050,34 +1071,36 @@ export function TopNav() {
 
 /* ══ Back-to-overview breadcrumb — shown on sub-pages ═══════ */
 
+function overviewCrumbs(current?: string) {
+  const items: { label: string; href?: string }[] = [{ label: 'Home', href: '/' }];
+  if (current) items.push({ label: current });
+  return items;
+}
+
 export function BackToOverview({
-  containerClassName = 'container mx-auto px-6 max-w-6xl pt-5',
-  label = 'Back to overview',
+  containerClassName,
+  current,
 }: {
   containerClassName?: string;
-  label?: string;
+  current?: string;
 } = {}) {
   return (
     <Suspense
       fallback={
-        <BackToOverviewLink
-          containerClassName={containerClassName}
-          label={label}
-          fallbackHref="/"
-        />
+        <BreadcrumbPill containerClassName={containerClassName} items={overviewCrumbs(current)} />
       }
     >
-      <BackToOverviewInner containerClassName={containerClassName} label={label} />
+      <BackToOverviewInner containerClassName={containerClassName} current={current} />
     </Suspense>
   );
 }
 
 function BackToOverviewInner({
   containerClassName,
-  label,
+  current,
 }: {
-  containerClassName: string;
-  label: string;
+  containerClassName?: string;
+  current?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1105,54 +1128,95 @@ function BackToOverviewInner({
   };
 
   return (
-    <BackToOverviewLink
+    <BreadcrumbPill
       containerClassName={containerClassName}
-      label={label}
-      fallbackHref={fallbackHref}
-      onClick={handleBack}
+      items={overviewCrumbs(current)}
+      backHref={fallbackHref}
+      onBack={handleBack}
     />
   );
 }
 
-function BackToOverviewLink({
-  containerClassName,
-  label,
-  fallbackHref,
-  onClick,
-}: {
-  containerClassName: string;
-  label: string;
-  fallbackHref: string;
-  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
-}) {
+/* Shared pill shell so every back-link / breadcrumb reads as one family.
+ * Hover model (identical on every page): hovering anywhere on the pill lifts
+ * the shell (emerald border, brighter glass, soft green glow) and pre-tints
+ * the back circle; hovering a segment link turns that segment emerald; and
+ * hovering the back circle itself deepens it and nudges the arrow left. */
+const CRUMB_PILL_CLASS = cn(
+  'group/pill inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-3.5 py-1.5',
+  'text-[12.5px] font-medium text-zinc-700',
+  'border border-zinc-900/[0.08] bg-white/55 backdrop-blur-md',
+  'shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_1px_3px_rgba(24,24,27,0.04)]',
+  'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+  'hover:border-emerald-500/30 hover:bg-white/80',
+  'hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_4px_14px_-6px_rgba(16,185,129,0.25)]',
+);
+
+function CrumbArrowIcon() {
   return (
-    <div className={containerClassName}>
-      <Link
-        href={fallbackHref}
-        onClick={onClick}
-        className={cn(
-          'group inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-3.5 py-1.5',
-          'text-[12.5px] font-medium text-zinc-700',
-          'border border-zinc-900/[0.08] bg-white/55 backdrop-blur-md',
-          'shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_1px_3px_rgba(24,24,27,0.04)]',
-          'hover:text-emerald-800 hover:border-emerald-500/30 hover:bg-white/80',
-          'hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_4px_14px_-6px_rgba(16,185,129,0.25)]',
-          'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-        )}
-      >
-        <span
-          aria-hidden
-          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900/[0.04] text-zinc-500 group-hover:bg-emerald-500/12 group-hover:text-emerald-700 transition-all duration-300"
-        >
-          <ArrowLeft className="h-3 w-3 transition-transform duration-300 group-hover:-translate-x-0.5" />
-        </span>
-        <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500 group-hover:text-emerald-700/85 transition-colors">
-          /
-        </span>
-        <span className="text-zinc-300/80">·</span>
-        <span>{label}</span>
-      </Link>
-    </div>
+    <span
+      aria-hidden
+      className={cn(
+        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-all duration-300',
+        'bg-zinc-900/[0.04] text-zinc-500',
+        'group-hover/pill:bg-emerald-500/[0.08] group-hover/pill:text-emerald-700/80',
+        // ! so the deeper back-hover tint beats the pill-hover pre-tint (equal
+        // specificity otherwise — both variants are active while on the circle).
+        'group-hover/back:bg-emerald-500/15! group-hover/back:text-emerald-700!',
+      )}
+    >
+      <ArrowLeft className="h-3 w-3 transition-transform duration-300 group-hover/back:-translate-x-0.5" />
+    </span>
+  );
+}
+
+/* The one breadcrumb pill used on every sub-page: [← back] Home / … / Current.
+ * Same shell, same inner format everywhere; vertical position is always pt-6
+ * under the nav, and the container must match the page's own content column
+ * width so the pill sits on its left edge (default fits max-w-6xl pages). */
+export const CRUMB_CONTAINER_CLASS = 'container mx-auto px-6 max-w-6xl pt-6';
+
+export function BreadcrumbPill({
+  items,
+  containerClassName = CRUMB_CONTAINER_CLASS,
+  backHref,
+  onBack,
+}: {
+  items: { label: string; href?: string }[];
+  containerClassName?: string;
+  backHref?: string;
+  onBack?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  const back = backHref ?? items.find((item) => item.href)?.href ?? '/';
+  return (
+    <nav aria-label="Breadcrumb" className={containerClassName}>
+      <div className={cn(CRUMB_PILL_CLASS, 'flex-wrap gap-2')}>
+        <Link href={back} onClick={onBack} aria-label="Back" className="group/back -ml-0.5">
+          <CrumbArrowIcon />
+        </Link>
+        {items.map((item, index) => (
+          <Fragment key={`${item.label}-${index}`}>
+            {index > 0 && (
+              <span aria-hidden className="text-[10px] font-mono text-zinc-400">
+                /
+              </span>
+            )}
+            {item.href ? (
+              <Link
+                href={item.href}
+                className="whitespace-nowrap transition-colors duration-300 hover:text-emerald-800"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <span className="whitespace-nowrap text-zinc-500 transition-colors duration-300 group-hover/pill:text-zinc-600">
+                {item.label}
+              </span>
+            )}
+          </Fragment>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -1676,7 +1740,7 @@ export function SiteFooter() {
                   <path d="M4.98 3.5A2.5 2.5 0 1 1 4.97 8.5a2.5 2.5 0 0 1 .01-5zM3 9.5h4v11H3v-11zm6 0h3.8v1.5h.1c.5-1 1.9-2 3.9-2 4.2 0 5 2.7 5 6.2v5.3h-4v-4.7c0-1.1 0-2.6-1.6-2.6-1.6 0-1.8 1.2-1.8 2.5v4.8H9v-11z" fill="currentColor" />
                 </svg>
               </SocialIcon>
-              <SocialIcon label="GitHub" href="https://github.com/boyzhong123/mcp22">
+              <SocialIcon label="GitHub" href="https://github.com/chivox-developer/chivox-speech-eval-mcp">
                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
                   <path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.6 1 1.6 1 .9 1.5 2.4 1.1 3 .8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.8v2.7c0 .3.2.6.7.5A10 10 0 0 0 12 2z" fill="currentColor" />
                 </svg>
@@ -1715,7 +1779,6 @@ export function SiteFooter() {
                 <li><Link href="/products/english-speech-assessment" className="transition-colors hover:text-zinc-900">English assessment</Link></li>
                 <li><Link href="/products/mandarin-chinese-assessment" className="transition-colors hover:text-zinc-900">Mandarin assessment</Link></li>
                 <li><Link href="/products/kids-speech-assessment" className="transition-colors hover:text-zinc-900">Kids assessment</Link></li>
-                <li><Link href="/products/mcp-server" className="transition-colors hover:text-zinc-900">MCP server</Link></li>
               </ul>
             </div>
 
@@ -1724,33 +1787,31 @@ export function SiteFooter() {
                 Solutions
               </div>
               <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
-                <li><Link href="/solutions/function-calling" className="transition-colors hover:text-zinc-900">Function calling</Link></li>
                 <li><Link href="/solutions/ai-language-tutor" className="transition-colors hover:text-zinc-900">AI language tutor</Link></li>
-                <li><Link href="/reasoning" className="transition-colors hover:text-zinc-900">Reasoning engine</Link></li>
-                <li><Link href="/pricing" className="transition-colors hover:text-zinc-900">Pricing</Link></li>
+                <li><Link href="/reasoning" className="transition-colors hover:text-zinc-900">AI feedback engine</Link></li>
               </ul>
             </div>
 
             <div>
               <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
-                Resources
+                Developers
               </div>
               <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
-                <li><Link href="/demo" className="transition-colors hover:text-zinc-900">Live demo</Link></li>
-                <li><Link href="/docs" className="transition-colors hover:text-zinc-900">Developer docs</Link></li>
-                <li><Link href="/global#quickstart" className="transition-colors hover:text-zinc-900">Quickstart</Link></li>
-                <li><Link href="/runtime" className="transition-colors hover:text-zinc-900">Runtime</Link></li>
-                <li><Link href="/faq" className="transition-colors hover:text-zinc-900">FAQ</Link></li>
-                <li><Link href="/blog" className="transition-colors hover:text-zinc-900">Guides &amp; insights</Link></li>
+                <li><Link href="/docs" className="transition-colors hover:text-zinc-900">Documentation</Link></li>
+                <li><Link href="/products/mcp-server" className="transition-colors hover:text-zinc-900">MCP server</Link></li>
+                <li><Link href="/solutions/function-calling" className="transition-colors hover:text-zinc-900">Function calling API</Link></li>
+                <li><Link href="/runtime" className="transition-colors hover:text-zinc-900">Runtime &amp; operations</Link></li>
               </ul>
             </div>
 
             <div>
               <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
-                Company
+                About
               </div>
               <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
                 <li><Link href="/about" className="transition-colors hover:text-zinc-900">Why Chivox</Link></li>
+                <li><Link href="/faq" className="transition-colors hover:text-zinc-900">FAQ</Link></li>
+                <li><Link href="/blog" className="transition-colors hover:text-zinc-900">Blog</Link></li>
                 <li><Link href="/about#customers" className="transition-colors hover:text-zinc-900">Customers</Link></li>
                 <li>
                   <OpenContactButton className="text-left transition-colors hover:text-zinc-900">
@@ -1759,7 +1820,7 @@ export function SiteFooter() {
                 </li>
                 <li>
                   <a
-                    href="https://github.com/boyzhong123/mcp22"
+                    href="https://github.com/chivox-developer/chivox-speech-eval-mcp"
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 transition-colors hover:text-zinc-900"

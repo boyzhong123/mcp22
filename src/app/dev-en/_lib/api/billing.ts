@@ -44,11 +44,15 @@ export async function setLimits(patch: Partial<AccountLimits>): Promise<AccountL
 
 // doc §5.3 — create a PayPal order; returns the PayPal order id + our
 // transaction id. The browser then drives buyer approval via the PayPal SDK.
+// Package tier is decided server-side from amount_cents; do not rely on
+// sending package_id (optional / ignored by backend).
 export function createTopupOrder(params: {
   amount_cents: number;
-  package_id: 'standard' | 'advanced' | 'flagship';
+  /** @deprecated Backend derives tier from amount; omit or ignored. */
+  package_id?: 'standard' | 'advanced' | 'flagship';
 }): Promise<TopupOrder> {
-  return request<TopupOrder>('/billing/topups/order', { method: 'POST', body: params });
+  const body: { amount_cents: number } = { amount_cents: params.amount_cents };
+  return request<TopupOrder>('/billing/topups/order', { method: 'POST', body });
 }
 
 // doc §5.4 — capture an approved order by our transaction id.

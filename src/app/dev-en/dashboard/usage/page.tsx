@@ -24,6 +24,11 @@ import {
 import { useMockStore } from '../../_lib/use-mock-store';
 import { useLang } from '../../_lib/use-lang';
 import { toEvaluationUsage } from '../../_lib/evaluation-usage';
+import { EvaluationKernelInfo } from '../../_components/evaluation-kernel-info';
+import {
+  PARAGRAPH_POINTS_PER_USE,
+  WORD_SENTENCE_POINTS_PER_USE,
+} from '../../_lib/topup';
 
 type Period = 7 | 14 | 28 | 90;
 const PERIODS: Period[] = [7, 14, 28, 90];
@@ -629,13 +634,25 @@ export default function UsagePage() {
                   />
                 </th>
                 <th className="text-right px-5 py-2.5 font-semibold">
-                  {t('Word / phrase / sentence', '字词句')}
+                  <span className="flex items-center justify-end gap-1.5">
+                    {t('Word / phrase / sentence', '字词句')}
+                    <EvaluationKernelInfo
+                      wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+                      paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+                    />
+                  </span>
                   <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
                     {t('calls / pts', '次 / 积分')}
                   </span>
                 </th>
                 <th className="text-right px-5 py-2.5 font-semibold">
-                  {t('Paragraph', '段落')}
+                  <span className="flex items-center justify-end gap-1.5">
+                    {t('Paragraph', '段落')}
+                    <EvaluationKernelInfo
+                      wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+                      paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+                    />
+                  </span>
                   <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
                     {t('calls / pts', '次 / 积分')}
                   </span>

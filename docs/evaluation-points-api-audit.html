@@ -527,8 +527,8 @@
 
   <main class="wrap">
     <div class="callout critical">
-      <strong>原则：</strong>赠送比例、最低金额、预设档位、<span class="hl">输入金额后的到账积分</span>、有效期天数，一律以服务端为准。
-      前端用本地公式仅作 Demo 兜底；正式路径以 <code>quoted_points</code> / <code>GET /billing/pricing</code> 为准。
+      <strong>原则：</strong>各档金额上下限与 <span class="hl">points_per_usd</span>、下单后的到账积分、有效期天数，一律以服务端为准。
+      前端用本地公式仅作 Demo 兜底；正式路径以 <code>quoted_points</code> / <code>GET /billing/pricing</code> 为准。折扣/% 文案由前端对比各档 pts/$ 自行计算展示。
     </div>
 
     <div class="principle-grid">
@@ -645,7 +645,7 @@
     <div class="callout principle">
       <strong>已对齐（无需再盘）：</strong>
       Limits 四维读写 · Settings 积分阈值 · History 积分主列 · Batches 到期图 ·
-      PayPal <code>package_id</code> + capture 后 hydrate · Rates 套餐表已接 <code>useBillingPricing</code>（Demo 为 Local fallback）。
+      PayPal 下单只传 <code>amount_cents</code>（套餐由后端按金额判定）+ capture 后 hydrate · Rates 套餐表已接 <code>useBillingPricing</code>（Demo 为 Local fallback）。
     </div>
 
     <h2 class="section-title" id="apis">接口清单</h2>
@@ -654,7 +654,7 @@
     <div class="api-grid" id="api-list">
 
       <article class="api-card p0-border" data-type="sup" data-prio="p0"
-        data-keys="topups order package_id quoted_points paypal 充值">
+        data-keys="topups order amount_cents quoted_points paypal 充值 套餐由后端判定">
         <div class="api-top">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/billing/topups/order</span>
@@ -662,13 +662,18 @@
           <span class="chip sup">补充</span>
           <span class="chip be">后端算价</span>
         </div>
-        <p class="api-body">创建 PayPal 订单。服务端校验套餐最低金额并<strong class="hl">计算到账积分</strong>。</p>
+        <p class="api-body">
+          创建 PayPal 订单。服务端按<strong class="hl">金额</strong>判定套餐等级并<strong class="hl">计算到账积分</strong>。
+          <span class="hl">前端不传 package_id</span>（传入亦可被后端忽略）。
+        </p>
         <div class="api-fields">
-          req: amount_cents, <span class="must">package_id</span><br />
-          res: paypal_order_id, transaction_id, <span class="must">quoted_points</span>, package_id, amount_cents
+          req: <span class="must">amount_cents</span>　（package_id 可选，后端漠视）<br />
+          res: paypal_order_id, transaction_id, <span class="must">quoted_points</span>,
+          <span class="must">package_id</span>（服务端判定）, amount_cents
         </div>
         <div class="api-meta">
           <span class="chip">Checkout Step 3</span>
+          <span class="chip be">套餐←金额</span>
         </div>
       </article>
 
@@ -707,7 +712,7 @@
       </article>
 
       <article class="api-card p1-border" data-type="sup" data-prio="p1"
-        data-keys="pricing topup_packages evaluation_point_rules 套餐 硬编码">
+        data-keys="pricing tiers recharge_tiers points_per_usd 当前充值档位">
         <div class="api-top">
           <span class="api-method get">GET</span>
           <span class="api-path">/api/billing/pricing</span>
@@ -715,11 +720,12 @@
           <span class="chip sup">补充</span>
           <span class="chip be">后端规则源</span>
         </div>
-        <p class="api-body">套餐最低额、bonus%、预设金额、扣分规则、试用口径。<span class="hl">前端不应硬编码这些规则</span>。</p>
+        <p class="api-body">「当前充值档位」表数据源：各档 <span class="hl">金额上下限 + points_per_usd</span>；折扣文案前端自算。下单到账仍以 <code>quoted_points</code> 为准。</p>
         <div class="api-fields">
-          <span class="must">evaluation_point_rules</span> { base_points_per_usd, word_sentence_points_per_use, paragraph_points_per_use, valid_days }<br />
-          <span class="must">topup_packages</span>[] { id, min_amount_cents, bonus_percent, preset_amount_cents }<br />
-          trial_calls, trial_days
+          version_id, version, currency, validity_days<br />
+          <span class="must">tiers</span>[] { code, min_amount_cents, max_amount_cents, points_per_usd, preset_amount_cents? }<br />
+          （兼容 <code>recharge_tiers</code> / 旧 <code>topup_packages</code>）<br />
+          evaluation_point_rules { word_sentence_points_per_use, paragraph_points_per_use, valid_days } · trial_calls, trial_days
         </div>
         <div class="api-meta"><span class="chip">Rates</span><span class="chip">Checkout</span></div>
       </article>
@@ -974,7 +980,7 @@
         <div class="shot-head"><h3>9. Rates</h3><span class="route">/dashboard/billing/rates</span></div>
         <img src="images/points-api-audit/09-rates-packages.png" alt="Rates" loading="lazy" />
         <figcaption class="shot-cap">
-          套餐表已接 pricing；<span class="hl">参考单价列仍前端硬编码</span>（出入项）。
+          「当前充值档位」：金额范围 + 每美元积分接 pricing；展示增益由前端对比 pts/$ 计算；<span class="hl">参考单价列仍前端硬编码</span>。
         </figcaption>
       </figure>
 

@@ -49,7 +49,7 @@ export default function GlobalFaqPage() {
     <div className="marketing-page relative">
       <AmbientBackdrop />
       <TopNav />
-      <BackToOverview />
+      <BackToOverview current="FAQ" containerClassName="container mx-auto px-6 max-w-3xl pt-6" />
 
       <section className="relative py-16 md:py-20 border-b border-[#e9e2d2]/70">
         <div className="container mx-auto px-6 max-w-3xl">

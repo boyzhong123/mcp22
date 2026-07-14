@@ -36,7 +36,7 @@ const PACK_COPY: Record<(typeof FIXED_TOPUP_PLANS)[number]['id'], { label: strin
 const PACK_SURFACE: Record<(typeof FIXED_TOPUP_PLANS)[number]['id'], string> = {
   standard: 'border-zinc-900/[0.08] bg-gradient-to-b from-white/90 to-white/70',
   advanced:
-    'border-emerald-600/45 bg-gradient-to-b from-emerald-50/95 via-white to-white shadow-[0_28px_70px_-36px_rgba(16,52,33,0.55)] lg:-translate-y-1',
+    'border-emerald-600/45 bg-gradient-to-b from-emerald-50/95 via-white to-white shadow-[0_28px_70px_-36px_rgba(16,52,33,0.55)]',
   flagship: 'border-amber-700/20 bg-gradient-to-b from-amber-50/80 via-white/90 to-white/70',
 };
 
@@ -175,8 +175,8 @@ export default function PricingPage() {
 
           <div className="container mx-auto max-w-6xl px-6 pb-10 md:pb-12">
             <div className="grid gap-5 pt-3 md:grid-cols-2 lg:grid-cols-4 lg:items-stretch">
-              <article className="group relative flex flex-col rounded-2xl border border-sky-500/25 bg-gradient-to-b from-sky-50/90 via-white/85 to-white/70 p-7 shadow-[0_18px_50px_-40px_rgba(14,165,233,0.55)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1">
-                <div aria-hidden className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-sky-400/80 via-sky-300/50 to-transparent" />
+              <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-b from-sky-50/90 via-white/85 to-white/70 p-7 shadow-[0_18px_50px_-40px_rgba(14,165,233,0.55)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1">
+                <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400/80 via-sky-300/50 to-transparent" />
                 <div className="flex items-center gap-2">
                   <h2 className="text-[16px] font-semibold text-sky-700">Free</h2>
                   <Sparkles className="h-4 w-4 text-sky-600" aria-hidden />
@@ -223,50 +223,56 @@ export default function PricingPage() {
                 return (
                   <article
                     key={plan.id}
-                    className={`group relative flex flex-col rounded-2xl border p-7 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1 ${PACK_SURFACE[plan.id]}`}
+                    className={`group relative flex flex-col transition-transform duration-300 hover:-translate-y-1 ${
+                      recommended ? 'lg:-translate-y-1' : ''
+                    }`}
                   >
-                    <div aria-hidden className={`absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r ${accentBar}`} />
                     {recommended && (
                       <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-emerald-700 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_-10px_rgba(6,78,59,0.8)]">
                         Recommended
                       </span>
                     )}
-                    <h2 className={`text-[16px] font-semibold ${recommended ? 'text-emerald-700' : 'text-zinc-900'}`}>
-                      {copy.label}
-                    </h2>
-                    <div className="mt-3 flex flex-wrap items-baseline gap-2">
-                      <span className="text-[11px] text-muted-foreground">from</span>
-                      <span className="text-crisp text-[34px] font-bold tracking-[-0.035em] text-zinc-900">
-                        {formatPackagePrice(plan.amountCents)}
-                      </span>
-                      {plan.bonusPct > 0 && (
-                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/[0.1] px-2 py-0.5 text-[9px] font-semibold text-emerald-800">
-                          +{plan.bonusPct}% bonus
+                    <div
+                      className={`relative flex flex-1 flex-col overflow-hidden rounded-2xl border p-7 backdrop-blur-sm ${PACK_SURFACE[plan.id]}`}
+                    >
+                      <div aria-hidden className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accentBar}`} />
+                      <h2 className={`text-[16px] font-semibold ${recommended ? 'text-emerald-700' : 'text-zinc-900'}`}>
+                        {copy.label}
+                      </h2>
+                      <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                        <span className="text-[11px] text-muted-foreground">from</span>
+                        <span className="text-crisp text-[34px] font-bold tracking-[-0.035em] text-zinc-900">
+                          {formatPackagePrice(plan.amountCents)}
                         </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">{copy.blurb}</p>
-                    <ul className="mt-5 space-y-2 text-[12.5px] text-foreground/80">
-                      <li className="flex gap-2">
-                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={3} />
-                        {formatEvaluationUnitDollars(rates.wordSentenceDollars)} / word, phrase or sentence
-                      </li>
-                      <li className="flex gap-2">
-                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={3} />
-                        {formatEvaluationUnitDollars(rates.paragraphDollars)} / paragraph
-                      </li>
-                    </ul>
-                    <div className="mt-auto pt-6">
-                      <Link
-                        href="/register"
-                        className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-colors ${
-                          recommended
-                            ? 'bg-emerald-700 text-white hover:bg-emerald-800'
-                            : 'border border-zinc-900/10 bg-white/80 text-zinc-900 hover:bg-white'
-                        }`}
-                      >
-                        Get started <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
+                        {plan.bonusPct > 0 && (
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/[0.1] px-2 py-0.5 text-[9px] font-semibold text-emerald-800">
+                            +{plan.bonusPct}% bonus
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">{copy.blurb}</p>
+                      <ul className="mt-5 space-y-2 text-[12.5px] text-foreground/80">
+                        <li className="flex gap-2">
+                          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={3} />
+                          {formatEvaluationUnitDollars(rates.wordSentenceDollars)} / word, phrase or sentence
+                        </li>
+                        <li className="flex gap-2">
+                          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={3} />
+                          {formatEvaluationUnitDollars(rates.paragraphDollars)} / paragraph
+                        </li>
+                      </ul>
+                      <div className="mt-auto pt-6">
+                        <Link
+                          href="/register"
+                          className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-colors ${
+                            recommended
+                              ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                              : 'border border-zinc-900/10 bg-white/80 text-zinc-900 hover:bg-white'
+                          }`}
+                        >
+                          Get started <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </div>
                   </article>
                 );

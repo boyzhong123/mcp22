@@ -584,7 +584,7 @@
         <tr>
           <td><span class="api">POST /api/billing/topups/order</span></td>
           <td>创建 PayPal 订单</td>
-          <td>amount_cents · package_id → quoted_points</td>
+          <td>amount_cents → 服务端按金额判定 package_id + quoted_points</td>
         </tr>
         <tr>
           <td><span class="api">POST …/topups/:id/capture</span></td>

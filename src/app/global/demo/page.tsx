@@ -27,13 +27,12 @@
  * ══════════════════════════════════════════════════════════════════════ */
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackToOverview } from '../_chrome';
 import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
-  AudioWaveform,
   Check,
   Copy,
   Mic2,
@@ -85,6 +84,10 @@ type Scenario = {
   diagnosis: string[];            // LLM pass 2 — teacher-style feedback paragraphs
   drill: { title: string; items: { label: string; content: string; meta?: string }[] }[];
 };
+
+type DemoStage = 1 | 2 | 3 | 4;
+type RunState = 'idle' | 'playing' | 'complete';
+type StageState = 'pending' | 'active' | 'complete';
 
 const MANDARIN: Scenario = {
   id: 'mandarin',
@@ -282,9 +285,14 @@ function scoreBarCls(score: number) {
 
 export default function GlobalDemoPage() {
   const [scenarioId, setScenarioId] = useState<'mandarin' | 'english'>('mandarin');
-  const [stage, setStage] = useState<1 | 2 | 3 | 4>(1);
+  const [stage, setStage] = useState<DemoStage>(1);
+  const [runState, setRunState] = useState<RunState>('idle');
+  /** Bumps on Replay so a restart from stage 1 still re-fires timers / animations. */
+  const [replayKey, setReplayKey] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const walkthroughRef = useRef<HTMLElement | null>(null);
+  const hasPlayedRef = useRef(false);
   const scenario = SCENARIOS[scenarioId];
 
   useEffect(() => {
@@ -295,25 +303,85 @@ export default function GlobalDemoPage() {
     return () => mq.removeEventListener('change', apply);
   }, []);
 
-  /* auto-advance the spotlight stage every ~3.2s, resets on scenario change */
-  useEffect(() => {
-    if (paused || reduceMotion) return;
-    const t = window.setTimeout(() => {
-      setStage((s) => (s === 4 ? 1 : ((s + 1) as 1 | 2 | 3 | 4)));
-    }, 3200);
-    return () => clearTimeout(t);
-  }, [stage, paused, reduceMotion, scenarioId]);
+  const startRun = useCallback(() => {
+    hasPlayedRef.current = true;
+    setStage(reduceMotion ? 4 : 1);
+    setRunState(reduceMotion ? 'complete' : 'playing');
+    setReplayKey((key) => key + 1);
+    setPaused(false);
+  }, [reduceMotion]);
 
+  /* The walkthrough auto-starts only the first time it enters the viewport. */
   useEffect(() => {
-    setStage(1);
-  }, [scenarioId]);
+    const target = walkthroughRef.current;
+    if (!target || hasPlayedRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || hasPlayedRef.current) return;
+        observer.disconnect();
+        startRun();
+      },
+      { threshold: 0.18 },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [startRun]);
+
+  /* Recording finishes first; only then do result, diagnosis, and drill appear. */
+  const stageMs = stage === 1 ? 4200 : stage === 2 ? 5200 : stage === 3 ? 4200 : 3600;
+
+  /* Advance once through the evaluation flow, then stop on the final result. */
+  useEffect(() => {
+    if (runState !== 'playing' || paused || reduceMotion) return;
+    const t = window.setTimeout(() => {
+      if (stage === 4) {
+        setRunState('complete');
+        return;
+      }
+      setStage((stage + 1) as DemoStage);
+    }, stageMs);
+    return () => clearTimeout(t);
+  }, [stage, runState, paused, reduceMotion, replayKey, stageMs]);
+
+  /* Keep the active stage in view while it animates. */
+  useEffect(() => {
+    if (runState !== 'playing') return;
+    const el = walkthroughRef.current?.querySelector<HTMLElement>(`[data-demo-stage="${stage}"]`);
+    if (!el) return;
+    const id = window.requestAnimationFrame(() => {
+      el.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [stage, replayKey, reduceMotion, runState]);
+
+  const replay = () => startRun();
+
+  const selectScenario = (id: 'mandarin' | 'english') => {
+    if (id === scenarioId) return;
+    setScenarioId(id);
+    startRun();
+  };
+
+  const stageState = (value: DemoStage): StageState => {
+    if (runState === 'idle' || value > stage) return 'pending';
+    if (runState === 'playing' && value === stage) return 'active';
+    return 'complete';
+  };
 
   return (
     <main className="min-h-screen text-foreground" lang="en">
       <AmbientBackdrop />
       <DemoHeader />
 
-      <BackToOverview containerClassName="container mx-auto px-5 sm:px-7 lg:px-10 max-w-7xl pt-6" />
+      <BackToOverview
+        current="Live demo"
+        containerClassName="container mx-auto px-5 sm:px-7 lg:px-10 max-w-7xl pt-6"
+      />
 
       <section className="container mx-auto px-5 sm:px-7 lg:px-10 pt-5 pb-6 max-w-7xl">
         <div className="max-w-3xl">
@@ -346,7 +414,7 @@ export default function GlobalDemoPage() {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setScenarioId(id)}
+                  onClick={() => selectScenario(id)}
                   aria-pressed={active}
                   className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-all ${
                     active
@@ -375,13 +443,21 @@ export default function GlobalDemoPage() {
               /04
             </span>
             <span className="text-muted-foreground/60">·</span>
-            <span>{paused ? 'paused (hover)' : 'auto-advancing'}</span>
+            <span>
+              {runState === 'idle'
+                ? 'plays on first scroll'
+                : runState === 'complete'
+                  ? 'complete'
+                  : paused
+                    ? 'paused (hover)'
+                    : 'playing once'}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setStage(1)}
+              onClick={replay}
               className="inline-flex items-center gap-1 rounded-full border border-zinc-900/10 bg-white px-3 py-1.5 text-[11.5px] font-semibold text-zinc-800 hover:border-zinc-900/30 transition-colors"
             >
               <Play className="h-3 w-3 text-emerald-600" />
@@ -404,19 +480,43 @@ export default function GlobalDemoPage() {
       </section>
 
       {/* four stages */}
-      <section className="container mx-auto px-5 sm:px-7 lg:px-10 mt-10 max-w-7xl">
-        <div className="grid gap-6">
-          <Stage num="01" title="Input" runner="Chivox MCP tool call" active={stage === 1}>
-            <Stage01Input scenario={scenario} />
+      <section
+        ref={walkthroughRef}
+        className="container mx-auto px-5 sm:px-7 lg:px-10 mt-10 max-w-7xl"
+        aria-label="Speech evaluation walkthrough"
+      >
+        <div className="grid gap-6" key={`${scenarioId}-${replayKey}`}>
+          <Stage
+            num="01"
+            title="Record learner audio"
+            runner="Capture · then submit to Chivox MCP"
+            state={stageState(1)}
+          >
+            <Stage01Input scenario={scenario} active={stageState(1) === 'active'} reduceMotion={reduceMotion} />
           </Stage>
-          <Stage num="02" title="MCP response" runner="Phonetic matrix · ~40 fields" active={stage === 2}>
-            <Stage02Response scenario={scenario} />
+          <Stage
+            num="02"
+            title="Evaluation result"
+            runner="Phonetic matrix · ~40 fields"
+            state={stageState(2)}
+          >
+            <Stage02Response scenario={scenario} active={stageState(2) === 'active'} reduceMotion={reduceMotion} />
           </Stage>
-          <Stage num="03" title="LLM diagnosis" runner="Your model reads the matrix" active={stage === 3}>
-            <Stage03Diagnosis scenario={scenario} active={stage === 3} reduceMotion={reduceMotion} />
+          <Stage
+            num="03"
+            title="LLM diagnosis"
+            runner="Your model reads the matrix"
+            state={stageState(3)}
+          >
+            <Stage03Diagnosis scenario={scenario} active={stageState(3) === 'active'} reduceMotion={reduceMotion} />
           </Stage>
-          <Stage num="04" title="Auto-generated drill" runner="Agent plans next-session practice" active={stage === 4}>
-            <Stage04Drill scenario={scenario} />
+          <Stage
+            num="04"
+            title="Auto-generated drill"
+            runner="Agent plans next-session practice"
+            state={stageState(4)}
+          >
+            <Stage04Drill scenario={scenario} active={stageState(4) === 'active'} reduceMotion={reduceMotion} />
           </Stage>
         </div>
       </section>
@@ -593,22 +693,29 @@ function Stage({
   num,
   title,
   runner,
-  active,
+  state,
   children,
 }: {
   num: string;
   title: string;
   runner: string;
-  active: boolean;
+  state: StageState;
   children: React.ReactNode;
 }) {
+  const active = state === 'active';
+  const pending = state === 'pending';
+
   return (
     <div
-      className={`relative rounded-2xl border bg-white/65 backdrop-blur-xl transition-all duration-500 ${
+      data-demo-stage={Number(num)}
+      className={`relative scroll-mt-28 rounded-2xl border bg-white/65 backdrop-blur-xl transition-all duration-500 ${
         active
           ? 'border-emerald-400/60 shadow-[0_18px_50px_-28px_rgba(16,185,129,0.45)]'
-          : 'border-zinc-900/[0.08] shadow-sm'
+          : pending
+            ? 'border-zinc-900/[0.06] shadow-sm opacity-[0.58]'
+            : 'border-zinc-900/[0.08] shadow-sm opacity-100'
       }`}
+      aria-current={active ? 'step' : undefined}
     >
       {active && (
         <span
@@ -633,11 +740,26 @@ function Stage({
         {active ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-emerald-700">
             <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-            focus
+            running
+          </span>
+        ) : state === 'complete' ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/[0.07] px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-emerald-700">
+            <Check className="h-3 w-3" strokeWidth={2.5} />
+            complete
           </span>
         ) : null}
       </div>
-      <div className="px-5 sm:px-6 py-5 sm:py-6">{children}</div>
+      <div className="px-5 sm:px-6 py-5 sm:py-6">
+        {pending ? (
+          <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-zinc-900/10 bg-white/35 px-5 text-center">
+            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+              Waiting for the previous step
+            </span>
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </div>
   );
 }
@@ -646,7 +768,15 @@ function Stage({
  *  Stage 01 — Input (audio + reference + request snippet)
  * ──────────────────────────────────────────────────────────────── */
 
-function Stage01Input({ scenario }: { scenario: Scenario }) {
+function Stage01Input({
+  scenario,
+  active,
+  reduceMotion,
+}: {
+  scenario: Scenario;
+  active: boolean;
+  reduceMotion: boolean;
+}) {
   // deterministic-looking waveform
   const bars = useMemo(
     () =>
@@ -658,7 +788,77 @@ function Stage01Input({ scenario }: { scenario: Scenario }) {
     [],
   );
 
-  const seconds = (scenario.audio.durationMs / 1000).toFixed(2);
+  const callSnippet = useMemo(
+    () =>
+      `await mcp.call("assess_speech", {\n` +
+      `  language: "${scenario.locale}",\n` +
+      `  refText:  ${JSON.stringify(scenario.reference.text)},\n` +
+      `  audio:    "s3://sessions/${scenario.id}.wav"\n` +
+      `})`,
+    [scenario],
+  );
+
+  const [playhead, setPlayhead] = useState(0);
+  const [typed, setTyped] = useState(() => (active && !reduceMotion ? 0 : callSnippet.length));
+  const typeTimer = useRef<number | null>(null);
+
+  /* scrub the audio playhead only while this stage is focused */
+  useEffect(() => {
+    if (!active) {
+      setPlayhead(0);
+      return;
+    }
+    if (reduceMotion) {
+      setPlayhead(1);
+      return;
+    }
+    setPlayhead(0);
+    const start = performance.now();
+    const dur = Math.min(2600, Math.max(1800, scenario.audio.durationMs));
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      setPlayhead(t);
+      if (t < 1) raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [active, reduceMotion, scenario]);
+
+  /* Prepare the request, but do not submit it until recording has finished. */
+  useEffect(() => {
+    if (typeTimer.current) window.clearTimeout(typeTimer.current);
+    if (!active) {
+      setTyped(callSnippet.length);
+      return;
+    }
+    if (reduceMotion) {
+      setTyped(callSnippet.length);
+      return;
+    }
+    setTyped(0);
+  }, [active, reduceMotion, callSnippet]);
+
+  useEffect(() => {
+    if (!active || reduceMotion) return;
+    if (playhead < 1) return;
+    if (typed >= callSnippet.length) return;
+    typeTimer.current = window.setTimeout(
+      () => setTyped((n) => Math.min(callSnippet.length, n + 4)),
+      16,
+    );
+    return () => {
+      if (typeTimer.current) window.clearTimeout(typeTimer.current);
+    };
+  }, [active, reduceMotion, typed, callSnippet, playhead]);
+
+  const elapsedMs = Math.round(playhead * scenario.audio.durationMs);
+  const formatClock = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    const frac = Math.floor((ms % 1000) / 10);
+    return `00:0${s}.${frac.toString().padStart(2, '0')}`;
+  };
+  const litThrough = Math.floor(playhead * bars.length);
 
   return (
     <div className="grid lg:grid-cols-2 gap-5">
@@ -667,42 +867,76 @@ function Stage01Input({ scenario }: { scenario: Scenario }) {
         <div className="flex items-center justify-between mb-3 text-[10.5px] font-mono uppercase tracking-[0.14em] text-emerald-700">
           <span className="inline-flex items-center gap-1.5">
             <Mic2 className="h-3 w-3" /> learner audio
+            {active ? (
+              <span className="inline-flex items-center gap-1 ml-1 text-emerald-600 normal-case tracking-normal">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {playhead < 1 ? 'recording' : 'recorded'}
+              </span>
+            ) : null}
           </span>
           <span>{scenario.audio.sampleRate}</span>
         </div>
-        <div className="flex items-end gap-[3px] h-14 mb-3">
-          {bars.map((h, i) => (
+        <div className="relative flex items-end gap-[3px] h-14 mb-3">
+          {bars.map((h, i) => {
+            const lit = i <= litThrough;
+            return (
+              <span
+                key={i}
+                className={`inline-block w-[4px] rounded-[2px] transition-[opacity,filter] duration-150 ${
+                  lit
+                    ? 'bg-gradient-to-t from-emerald-500/40 via-emerald-400/90 to-emerald-300'
+                    : 'bg-emerald-500/15'
+                }`}
+                style={{
+                  height: `${(h * 100).toFixed(1)}%`,
+                  opacity: lit ? 1 : 0.35,
+                  animation:
+                    active && lit && !reduceMotion
+                      ? `wave-bar 1.05s ease-in-out ${i * 22}ms infinite`
+                      : undefined,
+                  transformOrigin: 'bottom',
+                }}
+              />
+            );
+          })}
+          {active ? (
             <span
-              key={i}
-              className="inline-block w-[4px] rounded-[2px] bg-gradient-to-t from-emerald-500/40 via-emerald-400/90 to-emerald-300"
-              style={{
-                height: `${(h * 100).toFixed(1)}%`,
-                animation: `wave-bar 1.3s ease-in-out ${i * 26}ms infinite`,
-                transformOrigin: 'bottom',
-              }}
+              aria-hidden
+              className="absolute top-0 bottom-0 w-px bg-emerald-600/70 shadow-[0_0_8px_rgba(16,185,129,0.55)]"
+              style={{ left: `${playhead * 100}%` }}
             />
-          ))}
+          ) : null}
         </div>
         <div className="flex items-center justify-between text-[11px] font-mono text-emerald-800/80">
-          <span>00:00.00</span>
+          <span>{formatClock(elapsedMs)}</span>
           <span className="text-emerald-700/70">{scenario.audio.durationMs} ms</span>
-          <span>00:0{seconds}</span>
+          <span>{formatClock(scenario.audio.durationMs)}</span>
         </div>
       </div>
 
       {/* request */}
       <div className="rounded-xl border border-zinc-900/[0.08] bg-white/75 p-5">
-        <div className="text-[10.5px] font-mono uppercase tracking-[0.14em] text-muted-foreground mb-3">
-          what your agent sends to MCP
+        <div className="flex items-center justify-between mb-3 text-[10.5px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+          <span>what your agent sends to MCP</span>
+          {active && playhead < 1 ? (
+            <span className="text-amber-700 normal-case tracking-normal">waiting for recording…</span>
+          ) : active && typed < callSnippet.length ? (
+            <span className="text-emerald-700 normal-case tracking-normal">sending…</span>
+          ) : (
+            <span className="text-emerald-700/80 normal-case tracking-normal">ready</span>
+          )}
         </div>
-        <pre className="text-[11.5px] leading-[1.6] font-mono text-zinc-800 whitespace-pre overflow-x-auto">
-{`await mcp.call("assess_speech", {
-  language: "${scenario.locale}",
-  refText:  ${JSON.stringify(scenario.reference.text)},
-  audio:    "s3://sessions/${scenario.id}.wav"
-})`}
+        <pre className="text-[11.5px] leading-[1.6] font-mono text-zinc-800 whitespace-pre overflow-x-auto min-h-[7.5em]">
+          {callSnippet.slice(0, typed)}
+          {active && typed < callSnippet.length ? (
+            <span className="inline-block w-[6px] h-[0.95em] translate-y-[1px] bg-emerald-500 animate-pulse align-middle" />
+          ) : null}
         </pre>
-        <div className="mt-4 flex flex-wrap gap-2 text-[10.5px] font-mono">
+        <div
+          className={`mt-4 flex flex-wrap gap-2 text-[10.5px] font-mono transition-all duration-500 ${
+            typed >= callSnippet.length ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
+          }`}
+        >
           <FieldTag label="language" value={scenario.locale} tone="sky" />
           <FieldTag label="coreType" value={scenario.id === 'mandarin' ? 'cn.sent.raw' : 'en.sent.score'} tone="violet" />
           <FieldTag label="rubric" value="CEFR-aligned" tone="emerald" />
@@ -716,9 +950,22 @@ function Stage01Input({ scenario }: { scenario: Scenario }) {
  *  Stage 02 — Response (annotated JSON + per-token breakdown)
  * ──────────────────────────────────────────────────────────────── */
 
-function Stage02Response({ scenario }: { scenario: Scenario }) {
+function Stage02Response({
+  scenario,
+  active,
+  reduceMotion,
+}: {
+  scenario: Scenario;
+  active: boolean;
+  reduceMotion: boolean;
+}) {
   const snippet = useMemo(() => buildPayloadPreview(scenario), [scenario]);
   const [copied, setCopied] = useState(false);
+  const [jsonLen, setJsonLen] = useState(() => (active && !reduceMotion ? 0 : snippet.length));
+  const [scoreProgress, setScoreProgress] = useState(() => (active && !reduceMotion ? 0 : 1));
+  const [cardsShown, setCardsShown] = useState(() =>
+    active && !reduceMotion ? 0 : scenario.details.length,
+  );
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(snippet);
@@ -729,6 +976,71 @@ function Stage02Response({ scenario }: { scenario: Scenario }) {
     }
   };
 
+  /* Reset + run a staged reveal whenever this step becomes focused. */
+  useEffect(() => {
+    if (!active) {
+      setJsonLen(snippet.length);
+      setScoreProgress(1);
+      setCardsShown(scenario.details.length);
+      return;
+    }
+    if (reduceMotion) {
+      setJsonLen(snippet.length);
+      setScoreProgress(1);
+      setCardsShown(scenario.details.length);
+      return;
+    }
+
+    setJsonLen(0);
+    setScoreProgress(0);
+    setCardsShown(0);
+
+    const timers: number[] = [];
+    const rafs: number[] = [];
+
+    // Phase A — stream JSON (~1.1s)
+    const jsonStart = performance.now();
+    const jsonDur = 1100;
+    const tickJson = (now: number) => {
+      const t = Math.min(1, (now - jsonStart) / jsonDur);
+      setJsonLen(Math.round(snippet.length * t));
+      if (t < 1) rafs.push(window.requestAnimationFrame(tickJson));
+    };
+    rafs.push(window.requestAnimationFrame(tickJson));
+
+    // Phase B — scores count up after JSON is mostly visible
+    timers.push(
+      window.setTimeout(() => {
+        const scoreStart = performance.now();
+        const scoreDur = 1200;
+        const tickScore = (now: number) => {
+          const t = Math.min(1, (now - scoreStart) / scoreDur);
+          setScoreProgress(1 - Math.pow(1 - t, 3));
+          if (t < 1) rafs.push(window.requestAnimationFrame(tickScore));
+        };
+        rafs.push(window.requestAnimationFrame(tickScore));
+      }, 700),
+    );
+
+    // Phase C — detail cards cascade in one-by-one
+    scenario.details.forEach((_, i) => {
+      timers.push(
+        window.setTimeout(() => {
+          setCardsShown(i + 1);
+        }, 1600 + i * 380),
+      );
+    });
+
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+      rafs.forEach((id) => window.cancelAnimationFrame(id));
+    };
+  }, [active, reduceMotion, scenario, snippet]);
+
+  const streaming = active && !reduceMotion && jsonLen < snippet.length;
+  const scoring = active && !reduceMotion && scoreProgress < 1;
+  const cascading = active && !reduceMotion && cardsShown < scenario.details.length;
+
   return (
     <div className="grid xl:grid-cols-5 gap-5">
       {/* JSON preview */}
@@ -737,25 +1049,52 @@ function Stage02Response({ scenario }: { scenario: Scenario }) {
           <span className="text-[11px] font-mono text-muted-foreground">
             chivox · assess_speech · <span className="text-foreground/80">{scenario.id}.json</span>
           </span>
-          <button
-            type="button"
-            onClick={copy}
-            className="inline-flex items-center gap-1 rounded-md border border-zinc-900/10 px-2 py-0.5 text-[10.5px] font-mono text-zinc-700 hover:bg-zinc-100 transition-colors"
-          >
-            {copied ? <Check className="h-3 w-3 text-emerald-600" strokeWidth={3} /> : <Copy className="h-3 w-3" />}
-            {copied ? 'copied' : 'copy'}
-          </button>
+          <div className="flex items-center gap-2">
+            {streaming ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-emerald-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                streaming
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={copy}
+              className="inline-flex items-center gap-1 rounded-md border border-zinc-900/10 px-2 py-0.5 text-[10.5px] font-mono text-zinc-700 hover:bg-zinc-100 transition-colors"
+            >
+              {copied ? <Check className="h-3 w-3 text-emerald-600" strokeWidth={3} /> : <Copy className="h-3 w-3" />}
+              {copied ? 'copied' : 'copy'}
+            </button>
+          </div>
         </div>
-        <pre className="text-[11.5px] leading-[1.65] font-mono whitespace-pre overflow-x-auto p-4 text-zinc-800 max-h-[420px]">
-          {snippet}
+        <pre className="text-[11.5px] leading-[1.65] font-mono whitespace-pre overflow-x-auto p-4 text-zinc-800 max-h-[420px] min-h-[220px]">
+          {snippet.slice(0, jsonLen)}
+          {streaming ? (
+            <span className="inline-block w-[6px] h-[0.95em] translate-y-[1px] bg-emerald-500 animate-pulse align-middle" />
+          ) : null}
         </pre>
       </div>
 
       {/* field callouts */}
       <div className="xl:col-span-2 flex flex-col gap-3">
-        <ScoreRing overall={scenario.overall} />
-        <SubScores pron={scenario.pron} />
-        <div className="rounded-xl border border-zinc-900/[0.08] bg-white/70 p-4 text-[12px] leading-relaxed">
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+            scores
+          </span>
+          {scoring ? (
+            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-700">computing…</span>
+          ) : active ? (
+            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-700">ready</span>
+          ) : null}
+        </div>
+        <ScoreRing overall={scenario.overall} progress={scoreProgress} />
+        <SubScores pron={scenario.pron} progress={scoreProgress} />
+        <div
+          className="rounded-xl border border-zinc-900/[0.08] bg-white/70 p-4 text-[12px] leading-relaxed"
+          style={{
+            opacity: 0.15 + scoreProgress * 0.85,
+            transform: `translateY(${(1 - scoreProgress) * 12}px)`,
+          }}
+        >
           <div className="text-[10.5px] font-mono uppercase tracking-[0.14em] text-violet-700 mb-1.5">
             audio_quality
           </div>
@@ -765,7 +1104,13 @@ function Stage02Response({ scenario }: { scenario: Scenario }) {
             <KV k="volume" v={String(scenario.audioQuality.volume)} />
           </ul>
         </div>
-        <div className="rounded-xl border border-zinc-900/[0.08] bg-white/70 p-4 text-[12px] leading-relaxed">
+        <div
+          className="rounded-xl border border-zinc-900/[0.08] bg-white/70 p-4 text-[12px] leading-relaxed"
+          style={{
+            opacity: 0.15 + scoreProgress * 0.85,
+            transform: `translateY(${(1 - scoreProgress) * 14}px)`,
+          }}
+        >
           <div className="text-[10.5px] font-mono uppercase tracking-[0.14em] text-amber-700 mb-1.5">
             fluency
           </div>
@@ -778,12 +1123,25 @@ function Stage02Response({ scenario }: { scenario: Scenario }) {
 
       {/* per-token breakdown */}
       <div className="xl:col-span-5">
-        <div className="text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground mb-3">
-          details[] — per-{scenario.id === 'mandarin' ? '字' : 'word'} breakdown
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
+            details[] — per-{scenario.id === 'mandarin' ? '字' : 'word'} breakdown
+          </div>
+          {cascading ? (
+            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-700">
+              revealing {cardsShown}/{scenario.details.length}
+            </span>
+          ) : null}
         </div>
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
           {scenario.details.map((d, i) => (
-            <DetailCard key={i} detail={d} lang={scenario.id} />
+            <DetailCard
+              key={i}
+              detail={d}
+              lang={scenario.id}
+              visible={i < cardsShown}
+              emphasize={active && d.dpType === 'wrong_tone' && i < cardsShown}
+            />
           ))}
         </div>
       </div>
@@ -791,10 +1149,31 @@ function Stage02Response({ scenario }: { scenario: Scenario }) {
   );
 }
 
-function DetailCard({ detail, lang }: { detail: DetailRow; lang: Scenario['id'] }) {
+function DetailCard({
+  detail,
+  lang,
+  visible,
+  emphasize,
+}: {
+  detail: DetailRow;
+  lang: Scenario['id'];
+  visible: boolean;
+  emphasize?: boolean;
+}) {
   const dp = DP_LABEL[detail.dpType];
   return (
-    <div className="rounded-xl border border-zinc-900/[0.08] bg-white/80 p-4 flex flex-col gap-3">
+    <div
+      className={`rounded-xl border bg-white/80 p-4 flex flex-col gap-3 transition-all duration-500 ease-out ${
+        emphasize
+          ? 'border-rose-400/55 shadow-[0_12px_36px_-18px_rgba(244,63,94,0.55)] ring-1 ring-rose-400/30'
+          : 'border-zinc-900/[0.08]'
+      }`}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.97)',
+        pointerEvents: visible ? 'auto' : 'none',
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div
@@ -810,7 +1189,7 @@ function DetailCard({ detail, lang }: { detail: DetailRow; lang: Scenario['id'] 
         </div>
         <div className="text-right shrink-0">
           <div className={`text-[22px] font-black tabular-nums leading-none ${scoreTone(detail.score)}`}>
-            {detail.score}
+            {visible ? detail.score : '—'}
           </div>
           <div className={`mt-1 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-mono ${dp.cls}`}>
             {dp.label}
@@ -819,7 +1198,7 @@ function DetailCard({ detail, lang }: { detail: DetailRow; lang: Scenario['id'] 
       </div>
 
       {detail.toneRef != null && detail.toneDetected != null ? (
-        <ToneBlock detail={detail} />
+        <ToneBlock detail={detail} animate={visible} />
       ) : null}
 
       {detail.phonemes && detail.phonemes.length > 0 ? (
@@ -846,7 +1225,7 @@ function DetailCard({ detail, lang }: { detail: DetailRow; lang: Scenario['id'] 
   );
 }
 
-function ToneBlock({ detail }: { detail: DetailRow }) {
+function ToneBlock({ detail, animate = true }: { detail: DetailRow; animate?: boolean }) {
   const literalMatch = detail.toneRef === detail.toneDetected;
   // dp_type is authoritative: a differing tone that the engine flags as
   // `normal` means it accepted the detected tone (e.g. T3+T3 sandhi → T2).
@@ -894,8 +1273,8 @@ function ToneBlock({ detail }: { detail: DetailRow }) {
             <div
               key={i}
               title={`${TONE_NAMES[i]} · ${c}%`}
-              className={`flex-1 rounded-t-sm ${cls}`}
-              style={{ height: `${Math.max(4, c)}%` }}
+              className={`flex-1 rounded-t-sm origin-bottom transition-[height] duration-500 ease-out ${cls}`}
+              style={{ height: animate ? `${Math.max(4, c)}%` : '4%' }}
             />
           );
         })}
@@ -954,9 +1333,10 @@ function FieldTag({ label, value, tone }: { label: string; value: string; tone: 
   );
 }
 
-function ScoreRing({ overall }: { overall: number }) {
+function ScoreRing({ overall, progress }: { overall: number; progress: number }) {
   const circ = 2 * Math.PI * 34;
-  const offset = circ - (overall / 100) * circ;
+  const shown = Math.round(overall * progress);
+  const offset = circ - (shown / 100) * circ;
   const tone = overall >= 80 ? '#10b981' : overall >= 65 ? '#f59e0b' : '#f43f5e';
   return (
     <div className="rounded-xl border border-zinc-900/[0.08] bg-white/80 p-4 flex items-center gap-4">
@@ -973,7 +1353,6 @@ function ScoreRing({ overall }: { overall: number }) {
           strokeDasharray={circ}
           strokeDashoffset={offset}
           transform="rotate(-90 42 42)"
-          style={{ transition: 'stroke-dashoffset 600ms ease' }}
         />
         <text
           x="42"
@@ -984,7 +1363,7 @@ function ScoreRing({ overall }: { overall: number }) {
           fill={tone}
           fontFamily="var(--font-geist-sans), system-ui, sans-serif"
         >
-          {overall}
+          {shown}
         </text>
       </svg>
       <div>
@@ -1000,7 +1379,7 @@ function ScoreRing({ overall }: { overall: number }) {
   );
 }
 
-function SubScores({ pron }: { pron: Scenario['pron'] }) {
+function SubScores({ pron, progress }: { pron: Scenario['pron']; progress: number }) {
   const rows = [
     { k: 'accuracy', v: pron.accuracy },
     { k: 'integrity', v: pron.integrity },
@@ -1012,18 +1391,22 @@ function SubScores({ pron }: { pron: Scenario['pron'] }) {
     <div className="rounded-xl border border-zinc-900/[0.08] bg-white/70 p-4">
       <div className="text-[10.5px] font-mono uppercase tracking-[0.14em] text-emerald-700 mb-2">pron</div>
       <ul className="flex flex-col gap-2">
-        {rows.map((r) => (
-          <li key={r.k} className="flex items-center gap-3 text-[12px]">
-            <span className="w-[72px] font-mono text-muted-foreground">{r.k}</span>
-            <span className="flex-1 h-1.5 rounded-full bg-zinc-200/80 overflow-hidden">
-              <span
-                className={`block h-full rounded-full ${scoreBarCls(r.v)}`}
-                style={{ width: `${r.v}%` }}
-              />
-            </span>
-            <span className={`font-mono tabular-nums w-[28px] text-right ${scoreTone(r.v)}`}>{r.v}</span>
-          </li>
-        ))}
+        {rows.map((r, i) => {
+          const local = Math.max(0, Math.min(1, (progress - i * 0.06) / 0.7));
+          const shown = Math.round(r.v * local);
+          return (
+            <li key={r.k} className="flex items-center gap-3 text-[12px]">
+              <span className="w-[72px] font-mono text-muted-foreground">{r.k}</span>
+              <span className="flex-1 h-1.5 rounded-full bg-zinc-200/80 overflow-hidden">
+                <span
+                  className={`block h-full rounded-full ${scoreBarCls(r.v)}`}
+                  style={{ width: `${shown}%` }}
+                />
+              </span>
+              <span className={`font-mono tabular-nums w-[28px] text-right ${scoreTone(r.v)}`}>{shown}</span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -1050,13 +1433,19 @@ function Stage03Diagnosis({
     setTyped(0);
   }, [scenario]);
 
+  /* Restart the stream whenever this stage becomes active again. */
+  useEffect(() => {
+    if (!active) return;
+    setTyped(reduceMotion ? joined.length : 0);
+  }, [active, joined, reduceMotion]);
+
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current);
-    if (!active || reduceMotion) {
+    if (!active) {
       setTyped(joined.length);
       return;
     }
-    if (typed >= joined.length) return;
+    if (reduceMotion || typed >= joined.length) return;
     timer.current = window.setTimeout(() => setTyped((n) => Math.min(joined.length, n + 6)), 18);
     return () => {
       if (timer.current) window.clearTimeout(timer.current);
@@ -1131,33 +1520,62 @@ function RichProse({ text }: { text: string }) {
  *  Stage 04 — Auto-generated drill
  * ──────────────────────────────────────────────────────────────── */
 
-function Stage04Drill({ scenario }: { scenario: Scenario }) {
+function Stage04Drill({
+  scenario,
+  active,
+  reduceMotion,
+}: {
+  scenario: Scenario;
+  active: boolean;
+  reduceMotion: boolean;
+}) {
+  const [shown, setShown] = useState(() => (active && !reduceMotion ? 0 : scenario.drill.length));
+
+  useEffect(() => {
+    if (!active || reduceMotion) {
+      setShown(scenario.drill.length);
+      return;
+    }
+    setShown(0);
+    const timers = scenario.drill.map((_, i) =>
+      window.setTimeout(() => setShown(i + 1), 180 + i * 280),
+    );
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [active, reduceMotion, scenario]);
+
   return (
     <div className="grid md:grid-cols-2 gap-4">
-      {scenario.drill.map((group) => (
-        <div
-          key={group.title}
-          className="rounded-xl border border-amber-500/25 bg-gradient-to-br from-amber-500/[0.06] to-white/50 p-5 flex flex-col gap-3"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-[14px] font-bold tracking-tight text-zinc-900">{group.title}</h3>
-            <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-amber-700">drill</span>
+      {scenario.drill.map((group, gi) => {
+        const visible = gi < shown;
+        return (
+          <div
+            key={group.title}
+            className="rounded-xl border border-amber-500/25 bg-gradient-to-br from-amber-500/[0.06] to-white/50 p-5 flex flex-col gap-3 transition-all duration-500"
+            style={{
+              opacity: visible ? 1 : 0,
+              transform: visible ? 'translateY(0)' : 'translateY(14px)',
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-[14px] font-bold tracking-tight text-zinc-900">{group.title}</h3>
+              <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-amber-700">drill</span>
+            </div>
+            <ul className="flex flex-col gap-3">
+              {group.items.map((it) => (
+                <li key={it.label} className="rounded-lg border border-zinc-900/[0.06] bg-white/85 px-3.5 py-3">
+                  <div className="flex items-center justify-between text-[12px] font-semibold text-zinc-900 mb-1">
+                    <span>{it.label}</span>
+                    {it.meta ? (
+                      <span className="text-[10.5px] font-mono text-amber-700">{it.meta}</span>
+                    ) : null}
+                  </div>
+                  <p className="text-[12.5px] text-muted-foreground leading-relaxed">{it.content}</p>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="flex flex-col gap-3">
-            {group.items.map((it) => (
-              <li key={it.label} className="rounded-lg border border-zinc-900/[0.06] bg-white/85 px-3.5 py-3">
-                <div className="flex items-center justify-between text-[12px] font-semibold text-zinc-900 mb-1">
-                  <span>{it.label}</span>
-                  {it.meta ? (
-                    <span className="text-[10.5px] font-mono text-amber-700">{it.meta}</span>
-                  ) : null}
-                </div>
-                <p className="text-[12.5px] text-muted-foreground leading-relaxed">{it.content}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

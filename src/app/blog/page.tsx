@@ -1,234 +1,148 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, BookOpen } from 'lucide-react';
-import { AmbientBackdrop, ContactSection, SiteFooter, TopNav } from '@/app/global/_chrome';
+import { ArrowRight } from 'lucide-react';
+import { AmbientBackdrop, BackToOverview, ContactSection, SiteFooter, TopNav } from '@/app/global/_chrome';
 import { absoluteUrl } from '@/lib/site';
+import { BLOG_POSTS } from './posts';
 
 export const metadata: Metadata = {
   title: 'Blog – Voice AI & Pronunciation Assessment | Chivox AI',
   description:
-    'Insights on speech assessment, pronunciation scoring, voice AI and MCP server integration, plus speech recognition and language-learning technology trends.',
+    'Insights on speech assessment, pronunciation scoring, voice AI, agent workflows, and language-learning product design.',
   alternates: { canonical: '/blog' },
   openGraph: {
     title: 'Blog – Voice AI & Pronunciation Assessment | Chivox AI',
-    description:
-      'Speech assessment, pronunciation scoring, voice AI and MCP server integration insights.',
+    description: 'Practical ideas for building speech-enabled products and voice agents.',
     url: absoluteUrl('/blog'),
     type: 'website',
   },
 };
 
-const RESOURCES = [
-  {
-    href: '/reasoning',
-    eyebrow: 'Understand the payload',
-    title: 'How structured speech evidence grounds an LLM',
-    body: 'Follow pronunciation, fluency, and audio-quality fields from assessment response to learner-facing explanation.',
-    stage: 'Architecture',
-    art: '/blog-guides/reasoning.jpg',
-    artAlt: 'Speech performance score card with accuracy and fluency meters',
-    featured: true,
-  },
-  {
-    href: '/runtime',
-    eyebrow: 'Prepare for launch',
-    title: 'The day-two work behind a reliable speech tool',
-    body: 'Plan keys, limits, observability, privacy, and failure handling before production traffic arrives.',
-    stage: 'Operations',
-    art: '/blog-guides/runtime.jpg',
-    artAlt: 'API keys and spend controls in a clean dashboard panel',
-    featured: true,
-  },
-  {
-    href: '/products/mandarin-chinese-assessment',
-    eyebrow: 'Design better feedback',
-    title: 'Why tone-level evidence changes the coaching loop',
-    body: 'See how tone and Pinyin detail help a tutor move from a generic score to a focused retry.',
-    stage: 'Mandarin',
-    art: '/products/mandarin/depth.jpg',
-    artAlt: 'Mandarin tone and Pinyin assessment detail',
-  },
-  {
-    href: '/solutions/ai-language-tutor',
-    eyebrow: 'Build the experience',
-    title: 'Turn assessment evidence into an AI tutor loop',
-    body: 'Connect structured scoring, grounded explanations, and targeted retries into one learner experience.',
-    stage: 'Product pattern',
-    art: '/solutions/ai-tutor/tutor-loop.jpg',
-    artAlt: 'AI tutor coaching loop with pronunciation feedback',
-  },
-  {
-    href: '/solutions/function-calling',
-    eyebrow: 'Choose the interface',
-    title: 'Use typed speech tools inside an agent workflow',
-    body: 'Understand where function calling fits when your agent needs predictable inputs and inspectable outputs.',
-    stage: 'Integration',
-    art: '/solutions/function-calling/contract.jpg',
-    artAlt: 'Typed function-calling contract for speech assessment',
-  },
-  {
-    href: '/faq',
-    eyebrow: 'Resolve a blocker',
-    title: 'Get quick answers before you start building',
-    body: 'Check language coverage, client compatibility, streaming, accuracy, and commercial questions.',
-    stage: 'FAQ',
-    art: '/blog-guides/faq.jpg',
-    artAlt: 'FAQ accordion with language coverage answers',
-  },
-] as const;
-
 export default function BlogPage() {
-  const featured = RESOURCES.filter((r) => 'featured' in r && r.featured);
-  const rest = RESOURCES.filter((r) => !('featured' in r && r.featured));
+  const [featured, ...articles] = BLOG_POSTS;
 
   return (
     <div translate="no" lang="en" className="min-h-screen bg-background text-foreground">
       <AmbientBackdrop />
       <TopNav />
+      <BackToOverview current="Blog" />
       <main className="marketing-page">
         <section className="border-b border-[#e9e2d2]/70">
-          <div className="container mx-auto max-w-6xl px-6 pb-14 pt-16 md:pb-16 md:pt-20">
-            <div className="max-w-3xl">
-              <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-emerald-700">
-                /guides-and-insights
+          <div className="container mx-auto max-w-6xl px-6 pb-12 pt-8 md:pb-14 md:pt-10">
+            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+              <div className="max-w-3xl">
+                <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-emerald-700">
+                  /blog
+                </div>
+                <h1 className="mt-4 text-crisp text-[42px] font-black leading-[1.02] tracking-[-0.045em] text-zinc-900 sm:text-[58px]">
+                  Ideas for products that listen better.
+                </h1>
+                <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground md:hidden">
+                  Practical notes on speech assessment, voice agents, learning design, and the work
+                  behind reliable production integrations.
+                </p>
               </div>
-              <h1 className="mt-4 text-crisp text-[40px] font-black leading-[1.05] tracking-[-0.04em] text-zinc-900 sm:text-[52px]">
-                Find the next answer for your speech product.
-              </h1>
-              <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-muted-foreground">
-                Payload design, AI tutor feedback, integration choices, and production ops — start
-                with the question closest to your work.
+              <p className="hidden max-w-sm text-[14px] leading-relaxed text-muted-foreground md:block md:pb-1">
+                Practical notes on speech assessment, voice agents, learning design, and the work
+                behind reliable production integrations—from structured speech evidence to tutor
+                loops and launch checklists.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="py-14 md:py-16" aria-labelledby="resource-library-heading">
+        <section className="py-12 md:py-16" aria-labelledby="featured-article-heading">
           <div className="container mx-auto max-w-6xl px-6">
-            <div className="mb-7 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-              <div>
-                <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-emerald-700">
-                  /choose-by-question
+            <Link
+              href={`/blog/${featured.slug}`}
+              className="group grid overflow-hidden rounded-[1.75rem] border border-zinc-900/[0.08] bg-white/75 shadow-[0_24px_60px_-42px_rgba(16,52,33,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/25 md:grid-cols-[1.15fr_0.85fr]"
+            >
+              <div className="relative min-h-[290px] overflow-hidden bg-[#edf5ef] md:min-h-[430px]">
+                <Image
+                  src={featured.image}
+                  alt={featured.imageAlt}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 58vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
+                />
+                <span className="absolute left-5 top-5 rounded-full border border-white/70 bg-white/85 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.16em] text-emerald-800 shadow-sm backdrop-blur-md">
+                  Featured
+                </span>
+              </div>
+              <div className="flex flex-col justify-center p-7 md:p-10">
+                <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-700">
+                  /{featured.category}
                 </div>
                 <h2
-                  id="resource-library-heading"
-                  className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-zinc-900"
+                  id="featured-article-heading"
+                  className="mt-4 text-[28px] font-semibold leading-[1.12] tracking-[-0.035em] text-zinc-900 md:text-[36px]"
                 >
-                  Six practical starting points.
+                  {featured.title}
                 </h2>
-              </div>
-              <p className="max-w-sm text-[13px] leading-relaxed text-muted-foreground">
-                Each guide opens an existing deep dive — orientation to implementation, no dead ends.
-              </p>
-            </div>
-
-            {/* Featured pair — larger visual */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {featured.map((item, index) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-900/[0.08] bg-white/75 transition-all duration-300 hover:-translate-y-[2px] hover:border-emerald-500/20 hover:shadow-[0_18px_40px_-28px_rgba(16,52,33,0.4)]"
-                >
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#eef5ef]">
-                    <Image
-                      src={item.art}
-                      alt={item.artAlt}
-                      fill
-                      className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      priority={index === 0}
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col p-5 md:p-6">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-emerald-700">
-                        /{item.eyebrow}
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-400">0{index + 1}</span>
-                    </div>
-                    <h3 className="mt-2 text-[19px] font-semibold leading-snug tracking-[-0.02em] text-zinc-900">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                      {item.body}
-                    </p>
-                    <div className="mt-4 flex items-center justify-between border-t border-zinc-900/[0.06] pt-3">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-zinc-500">
-                        {item.stage}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-800 group-hover:text-emerald-900">
-                        Open guide
-                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Remaining four */}
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {rest.map((item, index) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-900/[0.08] bg-white/75 transition-all duration-300 hover:-translate-y-[2px] hover:border-emerald-500/20 hover:shadow-[0_16px_36px_-28px_rgba(16,52,33,0.35)]"
-                >
-                  <div className="relative aspect-[5/3.2] w-full overflow-hidden bg-[#f5f1e8]">
-                    <Image
-                      src={item.art}
-                      alt={item.artAlt}
-                      fill
-                      className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.14em] text-emerald-700">
-                        /{item.eyebrow}
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-400">0{index + 3}</span>
-                    </div>
-                    <h3 className="mt-1.5 text-[15px] font-semibold leading-snug tracking-[-0.015em] text-zinc-900">
-                      {item.title}
-                    </h3>
-                    <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
-                      {item.body}
-                    </p>
-                    <div className="mt-3 flex items-center justify-between border-t border-zinc-900/[0.06] pt-2.5">
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.12em] text-zinc-500">
-                        {item.stage}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-emerald-800">
-                        Open
-                        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <div className="warm-card mt-10 flex flex-col items-start justify-between gap-5 p-6 md:flex-row md:items-center md:p-8">
-              <div>
-                <BookOpen className="h-5 w-5 text-emerald-700" aria-hidden />
-                <h2 className="mt-3 text-[22px] font-semibold tracking-[-0.025em] text-zinc-900">
-                  Ready for implementation details?
-                </h2>
-                <p className="mt-1.5 max-w-xl text-[13.5px] leading-relaxed text-muted-foreground">
-                  Quickstarts, response fields, endpoints, limits, and integration recipes.
+                <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
+                  {featured.excerpt}
                 </p>
+                <div className="mt-7 flex items-center justify-between border-t border-zinc-900/[0.07] pt-4">
+                  <span className="text-[11px] text-zinc-500">{featured.date}</span>
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-emerald-800">
+                    Read article
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </div>
               </div>
-              <Link
-                href="/docs"
-                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
-              >
-                Open docs <ArrowRight className="h-4 w-4" />
-              </Link>
+            </Link>
+
+            <div className="mb-7 mt-14 flex items-end justify-between">
+              <div>
+                <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-emerald-700">
+                  /latest
+                </div>
+                <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-zinc-900">
+                  Latest articles
+                </h2>
+              </div>
+              <span className="hidden text-[11px] font-mono uppercase tracking-[0.14em] text-zinc-400 sm:block">
+                {BLOG_POSTS.length} stories
+              </span>
             </div>
+
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {articles.map((article) => (
+                <Link
+                  key={article.slug}
+                  href={`/blog/${article.slug}`}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-900/[0.08] bg-white/75 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/20 hover:shadow-[0_18px_40px_-30px_rgba(16,52,33,0.4)]"
+                >
+                  <div className="relative aspect-[16/10] overflow-hidden bg-[#f1f4ee]">
+                    <Image
+                      src={article.image}
+                      alt={article.imageAlt}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="text-[9.5px] font-mono uppercase tracking-[0.15em] text-emerald-700">
+                      /{article.category}
+                    </div>
+                    <h3 className="mt-3 text-[19px] font-semibold leading-snug tracking-[-0.025em] text-zinc-900">
+                      {article.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-muted-foreground">
+                      {article.excerpt}
+                    </p>
+                    <div className="mt-auto flex items-center justify-between border-t border-zinc-900/[0.06] pt-4 text-[11px] text-zinc-500">
+                      <span>{article.date}</span>
+                      <ArrowRight className="h-3.5 w-3.5 text-emerald-800 transition-transform group-hover:translate-x-0.5" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
           </div>
         </section>
       </main>

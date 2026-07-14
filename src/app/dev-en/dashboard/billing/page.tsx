@@ -35,7 +35,12 @@ import {
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
+import { EvaluationKernelInfo } from '../../_components/evaluation-kernel-info';
 import { useLang } from '../../_lib/use-lang';
+import {
+  PARAGRAPH_POINTS_PER_USE,
+  WORD_SENTENCE_POINTS_PER_USE,
+} from '../../_lib/topup';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_WALLET: AccountWallet = {
@@ -208,8 +213,20 @@ export default function BillingPage() {
               <div className="grid grid-cols-[minmax(220px,1.5fr)_120px_175px_155px_145px] gap-5 border-b border-border bg-muted/20 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <div>{tx('Key')}</div>
                 <div className="text-right">{t('Total calls', '总调用')}</div>
-                <div className="text-right">{t('Word / phrase / sentence', '字词句')}</div>
-                <div className="text-right">{t('Paragraph', '段落')}</div>
+                <div className="flex items-center justify-end gap-1.5 text-right">
+                  {t('Word / phrase / sentence', '字词句')}
+                  <EvaluationKernelInfo
+                    wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+                    paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-1.5 text-right">
+                  {t('Paragraph', '段落')}
+                  <EvaluationKernelInfo
+                    wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
+                    paragraphPoints={PARAGRAPH_POINTS_PER_USE}
+                  />
+                </div>
                 <div className="text-right">{t('Points consumed', '消耗积分')}</div>
               </div>
               <ul className="divide-y divide-border">

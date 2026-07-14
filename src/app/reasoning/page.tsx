@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Reasoning over Speech Assessment Results | Chivox AI',
-  description: 'See how structured pronunciation, fluency and audio-quality evidence can ground an AI tutor or voice agent response.',
+  title: 'AI Feedback Engine for Speech Assessment | Chivox AI',
+  description: 'Turn structured pronunciation, fluency, tone, and audio-quality evidence into grounded AI feedback and targeted practice.',
   alternates: { canonical: '/reasoning' },
 };
 

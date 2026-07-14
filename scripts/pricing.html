@@ -4,187 +4,293 @@
 <meta charset="utf-8" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,600;9..40,700;9..40,800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --ink: #0f172a;
-    --muted: #64748b;
-    --line: #e2e8f0;
-    --emerald: #059669;
-    --emerald-soft: #ecfdf5;
-    --emerald-border: #a7f3d0;
-    --violet: #7c3aed;
+    --ink: #18181b;
+    --muted: #71717a;
+    --line: rgba(24, 24, 27, 0.1);
+    --emerald: #047857;
+    --sky: #0369a1;
+    --amber: #b45309;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: #ffffff; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
-  #wrap { width: 720px; padding: 8px; }
+  html, body {
+    margin: 0; padding: 0; background: #ffffff;
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--ink);
+  }
+  #wrap {
+    width: 900px;
+    padding: 16px 14px 14px;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(16, 185, 129, 0.12), transparent 70%),
+      radial-gradient(ellipse 35% 40% at 6% 92%, rgba(14, 165, 233, 0.08), transparent 60%),
+      #fff;
+  }
+  .head { text-align: center; margin-bottom: 12px; }
+  .brand {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--emerald);
+  }
+  .title {
+    margin: 6px 0 0;
+    font-size: 22px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15;
+  }
+  .sub {
+    margin: 6px auto 0;
+    max-width: 560px;
+    font-size: 11px; color: var(--muted); line-height: 1.45;
+  }
+
+  /* Points / billing rules — first-class strip */
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(236, 253, 245, 0.75), rgba(255,255,255,0.95));
+  }
+  .rule {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 4px 6px;
+  }
+  .rule-icon {
+    flex: 0 0 28px; height: 28px;
+    border-radius: 9px;
+    background: rgba(4, 120, 87, 0.1);
+    color: var(--emerald);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+  }
+  .rule h3 {
+    margin: 0; font-size: 12px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
+  }
+  .rule p {
+    margin: 2px 0 0; font-size: 10px; color: var(--muted); line-height: 1.35;
+  }
+
   .grid {
     display: grid;
-    grid-template-columns: 0.95fr 1.2fr 0.95fr;
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
+    align-items: stretch;
   }
   .card {
     border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 10px 10px 9px;
-    background: #fff;
+    border-radius: 14px;
+    padding: 12px 11px 11px;
+    background: rgba(255,255,255,0.88);
     display: flex; flex-direction: column;
     position: relative;
   }
+  .card.free {
+    border-color: rgba(14, 165, 233, 0.28);
+    background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 42%);
+  }
+  .card.standard {
+    background: linear-gradient(180deg, #fafafa 0%, #ffffff 40%);
+  }
   .card.popular {
-    border: 2px solid var(--emerald);
-    background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 38%);
-    box-shadow: 0 10px 28px -18px rgba(5,150,105,0.35);
+    border: 1.5px solid rgba(4, 120, 87, 0.45);
+    background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 40%);
+    box-shadow: 0 12px 28px -18px rgba(4, 120, 87, 0.45);
+  }
+  .card.flagship {
+    border-color: rgba(180, 83, 9, 0.22);
+    background: linear-gradient(180deg, #fffbeb 0%, #ffffff 42%);
   }
   .ribbon {
-    position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
     background: var(--emerald); color: #fff;
-    font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 4px 12px; border-radius: 999px;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 999px;
+    white-space: nowrap;
   }
+  .accent {
+    position: absolute; inset: 0 auto auto 0; right: 0; height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .a-free { background: linear-gradient(90deg, #38bdf8, transparent); }
+  .a-std  { background: linear-gradient(90deg, #a1a1aa, transparent); }
+  .a-adv  { background: linear-gradient(90deg, #34d399, transparent); }
+  .a-flag { background: linear-gradient(90deg, #f59e0b, transparent); }
+
   .eyebrow {
-    font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
-    text-align: center; margin-bottom: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: -0.01em;
+    margin: 2px 0 6px;
   }
-  .e-free  { color: #64748b; }
-  .e-payg  { color: var(--emerald); }
-  .e-ent   { color: var(--violet); }
+  .e-free { color: var(--sky); }
+  .e-std  { color: var(--ink); }
+  .e-adv  { color: var(--emerald); }
+  .e-flag { color: var(--amber); }
+
   .price {
-    text-align: center; min-height: 36px;
-    display: flex; align-items: baseline; justify-content: center;
-    gap: 4px; flex-wrap: wrap;
+    display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap;
+    min-height: 30px;
   }
-  .price .num { font-size: 26px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
-  .price .unit { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .price .from { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .price .num { font-size: 24px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .bonus {
+    margin-left: 2px;
+    font-size: 8.5px; font-weight: 700; color: var(--emerald);
+    border: 1px solid rgba(4, 120, 87, 0.28);
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 999px; padding: 2px 6px;
+  }
   .tag {
-    text-align: center; margin: 2px 0 8px;
-    font-size: 9.5px; color: var(--muted); line-height: 1.4;
+    margin: 5px 0 8px;
+    font-size: 10px; color: var(--muted); line-height: 1.35;
+    min-height: 27px;
   }
-  ul.feat { list-style: none; padding: 0; margin: 0 0 12px; border-top: 1px dashed var(--line); }
+  ul.feat { list-style: none; padding: 0; margin: 0 0 10px; border-top: 1px dashed var(--line); }
   ul.feat li {
     padding: 5px 0; border-bottom: 1px dashed var(--line);
-    display: flex; align-items: flex-start; gap: 6px;
-    font-size: 9.5px; line-height: 1.4;
+    display: flex; align-items: flex-start; gap: 5px;
+    font-size: 10px; line-height: 1.35;
   }
   ul.feat li b { color: var(--ink); font-weight: 700; }
-  .check { color: var(--emerald); font-weight: 800; flex: 0 0 14px; }
+  .mono {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 600; font-size: 9.5px;
+  }
+  .check { color: var(--emerald); font-weight: 800; flex: 0 0 12px; }
   .btn {
     margin-top: auto;
     display: inline-flex; align-items: center; justify-content: center;
-    height: 28px; border-radius: 7px;
-    font-size: 10px; font-weight: 700;
+    height: 28px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700;
     border: 1px solid transparent;
   }
-  .btn-free { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
-  .btn-payg { background: var(--emerald); color: #fff; }
-  .btn-ent  { background: #fff; color: var(--violet); border-color: #c4b5fd; }
-
-  .tier-table {
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    overflow: hidden;
-    margin-top: 4px;
-    font-size: 12px;
-  }
-  .tier-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px;
-    padding: 5px 8px;
-    border-top: 1px solid var(--line);
-    align-items: center;
-  }
-  .tier-row:first-child { border-top: none; }
-  .tier-row.highlight { background: var(--emerald-soft); }
-  .tier-table { font-size: 8.5px; }
-  .tier-row .vol { color: var(--muted); font-weight: 600; }
-  .tier-row .rate {
-    font-family: "JetBrains Mono", ui-monospace, monospace;
-    font-weight: 600; color: var(--ink); white-space: nowrap;
-  }
-  .tier-row .rate .disc { color: var(--emerald); font-weight: 800; margin-right: 4px; }
+  .btn-free { background: #18181b; color: #fff; }
+  .btn-std  { background: #fff; color: var(--ink); border-color: rgba(24,24,27,0.12); }
+  .btn-adv  { background: var(--emerald); color: #fff; }
+  .btn-flag { background: #fff; color: var(--ink); border-color: rgba(24,24,27,0.12); }
 
   .footnote {
-    margin-top: 8px; padding: 7px 9px;
-    background: #f8fafc; border-left: 3px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 9.5px; color: var(--muted); line-height: 1.45;
+    margin-top: 10px; padding: 9px 11px;
+    background: rgba(248, 250, 252, 0.95);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 10px; color: var(--muted); line-height: 1.45;
   }
   .footnote b { color: var(--ink); }
 </style>
 </head>
 <body>
 <div id="wrap">
+  <div class="head">
+    <div class="brand">Chivox MCP · Pricing</div>
+    <div class="title">Pricing that follows real speech usage</div>
+    <div class="sub">600 free evaluation points to start. Then top up with published packs — bigger packs lower the unit price.</div>
+  </div>
+
+  <div class="rules">
+    <div class="rule">
+      <div class="rule-icon">1</div>
+      <div>
+        <h3>1 point / word · phrase · sentence</h3>
+        <p>Deducted only when the evaluation succeeds.</p>
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-icon">2</div>
+      <div>
+        <h3>2 points / paragraph</h3>
+        <p>Longer reading and speaking tasks cost two.</p>
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-icon">0</div>
+      <div>
+        <h3>0 points / failed call</h3>
+        <p>Errors and rejected audio never touch your balance.</p>
+      </div>
+    </div>
+  </div>
+
   <div class="grid">
 
-    <div class="card">
-      <div class="eyebrow e-free">Free trial</div>
+    <div class="card free">
+      <div class="accent a-free"></div>
+      <div class="eyebrow e-free">Free</div>
       <div class="price">
         <span class="num">$0</span>
-        <span class="unit">no card</span>
+        <span class="from">to start</span>
       </div>
-      <div class="tag">Build, demo, ship your first agent</div>
+      <div class="tag">Every new account. No card required.</div>
       <ul class="feat">
-        <li><span class="check">✓</span><div><b>600 free calls</b> · valid 30 days</div></li>
-        <li><span class="check">✓</span><div><b>All 16 tools</b> — English &amp; Mandarin</div></li>
-        <li><span class="check">✓</span><div>Same engine, same JSON, same SLA</div></li>
-        <li><span class="check">✓</span><div>GitHub Issues · &lt; 24h reply</div></li>
+        <li><span class="check">✓</span><div><b>600 evaluation points</b></div></li>
+        <li><span class="check">✓</span><div>Valid <b>30 days</b></div></li>
+        <li><span class="check">✓</span><div>Full engine · full payload</div></li>
+        <li><span class="check">✓</span><div>All 16 MCP tools</div></li>
       </ul>
-      <span class="btn btn-free">Get free key →</span>
+      <span class="btn btn-free">Start free →</span>
+    </div>
+
+    <div class="card standard">
+      <div class="accent a-std"></div>
+      <div class="eyebrow e-std">Standard</div>
+      <div class="price">
+        <span class="from">from</span>
+        <span class="num">$19.90</span>
+      </div>
+      <div class="tag">For prototypes and first integrations.</div>
+      <ul class="feat">
+        <li><span class="check">✓</span><div><span class="mono">$0.0038</span> / word · phrase · sentence</div></li>
+        <li><span class="check">✓</span><div><span class="mono">$0.0075</span> / paragraph</div></li>
+        <li><span class="check">✓</span><div>250 pts / $ · no bonus</div></li>
+        <li><span class="check">✓</span><div>Same engine as every pack</div></li>
+      </ul>
+      <span class="btn btn-std">Get started →</span>
     </div>
 
     <div class="card popular">
-      <span class="ribbon">Most popular</span>
-      <div class="eyebrow e-payg">Pay as you go</div>
+      <span class="ribbon">Recommended</span>
+      <div class="accent a-adv"></div>
+      <div class="eyebrow e-adv">Advanced</div>
       <div class="price">
-        <span class="num" style="font-size:22px;">Tiered</span>
-        <span class="unit">per call</span>
+        <span class="from">from</span>
+        <span class="num">$99.90</span>
+        <span class="bonus">+10% bonus</span>
       </div>
-      <div class="tag">Top up only what you use · failed calls aren&rsquo;t billed</div>
+      <div class="tag">For products moving into steady usage.</div>
       <ul class="feat">
-        <li><span class="check">✓</span><div><b>All 16 tools</b> · 99.5% SLA · 7×24 email</div></li>
-        <li><span class="check">✓</span><div>Volume tiers — <b>more calls = lower unit price</b></div></li>
+        <li><span class="check">✓</span><div><span class="mono">$0.0035</span> / word · phrase · sentence</div></li>
+        <li><span class="check">✓</span><div><span class="mono">$0.0068</span> / paragraph</div></li>
+        <li><span class="check">✓</span><div><b>275 pts / $</b> · +10% bonus</div></li>
+        <li><span class="check">✓</span><div>Failed calls never billed</div></li>
       </ul>
-      <div class="tier-table">
-        <div class="tier-row highlight">
-          <span class="vol">Free trial</span>
-          <span class="rate">$0 · 600 calls / 30 days</span>
-        </div>
-        <div class="tier-row">
-          <span class="vol">&lt; 1,000 calls / mo</span>
-          <span class="rate">$0.007 / call</span>
-        </div>
-        <div class="tier-row">
-          <span class="vol">1,000 – 10,000 / mo</span>
-          <span class="rate"><span class="disc">−14%</span> $0.006 / call</span>
-        </div>
-        <div class="tier-row">
-          <span class="vol">&gt; 10,000 / mo</span>
-          <span class="rate"><span class="disc">−29%</span> $0.005 / call</span>
-        </div>
-      </div>
-      <span class="btn btn-payg" style="margin-top:12px;">Top up from $10 →</span>
+      <span class="btn btn-adv">Get started →</span>
     </div>
 
-    <div class="card">
-      <div class="eyebrow e-ent">Enterprise</div>
+    <div class="card flagship">
+      <div class="accent a-flag"></div>
+      <div class="eyebrow e-flag">Flagship</div>
       <div class="price">
-        <span class="num" style="font-size:22px;">Custom</span>
+        <span class="from">from</span>
+        <span class="num">$199.90</span>
+        <span class="bonus">+20% bonus</span>
       </div>
-      <div class="tag">10M+ calls/mo · on-prem · data residency</div>
+      <div class="tag">For high-volume production workloads.</div>
       <ul class="feat">
-        <li><span class="check">✓</span><div><b>Unlimited</b> calls · concurrency 50+</div></li>
-        <li><span class="check">✓</span><div><b>99.9%+ SLA</b> · dedicated 7×24 support</div></li>
-        <li><span class="check">✓</span><div>On-prem Docker · VPC · region lock</div></li>
-        <li><span class="check">✓</span><div>Volume contracts · invoicing · custom tools</div></li>
+        <li><span class="check">✓</span><div><span class="mono">$0.0032</span> / word · phrase · sentence</div></li>
+        <li><span class="check">✓</span><div><span class="mono">$0.0060</span> / paragraph</div></li>
+        <li><span class="check">✓</span><div><b>300 pts / $</b> · +20% bonus</div></li>
+        <li><span class="check">✓</span><div>Failed calls never billed</div></li>
       </ul>
-      <span class="btn btn-ent">Talk to sales →</span>
+      <span class="btn btn-flag">Get started →</span>
     </div>
 
   </div>
 
   <div class="footnote">
-    <b>Honest defaults:</b> Every account starts with <b>600 free calls</b> (30 days). After that, pay per <b>successful</b> call at tiered rates — the more you ship, the cheaper each call gets. Minimum top-up <b>$10</b>. Failed calls are never billed.
+    <b>Validity:</b> Points stay valid for <b>30 days</b> from the date they land; earliest-expiring batch is spent first.
+    <b>Billing:</b> only successful evaluations deduct points.
+    Need volume, procurement, or private deployment? <b>Enterprise terms available</b> — talk to sales.
   </div>
 </div>
 </body>
