@@ -55,6 +55,7 @@ import {
 import { rankActiveKeysThisMonth } from '../../_lib/overview-key-ranking.mjs';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
+import { ModalPortal } from '../../_components/modal-portal';
 import { StatCard } from '../../_components/stat-card';
 import { useLang } from '../../_lib/use-lang';
 import {
@@ -748,28 +749,30 @@ function OverviewModal({
 }) {
   const { tx } = useLang();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label={tx('Close')}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/25"
-      />
-      <div className="relative w-full max-w-[440px] rounded-xl border border-border bg-background shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-            aria-label={tx('Close')}
-          >
-            <X className="h-4 w-4" />
-          </button>
+    <ModalPortal>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <button
+          type="button"
+          aria-label={tx('Close')}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/40 dark:bg-black/70"
+        />
+        <div className="relative w-full max-w-[440px] rounded-xl border border-border bg-background shadow-2xl">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              aria-label={tx('Close')}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="px-5 py-5">{children}</div>
         </div>
-        <div className="px-5 py-5">{children}</div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

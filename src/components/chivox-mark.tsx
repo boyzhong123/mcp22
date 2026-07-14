@@ -21,10 +21,10 @@ export function ChivoxMark({ size = 32, className }: { size?: number; className?
           <stop offset="100%" stopColor="#F01681" />
         </linearGradient>
 
-        {/* Left circle: carve a crescent / open C */}
+        {/* Left circle: match brand-mark-transparent.png (dev-login standard) */}
         <mask id="cm-mask-l">
           <rect width="100" height="64" fill="white" />
-          <circle cx="46" cy="32" r="16" fill="black" />
+          <circle cx="35" cy="32" r="21.5" fill="black" />
         </mask>
 
         {/* Right circle: horizontal slot + half-disk → open smile */}

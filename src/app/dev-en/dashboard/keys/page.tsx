@@ -43,6 +43,7 @@ import {
 import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { KeySettingsModal } from '../../_components/key-settings-modal';
+import { ModalPortal } from '../../_components/modal-portal';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
@@ -979,26 +980,28 @@ function Modal({
 }) {
   const { tx } = useLang();
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      translate="no"
-      lang="en"
-    >
-      <div className="absolute inset-0 bg-black/25" onClick={onClose} />
-      <div className="relative w-full max-w-[440px] rounded-xl bg-background border border-border shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <button
-            onClick={onClose}
-            className="h-8 w-8 rounded-md hover:bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground"
-            aria-label={tx('Close')}
-          >
-            <X className="h-4 w-4" />
-          </button>
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+        translate="no"
+        lang="en"
+      >
+        <div className="absolute inset-0 bg-black/40 dark:bg-black/70" onClick={onClose} />
+        <div className="relative w-full max-w-[440px] rounded-xl bg-background border border-border shadow-2xl">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <button
+              onClick={onClose}
+              className="h-8 w-8 rounded-md hover:bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground"
+              aria-label={tx('Close')}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="px-5 py-5">{children}</div>
         </div>
-        <div className="px-5 py-5">{children}</div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

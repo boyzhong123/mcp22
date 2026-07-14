@@ -21,17 +21,13 @@ import {
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
+import { useBillingPricing } from '../../../_lib/use-billing-pricing';
+import { previewQuotedPoints } from '../../../_lib/billing-pricing';
 import {
-  BASE_POINTS_PER_USD,
-  PARAGRAPH_POINTS_PER_USE,
   TOPUP_BONUS_TIERS,
-  TRIAL_CALLS,
-  TRIAL_VALID_DAYS,
-  WORD_SENTENCE_POINTS_PER_USE,
   formatBonusPercent,
   formatEvaluationUnitDollars,
   getEvaluationUnitPrices,
-  getTopupPointMath,
 } from '../../../_lib/topup';
 
 const ALL_PLANS_INCLUDE = [
@@ -52,19 +48,22 @@ const PACKAGE_LABELS: Record<
 /**
  * Pricing reference page for the evaluation-point billing model.
  *
- * Every account draws from one shared point pool. Dollars only exist at
- * checkout: a top-up converts to base points ($1 = 250) plus the package
- * bonus (see `_lib/topup.ts`, authoritative source: GET /billing/pricing).
+ * Prefers GET /billing/pricing when available; local topup.ts is Demo fallback.
  */
 export default function PricingPage() {
   const { t, tx } = useLang();
+  const { catalog } = useBillingPricing();
   const calls = useMockStore(getAccountCallsThisMonth, 0);
   const spendMills = useMockStore(getAccountSpendThisMonthMills, 0);
   const points = useMockStore(getAccountEvaluationPoints, 0);
 
-  // Example row: $150 on the Advanced package (matches the billing doc).
-  const example = getTopupPointMath(15_000, TOPUP_BONUS_TIERS[1]);
-  const spentPointsThisMonth = Math.round((spendMills / 1000) * BASE_POINTS_PER_USD);
+  const packages = catalog.packages.length ? catalog.packages : TOPUP_BONUS_TIERS;
+  const advanced = packages.find((p) => p.id === 'advanced') ?? packages[1] ?? packages[0];
+  const exampleAmount = advanced?.presetCents[1] ?? advanced?.minCents ?? 15_000;
+  const example = previewQuotedPoints(catalog, exampleAmount, advanced.id);
+  const spentPointsThisMonth = Math.round(
+    (spendMills / 1000) * catalog.rules.basePointsPerUsd,
+  );
 
   return (
     <div className="space-y-6">
@@ -72,6 +71,15 @@ export default function PricingPage() {
         <div className="max-w-2xl">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5" /> {t('Evaluation points', '评测积分')}
+            {catalog.fromServer ? (
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 normal-case tracking-normal">
+                {t('Live from API', '已接定价接口')}
+              </span>
+            ) : (
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 normal-case tracking-normal">
+                {t('Local fallback', '本地兜底规则')}
+              </span>
+            )}
           </div>
           <h2 className="mt-2 text-xl font-semibold tracking-tight">
             {t(
@@ -79,157 +87,93 @@ export default function PricingPage() {
               '充值评测积分，按评测对象扣分',
             )}
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t('Every account starts with ', '每个账户开通后即获 ')}
-            <strong className="text-foreground">
-              {t(
-                `${TRIAL_CALLS} free points`,
-                `${TRIAL_CALLS} 免费评测积分`,
-              )}
-            </strong>
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
             {t(
-              ` (valid for ${TRIAL_VALID_DAYS} days), shared across every API key. Paid top-ups also go into this shared point pool. `,
-              `（${TRIAL_VALID_DAYS} 天内有效），所有 API Key 共享。后续购买的积分也进入同一个共享积分池。`,
-            )}
-            <strong className="text-foreground">
-              {t(
-                'There is no separate balance for each key.',
-                '无需为每个 Key 单独充值或维护额度。',
-              )}
-            </strong>
-            {t(
-              ' Points are deducted only after a successful evaluation; failed or errored calls do not deduct points.',
-              '仅评测成功后扣分，失败或报错的调用不扣分。',
+              `Base ${catalog.rules.basePointsPerUsd} pts per $1 · word/phrase/sentence ${catalog.rules.wordSentencePointsPerUse} pt · paragraph ${catalog.rules.paragraphPointsPerUse} pts · valid ${catalog.rules.validDays} days. Credited points for a payment come from the server quote.`,
+              `每 $1 基础 ${catalog.rules.basePointsPerUsd} 积分 · 字/词/句 ${catalog.rules.wordSentencePointsPerUse} 分 · 段落 ${catalog.rules.paragraphPointsPerUse} 分 · 有效期 ${catalog.rules.validDays} 天。正式到账积分以服务端报价为准。`,
             )}
           </p>
         </div>
+      </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[0.9fr_1.1fr_1.1fr]">
-          <Mini
-            label={t('Available points', '可用评测积分')}
-            value={points.toLocaleString('en-US')}
-            hint={t('Shared across every API key', '账户内所有 API Key 共享')}
-            tone="emerald"
-            icon={Wallet}
-          />
-          <EvaluationCostCard
-            icon={Type}
-            label={t('Character, word, phrase & sentence', '字、词、句评测')}
-            points={WORD_SENTENCE_POINTS_PER_USE}
-            hint={t('Each successful evaluation', '每次成功评测')}
-            unitLabel={t('points / use', '积分 / 次')}
-            tone="sky"
-          />
-          <EvaluationCostCard
-            icon={AlignLeft}
-            label={t('Paragraph evaluation', '段落评测')}
-            points={PARAGRAPH_POINTS_PER_USE}
-            hint={t('2× character / word / sentence usage', '消耗为字、词、句评测的 2 倍')}
-            unitLabel={t('points / use', '积分 / 次')}
-            tone="amber"
-          />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t('Points remaining', '剩余积分')}
+          </div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums">
+            {points.toLocaleString('en-US')}
+          </div>
         </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-            {t('Successful evaluations only', '仅成功评测扣分')}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <KeyRound className="h-3.5 w-3.5 text-indigo-500" />
-            {t('One shared point pool for all keys', '所有 Key 共用一个积分池')}
-          </span>
-          <span className="tabular-nums">
-            {t(
-              `${spentPointsThisMonth.toLocaleString('en-US')} points across ${calls.toLocaleString('en-US')} successful evaluations this month`,
-              `本月 ${calls.toLocaleString('en-US')} 次成功评测，共消耗 ${spentPointsThisMonth.toLocaleString('en-US')} 积分`,
-            )}
-          </span>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t('Used this month', '本月已用')}
+          </div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums">
+            {spentPointsThisMonth.toLocaleString('en-US')}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {calls.toLocaleString('en-US')} {t('calls', '次调用')}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t('Example credit', '到账示例')}
+          </div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+            {example.totalPoints.toLocaleString('en-US')}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {formatCents(exampleAmount)} · {PACKAGE_LABELS[advanced.id].en}
+            {example.estimate ? ` · ${t('estimate', '预估')}` : ''}
+          </div>
         </div>
       </div>
 
-      {/* Packages & published unit prices — the contractual display values,
-          not point-derived estimates. Server (GET /billing/pricing) is
-          authoritative once connected. */}
-      <div className="rounded-2xl border border-border bg-background overflow-hidden">
-        <div className="px-5 py-4 border-b border-border/60">
-          <div className="text-sm font-semibold flex items-center gap-2">
-            <Gift className="h-4 w-4 text-emerald-500" />
-            {t('Packages & published unit prices', '套餐与公布单价')}
-          </div>
+      <div className="rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3 border-b border-border bg-muted/30">
+          <h3 className="text-sm font-semibold">{t('Top-up packages', '充值套餐')}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {t(
-              'Higher packages include more bonus points, so each evaluation costs less.',
-              '档位越高赠送越多，折算到每次评测越便宜。',
+              'Minimums, bonus %, and presets come from GET /billing/pricing.',
+              '最低金额、赠送比例与预设档位来自 GET /billing/pricing。',
             )}
           </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="text-left px-5 py-2.5">{t('Package', '套餐')}</th>
-                <th className="text-left px-5 py-2.5">{t('Minimum top-up', '最低充值')}</th>
-                <th className="text-left px-5 py-2.5">{t('Bonus points', '赠送')}</th>
-                <th className="text-right px-5 py-2.5">
-                  {t('Character / word / sentence', '字、词、句单价')}
-                </th>
-                <th className="text-right px-5 py-2.5">{t('Paragraph', '段落单价')}</th>
+            <thead>
+              <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <th className="px-5 py-3 font-semibold">{t('Package', '套餐')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Min top-up', '最低充值')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Bonus', '赠送')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Presets', '预设金额')}</th>
+                <th className="px-5 py-3 font-semibold">{t('Ref. unit price', '参考单价')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              <tr className="bg-sky-500/[0.04]">
-                <td className="px-5 py-3 font-medium">{t('Free trial', '免费试用')}</td>
-                <td className="px-5 py-3 text-muted-foreground">$0</td>
-                <td className="px-5 py-3 text-muted-foreground">
-                  {t(
-                    `${TRIAL_CALLS} pts · ${TRIAL_VALID_DAYS} days`,
-                    `送 ${TRIAL_CALLS} 分 · ${TRIAL_VALID_DAYS} 天`,
-                  )}
-                </td>
-                <td className="px-5 py-3 text-right text-muted-foreground" colSpan={2}>
-                  {t(
-                    `${WORD_SENTENCE_POINTS_PER_USE} pt / word or sentence · ${PARAGRAPH_POINTS_PER_USE} pts / paragraph`,
-                    `字、词、句每次 ${WORD_SENTENCE_POINTS_PER_USE} 分 · 段落每次 ${PARAGRAPH_POINTS_PER_USE} 分`,
-                  )}
-                </td>
-              </tr>
-              {TOPUP_BONUS_TIERS.map((tier) => {
-                const unit = getEvaluationUnitPrices(tier.id);
-                const recommended = tier.id === 'advanced';
+            <tbody>
+              {packages.map((pkg) => {
+                const unit = getEvaluationUnitPrices(pkg.id);
+                const label = PACKAGE_LABELS[pkg.id];
                 return (
-                  <tr
-                    key={tier.id}
-                    className={cn(
-                      recommended &&
-                        'bg-emerald-500/[0.06] ring-1 ring-inset ring-emerald-500/20',
-                    )}
-                  >
-                    <td className="px-5 py-3 font-medium">
-                      {t(PACKAGE_LABELS[tier.id].en, PACKAGE_LABELS[tier.id].zh)}
-                      {recommended && (
-                        <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                          {t('Recommended', '推荐')}
+                  <tr key={pkg.id} className="border-b border-border/70 last:border-0">
+                    <td className="px-5 py-3 font-medium">{t(label.en, label.zh)}</td>
+                    <td className="px-5 py-3 tabular-nums">{formatCents(pkg.minCents)}</td>
+                    <td className="px-5 py-3 tabular-nums">
+                      {pkg.bonusPct > 0 ? (
+                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                          {formatBonusPercent(pkg.bonusPct)}
                         </span>
+                      ) : (
+                        t('Base', '基准')
                       )}
                     </td>
                     <td className="px-5 py-3 tabular-nums text-muted-foreground">
-                      {formatCents(tier.minCents)}
+                      {pkg.presetCents.map((c) => formatCents(c)).join(' · ')}
                     </td>
-                    <td className="px-5 py-3 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                      {formatBonusPercent(tier.bonusPct)}
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold tabular-nums">
-                      {formatEvaluationUnitDollars(unit.wordSentenceDollars)}
-                      <span className="text-[10px] font-normal text-muted-foreground">
-                        /{t('use', '次')}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold tabular-nums">
+                    <td className="px-5 py-3 text-muted-foreground">
+                      {formatEvaluationUnitDollars(unit.wordSentenceDollars)} /{' '}
                       {formatEvaluationUnitDollars(unit.paragraphDollars)}
-                      <span className="text-[10px] font-normal text-muted-foreground">
-                        /{t('use', '次')}
-                      </span>
                     </td>
                   </tr>
                 );
@@ -237,196 +181,75 @@ export default function PricingPage() {
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-3 border-t border-border/60 bg-muted/15 text-[11px] text-muted-foreground leading-relaxed">
-          {t(
-            'Published unit prices are contractual display values; points are the billing source of truth. Bonus percentages, packages, and validity come from the server pricing endpoint.',
-            '公布单价为合同展示价，实际计费以积分为准。赠送比例、档位与有效期以服务端定价接口为准。',
-          )}
-        </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-background overflow-hidden">
-        <div className="px-5 py-4 border-b border-border/60">
-          <div className="text-sm font-semibold flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-emerald-500" />
-            {t('Point rules', '积分规则')}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-border p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Type className="h-4 w-4" />
+            {t('Deduction rules', '扣分规则')}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <ul className="text-sm text-muted-foreground space-y-1.5">
+            <li className="flex gap-2">
+              <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+              {t(
+                `Word / phrase / sentence: ${catalog.rules.wordSentencePointsPerUse} pt each`,
+                `字 / 词 / 句：每次 ${catalog.rules.wordSentencePointsPerUse} 积分`,
+              )}
+            </li>
+            <li className="flex gap-2">
+              <AlignLeft className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+              {t(
+                `Paragraph: ${catalog.rules.paragraphPointsPerUse} pts each`,
+                `段落：每次 ${catalog.rules.paragraphPointsPerUse} 积分`,
+              )}
+            </li>
+            <li className="flex gap-2">
+              <Wallet className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+              {t(
+                `Valid ${catalog.rules.validDays} days · FIFO by earliest expiry`,
+                `有效期 ${catalog.rules.validDays} 天 · 最早到期优先扣减`,
+              )}
+            </li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-border p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Gift className="h-4 w-4" />
+            {t('Free trial', '免费试用')}
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
             {t(
-              'Every top-up credits one point batch into the shared account pool.',
-              '每笔充值生成一个积分批次，充进账号共享池。',
+              `${catalog.trialCalls.toLocaleString('en-US')} points for ${catalog.trialDays} days at signup, shared by every key.`,
+              `注册赠送 ${catalog.trialCalls.toLocaleString('en-US')} 积分，有效 ${catalog.trialDays} 天，全账号 Key 共享。`,
             )}
           </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="text-left px-5 py-2.5">{t('Item', '项目')}</th>
-                <th className="text-left px-5 py-2.5">{t('Rule', '规则')}</th>
-                <th className="text-right px-5 py-2.5">{t('Value', '数值')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              <tr>
-                <td className="px-5 py-3 font-medium">{t('Conversion', '换算')}</td>
-                <td className="px-5 py-3 text-muted-foreground">
-                  {t('Base points, before bonus', '基础积分，赠送另计')}
-                </td>
-                <td className="px-5 py-3 text-right font-semibold tabular-nums">
-                  $1 → {BASE_POINTS_PER_USD} {t('pts', '分')}
-                </td>
-              </tr>
-              <tr>
-                <td className="px-5 py-3 font-medium">{t('Deduction', '扣减')}</td>
-                <td className="px-5 py-3 text-muted-foreground">
-                  {t('Successful evaluations only', '仅评测成功时')}
-                </td>
-                <td className="px-5 py-3 text-right font-semibold tabular-nums">
-                  {t(
-                    `Character / word / sentence −${WORD_SENTENCE_POINTS_PER_USE} · paragraph −${PARAGRAPH_POINTS_PER_USE}`,
-                    `字、词、句 −${WORD_SENTENCE_POINTS_PER_USE} · 段落 −${PARAGRAPH_POINTS_PER_USE}`,
-                  )}
-                </td>
-              </tr>
-              <tr>
-                <td className="px-5 py-3 font-medium">{t('Validity', '有效期')}</td>
-                <td className="px-5 py-3 text-muted-foreground">
-                  {t(
-                    'Per top-up batch · earliest-expiring batch deducts first',
-                    '每笔充值独立计时 · 先扣最早到期批次',
-                  )}
-                </td>
-                <td className="px-5 py-3 text-right font-semibold tabular-nums">
-                  {TRIAL_VALID_DAYS} {t('days', '天')}
-                </td>
-              </tr>
-              <tr>
-                <td className="px-5 py-3 font-medium">{t('Example', '示例')}</td>
-                <td className="px-5 py-3 text-muted-foreground">
-                  {t('$150 on Advanced (+10%)', '高级版充 $150（+10%）')}
-                </td>
-                <td className="px-5 py-3 text-right font-semibold tabular-nums">
-                  {example.basePoints.toLocaleString('en-US')} + {example.bonusPoints.toLocaleString('en-US')} ={' '}
-                  {example.totalPoints.toLocaleString('en-US')} {t('pts', '分')}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="px-5 py-3 border-t border-border/60 bg-muted/20 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1.5">
-          <Wallet className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-          <span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+            <KeyRound className="h-3.5 w-3.5" />
+            {tx('One top-up unlocks every key on the account.')}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5" />
             {t(
-              'Every key on your account draws from the same point pool.',
-              '账户内所有 Key 共用同一积分池。',
+              'Quoted points on order creation are authoritative.',
+              '下单返回的 quoted_points 为正式到账依据。',
             )}
-          </span>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-background p-5">
-        <div className="text-sm font-semibold">{tx('All accounts include')}</div>
-        <ul className="mt-3 grid sm:grid-cols-2 gap-3">
-          {ALL_PLANS_INCLUDE.map((row) => (
-            <li key={row.text} className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-              <span>{tx(row.text)}</span>
+      <div className="rounded-xl border border-dashed border-border p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          {t('Also included', '套餐均含')}
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {ALL_PLANS_INCLUDE.map((item) => (
+            <li key={item.text} className="flex gap-2 text-xs text-muted-foreground">
+              <item.icon className={cn('h-3.5 w-3.5 shrink-0 mt-0.5')} />
+              {tx(item.text)}
             </li>
           ))}
         </ul>
-      </div>
-
-      <p className="text-[11px] text-muted-foreground text-center">
-        {tx(
-          'Pricing subject to change with 30 days notice. Commercial terms are available for annual commitments starting at $10K.',
-        )}
-      </p>
-    </div>
-  );
-}
-
-function Mini({
-  label,
-  value,
-  hint,
-  tone,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: 'default' | 'emerald';
-  icon?: typeof Wallet;
-}) {
-  return (
-    <div className="rounded-lg bg-background border border-border px-3 py-2">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {Icon && <Icon className="h-3.5 w-3.5" />}
-        <span>{label}</span>
-      </div>
-      <div
-        className={cn(
-          'mt-0.5 text-sm font-semibold tabular-nums',
-          tone === 'emerald' && 'text-emerald-600 dark:text-emerald-400',
-        )}
-      >
-        {value}
-      </div>
-      {hint && (
-        <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
-          {hint}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EvaluationCostCard({
-  icon: Icon,
-  label,
-  points,
-  hint,
-  unitLabel,
-  tone,
-}: {
-  icon: typeof Type;
-  label: string;
-  points: number;
-  hint: string;
-  unitLabel: string;
-  tone: 'sky' | 'amber';
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-xl border px-4 py-3',
-        tone === 'sky'
-          ? 'border-sky-500/20 bg-sky-500/[0.05]'
-          : 'border-amber-500/20 bg-amber-500/[0.05]',
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={cn(
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-              tone === 'sky'
-                ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
-                : 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
-            )}
-          >
-            <Icon className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <div className="text-xs font-semibold leading-tight">{label}</div>
-            <div className="mt-0.5 text-[10.5px] text-muted-foreground">{hint}</div>
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-xl font-bold tabular-nums leading-none">{points}</div>
-          <div className="mt-1 text-[10px] font-medium text-muted-foreground">{unitLabel}</div>
-        </div>
       </div>
     </div>
   );

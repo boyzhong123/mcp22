@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Loader2, X, ZoomIn } from 'lucide-react';
 import { useLang } from '../_lib/use-lang';
+import { ModalPortal } from './modal-portal';
 
 // Square avatar cropper. Loads the picked file, lets the user pan (drag) and
 // zoom, then exports a centered square as a compressed JPEG (default 512×512),
@@ -144,89 +145,91 @@ export function AvatarCropModal({ file, onCancel, onCropped, busy = false }: Ava
   }, [busy, onCancel]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={() => !busy && onCancel()} />
-      <div className="relative w-full max-w-[360px] rounded-2xl bg-background border border-border shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
-          <div className="text-sm font-semibold">{t('Crop your photo', '裁剪头像')}</div>
-          <button
-            type="button"
-            onClick={() => !busy && onCancel()}
-            disabled={busy}
-            className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-40"
-            aria-label={tx('Close')}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          {loadError ? (
-            <div className="h-[288px] flex items-center justify-center text-sm text-red-500">
-              {t('Could not load this image.', '无法读取该图片。')}
-            </div>
-          ) : (
-            <div
-              className="relative mx-auto overflow-hidden rounded-full border border-border bg-muted touch-none select-none cursor-grab active:cursor-grabbing"
-              style={{ width: VIEWPORT, height: VIEWPORT }}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
+    <ModalPortal>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/40 dark:bg-black/70" onClick={() => !busy && onCancel()} />
+        <div className="relative w-full max-w-[360px] rounded-2xl bg-background border border-border shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
+            <div className="text-sm font-semibold">{t('Crop your photo', '裁剪头像')}</div>
+            <button
+              type="button"
+              onClick={() => !busy && onCancel()}
+              disabled={busy}
+              className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-40"
+              aria-label={tx('Close')}
             >
-              {img && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={img.src}
-                  alt=""
-                  draggable={false}
-                  className="absolute max-w-none pointer-events-none"
-                  style={{ width: dw, height: dh, left: offset.x, top: offset.y }}
-                />
-              )}
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={zoom}
-              onChange={(e) => onZoom(Number(e.target.value))}
-              disabled={!img || loadError}
-              className="w-full accent-foreground"
-              aria-label={t('Zoom', '缩放')}
-            />
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <p className="text-[11px] text-muted-foreground text-center">
-            {t('Drag to reposition · scroll the slider to zoom.', '拖动调整位置 · 拖滑块缩放。')}
-          </p>
-        </div>
+          <div className="p-5 space-y-4">
+            {loadError ? (
+              <div className="h-[288px] flex items-center justify-center text-sm text-red-500">
+                {t('Could not load this image.', '无法读取该图片。')}
+              </div>
+            ) : (
+              <div
+                className="relative mx-auto overflow-hidden rounded-full border border-border bg-muted touch-none select-none cursor-grab active:cursor-grabbing"
+                style={{ width: VIEWPORT, height: VIEWPORT }}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+              >
+                {img && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={img.src}
+                    alt=""
+                    draggable={false}
+                    className="absolute max-w-none pointer-events-none"
+                    style={{ width: dw, height: dh, left: offset.x, top: offset.y }}
+                  />
+                )}
+              </div>
+            )}
 
-        <div className="px-5 py-3.5 border-t border-border/60 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => !busy && onCancel()}
-            disabled={busy}
-            className="h-9 px-4 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted/50 disabled:opacity-50"
-          >
-            {tx('Cancel')}
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!img || loadError || busy}
-            className="h-9 px-4 text-xs font-semibold rounded-md bg-foreground text-background hover:brightness-110 disabled:opacity-50 inline-flex items-center gap-1.5"
-          >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            {busy ? t('Uploading…', '上传中…') : t('Apply', '应用')}
-          </button>
+            <div className="flex items-center gap-3">
+              <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => onZoom(Number(e.target.value))}
+                disabled={!img || loadError}
+                className="w-full accent-foreground"
+                aria-label={t('Zoom', '缩放')}
+              />
+            </div>
+
+            <p className="text-[11px] text-muted-foreground text-center">
+              {t('Drag to reposition · scroll the slider to zoom.', '拖动调整位置 · 拖滑块缩放。')}
+            </p>
+          </div>
+
+          <div className="px-5 py-3.5 border-t border-border/60 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => !busy && onCancel()}
+              disabled={busy}
+              className="h-9 px-4 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted/50 disabled:opacity-50"
+            >
+              {tx('Cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={!img || loadError || busy}
+              className="h-9 px-4 text-xs font-semibold rounded-md bg-foreground text-background hover:brightness-110 disabled:opacity-50 inline-flex items-center gap-1.5"
+            >
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              {busy ? t('Uploading…', '上传中…') : t('Apply', '应用')}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

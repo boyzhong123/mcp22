@@ -2,6 +2,7 @@ import localFont from 'next/font/local';
 import { Newsreader } from 'next/font/google';
 import type { Metadata } from 'next';
 import { RootThemeProvider } from '@/components/root-theme-provider';
+import { SiteNavigationProgress } from '@/components/site-navigation-progress';
 import { SITE_URL } from '@/lib/site';
 import './globals.css';
 
@@ -84,7 +85,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${newsreader.variable} font-noto-sc h-full`}
     >
       <body className="min-h-full flex flex-col relative">
-        <RootThemeProvider>{children}</RootThemeProvider>
+        <RootThemeProvider>
+          <SiteNavigationProgress />
+          {children}
+        </RootThemeProvider>
       </body>
     </html>
   );

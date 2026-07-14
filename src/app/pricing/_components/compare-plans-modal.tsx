@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Minus, Table2, X } from 'lucide-react';
+import { ArrowRight, Check, Minus, Table2, X } from 'lucide-react';
 
 export interface CompareColumn {
   id: string;
@@ -24,9 +24,11 @@ interface ComparePlansModalProps {
 
 export function ComparePlansModal({ columns, rows }: ComparePlansModalProps) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   // Lock page scroll and wire Escape-to-close while the modal is open. The
   // document scroller here is <html>, so lock both it and <body>.
@@ -50,14 +52,21 @@ export function ComparePlansModal({ columns, rows }: ComparePlansModalProps) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-8 inline-flex items-center gap-2 rounded-full border border-zinc-900/[0.12] bg-white/70 px-5 py-2.5 text-[13.5px] font-semibold text-zinc-900 transition-colors hover:bg-white"
-      >
-        <Table2 className="h-4 w-4 text-emerald-700" aria-hidden />
-        Compare all plans side by side
-      </button>
+      <div className="mt-6 flex flex-col gap-3 border-t border-zinc-900/[0.07] pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[13.5px] font-semibold text-zinc-900">Not sure which pack fits?</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">Compare rates, bonuses and validity in one view.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-emerald-700/25 bg-white/80 px-5 text-[13.5px] font-semibold text-emerald-800 shadow-[0_10px_24px_-18px_rgba(6,78,59,0.75)] transition-all hover:-translate-y-px hover:border-emerald-700/40 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+        >
+          <Table2 className="h-4 w-4" aria-hidden />
+          Compare all plans
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </button>
+      </div>
 
       {mounted && open
         ? createPortal(
@@ -82,7 +91,7 @@ export function ComparePlansModal({ columns, rows }: ComparePlansModalProps) {
                     type="button"
                     onClick={() => setOpen(false)}
                     aria-label="Close comparison"
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-900/[0.06] hover:text-zinc-900"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-900/[0.06] hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
                   >
                     <X className="h-4.5 w-4.5" />
                   </button>

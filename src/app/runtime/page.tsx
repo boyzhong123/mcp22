@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Production Runtime for Speech Assessment MCP | Chivox AI',
-  description: 'Plan authentication, usage controls, observability, privacy and production operations for Chivox speech assessment tools.',
+  title: 'Speech Assessment API Runtime, Usage Controls and SLA | Chivox AI',
+  description: 'Operate a production speech assessment API with scoped keys, hard usage caps, alerts, usage analytics, zero-retention streaming and a 99.95% enterprise SLA.',
   alternates: { canonical: '/runtime' },
 };
 

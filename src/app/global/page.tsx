@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -936,6 +937,7 @@ export default function GlobalLandingPage() {
 const PRICING_PACKAGE_COPY = {
   standard: {
     label: 'Standard',
+    blurb: 'For evaluation and light product usage.',
     bonus: 'No bonus',
     tone: 'text-blue-700',
     border: 'border-blue-600',
@@ -943,6 +945,7 @@ const PRICING_PACKAGE_COPY = {
   },
   advanced: {
     label: 'Advanced',
+    blurb: 'Best value for growing products.',
     bonus: '+10% bonus',
     tone: 'text-emerald-700',
     border: 'border-emerald-600',
@@ -950,6 +953,7 @@ const PRICING_PACKAGE_COPY = {
   },
   flagship: {
     label: 'Flagship',
+    blurb: 'Lowest unit cost for production volume.',
     bonus: '+20% bonus',
     tone: 'text-amber-700',
     border: 'border-amber-600',
@@ -971,165 +975,149 @@ function PricingUsageStory() {
   return (
     <section
       id="pricing"
-      className="relative scroll-mt-24 border-b border-[#e9e2d2]/70 py-14 md:py-14"
+      className="relative scroll-mt-24 border-b border-[#e9e2d2]/70 py-16 md:py-24"
     >
-      <div className="container mx-auto max-w-6xl px-6 xl:max-w-7xl">
-        <div className="grid min-w-0 gap-14 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-14 xl:gap-16">
+      <div className="container mx-auto max-w-7xl px-6">
+        <div className="grid min-w-0 gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
           <FadeUp className="min-w-0">
-            <div className="flex h-full flex-col">
-              <div className="mb-5 flex items-center gap-3">
-                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
-                  Pricing
+            <div className="mb-5 flex items-center gap-3">
+              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
+                Pricing
+              </span>
+              <span className="text-[12px] font-medium text-foreground/60">Pay for results</span>
+            </div>
+
+            <h2 className="heading-display text-crisp max-w-xl text-3xl leading-[1.08] tracking-[-0.035em] md:text-[46px]">
+              Simple points for successful speech evaluations.
+            </h2>
+
+            <p className="mt-5 max-w-xl text-[15px] leading-7 text-zinc-600 md:text-base">
+              One point for a word or sentence. Two for a paragraph. Failed calls use zero points,
+              so you only pay when Chivox returns an assessment.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {pricingFacts.map(({ icon: Icon, label }) => (
+                <span key={label} className="inline-flex items-center gap-2 rounded-full border border-zinc-900/[0.08] bg-white/65 px-3 py-2 text-[11.5px] font-medium text-zinc-700 backdrop-blur-sm">
+                  <Icon className="h-3.5 w-3.5 text-emerald-700" strokeWidth={2} />
+                  {label}
                 </span>
-                <span className="text-[12px] font-medium text-foreground/65">Usage story</span>
-              </div>
+              ))}
+            </div>
 
-              <h2
-                className="heading-display text-crisp text-3xl leading-[1.1] tracking-[-0.025em] md:text-[44px]"
+            <div className="mt-7 flex flex-wrap items-center gap-4">
+              <Link
+                href="/login"
+                className="group inline-flex h-11 items-center gap-2 rounded-full bg-zinc-900 pl-5 pr-3 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(0,0,0,0.4)] transition-all hover:-translate-y-px hover:bg-zinc-800"
               >
-                <span className="block">One point for a word.</span>
-                <span className="mt-1 block">Two for a paragraph.</span>
-                <span className="mt-1 block text-emerald-700">Zero for a failed call.</span>
-              </h2>
-
-              <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground md:text-base">
-                Start with {TRIAL_CALLS} free points. Pay only for successful evaluations, then top up
-                when you need more.
-              </p>
-
-              <div className="mt-6 max-w-md divide-y divide-zinc-900/[0.07]">
-                {pricingFacts.map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex items-center gap-3 py-2.5 first:pt-0">
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-700">
-                      <Icon className="h-4 w-4" strokeWidth={2} />
-                    </span>
-                    <span className="text-[13.5px] font-medium text-foreground/85">{label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                <Link
-                  href="/login"
-                  className="group inline-flex h-11 items-center gap-2 rounded-full bg-zinc-900 pl-5 pr-3 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(0,0,0,0.4)] transition-all hover:-translate-y-px hover:bg-zinc-800"
-                >
-                  Start free
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 transition-colors group-hover:bg-white/25">
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </Link>
-                <Link
-                  href="/dev-en/dashboard/billing"
-                  className="group inline-flex h-11 items-center gap-1.5 px-1 text-sm font-semibold text-emerald-800 transition-colors hover:text-emerald-950"
-                >
-                  View pricing details
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </div>
+                Start with {TRIAL_CALLS} free points
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 transition-colors group-hover:bg-white/25">
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+              <Link
+                href="/pricing"
+                className="group inline-flex h-11 items-center gap-1.5 px-1 text-sm font-semibold text-emerald-800 transition-colors hover:text-emerald-950"
+              >
+                Full pricing details
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
             </div>
           </FadeUp>
 
           <FadeUp delay={0.08} className="min-w-0">
-            <ol className="relative space-y-8 before:absolute before:bottom-10 before:left-5 before:top-10 before:w-px before:bg-zinc-900/10">
-              <li className="relative grid grid-cols-[40px_1fr] gap-4 sm:grid-cols-[40px_1fr_auto] sm:items-center">
-                <PricingStepNumber value="1" />
+            <div className="rounded-[28px] border border-zinc-900/[0.08] bg-white/72 p-5 shadow-[0_26px_65px_-46px_rgba(15,23,42,0.48)] backdrop-blur-md sm:p-6">
+              <div className="flex items-center justify-between gap-4 border-b border-zinc-900/[0.07] pb-4">
                 <div>
-                  <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Start with {TRIAL_CALLS} points</h3>
-                  <p className="mt-1 text-[12.5px] text-muted-foreground">Free trial, no card required</p>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-700">How points work</div>
+                  <h3 className="mt-1.5 text-[18px] font-semibold tracking-[-0.02em] text-zinc-950">From free trial to production</h3>
                 </div>
-                <div className="col-start-2 mt-2 flex items-center gap-2.5 text-emerald-700 sm:col-start-3 sm:mt-0">
-                  <Sparkles className="h-4 w-4" strokeWidth={1.8} />
-                  <span className="text-crisp text-[28px] font-semibold tabular-nums tracking-[-0.03em]">{TRIAL_CALLS}</span>
-                  <span className="text-[11px] text-foreground/60">points / {TRIAL_VALID_DAYS} days</span>
-                </div>
-              </li>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/[0.08] px-3 py-1.5 text-[10px] font-semibold text-emerald-800">
+                  <Sparkles className="h-3.5 w-3.5" /> No card
+                </span>
+              </div>
 
-              <li className="relative grid grid-cols-[40px_1fr] gap-4 sm:grid-cols-[40px_1fr]">
-                <PricingStepNumber value="2" />
-                <div>
-                  <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Evaluate with MCP</h3>
-                  <p className="mt-1 text-[12.5px] text-muted-foreground">
-                    Points are deducted only for successful evaluations.
-                  </p>
-
-                  <div className="mt-4 space-y-2">
-                    <PricingCodeRow
-                      code={'assess_speech({ reference_text: "An apple a day." })'}
-                      points="−1 pt"
-                    />
-                    <PricingCodeRow
-                      code={'assess_speech({ reference_text: paragraphText })'}
-                      points="−2 pts"
-                    />
+              <ol className="mt-5 space-y-5">
+                <li className="grid grid-cols-[36px_1fr_auto] items-center gap-3">
+                  <PricingStepNumber value="1" />
+                  <div>
+                    <h4 className="text-[14px] font-semibold text-zinc-900">Start free</h4>
+                    <p className="mt-0.5 text-[11.5px] text-zinc-500">Valid for {TRIAL_VALID_DAYS} days</p>
                   </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Failed calls cost $0 and 0 points.</p>
-                </div>
-              </li>
+                  <strong className="text-[22px] font-semibold tabular-nums tracking-[-0.03em] text-emerald-700">{TRIAL_CALLS} pts</strong>
+                </li>
 
-              <li className="relative grid grid-cols-[40px_1fr] gap-4 sm:grid-cols-[40px_1fr_auto] sm:items-center">
-                <PricingStepNumber value="3" />
-                <div>
-                  <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Top up when needed</h3>
-                  <p className="mt-1 text-[12.5px] text-muted-foreground">Add more points with package bonuses.</p>
-                </div>
-                <div className="col-start-2 mt-2 flex items-center gap-2.5 text-emerald-700 sm:col-start-3 sm:mt-0">
-                  <Gift className="h-4 w-4" strokeWidth={1.8} />
-                  <span className="text-[11px] text-foreground/60">Up to</span>
-                  <span className="text-crisp text-[28px] font-semibold tracking-[-0.03em]">+20%</span>
-                  <span className="text-[11px] text-foreground/60">bonus points</span>
-                </div>
-              </li>
-            </ol>
+                <li className="grid grid-cols-[36px_1fr] gap-3">
+                  <PricingStepNumber value="2" />
+                  <div className="min-w-0">
+                    <h4 className="text-[14px] font-semibold text-zinc-900">Evaluate successfully</h4>
+                    <p className="mt-0.5 text-[11.5px] text-zinc-500">Points are deducted only when an assessment returns.</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <PricingCodeRow code="word · sentence" points="−1 pt" />
+                      <PricingCodeRow code="paragraph" points="−2 pts" />
+                    </div>
+                  </div>
+                </li>
+
+                <li className="grid grid-cols-[36px_1fr_auto] items-center gap-3">
+                  <PricingStepNumber value="3" />
+                  <div>
+                    <h4 className="text-[14px] font-semibold text-zinc-900">Top up as you grow</h4>
+                    <p className="mt-0.5 text-[11.5px] text-zinc-500">Higher packs lower your unit cost.</p>
+                  </div>
+                  <strong className="inline-flex items-center gap-1.5 text-[20px] font-semibold tracking-[-0.03em] text-emerald-700"><Gift className="h-4 w-4" />+20%</strong>
+                </li>
+              </ol>
+
+              <div className="mt-5 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.045] px-4 py-3 text-[11.5px] font-medium text-emerald-900">
+                Failed calls cost $0 and use 0 points.
+              </div>
+            </div>
           </FadeUp>
         </div>
 
-        <FadeUp delay={0.12} className="mt-10 min-w-0">
-          <div className="relative">
-            <div aria-hidden className="absolute left-[8%] right-1 top-12 hidden items-center md:flex">
-              <span className="h-px flex-1 bg-emerald-700/75" />
-              <ArrowRight className="-ml-1 h-4 w-4 text-emerald-700" strokeWidth={1.6} />
+        <FadeUp delay={0.12} className="mt-12 min-w-0 rounded-[30px] border border-zinc-900/[0.08] bg-white/45 p-4 shadow-[0_28px_75px_-56px_rgba(15,23,42,0.5)] backdrop-blur-sm sm:p-6">
+          <div className="flex flex-col gap-3 border-b border-zinc-900/[0.07] pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-700">Top-up packs</div>
+              <h3 className="mt-1.5 text-[24px] font-semibold tracking-[-0.03em] text-zinc-950">Choose the volume that fits now.</h3>
+              <p className="mt-1 text-[12.5px] text-zinc-500">Every pack unlocks the same assessment capabilities.</p>
             </div>
+            <Link href="/pricing" className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-emerald-800 hover:text-emerald-950">
+              Compare all pricing
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
 
-            <div className="grid md:grid-cols-3">
-              {FIXED_TOPUP_PLANS.map((plan, index) => {
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {FIXED_TOPUP_PLANS.map((plan) => {
                 const copy = PRICING_PACKAGE_COPY[plan.id];
                 const rates = EVALUATION_UNIT_PRICES[plan.id];
                 const recommended = plan.id === 'advanced';
                 return (
-                  <div
+                  <article
                     key={plan.id}
                     className={cn(
-                      'relative border-t border-zinc-900/[0.08] px-5 py-7 first:border-t-0 sm:px-7 md:min-h-[230px] md:border-t-0 md:px-10 md:pb-5 md:pt-20',
-                      index > 0 && 'md:border-l-0',
+                      'relative flex min-h-[280px] flex-col rounded-2xl border bg-white/75 p-5 transition-all duration-300',
+                      recommended
+                        ? 'border-emerald-500/30 shadow-[0_20px_50px_-36px_rgba(16,125,88,0.55)] md:-translate-y-1'
+                        : 'border-zinc-900/[0.08] hover:-translate-y-1 hover:border-zinc-900/[0.14]',
                     )}
                   >
                     {recommended && (
-                      <span className="absolute left-1/2 top-0 hidden -translate-x-1/2 rounded-full bg-emerald-700 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-white md:inline-flex">
+                      <span className="absolute right-4 top-4 rounded-full bg-emerald-700 px-2.5 py-1 text-[8.5px] font-semibold uppercase tracking-[0.12em] text-white">
                         Recommended
                       </span>
                     )}
 
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'absolute left-1/2 top-[39px] z-10 hidden h-5 w-5 -translate-x-1/2 rounded-full border-2 bg-[#fbfaf6] ring-4 ring-[#fbfaf6] md:block',
-                        copy.border,
-                        recommended && 'bg-emerald-600 shadow-[0_0_0_3px_rgba(16,185,129,0.20)]',
-                      )}
-                    />
-
                     <div className="flex items-center gap-2">
-                      <h3 className={cn('text-[16px] font-semibold', copy.tone)}>{copy.label}</h3>
-                      {recommended && (
-                        <span className="rounded-full bg-emerald-500/[0.09] px-2 py-0.5 text-[9px] font-semibold text-emerald-800 md:hidden">
-                          Recommended
-                        </span>
-                      )}
+                      <span aria-hidden className={cn('h-2 w-2 rounded-full border-2', copy.border, recommended && 'bg-emerald-600')} />
+                      <h4 className={cn('text-[15px] font-semibold', copy.tone)}>{copy.label}</h4>
                     </div>
+                    <p className="mt-2 max-w-[15rem] text-[11.5px] leading-5 text-zinc-500">{copy.blurb}</p>
 
-                    <div className="mt-3 flex flex-wrap items-baseline gap-2">
-                      <span className="text-[11px] text-muted-foreground">from</span>
-                      <span className={cn('text-crisp text-[34px] font-bold tracking-[-0.035em]', copy.tone)}>
+                    <div className="mt-5 flex flex-wrap items-baseline gap-2">
+                      <span className={cn('text-crisp text-[32px] font-bold tracking-[-0.04em]', copy.tone)}>
                         {formatPackagePrice(plan.amountCents)}
                       </span>
                       <span className={cn('rounded-full border px-2 py-0.5 text-[9px] font-semibold', copy.badge)}>
@@ -1137,22 +1125,18 @@ function PricingUsageStory() {
                       </span>
                     </div>
 
-                    <div className="mt-4 space-y-1 text-[11px] text-foreground/65">
-                      <div>
-                        {formatEvaluationUnitDollars(rates.wordSentenceDollars)}
-                        <span className="mx-2 text-foreground/25">/</span>
-                        word or sentence
-                      </div>
-                      <div>
-                        {formatEvaluationUnitDollars(rates.paragraphDollars)}
-                        <span className="mx-2 text-foreground/25">/</span>
-                        paragraph
-                      </div>
+                    <div className="mt-5 divide-y divide-zinc-900/[0.06] rounded-xl bg-zinc-50/80 px-3 text-[10.5px] text-zinc-600">
+                      <div className="flex items-center justify-between gap-3 py-2.5"><span>Word or sentence</span><strong className="font-semibold tabular-nums text-zinc-900">{formatEvaluationUnitDollars(rates.wordSentenceDollars)}</strong></div>
+                      <div className="flex items-center justify-between gap-3 py-2.5"><span>Paragraph</span><strong className="font-semibold tabular-nums text-zinc-900">{formatEvaluationUnitDollars(rates.paragraphDollars)}</strong></div>
                     </div>
-                  </div>
+
+                    <Link href="/pricing" className={cn('group mt-auto inline-flex items-center gap-1.5 pt-5 text-[11.5px] font-semibold', copy.tone)}>
+                      View {copy.label}
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  </article>
                 );
               })}
-            </div>
           </div>
 
           <PricingPackIncludes />
@@ -1328,7 +1312,7 @@ function PricingPackIncludes() {
 }
 
 function PricingCompareModal({ onClose }: { onClose: () => void }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] overscroll-none">
       <button
         type="button"
@@ -1342,7 +1326,7 @@ function PricingCompareModal({ onClose }: { onClose: () => void }) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="pricing-compare-title"
-          className="relative flex max-h-[min(90vh,820px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-zinc-900/10 bg-[#fbfaf6] shadow-[0_28px_90px_-28px_rgba(0,0,0,0.5)]"
+          className="relative flex max-h-[min(90dvh,820px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-zinc-900/10 bg-[#fbfaf6] shadow-[0_28px_90px_-28px_rgba(0,0,0,0.5)]"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-900/[0.07] px-4 py-4 sm:px-6">
@@ -1381,7 +1365,7 @@ function PricingCompareModal({ onClose }: { onClose: () => void }) {
               across API keys.
             </p>
             <Link
-              href="/dev-en/dashboard/billing"
+              href="/pricing"
               className="group inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-800 hover:text-emerald-950"
             >
               Full pricing details
@@ -1390,7 +1374,8 @@ function PricingCompareModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1614,7 +1599,7 @@ function PricingCompareMatrix() {
 
 function PricingStepNumber({ value }: { value: string }) {
   return (
-    <span className="relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/20 bg-[#fbfaf6] text-lg font-semibold text-emerald-800 ring-4 ring-emerald-500/[0.055]">
+    <span className="relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/20 bg-[#fbfaf6] text-sm font-semibold text-emerald-800 ring-4 ring-emerald-500/[0.055]">
       {value}
     </span>
   );

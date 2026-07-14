@@ -112,11 +112,14 @@ function mapKey(k: RealApiKey): MockApiKey {
   };
 }
 
-// The trial total isn't returned by the backend, so we keep the product
-// default (600) and derive used = total − remaining from the summary.
+// Prefer server-provided trial total; fall back to the product default (600).
 function mapTrialFromSummary(summary: BillingSummary): TrialAllowance {
+  const totalLimit = Math.max(
+    0,
+    summary.trial_calls_total ?? TRIAL_DEFAULT_TOTAL,
+  );
   const remaining = summary.trial_active
-    ? Math.max(0, Math.min(TRIAL_DEFAULT_TOTAL, summary.trial_calls_remaining ?? 0))
+    ? Math.max(0, Math.min(totalLimit, summary.trial_calls_remaining ?? 0))
     : 0;
   const expiresAt = summary.trial_expires_at;
   const expiresAtMs = Date.parse(expiresAt);
@@ -125,8 +128,8 @@ function mapTrialFromSummary(summary: BillingSummary): TrialAllowance {
     : new Date().toISOString();
 
   return {
-    totalLimit: TRIAL_DEFAULT_TOTAL,
-    totalUsed: TRIAL_DEFAULT_TOTAL - remaining,
+    totalLimit,
+    totalUsed: totalLimit - remaining,
     grantedAt,
     expiresAt: expiresAt || grantedAt,
   };
@@ -168,6 +171,7 @@ function mapTransaction(t: RealTransaction): MockTransaction {
     method,
     last4: '----',
     description: t.description ?? `Top-up ${(t.amount_cents / 100).toFixed(2)}`,
+    paypalOrderId: t.paypal_order_id,
     balanceBeforeCents: t.balance_before,
     balanceAfterCents: t.balance_after,
     packageId: t.package_id,

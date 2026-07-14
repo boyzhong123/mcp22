@@ -38,9 +38,10 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
   //    subtle contrast via border + optional bg-muted/40 instead of relying
   //    on an off-tone canvas. This matches the Linear/Vercel pattern where
   //    the page and cards share the same base and differentiate via borders.
-  // 2. Max-width bumped from 1200 → 1360; modern dashboards optimise for
-  //    14"+ laptops and widescreen desktops, and our data tables genuinely
-  //    need the extra real estate.
+  // 2. Content width scales with the viewport instead of freezing at one
+  //    cap: 1360 on laptops, and from 2xl (1536px) up it stays fluid until
+  //    1760, so on big monitors the cards and tables genuinely widen
+  //    rather than the side margins swallowing all the extra space.
   // 3. `main` pads left to match the sidebar's current width so content
   //    reflows when the sidebar collapses / expands.
   return (
@@ -54,7 +55,7 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
         )}
       >
         <DevEnTopBar />
-        <div className="flex-1 px-4 sm:px-6 lg:px-8 pt-6 pb-10 max-w-[1360px] w-full mx-auto">
+        <div className="flex-1 px-4 sm:px-6 lg:px-8 pt-6 pb-10 max-w-[1360px] 2xl:max-w-[1760px] w-full mx-auto">
           {children}
         </div>
       </main>

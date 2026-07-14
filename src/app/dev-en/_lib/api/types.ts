@@ -181,6 +181,8 @@ export interface BillingSummary {
   transaction_count_month: number;
   trial_active: boolean;
   trial_calls_remaining: number;
+  /** Total trial allowance; when absent, clients may fall back to pricing.trial_calls. */
+  trial_calls_total?: number;
   trial_expires_at: string;
   trial_days_remaining: number;
   trial_burn_rate: number;
@@ -227,6 +229,8 @@ export interface Transaction {
   /** Current usage snapshot for the batch/batches created by this top-up. */
   used_points?: number;
   remaining_points?: number;
+  /** PayPal order id for the history detail drawer. */
+  paypal_order_id?: string;
   created_at: string;
 }
 
@@ -243,7 +247,12 @@ export interface TopupOrder {
   transaction_id: number;
   amount_cents: number;
   package_id: 'standard' | 'advanced' | 'flagship';
+  /** Server-authoritative points credited if this order captures successfully. */
   quoted_points: number;
+  /** Optional breakdown — reserved for when the backend starts returning them. */
+  quoted_base_points?: number;
+  quoted_bonus_points?: number;
+  points_expire_at?: string | null;
 }
 
 // ─── Notifications (doc §6) ─────────────────────────────────────────────────

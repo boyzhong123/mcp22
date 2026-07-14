@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>评测积分充值 · 接口盘点</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0f172a;
+      --ink-soft: #334155;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --brand: #0ea5e9;
+      --brand-deep: #0369a1;
+      --magenta: #e11d48;
+      --p0: #dc2626;
+      --p0-bg: #fff1f2;
+      --p1: #d97706;
+      --p1-bg: #fffbeb;
+      --p2: #64748b;
+      --p2-bg: #f1f5f9;
+      --new: #7c3aed;
+      --new-bg: #f5f3ff;
+      --sup: #0284c7;
+      --sup-bg: #f0f9ff;
+      --ok: #059669;
+      --ok-bg: #ecfdf5;
+      --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 32px rgba(15, 23, 42, .06);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "PingFang SC", "Helvetica Neue", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+    a { color: var(--brand-deep); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Hero (CSS only, no generated images) ── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+      background:
+        radial-gradient(900px 420px at 12% -10%, rgba(14, 165, 233, .55), transparent 60%),
+        radial-gradient(700px 380px at 88% 10%, rgba(225, 29, 72, .42), transparent 55%),
+        radial-gradient(600px 320px at 50% 120%, rgba(124, 58, 237, .35), transparent 50%),
+        linear-gradient(145deg, #0b1220 0%, #111827 45%, #0f172a 100%);
+      padding: 56px 24px 48px;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 280px; height: 280px;
+      right: 8%; top: 18%;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 40% 60% 55% 45%;
+      transform: rotate(18deg);
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      margin-bottom: 14px;
+    }
+    .hero-eyebrow::before {
+      content: "";
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 0 4px rgba(52, 211, 153, .2);
+    }
+    .hero h1 {
+      margin: 0;
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 700;
+      letter-spacing: -.03em;
+      line-height: 1.12;
+      max-width: 16ch;
+    }
+    .hero-lead {
+      margin: 16px 0 0;
+      max-width: 54ch;
+      color: #cbd5e1;
+      font-size: 16px;
+    }
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 32px;
+    }
+    @media (max-width: 800px) {
+      .hero-stats { grid-template-columns: 1fr 1fr; }
+    }
+    .stat {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      padding: 14px 16px;
+      backdrop-filter: blur(8px);
+    }
+    .stat b {
+      display: block;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: -.02em;
+    }
+    .stat span { display: block; margin-top: 6px; font-size: 12px; color: #94a3b8; }
+    .stat.hot b { color: #fda4af; }
+    .stat.new b { color: #c4b5fd; }
+    .stat.sup b { color: #7dd3fc; }
+    .stat.ok b { color: #6ee7b7; }
+
+    /* ── Layout ── */
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px 96px; }
+
+    /* ── Sticky filter bar ── */
+    .filters {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      margin: -28px auto 28px;
+      max-width: 1100px;
+      padding: 0 24px;
+    }
+    .filters-inner {
+      background: rgba(255,255,255,.92);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      padding: 14px 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .filter-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      min-width: 52px;
+    }
+    .search {
+      flex: 1;
+      min-width: 180px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0 12px;
+      font: inherit;
+      background: #fff;
+    }
+    .search:focus {
+      outline: 2px solid rgba(14, 165, 233, .35);
+      border-color: var(--brand);
+    }
+    .pill {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink-soft);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s ease;
+    }
+    .pill:hover { border-color: #cbd5e1; }
+    .pill.active {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+    .pill.active.p0 { background: var(--p0); border-color: var(--p0); }
+    .pill.active.p1 { background: var(--p1); border-color: var(--p1); }
+    .pill.active.new { background: var(--new); border-color: var(--new); }
+    .pill.active.sup { background: var(--sup); border-color: var(--sup); }
+    .result-count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    /* ── Chips / emphasis ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .chip.p0 { background: var(--p0-bg); color: var(--p0); border-color: #fecdd3; }
+    .chip.p1 { background: var(--p1-bg); color: var(--p1); border-color: #fde68a; }
+    .chip.p2 { background: var(--p2-bg); color: var(--p2); border-color: #e2e8f0; }
+    .chip.new { background: var(--new-bg); color: var(--new); border-color: #ddd6fe; }
+    .chip.sup { background: var(--sup-bg); color: var(--sup); border-color: #bae6fd; }
+    .chip.ok { background: var(--ok-bg); color: var(--ok); border-color: #a7f3d0; }
+    .chip.be { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+
+    .hl { color: var(--magenta); font-weight: 700; }
+    .hl-blue { color: var(--brand-deep); font-weight: 700; }
+    .hl-violet { color: var(--new); font-weight: 700; }
+    .hl-green { color: var(--ok); font-weight: 700; }
+
+    h2.section-title {
+      margin: 48px 0 8px;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 26px;
+      letter-spacing: -.02em;
+    }
+    .section-desc { color: var(--muted); margin: 0 0 18px; max-width: 64ch; }
+
+    .callout {
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 0 0 20px;
+      border: 1px solid;
+      font-size: 14px;
+    }
+    .callout.critical {
+      background: linear-gradient(90deg, #fff1f2, #fff7ed);
+      border-color: #fecdd3;
+      color: #9f1239;
+    }
+    .callout.principle {
+      background: linear-gradient(90deg, #f0f9ff, #f5f3ff);
+      border-color: #bae6fd;
+      color: #0c4a6e;
+    }
+
+    /* ── API cards ── */
+    .api-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .api-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      box-shadow: 0 1px 0 rgba(15,23,42,.03);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .api-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: var(--shadow);
+    }
+    .api-card[hidden] { display: none !important; }
+    .api-card.p0-border { border-left: 4px solid var(--p0); }
+    .api-card.p1-border { border-left: 4px solid var(--p1); }
+    .api-card.new-border { border-left: 4px solid var(--new); }
+    .api-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .api-method {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #fff;
+    }
+    .api-method.get { background: #0369a1; }
+    .api-method.post { background: #047857; }
+    .api-method.put, .api-method.patch { background: #b45309; }
+    .api-path {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      word-break: break-all;
+    }
+    .api-body { color: var(--ink-soft); font-size: 14px; margin: 0; }
+    .api-fields {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px dashed #cbd5e1;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      color: #334155;
+      line-height: 1.55;
+    }
+    .api-fields .must { color: var(--magenta); font-weight: 700; }
+    .api-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .empty {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+
+    /* ── Screenshots ── */
+    .shot-grid {
+      display: grid;
+      gap: 18px;
+    }
+    .shot {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .shot[hidden] { display: none !important; }
+    .shot-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #f8fafc);
+    }
+    .shot-head h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .shot-head .route {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #f1f5f9;
+    }
+    .shot-cap {
+      padding: 12px 16px 16px;
+      font-size: 13.5px;
+      color: var(--ink-soft);
+    }
+    .shot-cap ul { margin: 8px 0 0; padding-left: 18px; }
+    .shot-cap li { margin: 4px 0; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .legend i {
+      display: inline-block;
+      width: 18px;
+      height: 3px;
+      background: var(--p0);
+      margin-right: 6px;
+      vertical-align: middle;
+      border-radius: 2px;
+    }
+
+    table.plain {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      font-size: 13.5px;
+      margin: 12px 0 24px;
+    }
+    table.plain th, table.plain td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    table.plain th {
+      background: #f1f5f9;
+      font-size: 11px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    table.plain tr:last-child td { border-bottom: none; }
+    code {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    footer {
+      margin-top: 56px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .principle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 720px) {
+      .principle-grid { grid-template-columns: 1fr; }
+    }
+    .principle-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .principle-card h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+    .principle-card p { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Chivox MCP · API Audit · 2026-07-14</div>
+      <h1>评测积分充值接口盘点</h1>
+      <p class="hero-lead">
+        对照当前开发者控制台 UI 与契约文档，区分
+        <span style="color:#fda4af;font-weight:700">需补充字段</span>
+        与
+        <span style="color:#c4b5fd;font-weight:700">需新增接口</span>。
+        金额→积分等计算应由<span style="color:#7dd3fc;font-weight:700">后端报价</span>，前端只展示与下单。
+      </p>
+      <div class="hero-stats">
+        <div class="stat hot"><b>2</b><span>P0 出入（报价/Demo）</span></div>
+        <div class="stat new"><b>1</b><span>新增 batches</span></div>
+        <div class="stat sup"><b>9</b><span>页面仍本地算</span></div>
+        <div class="stat ok"><b>13</b><span>重校截图</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="filters-inner">
+      <div class="filter-row">
+        <span class="filter-label">搜索</span>
+        <input id="q" class="search" type="search" placeholder="搜路径 / 字段 / 页面，如 quoted_points、batches、History…" />
+        <span class="result-count" id="count">—</span>
+      </div>
+      <div class="filter-row" id="type-filters">
+        <span class="filter-label">类型</span>
+        <button type="button" class="pill active" data-type="all">全部</button>
+        <button type="button" class="pill new" data-type="new">新增</button>
+        <button type="button" class="pill sup" data-type="sup">补充字段</button>
+        <button type="button" class="pill" data-type="fe">前端预留</button>
+        <button type="button" class="pill" data-type="shot">截图</button>
+      </div>
+      <div class="filter-row" id="prio-filters">
+        <span class="filter-label">优先级</span>
+        <button type="button" class="pill active" data-prio="all">全部</button>
+        <button type="button" class="pill p0" data-prio="p0">P0</button>
+        <button type="button" class="pill p1" data-prio="p1">P1</button>
+        <button type="button" class="pill" data-prio="p2">P2</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="callout critical">
+      <strong>原则：</strong>赠送比例、最低金额、预设档位、<span class="hl">输入金额后的到账积分</span>、有效期天数，一律以服务端为准。
+      前端用本地公式仅作 Demo 兜底；正式路径以 <code>quoted_points</code> / <code>GET /billing/pricing</code> 为准。
+    </div>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <h3><span class="hl-violet">后端算价</span></h3>
+        <p>用户改金额 → 下单接口返回 <code class="hl">quoted_points</code>；capture 返回 <code>base_points / bonus_points / credited_points</code>。</p>
+      </div>
+      <div class="principle-card">
+        <h3><span class="hl-blue">前端预留字段</span></h3>
+        <p>类型与 bridge 已对齐契约；接口就绪后直接灌数据，无需再改页面结构。</p>
+      </div>
+    </div>
+
+    <h2 class="section-title" id="gaps">已接线接口 vs 页面出入</h2>
+    <p class="section-desc">
+      Live 登录后 <code>hydrateFromApi</code> 会拉：
+      <code>summary</code> · <code>transactions</code> · <code>evaluation-points/batches</code> · <code>limits</code> ·
+      <code>notifications</code> · <code>usage/points</code> · <code>keys</code>。
+      充值另调 <code>pricing</code> / <code>topups/order</code> / <code>capture</code>。
+      下表是<strong>页面展示与真实数据源</strong>仍不一致之处（2026-07-14 复核）。
+    </p>
+
+    <table class="plain" data-type="fe" data-prio="p0" data-keys="出入 discrepancy quoted_points balance hardcoded">
+      <thead>
+        <tr>
+          <th>优先级</th>
+          <th>页面</th>
+          <th>用户看到</th>
+          <th>实际数据源</th>
+          <th>应改成</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="chip p0">P0</span></td>
+          <td>Checkout Step 2–3</td>
+          <td>金额旁的到账积分（如 4,975 pts）</td>
+          <td class="hl">本地 <code>previewQuotedPoints</code> / <code>topup.ts</code>；仅点 PayPal 时才拿 <code>quoted_points</code></td>
+          <td>改金额即请求服务端报价，或 Step2 结束前下单取 quote</td>
+        </tr>
+        <tr>
+          <td><span class="chip p0">P0</span></td>
+          <td>Demo 充值</td>
+          <td>可点 PayPal</td>
+          <td class="hl">Demo token 调真实 order 会失败；无本地 topup 回退</td>
+          <td>Demo mock capture，或禁用 PayPal 并走本地入账</td>
+        </tr>
+        <tr>
+          <td><span class="chip p1">P1</span></td>
+          <td>Overview / Billing 余额</td>
+          <td>Points remaining 18,125</td>
+          <td>批次 <code>remaining</code> 求和，或 wallet paid−used；<span class="hl">未用</span> <code>summary.evaluation_points_balance</code></td>
+          <td>以 summary 余额为准，batches 只做分布</td>
+        </tr>
+        <tr>
+          <td><span class="chip p1">P1</span></td>
+          <td>Overview 试用</td>
+          <td>480 / <strong>600</strong></td>
+          <td>分母写死 <code>TRIAL_DEFAULT_TOTAL</code>；可忽略 <code>trial_calls_total</code></td>
+          <td>用 summary / pricing 的 trial total</td>
+        </tr>
+        <tr>
+          <td><span class="chip p1">P1</span></td>
+          <td>Checkout 有效期</td>
+          <td>Valid 30 days / 具体到期日</td>
+          <td>硬编码 <code>TRIAL_VALID_DAYS</code>，非 <code>rules.validDays</code> / order.expire</td>
+          <td>读 pricing.valid_days 或 order.points_expire_at</td>
+        </tr>
+        <tr>
+          <td><span class="chip p1">P1</span></td>
+          <td>Rates 参考单价</td>
+          <td>$0.0038 / $0.0075…</td>
+          <td class="hl">前端 <code>EVALUATION_UNIT_PRICES</code> 硬编码</td>
+          <td>进 pricing 契约，或标注「仅参考价」</td>
+        </tr>
+        <tr>
+          <td><span class="chip p1">P1</span></td>
+          <td>Rates「本月已用」</td>
+          <td>积分数字</td>
+          <td>用 <code>costMills × points_per_usd</code> 反推</td>
+          <td>汇总 <code>/usage/points.evaluation_points</code></td>
+        </tr>
+        <tr>
+          <td><span class="chip p1">P1</span></td>
+          <td>Usage / Billing Key 表</td>
+          <td>字词句 / 段落拆分</td>
+          <td>字段缺失时前端按 1pt/2pt <span class="hl">本地重算</span></td>
+          <td>强制服务端返回拆分字段</td>
+        </tr>
+        <tr>
+          <td><span class="chip p1">P1</span></td>
+          <td>Billing 临期提示</td>
+          <td>Next expiry …</td>
+          <td>仅从 batches 推算；summary 的 <code>expiring_soon</code> / <code>next_expiry_at</code> <span class="hl">未展示</span></td>
+          <td>可并行展示 summary 汇总字段</td>
+        </tr>
+        <tr>
+          <td><span class="chip p2">P2</span></td>
+          <td>History 详情</td>
+          <td>PayPal order ID</td>
+          <td>类型已预留；详情刷新未合并 <code>paypal_order_id</code> 时常为 —</td>
+          <td>detail 映射补全</td>
+        </tr>
+        <tr>
+          <td><span class="chip p2">P2</span></td>
+          <td>—</td>
+          <td>—</td>
+          <td><code>GET /billing/balance</code>、<code>usage/account-summary</code> 已封装但未调用</td>
+          <td>可继续只用 summary，或删死代码</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout principle">
+      <strong>已对齐（无需再盘）：</strong>
+      Limits 四维读写 · Settings 积分阈值 · History 积分主列 · Batches 到期图 ·
+      PayPal <code>package_id</code> + capture 后 hydrate · Rates 套餐表已接 <code>useBillingPricing</code>（Demo 为 Local fallback）。
+    </div>
+
+    <h2 class="section-title" id="apis">接口清单</h2>
+    <p class="section-desc">用上方筛选按类型 / 优先级过滤。红色左边线 = P0；紫色 = 新增路径。</p>
+
+    <div class="api-grid" id="api-list">
+
+      <article class="api-card p0-border" data-type="sup" data-prio="p0"
+        data-keys="topups order package_id quoted_points paypal 充值">
+        <div class="api-top">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/billing/topups/order</span>
+          <span class="chip p0">P0</span>
+          <span class="chip sup">补充</span>
+          <span class="chip be">后端算价</span>
+        </div>
+        <p class="api-body">创建 PayPal 订单。服务端校验套餐最低金额并<strong class="hl">计算到账积分</strong>。</p>
+        <div class="api-fields">
+          req: amount_cents, <span class="must">package_id</span><br />
+          res: paypal_order_id, transaction_id, <span class="must">quoted_points</span>, package_id, amount_cents
+        </div>
+        <div class="api-meta">
+          <span class="chip">Checkout Step 3</span>
+        </div>
+      </article>
+
+      <article class="api-card p0-border" data-type="sup" data-prio="p0"
+        data-keys="capture topups 积分批次 credited_points 幂等">
+        <div class="api-top">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/billing/topups/:transactionId/capture</span>
+          <span class="chip p0">P0</span>
+          <span class="chip sup">补充</span>
+          <span class="chip be">后端算价</span>
+        </div>
+        <p class="api-body">同一事务：PayPal capture → 写交易 → <span class="hl">写积分批次</span> → 更新余额。幂等，禁止重复加分。</p>
+        <div class="api-fields">
+          res: <span class="must">base_points</span>, <span class="must">bonus_points</span>, <span class="must">credited_points</span>,
+          point_balance_before/after, points_expire_at, used_points, remaining_points, package_id
+        </div>
+        <div class="api-meta"><span class="chip">PayPal onApprove</span></div>
+      </article>
+
+      <article class="api-card new-border" data-type="new" data-prio="p1"
+        data-keys="batches evaluation-points expiry 到期 批次 donut">
+        <div class="api-top">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/billing/evaluation-points/batches</span>
+          <span class="chip p1">P1</span>
+          <span class="chip new">新增</span>
+        </div>
+        <p class="api-body">唯一<strong class="hl-violet">必须新增的 HTTP 路径</strong>。支撑到期分布图与批次明细；同日多笔不得按日期合并。</p>
+        <div class="api-fields">
+          batches[].id, transaction_id, package_id,
+          <span class="must">credited_points / used_points / remaining_points</span>,
+          expires_at, created_at, status(active|exhausted|expired)
+        </div>
+        <div class="api-meta"><span class="chip">Billing Overview</span></div>
+      </article>
+
+      <article class="api-card p1-border" data-type="sup" data-prio="p1"
+        data-keys="pricing topup_packages evaluation_point_rules 套餐 硬编码">
+        <div class="api-top">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/billing/pricing</span>
+          <span class="chip p1">P1</span>
+          <span class="chip sup">补充</span>
+          <span class="chip be">后端规则源</span>
+        </div>
+        <p class="api-body">套餐最低额、bonus%、预设金额、扣分规则、试用口径。<span class="hl">前端不应硬编码这些规则</span>。</p>
+        <div class="api-fields">
+          <span class="must">evaluation_point_rules</span> { base_points_per_usd, word_sentence_points_per_use, paragraph_points_per_use, valid_days }<br />
+          <span class="must">topup_packages</span>[] { id, min_amount_cents, bonus_percent, preset_amount_cents }<br />
+          trial_calls, trial_days
+        </div>
+        <div class="api-meta"><span class="chip">Rates</span><span class="chip">Checkout</span></div>
+      </article>
+
+      <article class="api-card p1-border" data-type="sup" data-prio="p1"
+        data-keys="summary balance evaluation_points_balance trial_calls_total overview">
+        <div class="api-top">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/billing/summary</span>
+          <span class="chip p1">P1</span>
+          <span class="chip sup">补充</span>
+        </div>
+        <p class="api-body">钱包 KPI / 试用条的权威数据源。建议增加 <span class="hl">trial_calls_total</span>（前端现写死 600）。</p>
+        <div class="api-fields">
+          <span class="must">evaluation_points_balance</span>,
+          evaluation_points_credited_total, evaluation_points_used_total,
+          evaluation_points_expiring_soon, evaluation_points_next_expiry_at,
+          trial_calls_remaining, <span class="must">trial_calls_total?</span>, trial_expires_at
+        </div>
+        <div class="api-meta"><span class="chip">Overview</span><span class="chip">Billing</span></div>
+      </article>
+
+      <article class="api-card p1-border" data-type="sup" data-prio="p1"
+        data-keys="transactions history credited_points remaining paypal_order_id">
+        <div class="api-top">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/billing/transactions[/:id]</span>
+          <span class="chip p1">P1</span>
+          <span class="chip sup">补充</span>
+        </div>
+        <p class="api-body">列表主列改为到账积分 + 使用进度；详情含 base/bonus/expire。</p>
+        <div class="api-fields">
+          list: amount_cents, <span class="must">credited_points, used_points, remaining_points</span>, package_id, status, method, created_at(ISO+TZ)<br />
+          detail +: base_points, bonus_points, point_balance_*, points_expire_at,
+          <span class="must">paypal_order_id?</span>
+        </div>
+        <div class="api-meta"><span class="chip">History</span></div>
+      </article>
+
+      <article class="api-card p1-border" data-type="sup" data-prio="p1"
+        data-keys="usage points word_sentence paragraph 字词句 段落">
+        <div class="api-top">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/usage/points</span>
+          <span class="chip p1">P1</span>
+          <span class="chip sup">补充</span>
+        </div>
+        <p class="api-body">按 Key / 日粒度拆分字词句与段落积分，替代美元 spend 主展示。</p>
+        <div class="api-fields">
+          word_sentence_calls/points, paragraph_calls/points, <span class="must">evaluation_points</span>, calls, key_id, date
+        </div>
+        <div class="api-meta"><span class="chip">Billing Key table</span><span class="chip">Usage</span></div>
+      </article>
+
+      <article class="api-card p1-border" data-type="sup" data-prio="p1"
+        data-keys="limits evaluation_point_cap call_cap 四维">
+        <div class="api-top">
+          <span class="api-method get">GET/PUT</span>
+          <span class="api-path">/api/billing/limits</span>
+          <span class="chip p1">P1</span>
+          <span class="chip sup">补充</span>
+        </div>
+        <p class="api-body">四维护栏：日/月积分 + 日/月调用。美元 spend cap 不再驱动流量。</p>
+        <div class="api-fields">
+          monthly/daily_<span class="must">evaluation_point_cap</span>, monthly/daily_call_cap, warn_at_percents
+        </div>
+        <div class="api-meta"><span class="chip">Limits</span><span class="chip">Key settings</span></div>
+      </article>
+
+      <article class="api-card" data-type="sup" data-prio="p2"
+        data-keys="notifications low_evaluation_points_threshold 提醒">
+        <div class="api-top">
+          <span class="api-method get">GET/PATCH</span>
+          <span class="api-path">/api/notifications/settings</span>
+          <span class="chip p2">P2</span>
+          <span class="chip sup">补充</span>
+        </div>
+        <p class="api-body">不足提醒阈值单位改为积分。</p>
+        <div class="api-fields">
+          low_balance_alerts_master, <span class="must">low_evaluation_points_threshold</span>
+        </div>
+        <div class="api-meta"><span class="chip">Settings</span></div>
+      </article>
+
+      <article class="api-card" data-type="fe" data-prio="p1"
+        data-keys="前端预留 BillingPricingCatalog quoted_points useBillingPricing">
+        <div class="api-top">
+          <span class="api-method get">FE</span>
+          <span class="api-path">useBillingPricing / BillingPricingCatalog</span>
+          <span class="chip p1">P1</span>
+          <span class="chip ok">前端预留</span>
+        </div>
+        <p class="api-body">前端定价目录：优先读 <code>GET /billing/pricing</code>；下单后展示 <span class="hl">order.quoted_points</span>；本地公式仅 Demo 兜底并标注「预估」。</p>
+        <div class="api-fields">
+          packages[], rules, trialCalls, trialDays, quotePreview() → estimate only<br />
+          createOrder → 以 server quoted_points 覆盖 UI
+        </div>
+        <div class="api-meta"><span class="chip">Checkout</span><span class="chip">Rates</span></div>
+      </article>
+
+      <article class="api-card" data-type="fe" data-prio="p2"
+        data-keys="paypal_order_id Transaction types bridge mapTransaction">
+        <div class="api-top">
+          <span class="api-method get">FE</span>
+          <span class="api-path">Transaction.paypal_order_id 映射</span>
+          <span class="chip p2">P2</span>
+          <span class="chip ok">前端预留</span>
+        </div>
+        <p class="api-body">API <code>Transaction</code> 与 bridge 预留 <span class="hl-blue">paypal_order_id</span>，History 抽屉可直接展示。</p>
+        <div class="api-fields">types.Transaction.paypal_order_id → mock-store.paypalOrderId</div>
+        <div class="api-meta"><span class="chip">History detail</span></div>
+      </article>
+
+    </div>
+    <div class="empty" id="api-empty" hidden>没有匹配的接口，试试清空筛选。</div>
+
+    <h2 class="section-title" id="shots">改动截图（红框已重校）</h2>
+    <p class="section-desc">红框对准具体 DOM；旁注说明「接口字段」与「仍为本地预估」的区别。截图来自 Demo 账号样例数据。</p>
+    <div class="legend"><span><i></i>红框 = 核对目标（非整页瞎框）</span></div>
+
+    <div class="filter-row" id="shot-filters" style="margin-bottom:14px">
+      <span class="filter-label">页面</span>
+      <button type="button" class="pill active" data-shot="all">全部</button>
+      <button type="button" class="pill" data-shot="overview">Overview</button>
+      <button type="button" class="pill" data-shot="billing">Billing</button>
+      <button type="button" class="pill" data-shot="checkout">充值弹窗</button>
+      <button type="button" class="pill" data-shot="history">History</button>
+      <button type="button" class="pill" data-shot="other">Limits/Settings/Usage</button>
+    </div>
+
+    <div class="shot-grid" id="shot-list">
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="overview"
+        data-keys="overview add points free trial trial_calls_total">
+        <div class="shot-head">
+          <h3>1. Overview · 充值入口 + 试用卡</h3>
+          <span class="route">/dashboard/overview</span>
+        </div>
+        <img src="images/points-api-audit/01-overview-points.png" alt="Overview" loading="lazy" />
+        <figcaption class="shot-cap">
+          <span class="hl">①</span> 仅框「Add points」按钮；
+          <span class="hl">②</span> 仅框 Free Trial 卡（对应 <code>trial_calls_*</code>）；
+          余额卡单独标注宜用 <code>evaluation_points_balance</code>。
+          <ul>
+            <li>旧版误把整行 4 张 KPI 都标成 trial —— 已修正</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="billing"
+        data-keys="billing wallet trial">
+        <div class="shot-head">
+          <h3>2. Billing · 积分钱包 / 试用</h3>
+          <span class="route">/dashboard/billing</span>
+        </div>
+        <img src="images/points-api-audit/02-billing-overview.png" alt="Billing" loading="lazy" />
+        <figcaption class="shot-cap">
+          框在钱包卡与试用卡上（不再框标题/Tabs）。余额当前由 batches/wallet 推导，契约上应以 summary 为准。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="billing"
+        data-keys="batches expiry 到期 新增">
+        <div class="shot-head">
+          <h3>3. Billing · 到期批次 <span class="chip new">新增接口</span></h3>
+          <span class="route">/dashboard/billing</span>
+        </div>
+        <img src="images/points-api-audit/03-billing-expiry-batches.png" alt="Batches" loading="lazy" />
+        <figcaption class="shot-cap">
+          对准「Available points by expiry」整块 → <span class="hl-violet">GET /billing/evaluation-points/batches</span>。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="billing"
+        data-keys="usage points key">
+        <div class="shot-head">
+          <h3>3b. Billing · Key 积分消耗</h3>
+          <span class="route">/dashboard/billing</span>
+        </div>
+        <img src="images/points-api-audit/03b-billing-key-usage.png" alt="Key usage" loading="lazy" />
+        <figcaption class="shot-cap">
+          字词句/段落列 ← <code>GET /usage/points</code>；缺字段时前端会本地按 1/2 pt 重算（出入项）。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="checkout"
+        data-keys="packages pricing rules">
+        <div class="shot-head">
+          <h3>4. 充值 · 套餐对比</h3>
+          <span class="route">Add points → packages</span>
+        </div>
+        <img src="images/points-api-audit/04-checkout-packages.png" alt="Packages" loading="lazy" />
+        <figcaption class="shot-cap">
+          规则条 + 套餐栅格应对齐 <code>GET /billing/pricing</code>（Demo 为本地 fallback）。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p0" data-shot="checkout"
+        data-keys="amount quoted_points 预估">
+        <div class="shot-head">
+          <h3>5. 充值 · 选金额 <span class="chip p0">仍为本地预估</span></h3>
+          <span class="route">Choose amount</span>
+        </div>
+        <img src="images/points-api-audit/05-checkout-amount.png" alt="Amount" loading="lazy" />
+        <figcaption class="shot-cap">
+          <span class="hl">①</span> 预设金额 ← <code>preset_amount_cents</code>；
+          <span class="hl">②</span> 到账积分在 Step2 <strong>不是</strong> <code>quoted_points</code>（点 PayPal 下单后才覆盖）。
+          <ul>
+            <li>旧版把「预计可用次数」误标成 quoted_points —— 已修正</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p0" data-shot="checkout"
+        data-keys="paypal capture order">
+        <div class="shot-head">
+          <h3>6. 充值 · PayPal 按钮区</h3>
+          <span class="route">Checkout</span>
+        </div>
+        <img src="images/points-api-audit/06-checkout-paypal.png" alt="PayPal" loading="lazy" />
+        <figcaption class="shot-cap">
+          红框对准 <strong>PayPal 按钮</strong>（真正调 order/capture 的位置），不是弹窗标题；摘要在点击前仍可能带 ≈。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="history"
+        data-keys="history credited remaining">
+        <div class="shot-head">
+          <h3>7. History · 交易列表</h3>
+          <span class="route">/dashboard/billing/history</span>
+        </div>
+        <img src="images/points-api-audit/07-history-list.png" alt="History" loading="lazy" />
+        <figcaption class="shot-cap">
+          已滚到列表本体（含 POINTS CREDITED / USAGE PROGRESS）。旧版只拍到趋势图 —— 已修正。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="history"
+        data-keys="detail paypal_order_id base bonus">
+        <div class="shot-head">
+          <h3>8. History · 详情抽屉</h3>
+          <span class="route">transactions/:id</span>
+        </div>
+        <img src="images/points-api-audit/08-history-detail.png" alt="Detail" loading="lazy" />
+        <figcaption class="shot-cap">
+          base / bonus / expire / 使用进度；<code>paypal_order_id</code> 需接口返回且详情合并后才会显示。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="other"
+        data-keys="rates pricing hardcoded">
+        <div class="shot-head"><h3>9. Rates</h3><span class="route">/dashboard/billing/rates</span></div>
+        <img src="images/points-api-audit/09-rates-packages.png" alt="Rates" loading="lazy" />
+        <figcaption class="shot-cap">
+          套餐表已接 pricing；<span class="hl">参考单价列仍前端硬编码</span>（出入项）。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="other"
+        data-keys="limits">
+        <div class="shot-head"><h3>10. Limits</h3><span class="route">/dashboard/limits</span></div>
+        <img src="images/points-api-audit/10-limits.png" alt="Limits" loading="lazy" />
+        <figcaption class="shot-cap">四维积分/调用 cap — 与 <code>GET/PUT /billing/limits</code> 对齐。</figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p2" data-shot="other"
+        data-keys="settings threshold">
+        <div class="shot-head"><h3>11. Settings 阈值</h3><span class="route">/dashboard/settings</span></div>
+        <img src="images/points-api-audit/11-settings-threshold.png" alt="Settings" loading="lazy" />
+        <figcaption class="shot-cap">
+          对准阈值输入（如 1250），不是只框开关 —— 旧版已修正。
+        </figcaption>
+      </figure>
+
+      <figure class="shot" data-type="shot" data-prio="p1" data-shot="other"
+        data-keys="usage">
+        <div class="shot-head"><h3>12. Usage</h3><span class="route">/dashboard/usage</span></div>
+        <img src="images/points-api-audit/12-usage-points.png" alt="Usage" loading="lazy" />
+        <figcaption class="shot-cap"><code>GET /usage/points</code> 字词句/段落拆分展示。</figcaption>
+      </figure>
+    </div>
+    <div class="empty" id="shot-empty" hidden>没有匹配的截图。</div>
+
+    <h2 class="section-title">联调验收</h2>
+    <table class="plain">
+      <thead><tr><th>#</th><th>项</th><th>通过标准</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="hl">改金额下单</td><td>同一 package 下不同 amount，quoted_points 由服务端返回且前后端一致</td></tr>
+        <tr><td>2</td><td>Capture 幂等</td><td>重复 capture 不重复加分；仅 1 条 batch</td></tr>
+        <tr><td>3</td><td>批次</td><td>同日不同时刻的充值分开展示</td></tr>
+        <tr><td>4</td><td>FIFO</td><td>最早到期批次优先扣减</td></tr>
+        <tr><td>5</td><td>Pricing</td><td>改 bonus% / 预设档后，前端无需发版即可反映（读接口）</td></tr>
+      </tbody>
+    </table>
+
+    <footer>
+      契约：<code>docs/evaluation-points-billing-api.md</code> ·
+      截图：<code>docs/images/points-api-audit/</code> ·
+      前端定价目录：<code>src/app/dev-en/_lib/billing-pricing.ts</code>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const state = { type: 'all', prio: 'all', shot: 'all', q: '' };
+
+      const q = document.getElementById('q');
+      const countEl = document.getElementById('count');
+      const apiCards = [...document.querySelectorAll('#api-list .api-card')];
+      const shots = [...document.querySelectorAll('#shot-list .shot')];
+      const apiEmpty = document.getElementById('api-empty');
+      const shotEmpty = document.getElementById('shot-empty');
+
+      function match(el) {
+        const type = el.dataset.type || '';
+        const prio = el.dataset.prio || '';
+        const shot = el.dataset.shot || '';
+        const keys = (el.dataset.keys || '') + ' ' + (el.textContent || '');
+        if (state.type !== 'all' && state.type !== type) return false;
+        if (state.prio !== 'all' && state.prio !== prio) return false;
+        if (state.type === 'shot' || state.shot !== 'all') {
+          if (el.classList.contains('shot') && state.shot !== 'all' && state.shot !== shot) return false;
+        }
+        if (state.q) {
+          const qq = state.q.toLowerCase();
+          if (!keys.toLowerCase().includes(qq)) return false;
+        }
+        return true;
+      }
+
+      function apply() {
+        let apiVisible = 0;
+        let shotVisible = 0;
+
+        // When filtering to screenshots only, hide API cards section items
+        const focusShots = state.type === 'shot';
+        const focusApis = state.type === 'new' || state.type === 'sup' || state.type === 'fe';
+
+        apiCards.forEach((el) => {
+          const show = !focusShots && match(el);
+          el.hidden = !show;
+          if (show) apiVisible++;
+        });
+        shots.forEach((el) => {
+          let show = match(el);
+          if (focusApis) show = false;
+          if (state.shot !== 'all' && el.dataset.shot !== state.shot) show = false;
+          el.hidden = !show;
+          if (show) shotVisible++;
+        });
+
+        apiEmpty.hidden = apiVisible > 0 || focusShots;
+        shotEmpty.hidden = shotVisible > 0 || focusApis;
+        countEl.textContent = focusShots
+          ? `${shotVisible} 张截图`
+          : focusApis
+            ? `${apiVisible} 条接口`
+            : `${apiVisible} 接口 · ${shotVisible} 截图`;
+      }
+
+      function bindPills(container, key) {
+        container.querySelectorAll('.pill').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            container.querySelectorAll('.pill').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            state[key] = btn.dataset[key] || btn.dataset.type || btn.dataset.prio || btn.dataset.shot;
+            // normalize
+            if (btn.dataset.type != null) state.type = btn.dataset.type;
+            if (btn.dataset.prio != null) state.prio = btn.dataset.prio;
+            if (btn.dataset.shot != null) state.shot = btn.dataset.shot;
+            apply();
+          });
+        });
+      }
+
+      bindPills(document.getElementById('type-filters'), 'type');
+      bindPills(document.getElementById('prio-filters'), 'prio');
+      bindPills(document.getElementById('shot-filters'), 'shot');
+
+      q.addEventListener('input', () => {
+        state.q = q.value.trim();
+        apply();
+      });
+
+      apply();
+    })();
+  </script>
+</body>
+</html>

@@ -219,6 +219,25 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@keyframes site-nav-progress {
+  0% { transform: translateX(-100%) scaleX(0.28); }
+  55% { transform: translateX(35%) scaleX(0.72); }
+  100% { transform: translateX(235%) scaleX(0.2); }
+}
+
+.site-nav-progress {
+  width: 42%;
+  transform-origin: left center;
+  animation: site-nav-progress 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-nav-progress {
+    width: 72%;
+    animation: none;
+  }
+}
+
 /* Pinyin tone-mark font override — pulls Noto Sans SC in for the exact
    precomposed tone-diacritic codepoints so they render consistently even
    inside mono/sans containers where Geist can clip or mis-shape them. */
@@ -377,14 +396,24 @@
 }
 @keyframes dev-nav-progress {
   0% {
-    transform: translateX(-120%);
+    background-position: 0% 50%;
+    opacity: 0.72;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 1;
   }
   100% {
-    transform: translateX(420%);
+    background-position: 0% 50%;
+    opacity: 0.72;
   }
 }
 .dev-page-enter {
-  animation: dev-page-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* `backwards`, not `both`: a `both`/`forwards` fill keeps the final
+     `transform` applied forever, which turns the page wrapper into the
+     containing block for every `position: fixed` descendant — modal
+     scrims would then only cover the content column, not the viewport. */
+  animation: dev-page-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 @keyframes dev-page-enter {
   from {
@@ -407,8 +436,8 @@
   }
   .dev-nav-progress {
     animation: none;
-    width: 40%;
-    margin-left: 30%;
+    width: 100%;
+    margin-left: 0;
   }
   .dev-page-enter {
     animation: none;

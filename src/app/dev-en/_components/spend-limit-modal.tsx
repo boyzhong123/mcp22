@@ -10,6 +10,7 @@ import {
 } from '../_lib/mock-store';
 import { useMockStore } from '../_lib/use-mock-store';
 import { useLang } from '../_lib/use-lang';
+import { ModalPortal } from './modal-portal';
 
 interface SpendLimitModalProps {
   open: boolean;
@@ -266,48 +267,50 @@ export function SpendLimitModal({ open, onClose, onSaved }: SpendLimitModalProps
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/25"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-2xl bg-background border border-border shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
-          <div>
-            <div className="text-sm font-semibold flex items-center gap-2">
-              {t('Account point & call limits', '账户积分与调用上限')}
-              <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">
-                {tx('Experimental')}
-              </span>
+    <ModalPortal>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div
+          className="absolute inset-0 bg-black/40 dark:bg-black/70"
+          onClick={onClose}
+        />
+        <div className="relative w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-2xl bg-background border border-border shadow-2xl">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+            <div>
+              <div className="text-sm font-semibold flex items-center gap-2">
+                {t('Account point & call limits', '账户积分与调用上限')}
+                <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                  {tx('Experimental')}
+                </span>
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {t(
+                  'Hard guardrails that apply to every API key on the account. Leave any axis Unlimited to opt out.',
+                  '账户级硬性限制，对所有 API Key 同时生效。任意维度可保持「不限制」以放开。',
+                )}
+              </div>
             </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">
-              {t(
-                'Hard guardrails that apply to every API key on the account. Leave any axis Unlimited to opt out.',
-                '账户级硬性限制，对所有 API Key 同时生效。任意维度可保持「不限制」以放开。',
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              aria-label={tx('Close')}
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            aria-label={tx('Close')}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
 
-        <div className="px-5 py-5">
-          <SpendLimitForm
-            onCancel={onClose}
-            onSaved={(l) => {
-              onSaved?.(l);
-              onClose();
-            }}
-          />
+          <div className="px-5 py-5">
+            <SpendLimitForm
+              onCancel={onClose}
+              onSaved={(l) => {
+                onSaved?.(l);
+                onClose();
+              }}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

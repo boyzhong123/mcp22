@@ -95,14 +95,14 @@ export function NavigationProgress() {
     <>
       <div
         className={cn(
-          'pointer-events-none fixed inset-x-0 top-0 z-[70] h-[2px] overflow-hidden transition-opacity duration-150',
+          'pointer-events-none fixed left-0 right-0 top-0 z-[100] h-[3px] w-screen overflow-hidden transition-opacity duration-150',
           pending ? 'opacity-100' : 'opacity-0',
         )}
         aria-hidden={!pending}
       >
         <div
           className={cn(
-            'h-full w-1/3 rounded-full bg-gradient-to-r from-[#1D72E8] via-[#7C3AED] to-[#F01681]',
+            'h-full w-full bg-gradient-to-r from-[#1D72E8] via-[#7C3AED] to-[#F01681] bg-[length:200%_100%]',
             pending && 'dev-nav-progress',
           )}
         />

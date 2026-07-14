@@ -373,7 +373,7 @@ export function DevEnCommandPalette() {
           onKeyDown={onKeyDown}
         >
           <div
-            className="absolute inset-0 bg-black/25"
+            className="absolute inset-0 bg-black/40 dark:bg-black/70"
             onClick={closePalette}
             aria-hidden="true"
           />

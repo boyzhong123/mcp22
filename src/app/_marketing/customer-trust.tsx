@@ -6,6 +6,7 @@ export const CUSTOMERS = [
   {
     name: 'NowUkan Ltd',
     country: 'United Kingdom',
+    website: 'https://nowukan.io',
     image: '/customers/nowukan-white.png',
     width: 983,
     height: 162,
@@ -21,6 +22,7 @@ export const CUSTOMERS = [
   {
     name: 'PT Rentris Pentabenua',
     country: 'Indonesia',
+    website: 'https://rentris.co.id',
     image: '/customers/rentris-cropped.png',
     width: 160,
     height: 78,
@@ -36,6 +38,7 @@ export const CUSTOMERS = [
   {
     name: 'Huahua Learning',
     country: 'Indonesia',
+    website: 'https://www.huahualearning.com',
     image: '/customers/huahua-learning-white.png',
     width: 192,
     height: 162,
@@ -78,7 +81,14 @@ export function CustomerTrustSection({ compact = false }: { compact?: boolean })
           <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">Trusted by teams building language products</div>
           <div className="flex flex-wrap items-center gap-x-7 gap-y-3 sm:justify-end">
             {CUSTOMERS.map((customer) => (
-              <div key={customer.name} className={`flex h-9 w-[116px] items-center justify-center rounded-lg border px-2 ${customer.logoTileClassName}`}>
+              <a
+                key={customer.name}
+                href={customer.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex h-9 w-[116px] items-center justify-center rounded-lg border px-2 transition-opacity hover:opacity-100 ${customer.logoTileClassName}`}
+                aria-label={`${customer.name} website`}
+              >
                 <Image
                   src={customer.image}
                   width={customer.width}
@@ -87,7 +97,7 @@ export function CustomerTrustSection({ compact = false }: { compact?: boolean })
                   className={`h-auto max-w-full object-contain opacity-80 transition-opacity hover:opacity-100 ${customer.logoClassName}`}
                   sizes="116px"
                 />
-              </div>
+              </a>
             ))}
           </div>
         </div>
@@ -121,11 +131,27 @@ export function CustomerTrustSection({ compact = false }: { compact?: boolean })
                 </div>
                 <div className="relative z-[1] mt-8 flex flex-1 flex-col">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-[19px] font-semibold tracking-[-0.02em] text-zinc-900">{customer.name}</h3>
+                    <h3 className="text-[19px] font-semibold tracking-[-0.02em] text-zinc-900">
+                      <a
+                        href={customer.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="transition-colors hover:text-emerald-800"
+                      >
+                        {customer.name}
+                      </a>
+                    </h3>
                   </div>
                   <div className="mt-1 text-[11px] font-mono uppercase tracking-[0.14em] text-emerald-700">{customer.country}</div>
                   <p className={`mt-5 text-[14px] leading-relaxed text-muted-foreground ${compact ? 'line-clamp-3' : ''}`}>{customer.description}</p>
-                  {compact && <Link href="/about#customers" className="mt-7 inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-800 opacity-70 transition-opacity group-hover:opacity-100">Read the case study <ArrowRight className="h-3.5 w-3.5" /></Link>}
+                  <a
+                    href={customer.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-7 inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-800 opacity-70 transition-opacity group-hover:opacity-100"
+                  >
+                    Visit website <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
                 </div>
               </article>
             );

@@ -62,6 +62,9 @@ export function EnterpriseContactForm({
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<'company' | 'name' | 'email', string>>
+  >({});
   const [form, setForm] = useState<GlobalContactFormData>({
     company: '',
     name: defaultName,
@@ -96,11 +99,54 @@ export function EnterpriseContactForm({
     compact ? 'h-10' : 'h-11',
   );
   const labelClass = 'mb-1 block text-[12px] font-medium text-foreground';
+  const invalidClass =
+    'border-rose-400 focus:border-rose-400 focus:ring-rose-500/15 dark:border-rose-500/60';
+  const fieldErrorText = (msg: string | undefined, id: string) =>
+    msg ? (
+      <p id={id} className="mt-1 flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-400">
+        <AlertCircle className="h-3 w-3 shrink-0" />
+        {msg}
+      </p>
+    ) : null;
+
+  // Inline validation instead of the browser's native `required` bubbles —
+  // those render as OS-styled tooltips that clash with the modal UI and
+  // vanish on the first click elsewhere.
+  const validate = (): typeof fieldErrors => {
+    const errors: typeof fieldErrors = {};
+    if (!form.company.trim()) {
+      errors.company = t('Please enter your company name.', '请填写公司名称。');
+    }
+    if (!form.name.trim()) {
+      errors.name = t('Please enter your name.', '请填写您的姓名。');
+    }
+    if (!form.email.trim()) {
+      errors.email = t('Please enter your work email.', '请填写工作邮箱。');
+    } else if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+      errors.email = t(
+        'That doesn’t look like a valid email address.',
+        '邮箱格式不正确，请检查后重试。',
+      );
+    }
+    return errors;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('idle');
     setErrorMsg('');
+    const errors = validate();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      const first = (['company', 'name', 'email'] as const).find((k) => errors[k]);
+      // Focus after the error re-render commits, or the browser drops it.
+      if (first) {
+        requestAnimationFrame(() =>
+          document.getElementById(`${formId}-${first}`)?.focus(),
+        );
+      }
+      return;
+    }
     startTransition(async () => {
       const result = await sendGlobalContactEmail(form);
       if (result.success) {
@@ -148,6 +194,7 @@ export function EnterpriseContactForm({
           type="button"
           onClick={() => {
             setStatus('idle');
+            setFieldErrors({});
             setForm({
               company: '',
               name: defaultName,
@@ -169,6 +216,7 @@ export function EnterpriseContactForm({
     <form
       id={formId}
       onSubmit={handleSubmit}
+      noValidate
       className={cn('space-y-3', className)}
     >
       <div>
@@ -202,13 +250,19 @@ export function EnterpriseContactForm({
             id={`${formId}-company`}
             type="text"
             value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, company: e.target.value });
+              if (fieldErrors.company) setFieldErrors({ ...fieldErrors, company: undefined });
+            }}
             placeholder={t('Acme Inc.', '公司名称')}
-            className={inputClass}
+            className={cn(inputClass, fieldErrors.company && invalidClass)}
             disabled={isPending}
             autoComplete="organization"
             required
+            aria-invalid={!!fieldErrors.company}
+            aria-describedby={fieldErrors.company ? `${formId}-company-error` : undefined}
           />
+          {fieldErrorText(fieldErrors.company, `${formId}-company-error`)}
         </div>
         <div>
           <label className={labelClass} htmlFor={`${formId}-name`}>
@@ -218,13 +272,19 @@ export function EnterpriseContactForm({
             id={`${formId}-name`}
             type="text"
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, name: e.target.value });
+              if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: undefined });
+            }}
             placeholder={t('Jane Doe', '姓名')}
-            className={inputClass}
+            className={cn(inputClass, fieldErrors.name && invalidClass)}
             disabled={isPending}
             autoComplete="name"
             required
+            aria-invalid={!!fieldErrors.name}
+            aria-describedby={fieldErrors.name ? `${formId}-name-error` : undefined}
           />
+          {fieldErrorText(fieldErrors.name, `${formId}-name-error`)}
         </div>
       </div>
 
@@ -236,13 +296,19 @@ export function EnterpriseContactForm({
           id={`${formId}-email`}
           type="email"
           value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          onChange={(e) => {
+            setForm({ ...form, email: e.target.value });
+            if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: undefined });
+          }}
           placeholder="jane@acme.com"
-          className={inputClass}
+          className={cn(inputClass, fieldErrors.email && invalidClass)}
           disabled={isPending}
           autoComplete="email"
           required
+          aria-invalid={!!fieldErrors.email}
+          aria-describedby={fieldErrors.email ? `${formId}-email-error` : undefined}
         />
+        {fieldErrorText(fieldErrors.email, `${formId}-email-error`)}
       </div>
 
       <div>

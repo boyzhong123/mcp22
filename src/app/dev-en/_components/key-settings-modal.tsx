@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { updateKeySettings, type ApiKey } from '../_lib/mock-store';
 import { useLang } from '../_lib/use-lang';
+import { ModalPortal } from './modal-portal';
 
 interface KeySettingsModalProps {
   open: boolean;
@@ -24,7 +25,11 @@ interface KeySettingsModalProps {
  */
 export function KeySettingsModal({ open, apiKey, onClose }: KeySettingsModalProps) {
   if (!open || !apiKey) return null;
-  return <OpenedKeySettingsModal apiKey={apiKey} onClose={onClose} />;
+  return (
+    <ModalPortal>
+      <OpenedKeySettingsModal apiKey={apiKey} onClose={onClose} />
+    </ModalPortal>
+  );
 }
 
 function OpenedKeySettingsModal({
@@ -76,12 +81,12 @@ function OpenedKeySettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
       translate="no"
       lang="en"
     >
       <div
-        className="absolute inset-0 bg-black/25"
+        className="absolute inset-0 bg-black/40 dark:bg-black/70"
         onClick={onClose}
       />
 

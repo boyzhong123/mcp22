@@ -6,6 +6,7 @@
  *  longer carries it).
  * ═══════════════════════════════════════════════════════════ */
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Lightbulb, Sparkles, Terminal } from 'lucide-react';
 import { FadeUp, StaggerContainer, StaggerItem } from '@/components/animated-section';
@@ -111,14 +112,14 @@ export function ReasoningSection() {
           <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
             /reasoning-engine-trigger
           </div>
-          <h2 className="heading-display text-3xl md:text-[42px] tracking-[-0.02em] mb-3 leading-[1.1]">
+          <h1 className="heading-display text-3xl md:text-[42px] tracking-[-0.02em] mb-3 leading-[1.1]">
             It&apos;s not just a score.
             <br />
             <span className="text-muted-foreground/90">It&apos;s a reasoning engine trigger.</span>
-          </h2>
+          </h1>
           <p className="text-muted-foreground leading-relaxed">
-            You saw how simple the integration is. Now look at what actually comes back. The MCP response
-            is a <strong className="text-foreground/90">wide JSON surface</strong>: not only overall and{' '}
+            See what comes back after an assessment and how an LLM turns it into useful coaching. The MCP
+            response is a <strong className="text-foreground/90">wide JSON surface</strong>: not only overall and{' '}
             <span className="font-mono text-foreground/80">pron.*</span> sub-scores, but fluency (WPM, pauses),{' '}
             <span className="font-mono text-foreground/80">audio_quality</span> (SNR, clip, level), and a{' '}
             <span className="font-mono text-foreground/80">details[]</span> array where each word or character carries millisecond
@@ -126,6 +127,20 @@ export function ReasoningSection() {
             <span className="font-mono text-foreground/80">tone</span> objects and confidence distributions. That density is what lets an LLM do secondary diagnosis and
             tertiary profiling &mdash; not a one-number API.
           </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/docs#response-schema"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+            >
+              Inspect response fields <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/runtime"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-900/10 bg-white/70 px-4 text-sm font-semibold text-zinc-800 transition-colors hover:border-emerald-500/35 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+            >
+              Plan production runtime
+            </Link>
+          </div>
         </FadeUp>
 
         <PayloadFieldStrip />
@@ -138,7 +153,7 @@ export function ReasoningSection() {
             <div className="mb-4 flex items-center gap-3">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 border border-violet-500/25 px-2.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-violet-700">
                 <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-                Live demo
+                Reasoning walkthrough
               </span>
               <span className="text-[12.5px] text-muted-foreground">
                 Watch pass ② run. <span className="text-foreground/85">A Mandarin payload in</span> — a
@@ -434,10 +449,6 @@ function ReasoningDemo() {
   const input = REASONING_INPUT[tab];
 
   useEffect(() => {
-    setTyped(0);
-  }, [tab]);
-
-  useEffect(() => {
     if (prefersReducedMotion.current) {
       setTyped(output.length);
       return;
@@ -461,12 +472,20 @@ function ReasoningDemo() {
               中文 · 你好 / 上海
             </span>
           </div>
-          <div className="flex rounded-md border border-border/60 bg-background p-0.5 self-start sm:self-auto">
+          <div
+            className="flex rounded-md border border-border/60 bg-background p-0.5 self-start sm:self-auto"
+            role="group"
+            aria-label="Reasoning pass"
+          >
             {REASONING_TABS.map((t) => (
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  setTab(t.id);
+                  setTyped(0);
+                }}
+                aria-pressed={t.id === tab}
                 className={`px-3 py-1 text-[11px] font-mono rounded-[5px] transition-colors whitespace-nowrap ${
                   t.id === tab
                     ? 'bg-foreground text-background'
@@ -510,7 +529,10 @@ function ReasoningDemo() {
             </pre>
           </div>
 
-          <div className="relative bg-gradient-to-br from-violet-500/[0.05] via-background to-background">
+          <div
+            id="reasoning-output"
+            className="relative bg-gradient-to-br from-violet-500/[0.05] via-background to-background"
+          >
             <div className="flex items-center justify-between px-4 py-2 border-b border-border/60 bg-white/40 backdrop-blur-sm">
               <span className="inline-flex items-center gap-2 text-[11px] font-mono text-zinc-700 tracking-wide">
                 <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-violet-600 text-white text-[9px] font-bold">

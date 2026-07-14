@@ -15,6 +15,7 @@ import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
 import { billing } from '../../../_lib/api';
 import { RechargeTrends } from '../../../_components/recharge-trends';
+import { ModalPortal } from '../../../_components/modal-portal';
 import { centsToWalletPoints } from '../../../_lib/topup';
 
 type StatusFilter = 'all' | Transaction['status'];
@@ -262,150 +263,152 @@ function TransactionDetailDrawer({
   if (!transaction) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label={tx('Close')}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"
-      />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="transaction-detail-title"
-        className="absolute inset-y-0 right-0 w-full max-w-md bg-background border-l border-border shadow-2xl flex flex-col"
-      >
-        <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('Billing history', '充值记录')}
-            </p>
-            <h2 id="transaction-detail-title" className="mt-1 text-lg font-semibold">
-              {t('Transaction details', '交易详情')}
-            </h2>
+    <ModalPortal>
+      <div className="fixed inset-0 z-[60]">
+        <button
+          type="button"
+          aria-label={tx('Close')}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-[1px]"
+        />
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="transaction-detail-title"
+          className="absolute inset-y-0 right-0 w-full max-w-md bg-background border-l border-border shadow-2xl flex flex-col"
+        >
+          <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('Billing history', '充值记录')}
+              </p>
+              <h2 id="transaction-detail-title" className="mt-1 text-lg font-semibold">
+                {t('Transaction details', '交易详情')}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={tx('Close')}
+              className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={tx('Close')}
-            className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <div className="rounded-xl border border-border bg-muted/20 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">{t('Top-up amount', '充值金额')}</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                  +{formatPoints(creditedPoints(transaction))}
-                </p>
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            <div className="rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t('Top-up amount', '充值金额')}</p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                    +{formatPoints(creditedPoints(transaction))}
+                  </p>
+                </div>
+                <StatusPill status={transaction.status} />
               </div>
-              <StatusPill status={transaction.status} />
+              <p className="mt-3 text-sm text-muted-foreground">{transaction.description}</p>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">{transaction.description}</p>
-          </div>
 
-          <div className="rounded-xl border border-border divide-y divide-border">
-            <DetailRow label={t('Paid amount', '支付金额')} value={formatCents(transaction.amountCents)} />
-            <DetailRow label={t('Payment method', '支付方式')} value={methodLabel(transaction.method, transaction.last4)} />
-            <DetailRow label={t('Transaction time', '交易时间')} value={formatTransactionTimestamp(transaction.createdAt, lang)} />
-            <DetailRow label={t('PayPal order ID', 'PayPal 订单号')} value={transaction.paypalOrderId ?? '—'} mono />
-            <DetailRow label={t('Transaction ID', '交易 ID')} value={transaction.id} mono />
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('Evaluation point breakdown', '评测积分到账明细')}
-            </h3>
             <div className="rounded-xl border border-border divide-y divide-border">
-              <DetailRow
-                label={t('Package', '充值套餐')}
-                value={packageLabel(transaction.packageId, t)}
-              />
-              <DetailRow
-                label={t('Base points', '基础积分')}
-                value={formatPoints(transaction.basePoints ?? creditedPoints(transaction))}
-              />
-              <DetailRow
-                label={t('Bonus points', '赠送积分')}
-                value={formatPoints(transaction.bonusPoints ?? 0)}
-              />
-              <DetailRow
-                label={t('Points credited', '实际到账')}
-                value={`+${formatPoints(creditedPoints(transaction))}`}
-              />
-              <DetailRow
-                label={t('Valid through', '有效期至')}
-                value={transaction.pointsExpireAt ? formatDate(transaction.pointsExpireAt) : '—'}
-              />
+              <DetailRow label={t('Paid amount', '支付金额')} value={formatCents(transaction.amountCents)} />
+              <DetailRow label={t('Payment method', '支付方式')} value={methodLabel(transaction.method, transaction.last4)} />
+              <DetailRow label={t('Transaction time', '交易时间')} value={formatTransactionTimestamp(transaction.createdAt, lang)} />
+              <DetailRow label={t('PayPal order ID', 'PayPal 订单号')} value={transaction.paypalOrderId ?? '—'} mono />
+              <DetailRow label={t('Transaction ID', '交易 ID')} value={transaction.id} mono />
             </div>
-          </div>
 
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('Available point change', '可用积分变化')}
-            </h3>
-            <div className="rounded-xl border border-border divide-y divide-border">
-              <DetailRow
-                label={t('Available before top-up', '充值前可用积分')}
-                value={formatOptionalPoints(transaction.balanceBeforePoints)}
-              />
-              <DetailRow
-                label={t('Available after top-up', '充值后可用积分')}
-                value={formatOptionalPoints(transaction.balanceAfterPoints)}
-              />
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('Evaluation point breakdown', '评测积分到账明细')}
+              </h3>
+              <div className="rounded-xl border border-border divide-y divide-border">
+                <DetailRow
+                  label={t('Package', '充值套餐')}
+                  value={packageLabel(transaction.packageId, t)}
+                />
+                <DetailRow
+                  label={t('Base points', '基础积分')}
+                  value={formatPoints(transaction.basePoints ?? creditedPoints(transaction))}
+                />
+                <DetailRow
+                  label={t('Bonus points', '赠送积分')}
+                  value={formatPoints(transaction.bonusPoints ?? 0)}
+                />
+                <DetailRow
+                  label={t('Points credited', '实际到账')}
+                  value={`+${formatPoints(creditedPoints(transaction))}`}
+                />
+                <DetailRow
+                  label={t('Valid through', '有效期至')}
+                  value={transaction.pointsExpireAt ? formatDate(transaction.pointsExpireAt) : '—'}
+                />
+              </div>
             </div>
-          </div>
 
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('Current usage for this top-up', '本次充值当前使用情况')}
-            </h3>
-            <div className="rounded-xl border border-border divide-y divide-border">
-              <DetailRow
-                label={t('Points used', '已用积分')}
-                value={formatPoints(pointUsage?.usedPoints ?? 0)}
-              />
-              <DetailRow
-                label={t('Points remaining', '剩余积分')}
-                value={formatPoints(pointUsage?.remainingPoints ?? creditedPoints(transaction))}
-              />
-              <DetailRow
-                label={t('Usage status', '使用状态')}
-                value={
-                  pointUsage?.state === 'expired'
-                    ? t('Voided (unused after 30 days)', '已作废（30 天未用完）')
-                    : pointUsage?.state === 'exhausted'
-                      ? t('Used up', '已用完')
-                      : t('In use', '使用中')
-                }
-              />
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('Available point change', '可用积分变化')}
+              </h3>
+              <div className="rounded-xl border border-border divide-y divide-border">
+                <DetailRow
+                  label={t('Available before top-up', '充值前可用积分')}
+                  value={formatOptionalPoints(transaction.balanceBeforePoints)}
+                />
+                <DetailRow
+                  label={t('Available after top-up', '充值后可用积分')}
+                  value={formatOptionalPoints(transaction.balanceAfterPoints)}
+                />
+              </div>
             </div>
-            <div className="mt-3 rounded-xl border border-border bg-muted/20 p-4">
-              <PointUsageProgress
-                creditedPoints={creditedPoints(transaction)}
-                usage={pointUsage ?? {
-                  usedPoints: 0,
-                  remainingPoints: creditedPoints(transaction),
-                  state: 'active',
-                }}
-                detailed
-              />
-            </div>
-          </div>
 
-          {loading && (
-            <p className="text-xs text-muted-foreground">
-              {t('Refreshing transaction details…', '正在刷新交易详情…')}
-            </p>
-          )}
-        </div>
-      </aside>
-    </div>
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('Current usage for this top-up', '本次充值当前使用情况')}
+              </h3>
+              <div className="rounded-xl border border-border divide-y divide-border">
+                <DetailRow
+                  label={t('Points used', '已用积分')}
+                  value={formatPoints(pointUsage?.usedPoints ?? 0)}
+                />
+                <DetailRow
+                  label={t('Points remaining', '剩余积分')}
+                  value={formatPoints(pointUsage?.remainingPoints ?? creditedPoints(transaction))}
+                />
+                <DetailRow
+                  label={t('Usage status', '使用状态')}
+                  value={
+                    pointUsage?.state === 'expired'
+                      ? t('Voided (unused after 30 days)', '已作废（30 天未用完）')
+                      : pointUsage?.state === 'exhausted'
+                        ? t('Used up', '已用完')
+                        : t('In use', '使用中')
+                  }
+                />
+              </div>
+              <div className="mt-3 rounded-xl border border-border bg-muted/20 p-4">
+                <PointUsageProgress
+                  creditedPoints={creditedPoints(transaction)}
+                  usage={pointUsage ?? {
+                    usedPoints: 0,
+                    remainingPoints: creditedPoints(transaction),
+                    state: 'active',
+                  }}
+                  detailed
+                />
+              </div>
+            </div>
+
+            {loading && (
+              <p className="text-xs text-muted-foreground">
+                {t('Refreshing transaction details…', '正在刷新交易详情…')}
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
+    </ModalPortal>
   );
 }
 

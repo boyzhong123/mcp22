@@ -14,7 +14,15 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
+import {
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ButtonHTMLAttributes,
+  type FormEvent,
+} from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -36,6 +44,37 @@ import {
   type GlobalContactFormData,
   type GlobalContactUseCase,
 } from '@/app/actions/send-global-contact';
+
+/** Dispatched from CTAs (e.g. pricing) so TopNav opens the in-page contact modal. */
+export const OPEN_CONTACT_EVENT = 'chivox:open-contact';
+
+export function openGlobalContact() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(OPEN_CONTACT_EVENT));
+}
+
+/** Opens the shared TopNav contact form (server-sent email, not mailto). */
+export function OpenContactButton({
+  children,
+  className,
+  onClick,
+  type = 'button',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type={type}
+      className={className}
+      onClick={(e) => {
+        onClick?.(e);
+        if (!e.defaultPrevented) openGlobalContact();
+      }}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
 
 /* ══ Representative payload — shared by QuickstartDemo on the main
  *    landing AND the Reasoning section in /global/reasoning. */
@@ -85,7 +124,7 @@ export const NAV_GROUPS: readonly {
       {
         href: '/products/english-speech-assessment',
         label: 'English assessment',
-        summary: 'Pronunciation, fluency and phoneme-level feedback.',
+        summary: 'Pronunciation, fluency and phoneme feedback.',
         eyebrow: 'Product',
         icon: 'english',
         accent: 'from-sky-500/15 to-sky-500/0',
@@ -93,7 +132,7 @@ export const NAV_GROUPS: readonly {
       {
         href: '/products/mandarin-chinese-assessment',
         label: 'Mandarin assessment',
-        summary: 'Tone, Pinyin and fluency evidence.',
+        summary: 'Tone, Pinyin and fluency scoring.',
         eyebrow: 'Product',
         icon: 'mandarin',
         accent: 'from-rose-500/15 to-rose-500/0',
@@ -101,7 +140,7 @@ export const NAV_GROUPS: readonly {
       {
         href: '/products/kids-speech-assessment',
         label: 'Kids speech assessment',
-        summary: 'Structured feedback for young-learner products.',
+        summary: 'Structured feedback for young learners.',
         eyebrow: 'Product',
         icon: 'kids',
         accent: 'from-amber-500/15 to-amber-500/0',
@@ -109,7 +148,7 @@ export const NAV_GROUPS: readonly {
       {
         href: '/products/mcp-server',
         label: 'MCP server',
-        summary: 'Speech tools for agent-native workflows.',
+        summary: 'Speech tools for agent workflows.',
         eyebrow: 'Product',
         icon: 'mcp',
         accent: 'from-emerald-500/15 to-emerald-500/0',
@@ -160,7 +199,7 @@ function navTriggerClass(scrolled: boolean, active: boolean) {
 
 function navMenuItemClass(isOn: boolean) {
   return cn(
-    'group/item relative flex items-start gap-3 rounded-xl px-2.5 py-2.5',
+    'group/item relative flex min-h-[72px] items-start gap-3 rounded-xl px-2.5 py-2.5',
     'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
     isOn
       ? 'bg-emerald-500/[0.09] ring-1 ring-emerald-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'
@@ -207,16 +246,16 @@ export const RESOURCE_ITEMS: readonly {
   {
     href: '/reasoning',
     label: 'Reasoning engine',
-    summary: 'What the JSON payload actually looks like — and how an LLM reasons over it.',
-    eyebrow: 'Day-1',
+    summary: 'See the payload, diagnosis, and drill-generation loop.',
+    eyebrow: 'Understand',
     icon: 'reasoning',
     accent: 'from-emerald-500/15 to-emerald-500/0',
   },
   {
     href: '/runtime',
     label: 'Runtime',
-    summary: 'Keys, budgets, alerts, observability, privacy, scale — the day-2 stuff.',
-    eyebrow: 'Day-2',
+    summary: 'Plan keys, budgets, alerts, privacy, and production scale.',
+    eyebrow: 'Operate',
     icon: 'runtime',
     accent: 'from-amber-500/15 to-amber-500/0',
   },
@@ -224,15 +263,15 @@ export const RESOURCE_ITEMS: readonly {
     href: '/faq',
     label: 'FAQ',
     summary: 'Integration speed, languages, streaming, accuracy, pricing.',
-    eyebrow: 'Quick answers',
+    eyebrow: 'Answers',
     icon: 'faq',
     accent: 'from-sky-500/15 to-sky-500/0',
   },
   {
     href: '/blog',
     label: 'Guides & insights',
-    summary: 'Speech assessment, AI tutor and voice-agent product guidance.',
-    eyebrow: 'Learn',
+    summary: 'Choose a practical guide by product question or build stage.',
+    eyebrow: 'Explore',
     icon: 'docs',
     accent: 'from-violet-500/15 to-violet-500/0',
   },
@@ -342,7 +381,7 @@ export function HeaderAuthCTA({ scrolled = false }: { scrolled?: boolean }) {
 
   return (
     <Link
-      href="/dev-en/dashboard"
+      href="/dashboard"
       aria-label={`Open dashboard — signed in as ${display}`}
       className={cn(
         'group inline-flex items-center text-sm font-medium rounded-full',
@@ -500,6 +539,13 @@ export function TopNav() {
     return () => document.removeEventListener('keydown', onKey);
   }, [contactOpen]);
 
+  // Pricing / other CTAs open the same in-page contact form via custom event.
+  useEffect(() => {
+    const onOpen = () => setContactOpen(true);
+    window.addEventListener(OPEN_CONTACT_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_CONTACT_EVENT, onOpen);
+  }, []);
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -617,6 +663,7 @@ export function TopNav() {
                             key={item.href}
                             href={item.href}
                             role="menuitem"
+                            aria-current={isOn ? 'page' : undefined}
                             className={navMenuItemClass(isOn)}
                           >
                             <span aria-hidden className={navIconTileClass(item.accent)}>
@@ -628,7 +675,7 @@ export function TopNav() {
                                 {isOn ? (
                                   <span className="text-[10px] font-mono text-emerald-700">● current</span>
                                 ) : (
-                                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 group-hover/item:text-emerald-700/80 transition-colors">{item.eyebrow}</span>
+                                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-zinc-400 transition-colors group-hover/item:text-emerald-700/80">{item.eyebrow}</span>
                                 )}
                               </div>
                               <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{item.summary}</p>
@@ -1043,7 +1090,7 @@ function BackToOverviewInner({
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
-  const fallbackHref = from === 'dev' ? '/dev-en/dashboard/overview' : '/';
+  const fallbackHref = from === 'dev' ? '/dashboard/overview' : '/';
 
   const handleBack = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -1133,15 +1180,15 @@ export function AmbientBackdrop() {
         }}
       />
       <div
-        className="absolute inset-0 opacity-[0.05]"
+        className="absolute inset-0 opacity-[0.075]"
         style={{
           backgroundImage:
             'linear-gradient(rgba(0,0,0,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.5) 1px, transparent 1px)',
-          backgroundSize: '56px 56px',
+          backgroundSize: '48px 48px',
           maskImage:
-            'radial-gradient(ellipse 70% 60% at 50% 25%, black 30%, transparent 80%)',
+            'radial-gradient(ellipse 72% 58% at 50% 22%, black 38%, transparent 78%)',
           WebkitMaskImage:
-            'radial-gradient(ellipse 70% 60% at 50% 25%, black 30%, transparent 80%)',
+            'radial-gradient(ellipse 72% 58% at 50% 22%, black 38%, transparent 78%)',
         }}
       />
     </div>
@@ -1565,11 +1612,8 @@ function FooterSubscribePill() {
   };
 
   return (
-    <form
-      onSubmit={submit}
-      className="inline-flex flex-col gap-1"
-    >
-      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-white/60 backdrop-blur-sm pl-4 pr-1 py-1 hover:border-emerald-500/45 transition-colors">
+    <form onSubmit={submit} className="flex w-full max-w-[22rem] flex-col gap-1.5">
+      <div className="flex h-11 w-full items-center gap-2 rounded-full border border-zinc-900/10 bg-white/70 p-1 pl-4 shadow-[0_8px_30px_-18px_rgba(39,39,42,0.45)] backdrop-blur-sm transition-all focus-within:border-emerald-600/35 focus-within:ring-4 focus-within:ring-emerald-500/10 hover:border-zinc-900/20">
         <input
           type="email"
           name="footer-subscribe-email"
@@ -1578,14 +1622,14 @@ function FooterSubscribePill() {
           placeholder="Work email"
           aria-label="Work email for product updates"
           autoComplete="email"
-          className="bg-transparent outline-none text-[13px] text-zinc-900 placeholder:text-zinc-500 w-28 sm:w-40"
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-zinc-900 outline-none placeholder:text-zinc-500"
         />
         <button
           type="submit"
           aria-label="Open email to subscribe to product updates"
-          className="h-7 w-7 rounded-full bg-zinc-900 text-white inline-flex items-center justify-center hover:bg-zinc-700 active:scale-95 transition-all"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
         >
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="h-4 w-4" />
         </button>
       </div>
       {hint === 'invalid' && (
@@ -1601,16 +1645,13 @@ function FooterSubscribePill() {
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
-  const pathname = usePathname() || '/';
-  const onLanding = pathname === '/' || pathname === '/global' || pathname === '/global/';
-  const anchorHref = (hash: string) => (onLanding ? hash : `/${hash}`);
 
   return (
     <footer
-      className="relative mt-16 md:mt-20"
+      className="relative mt-16 overflow-hidden md:mt-20"
       style={{
         background:
-          'linear-gradient(to bottom right, rgba(16,185,129,0.10) 0%, rgba(245,158,11,0.06) 55%, rgba(255,255,255,0.35) 100%)',
+          'linear-gradient(135deg, rgba(16,185,129,0.095) 0%, rgba(250,246,232,0.92) 48%, rgba(244,114,182,0.045) 100%)',
         borderTop: '1px solid rgba(16,185,129,0.22)',
       }}
     >
@@ -1622,20 +1663,25 @@ export function SiteFooter() {
         }}
       />
 
-      <div className="container mx-auto px-6 py-14 md:py-16 max-w-6xl">
-        <div className="grid lg:grid-cols-12 gap-[5px] lg:gap-12 items-start">
-          <div className="lg:col-span-7">
+      <div className="container mx-auto max-w-7xl px-6 py-12 md:py-14 lg:px-8">
+        <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-16">
+          <div className="lg:col-span-4">
             <Link
               href="/"
-              className="inline-block mb-6 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-zinc-400/30"
+              className="mb-5 inline-block rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-zinc-400/30"
               aria-label="Chivox MCP"
             >
-              <ChivoxMcpBrand onWarm />
+              <ChivoxMcpBrand onWarm compact />
             </Link>
 
-            <div className="text-[13.5px] font-medium text-zinc-800 mb-4">Stay connected with us</div>
+            <p className="mb-7 max-w-sm text-[13px] leading-6 text-zinc-600">
+              Speech assessment infrastructure for AI tutors, voice agents and language-learning products.
+            </p>
 
-            <div className="flex flex-wrap items-center gap-[5px] mb-4">
+            <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
+              Stay connected with us
+            </div>
+            <div className="mb-7 flex flex-wrap items-center gap-2">
               <SocialIcon label="X / Twitter" href="https://x.com/">
                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
                   <path d="M17.6 3h3.3l-7.2 8.3L22 21h-6.6l-5.2-6.7L4.3 21H1l7.8-8.9L1 3h6.8l4.7 6.2L17.6 3zm-1.1 16h1.8L7.6 5H5.6l10.9 14z" fill="currentColor" />
@@ -1661,126 +1707,98 @@ export function SiteFooter() {
                   <path d="M19.7 4.9A17 17 0 0 0 15.4 3.5a.1.1 0 0 0-.1 0c-.2.3-.4.7-.6 1.1a16 16 0 0 0-4.6 0c-.2-.4-.4-.8-.6-1.1a.1.1 0 0 0-.1 0A17 17 0 0 0 5 4.9a.1.1 0 0 0 0 0A17 17 0 0 0 2 14.7a.1.1 0 0 0 0 .1 17 17 0 0 0 5 2.6.1.1 0 0 0 .1 0c.4-.5.7-1 1-1.6a.1.1 0 0 0-.1-.2 12 12 0 0 1-1.7-.8.1.1 0 0 1 0-.2l.3-.2a.1.1 0 0 1 .1 0 12 12 0 0 0 10.5 0 .1.1 0 0 1 .1 0l.3.2a.1.1 0 0 1 0 .2 11 11 0 0 1-1.6.8.1.1 0 0 0-.1.2c.3.6.6 1.1 1 1.6a.1.1 0 0 0 .1 0 17 17 0 0 0 5-2.6.1.1 0 0 0 0-.1 17 17 0 0 0-3-9.8.1.1 0 0 0 0 0zM8.7 13.2c-1 0-1.8-1-1.8-2.1s.8-2.1 1.8-2.1 1.8 1 1.8 2.1-.8 2.1-1.8 2.1zm6.6 0c-1 0-1.8-1-1.8-2.1s.8-2.1 1.8-2.1 1.8 1 1.8 2.1-.8 2.1-1.8 2.1z" fill="currentColor" />
                 </svg>
               </SocialIcon>
+            </div>
 
+            <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
+              Get product updates
+            </div>
+
+            <div className="mb-2">
               <FooterSubscribePill />
             </div>
 
-            <p className="text-[11.5px] text-zinc-600 leading-relaxed max-w-md">
-              Get product updates — a short note when something ships. No spam, unsubscribe anytime.
+            <p className="max-w-sm text-[11px] leading-relaxed text-zinc-500">
+              A short note when something ships. No spam, unsubscribe anytime.
             </p>
           </div>
 
-          <div className="lg:col-span-5 lg:pl-6 grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4 lg:col-span-8 lg:pt-1">
             <div>
-            <div className="text-[13.5px] font-medium text-zinc-800 mb-4">Explore</div>
-            <ul className="flex flex-col gap-3 text-[14px] text-zinc-700">
-              <li>
-                <Link href="/products/english-speech-assessment" className="hover:text-zinc-900 transition-colors">
-                  English assessment
-                </Link>
-              </li>
-              <li>
-                <Link href="/products/mandarin-chinese-assessment" className="hover:text-zinc-900 transition-colors">
-                  Mandarin assessment
-                </Link>
-              </li>
-              <li>
-                <Link href="/products/kids-speech-assessment" className="hover:text-zinc-900 transition-colors">
-                  Kids assessment
-                </Link>
-              </li>
-              <li>
-                <Link href="/products/mcp-server" className="hover:text-zinc-900 transition-colors">
-                  MCP server
-                </Link>
-              </li>
-              <li>
-                <Link href="/solutions/ai-language-tutor" className="hover:text-zinc-900 transition-colors">
-                  AI language tutor
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="hover:text-zinc-900 transition-colors">
-                  Pricing
-                </Link>
-              </li>
-            </ul>
+              <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
+                Products
+              </div>
+              <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
+                <li><Link href="/products/english-speech-assessment" className="transition-colors hover:text-zinc-900">English assessment</Link></li>
+                <li><Link href="/products/mandarin-chinese-assessment" className="transition-colors hover:text-zinc-900">Mandarin assessment</Link></li>
+                <li><Link href="/products/kids-speech-assessment" className="transition-colors hover:text-zinc-900">Kids assessment</Link></li>
+                <li><Link href="/products/mcp-server" className="transition-colors hover:text-zinc-900">MCP server</Link></li>
+              </ul>
             </div>
+
             <div>
-            <div className="text-[13.5px] font-medium text-zinc-800 mb-4">Developers</div>
-            <ul className="flex flex-col gap-3 text-[14px] text-zinc-700">
-              <li>
-                <Link href={anchorHref('#capabilities')} className="hover:text-zinc-900 transition-colors">
-                  Capabilities
-                </Link>
-              </li>
-              <li>
-                <Link href={anchorHref('#proof')} className="hover:text-zinc-900 transition-colors">
-                  Proof
-                </Link>
-              </li>
-              <li>
-                <Link href={anchorHref('#quickstart')} className="hover:text-zinc-900 transition-colors">
-                  Quickstart
-                </Link>
-              </li>
-              <li>
-                <Link href="/reasoning" className="hover:text-zinc-900 transition-colors">
-                  Reasoning engine
-                </Link>
-              </li>
-              <li>
-                <Link href="/runtime" className="hover:text-zinc-900 transition-colors">
-                  Runtime
-                </Link>
-              </li>
-              <li>
-                <Link href="/docs" className="hover:text-zinc-900 transition-colors">
-                  Docs
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="hover:text-zinc-900 transition-colors">
-                  FAQ
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="hover:text-zinc-900 transition-colors">
-                  About &amp; customers
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="hover:text-zinc-900 transition-colors">
-                  Guides &amp; insights
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="mailto:ming.zhao@chivox.com?subject=Chivox%20MCP%20inquiry"
-                  className="hover:text-zinc-900 transition-colors"
-                >
-                  Contact sales
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/boyzhong123/mcp22"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 hover:text-zinc-900 transition-colors"
-                >
-                  GitHub
-                  <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
-                </a>
-              </li>
-            </ul>
+              <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
+                Solutions
+              </div>
+              <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
+                <li><Link href="/solutions/function-calling" className="transition-colors hover:text-zinc-900">Function calling</Link></li>
+                <li><Link href="/solutions/ai-language-tutor" className="transition-colors hover:text-zinc-900">AI language tutor</Link></li>
+                <li><Link href="/reasoning" className="transition-colors hover:text-zinc-900">Reasoning engine</Link></li>
+                <li><Link href="/pricing" className="transition-colors hover:text-zinc-900">Pricing</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
+                Resources
+              </div>
+              <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
+                <li><Link href="/demo" className="transition-colors hover:text-zinc-900">Live demo</Link></li>
+                <li><Link href="/docs" className="transition-colors hover:text-zinc-900">Developer docs</Link></li>
+                <li><Link href="/global#quickstart" className="transition-colors hover:text-zinc-900">Quickstart</Link></li>
+                <li><Link href="/runtime" className="transition-colors hover:text-zinc-900">Runtime</Link></li>
+                <li><Link href="/faq" className="transition-colors hover:text-zinc-900">FAQ</Link></li>
+                <li><Link href="/blog" className="transition-colors hover:text-zinc-900">Guides &amp; insights</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-800">
+                Company
+              </div>
+              <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
+                <li><Link href="/about" className="transition-colors hover:text-zinc-900">Why Chivox</Link></li>
+                <li><Link href="/about#customers" className="transition-colors hover:text-zinc-900">Customers</Link></li>
+                <li>
+                  <OpenContactButton className="text-left transition-colors hover:text-zinc-900">
+                    Contact sales
+                  </OpenContactButton>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/boyzhong123/mcp22"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 transition-colors hover:text-zinc-900"
+                  >
+                    GitHub <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
 
-        <div className="mt-14 pt-5 border-t border-zinc-900/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-zinc-600">
+        <div className="mt-12 flex flex-col gap-4 border-t border-zinc-900/10 pt-5 text-[11.5px] text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
           <span>Built by speech scientists. Trusted by 10k+ voice-AI builders.</span>
-          <span>©{year} Chivox Inc. All rights reserved.</span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link href="/legal/privacy" className="transition-colors hover:text-zinc-900">
+              Privacy
+            </Link>
+            <Link href="/legal/terms" className="transition-colors hover:text-zinc-900">
+              Terms
+            </Link>
+            <span>© {year} Chivox Inc.</span>
+          </div>
         </div>
       </div>
     </footer>
@@ -1803,7 +1821,7 @@ function SocialIcon({
       rel="noopener noreferrer"
       aria-label={label}
       title={label}
-      className="h-8 w-8 rounded-full border border-zinc-900/20 text-zinc-700 hover:text-zinc-900 hover:border-zinc-900/50 bg-transparent inline-flex items-center justify-center transition-colors"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-900/15 bg-white/35 text-zinc-600 transition-all hover:-translate-y-0.5 hover:border-zinc-900/30 hover:bg-white/70 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
     >
       {children}
     </a>

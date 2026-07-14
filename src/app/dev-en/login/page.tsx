@@ -3,7 +3,19 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Check, Eye, EyeOff, KeyRound, Mail, Play } from 'lucide-react';
+import {
+  ArrowRight,
+  AudioWaveform,
+  Braces,
+  Check,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Languages,
+  Mail,
+  Play,
+  Radio,
+} from 'lucide-react';
 import { useAuth } from '../_lib/auth-context';
 import { useLang } from '../_lib/use-lang';
 import { OAuthButtons } from '../_components/oauth-buttons';
@@ -72,62 +84,115 @@ export default function DevEnLoginPage() {
 
   return (
     <main className="min-h-dvh flex bg-background text-foreground">
-      <div className="hidden lg:flex lg:w-[46%] relative bg-zinc-950 text-white overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-[0.35]"
-          style={{
-            backgroundImage:
-              'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.04\'/%3E%3C/svg%3E")',
-          }}
-        />
-        <div className="absolute -top-1/4 -left-1/4 w-[70%] h-[70%] bg-gradient-to-br from-white/[0.07] via-transparent to-transparent rounded-full blur-[100px]" />
-        <div className="absolute -bottom-1/4 -right-1/4 w-[60%] h-[60%] bg-gradient-to-tl from-white/[0.05] via-transparent to-transparent rounded-full blur-[80px]" />
+      <div className="hidden lg:flex lg:w-[46%] relative overflow-hidden border-r border-white/[0.07] bg-[#080b0a] text-white">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(16,185,129,0.16),transparent_31%),radial-gradient(circle_at_90%_84%,rgba(29,114,232,0.10),transparent_34%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-[38%] h-px bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent" />
 
-        <div className="relative z-10 flex flex-col p-10 xl:p-12 w-full">
-          <Link href="/global" className="flex items-center gap-[5px] group whitespace-nowrap" aria-label="Back to Chivox MCP home">
-            <div className="relative h-[3.6rem] w-[3.6rem]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
-            </div>
-            <span className="font-bold text-[22px] tracking-[-0.02em] text-white/90 group-hover:text-white transition-colors flex items-center gap-0.5 whitespace-nowrap">
-              <span>Chivox</span>
-              <span className="bg-gradient-to-r from-[#1D72E8] to-[#F01681] bg-clip-text text-transparent">MCP</span>
-            </span>
-          </Link>
-
-          <div className="flex-1 flex flex-col justify-center py-10 max-w-sm">
-            <span className="inline-flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase text-white/40 mb-5">
-              <span className="w-3 h-px bg-white/30" />
-              {tx('Developer Console')}
-            </span>
-            <h1 className="text-[30px] xl:text-[34px] font-semibold tracking-[-0.015em] leading-[1.15] mb-4">
-              {tx('Build with')}{' '}
-              <span className="bg-gradient-to-r from-white via-white/85 to-white/40 bg-clip-text text-transparent">
-                {tx('speech-grade MCP')}
+        <div className="relative z-10 flex w-full flex-col px-10 py-9 xl:px-14 xl:py-11">
+          <div className="flex items-center justify-between gap-6">
+            <Link href="/global" className="group flex items-center gap-1 whitespace-nowrap" aria-label="Back to Chivox MCP home">
+              <div className="relative h-12 w-12">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand-mark-transparent.png" alt="" className="h-full w-full object-contain" />
+              </div>
+              <span className="flex items-center gap-0.5 whitespace-nowrap text-[20px] font-bold tracking-[-0.02em] text-white/90 transition-colors group-hover:text-white">
+                <span>Chivox</span>
+                <span className="bg-gradient-to-r from-[#3b8cff] to-[#ff348f] bg-clip-text text-transparent">MCP</span>
               </span>
-            </h1>
-            <p className="text-[13px] text-white/50 leading-relaxed mb-7">
-              {tx(
-                'Ship exam-grade speech evaluation to any LLM with a single standard protocol.',
-              )}
-            </p>
-            <ul className="space-y-3">
-              {[
-                { t: '16 evaluation tools auto-registered', d: 'Bilingual core · word / sentence / paragraph' },
-                { t: 'Phoneme-level scoring', d: 'mispron / omit / insert diagnostics' },
-                { t: 'Standard MCP, zero integration cost', d: 'stdio + Streamable HTTP' },
-              ].map((f) => (
-                <li key={f.t} className="flex items-start gap-3">
-                  <div className="mt-0.5 h-5 w-5 rounded-md border border-white/10 bg-white/[0.04] flex items-center justify-center shrink-0">
-                    <Check className="h-3 w-3 text-white/70" strokeWidth={2.5} />
+            </Link>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-white/45">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+              Console online
+            </span>
+          </div>
+
+          <div className="flex flex-1 flex-col justify-center py-10 xl:py-14">
+            <div className="max-w-[470px]">
+              <span className="mb-5 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-emerald-300/70">
+                <span className="h-px w-5 bg-emerald-300/50" />
+                {t('Developer Console', '开发者控制台')}
+              </span>
+              <h1 className="mb-4 text-[34px] font-semibold leading-[1.08] tracking-[-0.035em] xl:text-[42px]">
+                {t('Speech assessment,', '把语音评测，')}
+                <br />
+                <span className="bg-gradient-to-r from-white via-white/90 to-white/45 bg-clip-text text-transparent">
+                  {t('ready for every agent.', '接入每一个智能体。')}
+                </span>
+              </h1>
+              <p className="max-w-[430px] text-[14px] leading-6 text-white/55 xl:text-[15px]">
+                {t(
+                  'Connect exam-grade English and Mandarin evaluation to any LLM through one standard MCP server.',
+                  '通过一个标准 MCP Server，把考试级中英语音评测接入任意 LLM。',
+                )}
+              </p>
+
+              <div className="mt-8 overflow-hidden rounded-[22px] border border-white/[0.11] bg-white/[0.055] shadow-[0_24px_80px_rgba(0,0,0,0.32)] backdrop-blur-sm">
+                <div className="flex items-center justify-between gap-4 border-b border-white/[0.08] px-5 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-300">
+                      <Braces className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">MCP server</p>
+                      <p className="truncate font-mono text-[11px] text-white/75">npx -y @chivox/mcp</p>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[13px] font-medium text-white/85 leading-tight">{tx(f.t)}</div>
-                    <div className="text-[11px] text-white/40 mt-1 leading-relaxed">{tx(f.d)}</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-emerald-300">
+                    <Radio className="h-3 w-3" />
+                    {t('Connected', '已连接')}
+                  </span>
+                </div>
+
+                <ul className="divide-y divide-white/[0.07] px-5">
+                  {[
+                    {
+                      icon: AudioWaveform,
+                      title: t('16 tools, auto-registered', '16 个工具，自动注册'),
+                      detail: t('Word · sentence · paragraph', '字 · 词 · 句'),
+                    },
+                    {
+                      icon: Languages,
+                      title: t('English + Mandarin scoring', '中英语音评测'),
+                      detail: t('Pronunciation · fluency · phonemes', '发音 · 流利度 · 音素'),
+                    },
+                    {
+                      icon: Check,
+                      title: t('Structured evidence, ready to use', '结构化证据，开箱即用'),
+                      detail: t('mispron · omit · insert diagnostics', '错读 · 漏读 · 增读诊断'),
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.title} className="flex items-center gap-3.5 py-3.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.055] text-white/65">
+                          <Icon className="h-4 w-4" strokeWidth={1.8} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-medium leading-5 text-white/85">{item.title}</p>
+                          <p className="truncate text-[10px] leading-4 text-white/38">{item.detail}</p>
+                        </div>
+                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-300/75" strokeWidth={2.2} />
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="flex items-center gap-4 border-t border-white/[0.08] bg-black/10 px-5 py-3 font-mono text-[9px] uppercase tracking-[0.16em] text-white/35">
+                  <span>stdio</span>
+                  <span className="h-1 w-1 rounded-full bg-white/20" />
+                  <span>Streamable HTTP</span>
+                  <span className="ml-auto text-emerald-300/65">EN + ZH</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-5 border-t border-white/[0.08] pt-5 text-[10px] text-white/35">
+            <span>{t('Built for production speech products', '为生产级语音产品打造')}</span>
+            <span className="inline-flex items-center gap-1.5 font-mono uppercase tracking-[0.14em]">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              {t('All systems ready', '服务就绪')}
+            </span>
           </div>
         </div>
       </div>

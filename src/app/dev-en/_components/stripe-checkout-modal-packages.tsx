@@ -36,6 +36,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { cn } from '@/lib/utils';
 import { EnterpriseContactForm } from './enterprise-contact-form';
+import { ModalPortal } from './modal-portal';
 import {
   addTransaction,
   addEvaluationPointBatch,
@@ -70,6 +71,8 @@ import {
   type TopupBonusTier,
   type TopupQuote,
 } from '../_lib/topup';
+import { findPackage, previewQuotedPoints } from '../_lib/billing-pricing';
+import { useBillingPricing } from '../_lib/use-billing-pricing';
 import { billing, describeError } from '../_lib/api';
 import { hydrateFromApi } from '../_lib/mock-store-bridge';
 import { usePaymentConfig } from '../_lib/payment-config';
@@ -157,11 +160,41 @@ function pointPricingSummary(
   );
 }
 
-function pointDebitSummary(t: (en: string, zh: string) => string): string {
+function pointDebitSummary(
+  t: (en: string, zh: string) => string,
+  wordPts = WORD_SENTENCE_POINTS_PER_USE,
+  paraPts = PARAGRAPH_POINTS_PER_USE,
+): string {
   return t(
-    `Word / phrase / sentence ${WORD_SENTENCE_POINTS_PER_USE} pt · paragraph ${PARAGRAPH_POINTS_PER_USE} pts`,
-    `字 / 词 / 句 ${WORD_SENTENCE_POINTS_PER_USE} 积分/次 · 段落 ${PARAGRAPH_POINTS_PER_USE} 积分/次`,
+    `Word / phrase / sentence ${wordPts} pt · paragraph ${paraPts} pts`,
+    `字 / 词 / 句 ${wordPts} 积分/次 · 段落 ${paraPts} 积分/次`,
   );
+}
+
+function formatPointsCount(points: number): string {
+  return points.toLocaleString('en-US');
+}
+
+/** Prefer server quoted_points; otherwise catalog-based estimate. */
+function resolveDisplayPoints(opts: {
+  amountCents: number;
+  tier: TopupBonusTier;
+  catalog: ReturnType<typeof useBillingPricing>['catalog'];
+  serverQuotedPoints: number | null;
+}): { points: number; estimate: boolean; label: string } {
+  if (opts.serverQuotedPoints != null && opts.serverQuotedPoints >= 0) {
+    return {
+      points: opts.serverQuotedPoints,
+      estimate: false,
+      label: formatPointsCount(opts.serverQuotedPoints),
+    };
+  }
+  const preview = previewQuotedPoints(opts.catalog, opts.amountCents, opts.tier.id);
+  return {
+    points: preview.totalPoints,
+    estimate: true,
+    label: formatPointsCount(preview.totalPoints),
+  };
 }
 
 function walletPointsLabel(
@@ -218,18 +251,23 @@ function OpenedCheckoutModal({
   const { user } = useMockAuth();
   const { paypalClientId } = usePaymentConfig();
   const sidebarCollapsed = useUi((s) => s.sidebarCollapsed);
+  const { catalog } = useBillingPricing();
+  const paidPackages = catalog.packages.length ? catalog.packages : TOPUP_BONUS_TIERS;
 
   // Account-wallet top-up: PayPal only (no card-on-file in this product).
   const [method] = useState<MethodKey>('paypal');
 
   // Account-wallet top-up: user picks a dollar amount and sees the
-  // wallet points that amount will fund.
-  const [amountCents, setAmountCents] = useState<number>(TOPUP_BONUS_TIERS[0].minCents);
+  // wallet points that amount will fund. Authoritative points come from
+  // POST /billing/topups/order → quoted_points once PayPal createOrder runs.
+  const [amountCents, setAmountCents] = useState<number>(paidPackages[0].minCents);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [selectedBonusTierId, setSelectedBonusTierId] =
-    useState<TopupBonusTier['id']>(TOPUP_BONUS_TIERS[0].id);
+    useState<TopupBonusTier['id']>(paidPackages[0].id);
   const [selectedPackageId, setSelectedPackageId] =
-    useState<ComparePackageId>(TOPUP_BONUS_TIERS[0].id);
+    useState<ComparePackageId>(paidPackages[0].id);
+  /** Server quote from createTopupOrder; null = show catalog estimate only. */
+  const [serverQuotedPoints, setServerQuotedPoints] = useState<number | null>(null);
   const [buyerMode, setBuyerMode] = useState<BuyerMode>('personal');
   const [salesContactPending, setSalesContactPending] = useState(false);
   const [salesContactDone, setSalesContactDone] = useState(false);
@@ -297,8 +335,19 @@ function OpenedCheckoutModal({
     [effectiveCents],
   );
   const selectedBonusTier =
-    TOPUP_BONUS_TIERS.find((tier) => tier.id === selectedBonusTierId) ?? TOPUP_BONUS_TIERS[0];
+    findPackage({ ...catalog, packages: paidPackages }, selectedBonusTierId);
+  const displayPoints = resolveDisplayPoints({
+    amountCents: effectiveCents,
+    tier: selectedBonusTier,
+    catalog: { ...catalog, packages: paidPackages },
+    serverQuotedPoints,
+  });
   const freeSelected = selectedPackageId === 'free';
+
+  // Amount / package changes invalidate any previous server quote.
+  useEffect(() => {
+    setServerQuotedPoints(null);
+  }, [effectiveCents, selectedBonusTierId]);
   const taxCents = 0;
   // What the user actually pays.
   const totalCents = effectiveCents + taxCents;
@@ -310,6 +359,36 @@ function OpenedCheckoutModal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [processing, onClose]);
+
+  // Lock page scroll while the modal is open so only the dialog body scrolls
+  // (especially important on mobile, where touch can otherwise scroll the page).
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    const { body } = document;
+    const prev = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    return () => {
+      body.style.overflow = prev.overflow;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.left = prev.left;
+      body.style.right = prev.right;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
 
   // Validation per method
   const brand = detectBrand(cardNumber);
@@ -379,6 +458,7 @@ function OpenedCheckoutModal({
     setSelectedBonusTierId(tier.id);
     setAmountCents(tier.presetCents[0]);
     setCustomAmount('');
+    setServerQuotedPoints(null);
   }
 
   async function finalizeSuccess(
@@ -567,7 +647,7 @@ function OpenedCheckoutModal({
           <div className="flex-1 min-h-0 flex flex-col">
             {/* Scrollable content — everything except the Pay footer.
                 Keep overflow scroll but hide the native scrollbar chrome. */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 space-y-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {step === 1 && <FreeTierBanner />}
             <StepIndicator
               step={step}
@@ -601,12 +681,14 @@ function OpenedCheckoutModal({
                 {buyerMode === 'personal' ? (
                   <TierComparePanel
                     selectedPackageId={selectedPackageId}
+                    packages={paidPackages}
+                    trialCalls={catalog.trialCalls}
                     onSelectPackage={(packageId) => {
                       setSelectedPackageId(packageId);
                       if (isPaidPackageId(packageId)) {
                         selectPaidPackage(
-                          TOPUP_BONUS_TIERS.find((tier) => tier.id === packageId) ??
-                            TOPUP_BONUS_TIERS[0],
+                          paidPackages.find((tier) => tier.id === packageId) ??
+                            paidPackages[0],
                         );
                       }
                     }}
@@ -618,8 +700,8 @@ function OpenedCheckoutModal({
                         return;
                       }
                       selectPaidPackage(
-                        TOPUP_BONUS_TIERS.find((tier) => tier.id === packageId) ??
-                          TOPUP_BONUS_TIERS[0],
+                        paidPackages.find((tier) => tier.id === packageId) ??
+                          paidPackages[0],
                       );
                       setStep(2);
                     }}
@@ -648,6 +730,7 @@ function OpenedCheckoutModal({
                   effectiveCents={effectiveCents}
                   selectedTier={selectedBonusTier}
                   selectedTierId={selectedBonusTierId}
+                  packages={paidPackages}
                   amountOnly
                   onBackToCompare={() => {
                     setError(null);
@@ -657,13 +740,16 @@ function OpenedCheckoutModal({
                     setSelectedBonusTierId(tier.id);
                     setAmountCents(tier.presetCents[0]);
                     setCustomAmount('');
+                    setServerQuotedPoints(null);
                   }}
                   onSwitchTierForCustom={(tier) => {
                     setSelectedBonusTierId(tier.id);
+                    setServerQuotedPoints(null);
                   }}
                   onSelectAmount={(nextCents) => {
                     setAmountCents(nextCents);
                     setCustomAmount('');
+                    setServerQuotedPoints(null);
                   }}
                   onCustomAmount={(next) => setCustomAmount(next)}
                 />
@@ -826,7 +912,13 @@ function OpenedCheckoutModal({
                         {t('Evaluation points credited', '入账评测积分')}
                       </div>
                       <div className="text-sm font-bold tabular-nums text-emerald-800 dark:text-emerald-300">
-                        ≈ {walletPointsLabel(quote.totalCents, t, selectedBonusTier)}
+                        {displayPoints.estimate ? '≈ ' : ''}
+                        {displayPoints.label} {t('pts', '评测积分')}
+                        {displayPoints.estimate && !catalog.fromServer ? (
+                          <span className="ml-1 text-[10px] font-medium opacity-70">
+                            {t('(estimate)', '(预估)')}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <div className="rounded-lg bg-indigo-500/[0.06] px-2.5 py-1.5">
@@ -834,7 +926,11 @@ function OpenedCheckoutModal({
                         {t('Points deducted per successful evaluation', '成功评测扣分规则')}
                       </div>
                       <div className="text-[11px] font-bold leading-snug text-indigo-800 dark:text-indigo-300">
-                        {pointDebitSummary(t)}
+                        {pointDebitSummary(
+                          t,
+                          catalog.rules.wordSentencePointsPerUse,
+                          catalog.rules.paragraphPointsPerUse,
+                        )}
                       </div>
                     </div>
                   </div>
@@ -988,7 +1084,8 @@ function OpenedCheckoutModal({
                       {t('Continue to payment', '继续确认支付')} · {formatCents(totalCents || 0)}
                     </span>
                     <span className="text-[11px] font-normal opacity-85 tabular-nums">
-                      ≈ {walletPointsLabel(effectiveCents, t, selectedBonusTier)}
+                      {displayPoints.estimate ? '≈ ' : ''}
+                      {displayPoints.label} {t('pts', '评测积分')}
                     </span>
                   </span>
                   <ChevronRight className="h-4 w-4" />
@@ -1017,6 +1114,7 @@ function OpenedCheckoutModal({
                       setDone(true);
                       window.setTimeout(() => onClose(), 1400);
                     }}
+                    onServerQuote={(quoted) => setServerQuotedPoints(quoted)}
                   />
                   <button
                     type="button"
@@ -1062,30 +1160,39 @@ function OpenedCheckoutModal({
   );
 
   return (
-    <div
-      className={cn(
-        // Offset by the dashboard sidebar so the dialog centers in the
-        // main content column (viewport-center looks left-biased).
-        'fixed inset-0 z-50 flex items-center justify-center p-4',
-        sidebarCollapsed ? 'lg:pl-[60px]' : 'lg:pl-60',
-      )}
-      translate="no"
-      lang="en"
-    >
+    <ModalPortal>
       <div
-        className="absolute inset-0 bg-black/25"
-        onClick={() => !processing && onClose()}
-      />
-      {paypalClientId ? (
-        <PayPalScriptProvider
-          options={{ clientId: paypalClientId, currency: 'USD', intent: 'capture' }}
+        className="fixed inset-0 z-[60] overflow-hidden"
+        translate="no"
+        lang="en"
+      >
+        {/* Full-viewport scrim — must stay outside the sidebar offset so the
+            whole dashboard (including the nav) dims while the dialog is open. */}
+        <div
+          className="absolute inset-0 bg-black/40 dark:bg-black/70"
+          onClick={() => !processing && onClose()}
+        />
+        {/* Optically center the card in the main column (sidebar is fixed). */}
+        <div
+          className={cn(
+            'relative flex h-full items-center justify-center p-4 pointer-events-none',
+            sidebarCollapsed ? 'lg:pl-[60px]' : 'lg:pl-60',
+          )}
         >
-          {card}
-        </PayPalScriptProvider>
-      ) : (
-        card
-      )}
-    </div>
+          <div className="pointer-events-auto w-full max-w-[980px] flex justify-center">
+            {paypalClientId ? (
+              <PayPalScriptProvider
+                options={{ clientId: paypalClientId, currency: 'USD', intent: 'capture' }}
+              >
+                {card}
+              </PayPalScriptProvider>
+            ) : (
+              card
+            )}
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
   );
 }
 
@@ -1098,6 +1205,7 @@ function PayPalTopupButtons({
   onProcessing,
   onError,
   onPaid,
+  onServerQuote,
 }: {
   amountCents: number;
   packageId: TopupBonusTier['id'];
@@ -1105,6 +1213,8 @@ function PayPalTopupButtons({
   onProcessing: (v: boolean) => void;
   onError: (msg: string) => void;
   onPaid: () => void;
+  /** Called when create-order returns server-authoritative quoted_points. */
+  onServerQuote?: (quotedPoints: number) => void;
 }) {
   const { t } = useLang();
   const { paypalClientId } = usePaymentConfig();
@@ -1132,7 +1242,7 @@ function PayPalTopupButtons({
       <PayPalButtons
         style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', tagline: false }}
         disabled={disabled}
-        forceReRender={[amountCents]}
+        forceReRender={[amountCents, packageId]}
         createOrder={async () => {
           onProcessing(true);
           try {
@@ -1141,6 +1251,8 @@ function PayPalTopupButtons({
               package_id: packageId,
             });
             txnIdRef.current = order.transaction_id;
+            // Authoritative credit amount — drives the checkout summary.
+            onServerQuote?.(order.quoted_points);
             return order.paypal_order_id;
           } catch (err) {
             onError(describeError(err));
@@ -1720,6 +1832,7 @@ function TieredTopupSelector({
   onCustomAmount,
   amountOnly = false,
   onBackToCompare,
+  packages = TOPUP_BONUS_TIERS,
 }: {
   amountCents: number;
   customAmount: string;
@@ -1732,8 +1845,11 @@ function TieredTopupSelector({
   onCustomAmount: (value: string) => void;
   amountOnly?: boolean;
   onBackToCompare?: () => void;
+  /** Prefer GET /billing/pricing packages when hydrated. */
+  packages?: TopupBonusTier[];
 }) {
   const { t } = useLang();
+  const paidTiers = packages.length ? packages : TOPUP_BONUS_TIERS;
   const [showComparison, setShowComparison] = useState(false);
   const [dismissedSuggestionKey, setDismissedSuggestionKey] = useState<string | null>(null);
   const recommendedTier = customAmount.trim() ? getTopupBonusTier(effectiveCents) : selectedTier;
@@ -1824,17 +1940,18 @@ function TieredTopupSelector({
       {showComparison && !amountOnly ? (
         <TierComparePanel
           selectedPackageId={selectedTierId}
+          packages={paidTiers}
           onSelectPackage={(packageId) => {
             if (!isPaidPackageId(packageId)) return;
             const tier =
-              TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+              paidTiers.find((item) => item.id === packageId) ?? paidTiers[0];
             setDismissedSuggestionKey(null);
             onSelectTier(tier);
           }}
           onChoosePackage={(packageId) => {
             if (!isPaidPackageId(packageId)) return;
             const tier =
-              TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+              paidTiers.find((item) => item.id === packageId) ?? paidTiers[0];
             setDismissedSuggestionKey(null);
             onSelectTier(tier);
             setShowComparison(false);
@@ -1842,7 +1959,7 @@ function TieredTopupSelector({
         />
       ) : (
         <div className="space-y-2.5 p-3">
-          {(amountOnly ? [selectedTier] : TOPUP_BONUS_TIERS).map((tier) => {
+          {(amountOnly ? [selectedTier] : paidTiers).map((tier) => {
           const expanded = tier.id === selectedTierId;
           const copy = topupTierCopy(tier, t);
           const details = buildTopupPointDetails(tier.minCents, tier);
@@ -2072,19 +2189,25 @@ function TierComparePanel({
   selectedPackageId,
   onSelectPackage,
   onChoosePackage,
+  packages = TOPUP_BONUS_TIERS,
+  trialCalls = TRIAL_CALLS,
 }: {
   selectedPackageId: ComparePackageId;
   /** Card body: highlight only. */
   onSelectPackage: (packageId: ComparePackageId) => void;
   /** Card button: confirm free claim or advance to amount selection. */
   onChoosePackage: (packageId: ComparePackageId) => void;
+  /** Prefer GET /billing/pricing packages when hydrated. */
+  packages?: TopupBonusTier[];
+  trialCalls?: number;
 }) {
   const { t } = useLang();
+  const paidTiers = packages.length ? packages : TOPUP_BONUS_TIERS;
 
   // Per-use savings relative to the entry paid tier — makes the tier-to-tier
   // price drop legible at a glance instead of asking users to compare
   // four-decimal dollar figures themselves.
-  const baseUnitPrices = getEvaluationUnitPrices(TOPUP_BONUS_TIERS[0].id);
+  const baseUnitPrices = getEvaluationUnitPrices(paidTiers[0].id);
   const savingsVsBase = (
     packageId: ComparePackageId,
     priceKey: 'wordSentenceDollars' | 'paragraphDollars',
@@ -2107,10 +2230,10 @@ function TierComparePanel({
       label: t('Bonus points', '赠送评测积分'),
       value: (packageId) => {
         if (packageId === 'free') {
-          return TRIAL_CALLS.toLocaleString('en-US');
+          return trialCalls.toLocaleString('en-US');
         }
         const tier =
-          TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+          paidTiers.find((item) => item.id === packageId) ?? paidTiers[0];
         return tier.bonusPct > 0
           ? formatBonusPercent(tier.bonusPct)
           : t('0% · base', '0% · 基准');
@@ -2122,7 +2245,7 @@ function TierComparePanel({
       value: (packageId) => {
         if (packageId === 'free') return '—';
         const tier =
-          TOPUP_BONUS_TIERS.find((item) => item.id === packageId) ?? TOPUP_BONUS_TIERS[0];
+          paidTiers.find((item) => item.id === packageId) ?? paidTiers[0];
         return buildTopupPointDetails(tier.minCents, tier).pointsPerUsd;
       },
     },

@@ -22,6 +22,27 @@ export type MarketingSection = {
  */
 export type MarketingSectionLayout = 'cards' | 'spotlight' | 'alternating' | 'mosaic';
 
+/**
+ * Bottom workflow block variants — same four steps, different Western composition.
+ * - steps: equal four-up cards with connectors (English)
+ * - rail: numbered nodes on a single horizontal track (Mandarin, Kids)
+ * - timeline: vertical spine with stacked steps (MCP, Function calling)
+ * - loop: contained 2×2 practice loop (AI tutor)
+ */
+export type MarketingWorkflowLayout = 'steps' | 'rail' | 'timeline' | 'loop';
+
+/**
+ * FAQ + related closing variants — keep content, vary the frame.
+ * - aside: FAQ left, related sidebar (English)
+ * - grid: FAQ two-up, related three-up strip below (Mandarin, MCP)
+ * - band: related discovery band first, FAQ stacked below (Kids, AI tutor)
+ * - brief: dark implementation brief + text-link rail (Function calling)
+ */
+export type MarketingClosingLayout = 'aside' | 'grid' | 'band' | 'brief';
+
+/** Hero compositions vary the first-screen reading rhythm across detail pages. */
+export type MarketingHeroLayout = 'split' | 'editorial' | 'technical' | 'contract';
+
 export type MarketingFaq = {
   question: string;
   answer: string;
@@ -105,14 +126,22 @@ export type MarketingPageData = {
   outcomes: Array<{ value: string; label: string }>;
   sections: MarketingSection[];
   workflow: string[];
+  workflowTitle: string;
+  workflowDescription: string;
   faq: MarketingFaq[];
   related: Array<{ href: string; label: string; description: string }>;
   /** Optional per-page accent + hero artwork; falls back to DEFAULT_MARKETING_THEME. */
   theme?: MarketingTheme;
   /** Optional page-specific code sample; falls back to DEFAULT_MARKETING_PAYLOAD. */
   payload?: MarketingPayload;
+  /** How the first screen is composed. Defaults to `split`. */
+  heroLayout?: MarketingHeroLayout;
   /** How the three middle sections are composed. Defaults to `cards`. */
   sectionLayout?: MarketingSectionLayout;
+  /** How the workflow steps are composed. Defaults to `steps`. */
+  workflowLayout?: MarketingWorkflowLayout;
+  /** How the FAQ + related closing is composed. Defaults to `aside`. */
+  closingLayout?: MarketingClosingLayout;
 };
 
 export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
@@ -120,7 +149,10 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     slug: 'english-speech-assessment',
     path: '/products/english-speech-assessment',
     group: 'Product',
+    heroLayout: 'split',
     sectionLayout: 'spotlight',
+    workflowLayout: 'steps',
+    closingLayout: 'aside',
     theme: {
       accent: '#0369a1',
       accentSoft: 'rgba(2,132,199,0.10)',
@@ -187,6 +219,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Capture learner speech', 'Assess pronunciation and fluency', 'Return structured evidence', 'Generate product-specific feedback'],
+    workflowTitle: 'From spoken attempt to one useful correction',
+    workflowDescription: 'Keep the scoring detailed behind the scenes while the learner receives a clear, product-specific next step.',
     faq: [
       {
         question: 'Can the assessment support more than isolated words?',
@@ -202,12 +236,34 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
       { href: '/products/mcp-server', label: 'MCP server', description: 'Connect assessment tools to an agent.' },
       { href: '/demo', label: 'Live demo', description: 'See the scoring experience in action.' },
     ],
+    payload: {
+      title: 'See the phoneme, not only the score',
+      body: 'Word and phoneme rows preserve the exact evidence a tutor needs to explain an error, while fluency fields help the product decide whether to coach pace, pauses or pronunciation first.',
+      filename: 'result.json · English',
+      code: `{
+  "overall": 85,
+  "pron": 88,
+  "fluency": { "overall": 78, "speed": 65, "pause": 2 },
+  "details": [{
+    "char": "think",
+    "score": 72,
+    "phone": [
+      { "phoneme": "θ", "score": 54, "dp_type": "mispronounced" },
+      { "phoneme": "ɪ", "score": 86, "dp_type": "normal" },
+      { "phoneme": "ŋk", "score": 83, "dp_type": "normal" }
+    ]
+  }]
+}`,
+    },
   },
   'mandarin-chinese-assessment': {
     slug: 'mandarin-chinese-assessment',
     path: '/products/mandarin-chinese-assessment',
     group: 'Product',
+    heroLayout: 'editorial',
     sectionLayout: 'cards',
+    workflowLayout: 'rail',
+    closingLayout: 'grid',
     theme: {
       accent: '#be123c',
       accentSoft: 'rgba(225,29,72,0.10)',
@@ -274,6 +330,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Capture Mandarin speech', 'Resolve syllables and tones', 'Return language-specific evidence', 'Coach the next attempt'],
+    workflowTitle: 'Follow each syllable from tone to retry',
+    workflowDescription: 'Preserve tone and Pinyin evidence through the assessment, then turn the most important mismatch into a focused second attempt.',
     faq: [
       {
         question: 'Why is tone-level feedback important?',
@@ -320,7 +378,10 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     slug: 'kids-speech-assessment',
     path: '/products/kids-speech-assessment',
     group: 'Product',
+    heroLayout: 'editorial',
     sectionLayout: 'mosaic',
+    workflowLayout: 'rail',
+    closingLayout: 'band',
     theme: {
       accent: '#b45309',
       accentSoft: 'rgba(217,119,6,0.10)',
@@ -387,6 +448,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Listen to a short activity', 'Check audio and speech evidence', 'Select the most useful cue', 'Encourage a focused retry'],
+    workflowTitle: 'A short, encouraging practice loop',
+    workflowDescription: 'Check recording quality first, choose one age-appropriate cue and keep the learner inside the activity they already enjoy.',
     faq: [
       {
         question: 'Does the API decide what a child sees?',
@@ -402,12 +465,29 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
       { href: '/solutions/ai-language-tutor', label: 'AI language tutor', description: 'Plan a helpful coaching loop.' },
       { href: '/faq', label: 'FAQ', description: 'Review integration and privacy questions.' },
     ],
+    payload: {
+      title: 'Keep the raw detail behind the experience',
+      body: 'The application can use audio quality and scoring confidence to choose between a friendly re-record prompt and a pronunciation cue—without exposing a child to a wall of raw scores.',
+      filename: 'practice-decision.ts',
+      code: `const nextStep = result.audio_quality < 70
+  ? { action: "retry_recording", tone: "neutral" }
+  : {
+      action: "coach_one_sound",
+      target: result.details[0].weakest_phone,
+      reward_after_retry: true,
+    };
+
+// Product copy, rewards and thresholds stay in your control.`,
+    },
   },
   'mcp-server': {
     slug: 'mcp-server',
     path: '/products/mcp-server',
     group: 'Product',
+    heroLayout: 'technical',
     sectionLayout: 'alternating',
+    workflowLayout: 'timeline',
+    closingLayout: 'grid',
     theme: {
       accent: '#047857',
       accentSoft: 'rgba(16,185,129,0.10)',
@@ -474,6 +554,8 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Agent chooses a speech tool', 'Chivox assesses the audio', 'MCP returns structured evidence', 'Agent produces grounded feedback'],
+    workflowTitle: 'One tool call, with clear responsibility at each layer',
+    workflowDescription: 'The model chooses the tool, Chivox returns deterministic speech evidence, and your application controls the approved response.',
     faq: [
       {
         question: 'Does MCP replace the assessment API?',
@@ -511,8 +593,11 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
     slug: 'function-calling',
     path: '/solutions/function-calling',
     group: 'AI solution',
+    heroLayout: 'contract',
     // Alternating rows (vs English spotlight / Mandarin cards) — same shell, different rhythm.
     sectionLayout: 'alternating',
+    workflowLayout: 'timeline',
+    closingLayout: 'brief',
     theme: {
       accent: '#6d28d9',
       accentSoft: 'rgba(124,58,237,0.10)',
@@ -579,6 +664,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Model selects the assessment function', 'Application validates arguments', 'Chivox returns speech evidence', 'Agent explains an approved next step'],
+    workflowTitle: 'A guarded function call inside the agent loop',
+    workflowDescription: 'Validate before assessment, keep product thresholds deterministic and let the model explain only the evidence you approve.',
     faq: [
       {
         question: 'How is function calling different from MCP?',
@@ -613,7 +700,10 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
     slug: 'ai-language-tutor',
     path: '/solutions/ai-language-tutor',
     group: 'AI solution',
+    heroLayout: 'editorial',
     sectionLayout: 'mosaic',
+    workflowLayout: 'loop',
+    closingLayout: 'band',
     theme: {
       accent: '#0f766e',
       accentSoft: 'rgba(20,184,166,0.10)',
@@ -680,6 +770,8 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Learner speaks in context', 'Assessment identifies useful evidence', 'Tutor selects one teaching priority', 'Learner retries without leaving the flow'],
+    workflowTitle: 'Keep assessment inside the conversation',
+    workflowDescription: 'Move from a natural learner turn to one teaching priority and a focused retry without breaking the tutor experience.',
     faq: [
       {
         question: 'Why not use transcription confidence alone?',
@@ -695,6 +787,23 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
       { href: '/products/mandarin-chinese-assessment', label: 'Mandarin assessment', description: 'Add tone-aware feedback.' },
       { href: '/demo', label: 'Live demo', description: 'Experience the assessment before integrating.' },
     ],
+    payload: {
+      title: 'Turn evidence into the tutor’s next move',
+      body: 'The tutor does not need to repeat every score. It can select the highest-value issue, explain it in the learner’s context and generate a retry that keeps the conversation moving.',
+      filename: 'tutor-decision.json',
+      code: `{
+  "assessment": {
+    "overall": 82,
+    "priority": { "word": "think", "phoneme": "θ", "score": 54 },
+    "audio_quality": 96
+  },
+  "tutor_action": {
+    "type": "focused_retry",
+    "cue": "Keep your tongue lightly between your teeth for /θ/.",
+    "next_prompt": "Try: I think they are ready."
+  }
+}`,
+    },
   },
 };
 
