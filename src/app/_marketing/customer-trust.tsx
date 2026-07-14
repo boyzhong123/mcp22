@@ -120,7 +120,6 @@ export function CustomerTrustSection({ compact = false }: { compact?: boolean })
                     src={customer.decor}
                     alt=""
                     fill
-                    quality={82}
                     className="object-cover object-[70%_70%]"
                     sizes="240px"
                   />

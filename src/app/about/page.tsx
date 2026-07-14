@@ -63,7 +63,7 @@ export default function AboutPage() {
     <div translate="no" lang="en" className="min-h-screen bg-background text-foreground">
       <AmbientBackdrop />
       <TopNav />
-      <main>
+      <main className="marketing-page">
         <section className="border-b border-[#e9e2d2]/70">
           <div className="container mx-auto grid max-w-7xl gap-10 px-6 pb-14 pt-12 md:pb-16 md:pt-16 lg:grid-cols-12 lg:items-center lg:gap-16">
             <div className="min-w-0 lg:col-span-7">
@@ -151,7 +151,6 @@ export default function AboutPage() {
                   src="/editorial/speech-assessment-data-dark.webp"
                   alt="Structured pronunciation and speech assessment data reviewed in a product workflow"
                   fill
-                  quality={90}
                   sizes="(max-width: 1024px) calc(100vw - 48px), 45vw"
                   className="object-cover opacity-75 transition-transform duration-700 group-hover:scale-[1.02]"
                 />

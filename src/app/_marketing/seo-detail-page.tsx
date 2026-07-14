@@ -930,7 +930,7 @@ export function SeoDetailPage({ page }: { page: MarketingPageData }) {
     >
       <AmbientBackdrop />
       <TopNav />
-      <main>
+      <main className="marketing-page">
         <DetailHero page={page} />
 
         <section className="border-b border-[#e9e2d2]/70 py-20 md:py-24">

@@ -131,7 +131,7 @@ export default function PricingPage() {
     <div translate="no" lang="en" className="relative min-h-screen text-foreground">
       <AmbientBackdrop />
       <TopNav />
-      <main>
+      <main className="marketing-page">
         {/* Hero + plans share one atmosphere so the first fold reads as a pricing composition. */}
         <section className="relative overflow-x-clip">
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">

@@ -1,5 +1,3 @@
-'use client';
-
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -106,7 +104,7 @@ export default function GlobalRuntimePage() {
       <TopNav />
       <BackToOverview />
 
-      <main>
+      <main className="marketing-page">
         <section className="relative overflow-hidden border-b border-[#e9e2d2]/70 pb-16 pt-10 md:pb-24 md:pt-14">
           <div className="container mx-auto grid max-w-7xl items-center gap-12 px-6 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16 lg:px-8">
             <FadeUp>
@@ -165,7 +163,6 @@ export default function GlobalRuntimePage() {
                     alt="Chivox speech assessment API usage and latency analytics dashboard"
                     fill
                     priority
-                    quality={90}
                     sizes="(max-width: 1024px) 100vw, 58vw"
                     className="object-cover"
                   />
@@ -209,7 +206,7 @@ export default function GlobalRuntimePage() {
                   <StaggerItem key={item.title}>
                     <article className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-zinc-900/[0.08] bg-white/72 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.42)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-zinc-900/[0.14] hover:shadow-[0_28px_64px_-38px_rgba(0,0,0,0.3)]">
                       <div className="relative aspect-[16/9] overflow-hidden bg-[#f5f1e8]">
-                        <Image src={item.art} alt={item.artAlt} fill quality={88} sizes="(max-width: 1024px) 100vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.025]" />
+                        <Image src={item.art} alt={item.artAlt} fill sizes="(max-width: 1024px) 100vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.025]" />
                       </div>
                       <div className="flex flex-1 flex-col p-6">
                         <div className={`mb-5 inline-flex h-9 w-9 items-center justify-center rounded-xl border ${tone}`}>
@@ -256,7 +253,7 @@ export default function GlobalRuntimePage() {
               <FadeUp delay={0.08}>
                 <div className="overflow-hidden rounded-[1.75rem] border border-zinc-900/10 bg-white/70 p-2.5 shadow-[0_30px_70px_-40px_rgba(0,0,0,0.35)] backdrop-blur">
                   <div className="relative aspect-[16/11] overflow-hidden rounded-[1.25rem]">
-                    <Image src="/runtime/observability.jpg" alt="Per-key speech assessment API usage charts" fill quality={90} sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
+                    <Image src="/runtime/observability.jpg" alt="Per-key speech assessment API usage charts" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
                   </div>
                 </div>
               </FadeUp>
@@ -302,7 +299,7 @@ export default function GlobalRuntimePage() {
               ].map((item) => (
                 <FadeUp key={item.title} className="group overflow-hidden rounded-[1.6rem] border border-zinc-900/[0.08] bg-white/70 backdrop-blur">
                   <div className="relative aspect-[16/8] overflow-hidden bg-[#f5f1e8]">
-                    <Image src={item.art} alt={item.alt} fill quality={88} sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.02]" />
+                    <Image src={item.art} alt={item.alt} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.02]" />
                   </div>
                   <div className="p-6 md:p-7">
                     <div className="flex items-center justify-between gap-4">

@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { FadeUp } from '@/components/animated-section';
@@ -48,7 +46,7 @@ const FAQ_CATEGORIES = ['Integration', 'Capability', 'Trust', 'Commercial'] as c
 
 export default function GlobalFaqPage() {
   return (
-    <div className="relative">
+    <div className="marketing-page relative">
       <AmbientBackdrop />
       <TopNav />
       <BackToOverview />

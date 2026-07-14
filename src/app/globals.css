@@ -238,6 +238,17 @@
   }
 }
 
+/* Skip layout and paint work for long marketing sections until they approach
+ * the viewport. The intrinsic size keeps the scrollbar stable while a section
+ * is skipped, and anchor navigation still reveals the target automatically. */
+@supports (content-visibility: auto) {
+  .marketing-page > section:not(:first-of-type),
+  .marketing-page > main > section:not(:first-of-type) {
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 720px;
+  }
+}
+
 /* Pinyin tone-mark font override — pulls Noto Sans SC in for the exact
    precomposed tone-diacritic codepoints so they render consistently even
    inside mono/sans containers where Geist can clip or mis-shape them. */

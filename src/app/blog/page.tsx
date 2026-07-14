@@ -86,7 +86,7 @@ export default function BlogPage() {
     <div translate="no" lang="en" className="min-h-screen bg-background text-foreground">
       <AmbientBackdrop />
       <TopNav />
-      <main>
+      <main className="marketing-page">
         <section className="border-b border-[#e9e2d2]/70">
           <div className="container mx-auto max-w-6xl px-6 pb-14 pt-16 md:pb-16 md:pt-20">
             <div className="max-w-3xl">
@@ -136,7 +136,6 @@ export default function BlogPage() {
                       src={item.art}
                       alt={item.artAlt}
                       fill
-                      quality={88}
                       className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
                       sizes="(max-width: 768px) 100vw, 50vw"
                       priority={index === 0}
@@ -182,7 +181,6 @@ export default function BlogPage() {
                       src={item.art}
                       alt={item.artAlt}
                       fill
-                      quality={85}
                       className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     />

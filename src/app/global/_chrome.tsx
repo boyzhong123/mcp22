@@ -462,10 +462,6 @@ export function TopNav() {
   }, []);
 
   useEffect(() => {
-    setOpenMenu(null);
-  }, [pathname]);
-
-  useEffect(() => {
     const onScroll = () => {
       if (scrollRaf.current != null) return;
       scrollRaf.current = window.requestAnimationFrame(() => {
@@ -545,10 +541,6 @@ export function TopNav() {
     window.addEventListener(OPEN_CONTACT_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_CONTACT_EVENT, onOpen);
   }, []);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -1289,17 +1281,9 @@ export function ContactSection() {
             </button>
           </div>
 
-          <div
-            className={cn(
-              'grid lg:grid-cols-12 gap-8 lg:gap-12 items-start',
-              'transition-[max-height,opacity,transform] duration-300 ease-out',
-              open ? 'mt-10 opacity-100 translate-y-0' : 'mt-6 opacity-0 -translate-y-1 pointer-events-none',
-            )}
-            style={{
-              maxHeight: open ? 1600 : 0,
-            }}
-          >
-            <div className={cn('lg:col-span-5', !open && 'hidden lg:block')}>
+          {open ? (
+            <div className="mt-10 grid items-start gap-8 lg:grid-cols-12 lg:gap-12">
+              <div className="lg:col-span-5">
               <ul className="space-y-3.5 mb-8">
                 {[
                   {
@@ -1351,14 +1335,15 @@ export function ContactSection() {
                   </a>
                 </div>
               </div>
-            </div>
+              </div>
 
-            <div className="lg:col-span-7">
-              <div className="warm-card p-6 md:p-8">
-                <GlobalContactForm />
+              <div className="lg:col-span-7">
+                <div className="warm-card p-6 md:p-8">
+                  <GlobalContactForm />
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -1379,10 +1364,6 @@ function GlobalContactForm() {
     source: `${pathname}#contact-modal`,
   });
 
-  useEffect(() => {
-    setForm((f) => ({ ...f, source: `${pathname}#contact-modal` }));
-  }, [pathname]);
-
   const inputClass =
     'w-full h-11 px-3.5 text-[14px] rounded-lg border border-zinc-900/[0.12] bg-white/70 backdrop-blur-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/15 transition-all disabled:opacity-60';
 
@@ -1393,7 +1374,10 @@ function GlobalContactForm() {
     setStatus('idle');
     setErrorMsg('');
     startTransition(async () => {
-      const result = await sendGlobalContactEmail(form);
+      const result = await sendGlobalContactEmail({
+        ...form,
+        source: `${pathname}#contact-modal`,
+      });
       if (result.success) {
         setStatus('success');
       } else {

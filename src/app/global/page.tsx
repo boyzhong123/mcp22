@@ -33,7 +33,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FadeUp, StaggerContainer, StaggerItem, CountUp } from '@/components/animated-section';
+import { FadeUp, StaggerContainer, StaggerItem } from '@/components/animated-section';
 import {
   EVALUATION_UNIT_PRICES,
   FIXED_TOPUP_PLANS,
@@ -417,7 +417,7 @@ export default function GlobalLandingPage() {
   const activeBench = BENCHMARK_TABS.find((t) => t.id === benchmark) ?? BENCHMARK_TABS[0];
 
   return (
-    <main className="flex-1 flex flex-col relative">
+    <main className="marketing-page flex-1 flex flex-col relative">
       <AmbientBackdrop />
       <TopNav />
 
@@ -831,6 +831,7 @@ export default function GlobalLandingPage() {
           </FadeUp>
 
           <QuickstartDemo
+            key={installTab}
             installTab={installTab}
             setInstallTab={setInstallTab}
             activeInstall={activeInstall}
@@ -1621,27 +1622,6 @@ function PricingCodeRow({ code, points }: { code: string; points: string }) {
  *  VISUAL COMPONENTS (drawn inline so no extra assets are needed)
  * ═══════════════════════════════════════════════════════════ */
 
-/** Hero slide ④ — same schema story as README, English “think” row + nested pron/audio. */
-const HERO_SLIDE_REASONING_JSON = `{
-  "overall": 48,
-  "pron": { "accuracy": 44, "integrity": 90, "fluency": 72, "rhythm": 65 },
-  "fluency": { "pause": 2, "speed": 118 },
-  "audio_quality": { "snr": 19.2, "clip": 0 },
-  "details": [
-    {
-      "word": "think",
-      "score": 48, "dp_type": "mispron",
-      "start": 2400, "end": 2910,
-      "liaison": "none",
-      "phonemes": [
-        { "ipa": "θ", "score": 35, "dp_type": "mispron" },
-        { "ipa": "ɪ", "score": 88, "dp_type": "normal" }
-      ],
-      "phoneme_error": { "expected": "/θ/", "actual": "/s/" }
-    }
-  ]
-}`;
-
 /* ── Quickstart demo — types config, boots server, runs tool ─
  * A single looping timeline that makes integration feel live:
  *   phase 0  →  JSON config is typed into the editor
@@ -1676,13 +1656,6 @@ function QuickstartDemo({
   const code = activeInstall.code;
 
   const RESPONSE = useMemo(() => SAMPLE_MCP_RICH_JSON, []);
-
-  /* restart the timeline whenever the tab changes */
-  useEffect(() => {
-    setPhase(0);
-    setTyped(0);
-    setResponseChars(0);
-  }, [installTab]);
 
   /* timeline driver */
   useEffect(() => {
@@ -2133,7 +2106,6 @@ function CapabilityVisual({ id }: { id: CapabilityVisual }) {
         src={art.src}
         alt={art.alt}
         fill
-        quality={92}
         className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
         sizes="(max-width: 640px) 40vw, 220px"
       />
