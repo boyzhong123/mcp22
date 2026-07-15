@@ -141,6 +141,9 @@ export type MarketingPageData = {
   outcomes: Array<{ value: string; label: string }>;
   sections: MarketingSection[];
   workflow: string[];
+  /** Optional one-line note per workflow step, index-aligned with `workflow`.
+   *  Rendered by the `timeline` layout to spell out who owns each step. */
+  workflowNotes?: string[];
   workflowTitle: string;
   workflowDescription: string;
   faq: MarketingFaq[];
@@ -387,7 +390,7 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     ],
     related: [
       { href: '/products/english-speech-assessment', label: 'English assessment', description: 'Build a shared multilingual coaching flow.' },
-      { href: '/reasoning', label: 'AI feedback engine', description: 'Turn detailed speech evidence into grounded feedback.' },
+      { href: '/solutions/voice-agent', label: 'Voice Agent', description: 'Add pronunciation assessment to a voice-native agent.' },
       { href: '/demo', label: 'Live demo', description: 'Try the assessment flow.' },
     ],
     payload: {
@@ -524,7 +527,7 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     ],
     related: [
       { href: '/products/english-speech-assessment', label: 'English assessment', description: 'Explore the underlying scoring dimensions.' },
-      { href: '/reasoning', label: 'AI feedback engine', description: 'Turn evidence into one helpful coaching cue.' },
+      { href: '/solutions/voice-agent', label: 'Voice Agent', description: 'Add pronunciation assessment to a voice-native agent.' },
       { href: '/faq', label: 'FAQ', description: 'Review integration and privacy questions.' },
     ],
     payload: {
@@ -631,6 +634,12 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Agent chooses a speech tool', 'Chivox assesses the audio', 'MCP returns structured evidence', 'Agent produces grounded feedback'],
+    workflowNotes: [
+      'The MCP client discovers 16 assessment tools and picks the one that fits the turn — no routing code on your side.',
+      'Pronunciation, fluency and integrity are scored against the reference text, with per-word and per-phoneme detail.',
+      'The result is deterministic JSON: the same audio and reference always produce the same fields.',
+      'The LLM explains only the fields your application approves — thresholds stay in your product logic.',
+    ],
     workflowTitle: 'One tool call, with clear responsibility at each layer',
     workflowDescription: 'The model chooses the tool, Chivox returns deterministic speech evidence, and your application controls the approved response.',
     faq: [
@@ -645,19 +654,19 @@ export const PRODUCT_PAGES: Record<string, MarketingPageData> = {
     ],
     related: [
       { href: '/docs', label: 'Developer docs', description: 'Follow the quickstart and inspect the schema.' },
-      { href: '/reasoning', label: 'AI feedback engine', description: 'See how the payload grounds feedback.' },
+      { href: '/solutions/voice-agent', label: 'Voice Agent', description: 'See how agents receive structured speech evidence.' },
       { href: '/runtime', label: 'Runtime & operations', description: 'Plan limits, keys and observability.' },
     ],
     payload: {
       title: 'One config block. Every MCP client.',
-      body: 'Paste this into Cursor, Claude Desktop or any MCP-compatible agent — no SDK to install. Your LLM immediately sees the assessment tools and starts getting structured scores back.',
+      body: 'Paste this into Cursor, Windsurf, Zed or any client that speaks streamable HTTP — nothing to install. Your LLM immediately sees all 16 assessment tools and starts getting structured scores back.',
       filename: 'mcp.json',
       code: `{
   "mcpServers": {
     "chivox": {
-      "command": "npx",
-      "args": ["-y", "@chivox/mcp"],
-      "env": { "CHIVOX_API_KEY": "sk_live_..." }
+      "type": "streamable-http",
+      "url": "https://mcp-global.cloud.chivox.com",
+      "headers": { "Authorization": "Bearer <your_api_key>" }
     }
   }
 }`,
@@ -742,6 +751,12 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
       },
     ],
     workflow: ['Model selects the assessment function', 'Application validates arguments', 'Chivox returns speech evidence', 'Agent explains an approved next step'],
+    workflowNotes: [
+      'A narrow tool schema tells the model when assessment applies and what it must supply.',
+      'Reject missing audio, wrong languages and unsupported task types before spending an assessment call.',
+      'Stable fields — overall, accuracy, pron, fluency and details[] — arrive as deterministic JSON.',
+      'Coaching cites the returned evidence; pass/fail thresholds stay in your own code.',
+    ],
     workflowTitle: 'A guarded function call inside the agent loop',
     workflowDescription: 'Validate before assessment, keep product thresholds deterministic and let the model explain only the evidence you approve.',
     faq: [
@@ -763,10 +778,10 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
       title: 'One tool call inside your agent loop',
       body: 'The model hands over the audio, gets back structured scores, and explains the result from evidence — numbers it can cite, not vibes it has to invent.',
       filename: 'agent-loop.ts',
-      code: `const result = await llm.tool_call("assess_speech", {
-  language: "en-US",
-  reference_text: "An apple a day.",
-  audio_file_path: "./take-01.wav",
+      code: `// The model called your assess_speech tool — your handler runs the scoring:
+const result = await chivox.callTool("en_sentence_eval", {
+  ref_text: "An apple a day.",
+  audio_url: "https://cdn.example.com/take-01.mp3",
 });
 
 // → { overall: 85, accuracy: 82, pron: 88,
@@ -788,68 +803,68 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
       hero: {
         src: '/products/hero/ai-language-tutor.jpg',
         alt: 'A learner in a friendly online language-tutoring session with headphones and a laptop',
-        kicker: 'Listen → diagnose → coach',
-        caption: 'Grounded coaching that responds from real speech evidence.',
+        kicker: 'Learner turn → teaching move → retry',
+        caption: 'Keep every correction inside the learner’s conversation.',
       },
     },
     eyebrow: 'AI language tutor',
-    title: 'Speech scoring for AI language tutors and voice agents',
-    seoTitle: 'AI Language Tutor – Voice Agent Pronunciation Assessment | Chivox AI',
+    title: 'AI language tutors that know what to coach next',
+    seoTitle: 'AI Language Tutor Speech Assessment & Feedback Loop | Chivox AI',
     seoDescription:
-      'Power AI language tutors with real-time pronunciation MCP and speech scoring, or add real-time pronunciation and speech assessment to voice agents.',
+      'Build AI language tutors that turn each learner turn into one useful next step with real-time pronunciation assessment, fluency scoring and grounded feedback.',
     description:
-      'Build AI language tutors and voice agents with real-time pronunciation assessment, structured speech scoring and grounded learner feedback from Chivox AI.',
+      'Build AI language tutors that turn spoken practice into one clear, grounded next step with real-time pronunciation assessment and structured speech evidence from Chivox AI.',
     intro:
-      'A useful AI tutor needs more than transcription. Chivox gives the tutor evidence about how the learner spoke, so the conversation can move from generic encouragement to precise, supportive coaching.',
+      'A useful tutor responds to how a learner spoke, not only what the transcript says. Chivox turns each attempt into structured evidence so the tutor can choose one useful cue, keep the conversation warm and invite a focused retry.',
     outcomes: [
-      { value: 'Listen', label: 'capture the attempt' },
-      { value: 'Diagnose', label: 'find the priority' },
-      { value: 'Coach', label: 'guide the retry' },
+      { value: 'Hear', label: 'the learner in context' },
+      { value: 'Choose', label: 'one teachable priority' },
+      { value: 'Retry', label: 'with a precise cue' },
     ],
     sections: [
       {
         eyebrow: 'Tutor loop',
-        title: 'Keep conversation and assessment in one flow',
-        body: 'The learner speaks naturally, the assessment runs behind the interaction, and the tutor responds with a correction tied to actual evidence.',
+        title: 'Keep the correction inside the conversation',
+        body: 'The learner speaks naturally, assessment runs between turns, and the tutor returns with one correction that is tied to actual evidence—not a detached results screen.',
         image: '/solutions/ai-tutor/tutor-loop.jpg',
         imageAlt: 'Adult learner on a video tutoring call receiving a precise pronunciation tip mid-conversation',
         points: [
-          'Use phoneme, word, tone and fluency detail when it is pedagogically useful',
-          'Adjust the amount of feedback to the learner’s level and task',
-          'Offer a focused retry instead of ending the conversation',
-          'Preserve the conversational context around each assessed attempt',
+          'Assess after a learner turn without breaking the flow',
+          'Show only the evidence the learner can act on now',
+          'Match the length and tone of feedback to the level and task',
+          'Offer a focused retry before moving to the next topic',
         ],
       },
       {
         eyebrow: 'Learning design',
-        title: 'Turn scores into decisions, not dashboards alone',
-        body: 'Scores become valuable when they influence the next prompt, example, hint or practice activity.',
+        title: 'Choose one teaching move—not a score dump',
+        body: 'Scores become useful only when they change the next prompt, example, hint or practice activity. The tutor should choose a priority, explain it simply and keep momentum.',
         image: '/solutions/ai-tutor/learning-design.jpg',
         imageAlt: 'Tutor interface prioritizing one coaching cue before suggesting the next practice prompt',
         points: [
-          'Prioritize repeated or meaning-changing errors',
-          'Distinguish recording problems from pronunciation problems',
-          'Use short explanations and concrete mouth or sound cues',
-          'Track improvement without reducing the learner to one number',
+          'Prioritize repeated or meaning-changing errors first',
+          'Ask for a re-record when audio quality is the real issue',
+          'Use a short sound, mouth or rhythm cue the learner can try immediately',
+          'Celebrate what worked before asking for a retry',
         ],
       },
       {
         eyebrow: 'Product architecture',
-        title: 'Keep the tutor flexible and the assessment stable',
-        body: 'The assessment response supplies a consistent source of truth while prompts, lesson design and interface copy can evolve independently.',
+        title: 'Let the learning experience evolve without moving the goalposts',
+        body: 'Assessment is the stable source of speech evidence. Your prompts, lessons, interface voice and retry logic can evolve independently as you learn what helps learners improve.',
         image: '/solutions/ai-tutor/architecture.jpg',
         imageAlt: 'Split desk scene with evolving lesson cards on one side and a stable assessment payload panel on the other',
         points: [
-          'Use MCP or function calling based on the agent stack',
-          'Store only the fields needed for progress and support',
-          'Apply product-specific rubrics outside the LLM',
-          'Evaluate the complete learner journey before scaling',
+          'Use the integration pattern that fits your tutor stack',
+          'Keep product rubrics and pass thresholds deterministic',
+          'Store only the evidence needed for progress and support',
+          'Evaluate the full teaching loop, not only raw score accuracy',
         ],
       },
     ],
-    workflow: ['Learner speaks in context', 'Assessment identifies useful evidence', 'Tutor selects one teaching priority', 'Learner retries without leaving the flow'],
-    workflowTitle: 'Keep assessment inside the conversation',
-    workflowDescription: 'Move from a natural learner turn to one teaching priority and a focused retry without breaking the tutor experience.',
+    workflow: ['Learner speaks in context', 'Assessment returns usable evidence', 'Tutor chooses one teaching move', 'Learner retries with momentum'],
+    workflowTitle: 'One learner turn, one useful next step',
+    workflowDescription: 'Move from a natural learner turn to one teaching priority and a focused retry without losing conversational context.',
     faq: [
       {
         question: 'Why not use transcription confidence alone?',
@@ -865,8 +880,23 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
       { href: '/products/mandarin-chinese-assessment', label: 'Mandarin assessment', description: 'Add tone-aware feedback.' },
       { href: '/demo', label: 'Live demo', description: 'Experience the assessment before integrating.' },
     ],
+    example: {
+      eyebrow: 'A tutor moment',
+      title: 'From a good sentence to one better sound',
+      body: 'A learner has completed a conversation about travel. The tutor does not interrupt the whole exchange with a dashboard. It notices one repeated sound in a word that matters, gives credit for what worked and invites a small retry.',
+      learnerLabel: 'Learner says',
+      learnerText: '“I sink the train leaves at three.”',
+      evidence: [
+        { label: 'What worked', value: 'Fluency 88', detail: 'The sentence is smooth enough to keep the conversation moving.' },
+        { label: 'Priority', value: 'think · /θ/ → /s/', detail: 'The first sound is repeated and changes the meaning of the word.' },
+        { label: 'Tutor choice', value: 'One focused retry', detail: 'Correct one sound before introducing a new prompt or drill.' },
+      ],
+      feedbackLabel: 'Tutor can respond',
+      feedback: '“Nice, that was very smooth. One small sound: for think, let a little air pass over the tip of your tongue—th-ink. Try just the word once, then say the sentence again.”',
+      note: 'Chivox identifies the speech evidence; your teaching approach decides the cue, encouragement, retry length and when to move on.',
+    },
     payload: {
-      title: 'Turn evidence into the tutor’s next move',
+      title: 'Turn evidence into one teachable move',
       body: 'The tutor does not need to repeat every score. It can select the highest-value issue, explain it in the learner’s context and generate a retry that keeps the conversation moving.',
       filename: 'tutor-decision.json',
       code: `{
@@ -887,5 +917,5 @@ export const SOLUTION_PAGES: Record<string, MarketingPageData> = {
 
 export const ALL_MARKETING_PAGES = [
   ...Object.values(PRODUCT_PAGES),
-  ...Object.values(SOLUTION_PAGES).filter((page) => page.slug !== 'ai-language-tutor'),
+  ...Object.values(SOLUTION_PAGES),
 ];

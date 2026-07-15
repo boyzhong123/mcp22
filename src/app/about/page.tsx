@@ -202,9 +202,9 @@ export default function AboutPage() {
             </div>
 
             <div className="mt-7 flex flex-col gap-3 border-t border-zinc-900/[0.07] pt-5 text-[12.5px] text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
-              <span>See how structured speech evidence becomes product-ready reasoning.</span>
-              <Link href="/reasoning" className="group inline-flex items-center gap-1.5 font-semibold text-emerald-800 hover:text-emerald-900">
-                Explore the reasoning engine
+              <span>See how structured speech evidence adds listening and grading to voice agents.</span>
+              <Link href="/solutions/voice-agent" className="group inline-flex items-center gap-1.5 font-semibold text-emerald-800 hover:text-emerald-900">
+                Explore Voice Agent
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>

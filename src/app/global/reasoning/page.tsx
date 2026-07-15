@@ -7,7 +7,7 @@ export default function GlobalReasoningPage() {
       <AmbientBackdrop />
       <TopNav />
       <BackToOverview
-        current="AI feedback engine"
+        current="Voice Agent"
         containerClassName="container mx-auto px-6 max-w-7xl pt-6"
       />
       <ReasoningSection />

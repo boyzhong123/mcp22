@@ -509,7 +509,17 @@ function WorkflowRail({ steps }: { steps: string[] }) {
 }
 
 /** Vertical spine with stacked steps — docs / developer rhythm. */
-function WorkflowTimeline({ steps, title, description }: { steps: string[]; title: string; description: string }) {
+function WorkflowTimeline({
+  steps,
+  notes,
+  title,
+  description,
+}: {
+  steps: string[];
+  notes?: string[];
+  title: string;
+  description: string;
+}) {
   return (
     <div className="mt-12 grid gap-10 lg:grid-cols-12 lg:items-start">
       <div className="lg:col-span-4 lg:sticky lg:top-28">
@@ -526,6 +536,9 @@ function WorkflowTimeline({ steps, title, description }: { steps: string[]; titl
             </div>
             <div className="flex-1 rounded-2xl border border-zinc-900/[0.08] bg-white/70 px-5 py-4 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-[color-mix(in_srgb,var(--accent)_30%,transparent)] group-hover:bg-white">
               <div className="text-[15px] font-semibold leading-snug text-zinc-900">{step}</div>
+              {notes?.[index] ? (
+                <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{notes[index]}</p>
+              ) : null}
             </div>
           </li>
         ))}
@@ -579,11 +592,13 @@ function WorkflowLoop({
 
 function WorkflowBlock({
   steps,
+  notes,
   layout,
   title,
   description,
 }: {
   steps: string[];
+  notes?: string[];
   layout: MarketingWorkflowLayout;
   title: string;
   description: string;
@@ -592,7 +607,7 @@ function WorkflowBlock({
     return (
       <section className="border-b border-[#e9e2d2]/70 py-20 md:py-24">
         <div className="container mx-auto max-w-6xl px-6">
-          <WorkflowTimeline steps={steps} title={title} description={description} />
+          <WorkflowTimeline steps={steps} notes={notes} title={title} description={description} />
         </div>
       </section>
     );
@@ -1136,6 +1151,7 @@ export function SeoDetailPage({ page }: { page: MarketingPageData }) {
 
         <WorkflowBlock
           steps={page.workflow}
+          notes={page.workflowNotes}
           layout={workflowLayout}
           title={page.workflowTitle}
           description={page.workflowDescription}

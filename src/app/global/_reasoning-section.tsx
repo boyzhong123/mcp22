@@ -1,11 +1,12 @@
 'use client';
 
 /* ═══════════════════════════════════════════════════════════════
- *  AI feedback-engine section — extracted so /global/reasoning can
+ *  Voice-agent assessment section — extracted so /global/reasoning can
  *  render it as a dedicated sub-page (while the main landing no
  *  longer carries it).
  * ═══════════════════════════════════════════════════════════ */
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -14,7 +15,6 @@ import {
   Briefcase,
   Check,
   ChevronDown,
-  GraduationCap,
   Headphones,
   Lightbulb,
   ShieldCheck,
@@ -26,73 +26,61 @@ import { FadeUp, StaggerContainer, StaggerItem } from '@/components/animated-sec
 /* ─── Reasoning-demo data ────────────────────────────────── */
 
 const REASONING_TABS = [
-  { id: 'diagnose', label: 'Diagnose' },
-  { id: 'drill', label: 'Generate drill' },
+  { id: 'diagnose', label: 'Assess turn' },
+  { id: 'drill', label: 'Agent response' },
 ] as const;
 
 type ReasoningTabId = (typeof REASONING_TABS)[number]['id'];
 
 const REASONING_INPUT: Record<ReasoningTabId, string> = {
-  diagnose: `const diagnosis = await agent.generate({
-  instruction:
-    "Use only the returned speech evidence. " +
-    "Choose the single most useful correction.",
-  input: {
-    scores: assessment.pron,
-    fluency: assessment.fluency,
-    audioQuality: assessment.audio_quality,
-    details: assessment.details
-  },
-  output: DiagnosisSchema
+  diagnose: `const assessment = await chivox.assess({
+  audio: currentTurn.audio,
+  language: "en-US",
+  referenceText: currentTurn.expectedText,
+});
+
+const grade = applyRubric(assessment, {
+  pass: 80,
+  requestRetryBelow: 65,
+  checkAudioQualityFirst: true,
 });`,
-  drill: `const drill = await agent.generate({
+  drill: `const nextTurn = await agent.generate({
   instruction:
-    "Create one short practice activity for the " +
-    "approved target. Include a measurable retry.",
+    "Respond only from the approved assessment. " +
+    "Give one short cue and invite a retry.",
   input: {
-    target: diagnosis.priority_issue,
-    evidence: diagnosis.supporting_evidence,
-    learnerLevel: "intermediate"
+    transcript: currentTurn.transcript,
+    grade: approvedGrade,
+    evidence: approvedEvidence
   },
-  output: PracticeSchema
+  output: AgentTurnSchema
 });`,
 };
 
 const REASONING_OUTPUT: Record<ReasoningTabId, string> = {
-  diagnose: `# Diagnosis
+  diagnose: `{
+  "overall": 76,
+  "pronunciation": 72,
+  "fluency": 88,
+  "audio_quality": "clear",
+  "grade": "focused_retry",
+  "priority_issue": {
+    "word": "think",
+    "phoneme": "θ",
+    "score": 58,
+    "observed_as": "s"
+  }
+}`,
+  drill: `## Approved agent turn
 
-**1. Retroflex /sh/ is softening.**
-On 上 (shàng, T4) the initial /ʂ/ came out closer
-to a flat /s/. Score 58. Tip: curl the tongue
-tip back and up — think "dr" in "drop".
+**Almost there.** The first sound in “think” came
+out closer to /s/. Keep your tongue lightly between
+your teeth for /θ/, then try the sentence once more.
 
-**2. Tone 3 + Tone 3 sandhi not applied.**
-你好 was read as T3 + T3 instead of T2 + T3.
-This is the #1 textbook-to-speech gap.
-
-**3. Overall tone 3 is shallow.**
-Your T3 dips (hǎo, hǎi) don't reach the low
-register — they sound like T2 halfway.`,
-  drill: `## Drill · tongue-twister
-
-**四是四，十是十，十四是十四，
-四十是四十 —— 十四不要说四十。**
-
-sì shì sì, shí shì shí,
-shí sì shì shí sì, sì shí shì sì shí ——
-shí sì bú yào shuō sì shí.
-
-> Four is four, ten is ten, fourteen is fourteen,
-> forty is forty — don't say "forty" for "fourteen".
-
-**Targets:**
-• /ʂ/ × 6 (shì, shí, shuō)
-• /s/ × 6  (sì) — force the contrast
-• T2 ↔ T4 minimal pair (shí ↔ sì)
-• Bù → Bú sandhi × 1 (不要)
-
-⏱ 45 s · repeat 3× · record and compare to
-the reference MCP score.`,
+action: request_focused_retry
+target: think · /θ/
+audio_quality: clear
+continue_after_pass: true`,
 };
 
 /* ─── Main exported section ──────────────────────────────── */
@@ -100,38 +88,38 @@ the reference MCP score.`,
 export function ReasoningSection() {
   return (
     <section
-      id="ai-feedback-engine"
-      className="relative py-20 md:py-24 border-b border-[#e9e2d2]/70 scroll-mt-24"
+      id="voice-agent"
+      className="relative py-16 md:py-20 border-b border-[#e9e2d2]/70 scroll-mt-24"
     >
       <div className="container mx-auto px-6 max-w-7xl">
         <FadeUp className="mb-12 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-14">
           <div>
             <div className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
-              /ai-feedback-engine
+              /voice-agent
             </div>
             <h1 className="heading-display text-3xl md:text-[42px] tracking-[-0.02em] mb-3 leading-[1.1]">
-              Turn speech evidence into useful AI feedback.
-              <br />
-              <span className="text-muted-foreground/90">Diagnose, prioritize, coach, and generate the next drill.</span>
+              Voice Agent Pronunciation Assessment &amp; Speech Scoring
             </h1>
-            <p className="text-muted-foreground leading-relaxed">
-              The AI feedback engine turns structured pronunciation, fluency, tone, and audio-quality
-              evidence into an approved next action. It can identify the most important issue, explain it
-              in learner-friendly language, and generate focused practice while your application keeps
-              thresholds and product rules deterministic.
+            <p className="text-lg font-medium leading-relaxed text-foreground/85">
+              Speech evidence your voice agent can act on—across LiveKit, Pipecat, and custom voice runtimes.
+            </p>
+            <p className="mt-3 text-muted-foreground leading-relaxed">
+              Add a listening layer to LiveKit, Pipecat, or any voice-native agent stack. Chivox turns every spoken
+              turn into structured evidence—pronunciation, fluency, tone, and audio quality—so your application keeps
+              grading deterministic while the agent responds naturally.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/docs#response-schema"
                 className="inline-flex h-10 items-center gap-2 rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
               >
-                Explore response evidence <ArrowRight className="h-4 w-4" />
+                Explore MCP &amp; API integration <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/runtime"
                 className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-900/10 bg-white/70 px-4 text-sm font-semibold text-zinc-800 transition-colors hover:border-emerald-500/35 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
               >
-                Plan production runtime
+                Plan real-time runtime
               </Link>
             </div>
           </div>
@@ -139,11 +127,17 @@ export function ReasoningSection() {
           <FeedbackPreviewPanel />
         </FadeUp>
 
+        <IntegrationStrip />
+
+        <AssessmentDifference />
+
         <AudienceAndOutcomes />
 
         <FeedbackWorkflow />
 
         <TechnicalProof />
+
+        <VoiceAgentFaq />
 
         <FeedbackCta />
       </div>
@@ -154,7 +148,7 @@ export function ReasoningSection() {
 function FeedbackPreviewPanel() {
   return (
     <aside
-      aria-label="Example AI feedback response"
+      aria-label="Example voice-agent speech assessment response"
       className="relative mx-auto w-full max-w-[610px] lg:mx-0 lg:justify-self-end"
     >
       <div
@@ -167,12 +161,38 @@ function FeedbackPreviewPanel() {
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Example response
             </div>
-            <div className="mt-0.5 text-sm font-semibold tracking-[-0.01em]">Feedback ready</div>
+            <div className="mt-0.5 text-sm font-semibold tracking-[-0.01em]">Assessment ready</div>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/[0.07] px-2.5 py-1 font-mono text-[10px] text-emerald-700">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             grounded
           </span>
+        </div>
+
+        <div className="relative mb-3 aspect-[3/1.35] overflow-hidden rounded-2xl bg-zinc-950">
+          <Image
+            src="/solutions/voice-agent/voice-agent-hero.webp"
+            alt="Professional speaking with a real-time voice agent at a laptop"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 610px"
+            className="object-cover object-center"
+          />
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-zinc-950/35" />
+          <div className="absolute right-3 top-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-zinc-950/75 px-3 py-1.5 font-mono text-[9.5px] text-white shadow-lg backdrop-blur-md">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            live turn · listening
+          </div>
+          <div className="absolute bottom-3 right-3 flex h-9 items-end gap-1 rounded-xl border border-white/15 bg-zinc-950/75 px-3 py-2 shadow-lg backdrop-blur-md" aria-label="Live audio waveform">
+            {[38, 72, 48, 92, 64, 82, 44, 70, 52, 34].map((height, index) => (
+              <span
+                key={`${height}-${index}`}
+                aria-hidden
+                className="w-1 rounded-full bg-emerald-300"
+                style={{ height: `${height}%` }}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-zinc-900/[0.07] bg-[#fbfaf7] p-4">
@@ -211,7 +231,7 @@ function FeedbackPreviewPanel() {
         <div className="grid gap-2.5 md:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-2xl border border-violet-500/15 bg-violet-500/[0.045] p-4">
             <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-violet-700">
-              <Target className="h-3.5 w-3.5" /> Priority issue
+              <Target className="h-3.5 w-3.5" /> Pronunciation signal
             </div>
             <p className="text-[15px] font-semibold leading-snug tracking-[-0.015em]">Soften the /sh/ → /s/ substitution.</p>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
@@ -221,7 +241,7 @@ function FeedbackPreviewPanel() {
 
           <div className="rounded-2xl bg-zinc-950 p-4 text-white">
             <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-emerald-300">
-              <Sparkles className="h-3.5 w-3.5" /> Coach & drill
+              <Sparkles className="h-3.5 w-3.5" /> Agent response
             </div>
             <p className="text-[13px] leading-relaxed text-zinc-200">
               Curl the tongue slightly back for <strong className="font-semibold text-white">sh</strong>, then contrast
@@ -236,11 +256,100 @@ function FeedbackPreviewPanel() {
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.045] px-3 py-2.5">
-          <span className="text-[11px] font-medium text-emerald-900">Next action approved by product rules</span>
-          <span className="shrink-0 font-mono text-[9.5px] text-emerald-700">ready to deliver</span>
+          <span className="text-[11px] font-medium text-emerald-900">Assessment returned to the live agent</span>
+          <span className="shrink-0 font-mono text-[9.5px] text-emerald-700">ready to respond</span>
         </div>
       </div>
     </aside>
+  );
+}
+
+function IntegrationStrip() {
+  return (
+    <FadeUp className="mb-14 md:mb-18">
+      <div className="flex flex-col gap-5 rounded-2xl border border-zinc-900/[0.08] bg-white/65 px-5 py-5 shadow-[0_18px_50px_-42px_rgba(15,23,42,0.35)] sm:flex-row sm:items-center sm:justify-between md:px-7">
+        <div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-700">Framework-neutral by design</div>
+          <p className="mt-1 text-sm font-medium text-zinc-800">Bring the transport and orchestration you already use.</p>
+        </div>
+        <div className="flex flex-wrap gap-2" aria-label="Supported integration patterns">
+          {['LiveKit', 'Pipecat', 'MCP', 'REST API', 'Custom runtime'].map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-zinc-900/[0.08] bg-[#fbfaf7] px-3 py-1.5 font-mono text-[10.5px] text-zinc-700"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+    </FadeUp>
+  );
+}
+
+function AssessmentDifference() {
+  const layers = [
+    {
+      icon: Headphones,
+      eyebrow: 'Transcription layer',
+      title: 'What did the user say?',
+      body: 'Speech-to-text converts the turn into words so the agent can understand intent and continue the conversation.',
+      meta: 'audio → transcript',
+    },
+    {
+      icon: ShieldCheck,
+      eyebrow: 'Chivox assessment layer',
+      title: 'How was it spoken?',
+      body: 'Pronunciation, fluency, tone, completeness, and audio-quality evidence reveal performance that a transcript cannot show.',
+      meta: 'audio → scoring evidence',
+    },
+    {
+      icon: Bot,
+      eyebrow: 'Agent layer',
+      title: 'What should happen next?',
+      body: 'Your application applies its rubric, then the agent can continue, clarify, correct, grade, or invite a focused retry.',
+      meta: 'approved result → response',
+    },
+  ];
+
+  return (
+    <FadeUp className="mb-14 md:mb-18">
+      <div className="mb-7 grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+        <div>
+          <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-violet-700">/beyond-transcription</div>
+          <h2 className="text-2xl font-semibold leading-tight tracking-[-0.025em] md:text-3xl">
+            Transcription hears the words. Assessment hears how they were spoken.
+          </h2>
+        </div>
+        <p className="text-sm leading-relaxed text-muted-foreground lg:max-w-2xl lg:justify-self-end md:text-base">
+          A transcript is essential context, but it cannot reliably grade pronunciation or delivery. Chivox adds the
+          missing speech-performance evidence without replacing your STT, model, or TTS provider.
+        </p>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        {layers.map(({ icon: Icon, eyebrow, title, body, meta }, index) => (
+          <article
+            key={title}
+            className="relative overflow-hidden rounded-2xl border border-zinc-900/[0.08] bg-white/70 p-5 shadow-[0_18px_50px_-42px_rgba(15,23,42,0.4)] md:p-6"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${index === 1 ? 'bg-violet-600 text-white' : 'bg-zinc-950 text-white'}`}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="font-mono text-[10px] text-zinc-400">0{index + 1}</span>
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-violet-700">{eyebrow}</div>
+            <h3 className="mt-2 text-lg font-semibold tracking-[-0.02em]">{title}</h3>
+            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{body}</p>
+            <div className="mt-5 border-t border-zinc-900/[0.07] pt-3 font-mono text-[10.5px] text-emerald-700">{meta}</div>
+            {index < layers.length - 1 ? (
+              <ArrowRight className="absolute -right-2 top-10 hidden h-4 w-4 text-violet-400 lg:block" />
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </FadeUp>
   );
 }
 
@@ -250,8 +359,8 @@ function PayloadFieldStrip() {
     <div className="mb-10 md:mb-12 rounded-2xl border border-violet-200/60 bg-gradient-to-br from-violet-500/[0.05] via-white/85 to-amber-500/[0.04] p-4 md:p-6 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset]">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
         <div>
-          <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-violet-700 mb-1">Grounded input · approved output</p>
-          <p className="text-[15px] font-semibold text-foreground tracking-tight">The evidence layer behind reliable AI feedback</p>
+          <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-violet-700 mb-1">Live audio · structured evidence</p>
+          <p className="text-[15px] font-semibold text-foreground tracking-tight">The listening layer behind reliable voice agents</p>
         </div>
         <span className="shrink-0 self-start text-[10px] font-mono text-muted-foreground border border-dashed border-violet-300/50 rounded-md px-2 py-0.5">
           en + zh code paths
@@ -273,7 +382,7 @@ function PayloadFieldStrip() {
           },
           {
             k: 'Decision hooks',
-            v: 'Stable fields let your application prioritize issues and approve the action before AI writes the feedback.',
+            v: 'Stable fields let your application grade the turn, route the conversation, and constrain the agent response.',
           },
         ].map((row) => (
           <li key={row.k} className="rounded-xl border border-zinc-900/[0.08] bg-white/75 px-3 py-2.5">
@@ -289,57 +398,40 @@ function PayloadFieldStrip() {
 function AudienceAndOutcomes() {
   const audiences = [
     {
-      icon: GraduationCap,
-      title: 'AI language tutors',
-      body: 'Give learners a clear correction, an explanation, and a focused retry after every recording.',
-    },
-    {
       icon: Headphones,
-      title: 'Voice agents',
-      body: 'Decide whether to continue, clarify, or ask for a re-record using speech and audio-quality evidence.',
-    },
-    {
-      icon: Briefcase,
-      title: 'Interview & training products',
-      body: 'Turn fluency and delivery signals into explainable, consistent coaching for candidates and teams.',
+      title: 'LiveKit agents',
+      body: 'Score a spoken turn inside a real-time room and return pronunciation evidence without breaking the conversation.',
     },
     {
       icon: Bot,
-      title: 'Learning analytics',
-      body: 'Summarize recurring issues and progress across sessions without hiding the evidence behind the insight.',
+      title: 'Pipecat pipelines',
+      body: 'Insert assessment alongside speech-to-text, model, and text-to-speech services in an existing pipeline.',
+    },
+    {
+      icon: Briefcase,
+      title: 'Custom voice runtimes',
+      body: 'Call Chivox through MCP or API from any orchestration layer that can send audio and accept structured JSON.',
     },
   ];
 
   return (
-    <FadeUp className="mb-14 md:mb-18">
+    <FadeUp className="mb-12 md:mb-16">
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end mb-6">
         <div>
           <div className="text-[11px] tracking-[0.18em] uppercase text-emerald-700 font-mono mb-2">
-            /who-it-serves
+            /your-voice-stack
           </div>
           <h2 className="text-2xl md:text-3xl font-semibold tracking-[-0.025em] leading-tight">
-            Built for products that need the next action—not another score.
+            Agent-Native Speech Assessment Workflows
           </h2>
         </div>
         <p className="text-sm md:text-base text-muted-foreground leading-relaxed lg:max-w-2xl lg:justify-self-end">
-          Each response stays tied to structured speech evidence, while your product controls what to prioritize,
-          how to explain it, and what the learner or agent should do next.
+          Use MCP or API wherever you can pass audio in and structured JSON back. Chivox handles assessment;
+          your runtime still owns turn-taking, orchestration, and the user experience.
         </p>
       </div>
 
-      <div className="mb-5 grid gap-2 sm:grid-cols-3">
-        {['Evidence-backed responses', 'One prioritized correction', 'A measurable retry loop'].map((outcome) => (
-          <div
-            key={outcome}
-            className="flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.045] px-3 py-2.5 text-[12px] font-medium text-emerald-900"
-          >
-            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            {outcome}
-          </div>
-        ))}
-      </div>
-
-      <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <StaggerContainer className="grid gap-3 md:grid-cols-3">
         {audiences.map(({ icon: Icon, title, body }) => (
           <StaggerItem key={title}>
             <article className="h-full rounded-2xl border border-zinc-900/[0.08] bg-white/65 p-5 shadow-[0_14px_45px_-35px_rgba(15,23,42,0.35)]">
@@ -359,43 +451,43 @@ function AudienceAndOutcomes() {
 function FeedbackWorkflow() {
   const steps = [
     {
-      icon: ShieldCheck,
-      label: 'Evidence',
-      body: 'Assess speech and audio quality with deterministic scoring.',
-      meta: 'audio → structured JSON',
+      icon: Headphones,
+      label: 'Listen',
+      body: 'Capture the relevant user turn from LiveKit, Pipecat, or your own voice runtime.',
+      meta: 'live turn → audio',
     },
     {
-      icon: Sparkles,
-      label: 'Diagnose',
-      body: 'Explain the issue using the exact score, word, tone, or phoneme signal.',
-      meta: 'evidence → diagnosis',
+      icon: ShieldCheck,
+      label: 'Assess',
+      body: 'Score pronunciation, fluency, tone, completeness, and recording quality.',
+      meta: 'audio → assessment',
     },
     {
       icon: Target,
-      label: 'Prioritize',
-      body: 'Apply your product rules and select the single most useful correction.',
-      meta: 'diagnosis → approved target',
+      label: 'Grade',
+      body: 'Apply deterministic thresholds and select the evidence the agent is allowed to use.',
+      meta: 'scores → approved result',
     },
     {
       icon: Bot,
-      label: 'Coach & drill',
-      body: 'Deliver clear feedback and generate a short, measurable practice retry.',
-      meta: 'target → next action',
+      label: 'Respond',
+      body: 'Let the agent explain, clarify, continue, or request a focused retry in the same session.',
+      meta: 'result → agent turn',
     },
   ];
 
   return (
-    <FadeUp className="mb-14 md:mb-18">
+    <FadeUp className="mb-12 md:mb-16">
       <div className="mb-6 max-w-2xl">
         <div className="text-[11px] tracking-[0.18em] uppercase text-violet-700 font-mono mb-2">
-          /feedback-loop
+          /decision-boundary
         </div>
         <h2 className="text-2xl md:text-3xl font-semibold tracking-[-0.025em] mb-2">
-          A four-step loop from evidence to improvement.
+          Real-time speech assessment integration for voice AI
         </h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          AI handles explanation and generation. Your application keeps scoring thresholds, priorities, and safety
-          rules predictable.
+          Keep scoring, grade logic, and safety rules in your application. Give the model only the approved
+          evidence it needs to guide the next turn.
         </p>
       </div>
 
@@ -427,31 +519,31 @@ function FeedbackWorkflow() {
 
 function TechnicalProof() {
   return (
-    <FadeUp className="mb-14 md:mb-18">
+    <FadeUp className="mb-12 md:mb-16">
       <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
         <div>
           <div className="text-[11px] tracking-[0.18em] uppercase text-violet-700 font-mono mb-2">
             /technical-example
           </div>
           <h2 className="text-2xl md:text-3xl font-semibold tracking-[-0.025em]">
-            Inspect the evidence when you need it.
+            Adding Listening and Grading to Agents
           </h2>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed lg:max-w-2xl lg:justify-self-end">
-          The page stays focused on product value. Developers can expand this provider-neutral example to inspect
-          the response fields, diagnosis instruction, and structured drill output.
+          This provider-neutral example shows the handoff: audio and product rules in, structured evidence out,
+          then an approved response back into the conversation.
         </p>
       </div>
 
-      <details className="group rounded-2xl border border-violet-500/20 bg-white/60 shadow-[0_20px_70px_-50px_rgba(76,29,149,0.35)]">
+      <details open id="integration-example" className="group rounded-2xl border border-violet-500/20 bg-white/60 shadow-[0_20px_70px_-50px_rgba(76,29,149,0.35)]">
         <summary className="group/summary flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 transition-colors hover:bg-violet-500/[0.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-inset md:px-6">
           <span className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-500/15 bg-violet-500/10 text-violet-700 transition-transform group-hover/summary:scale-[1.04]">
               <Lightbulb className="h-4 w-4" />
             </span>
             <span>
-              <span className="block text-sm font-semibold">Open technical example</span>
-              <span className="block text-[11px] text-muted-foreground">Provider-neutral · structured input and output</span>
+              <span className="block text-sm font-semibold">Voice-agent turn contract</span>
+              <span className="block text-[11px] text-muted-foreground">LiveKit, Pipecat, or custom stack · MCP and API</span>
             </span>
           </span>
           <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full bg-zinc-950 px-3.5 text-[11px] font-semibold text-white shadow-sm transition-colors group-hover/summary:bg-violet-700">
@@ -469,6 +561,72 @@ function TechnicalProof() {
   );
 }
 
+function VoiceAgentFaq() {
+  const questions = [
+    {
+      question: 'Does Chivox replace speech-to-text?',
+      answer:
+        'No. Speech-to-text tells the agent what was said. Chivox adds evidence about how it was spoken, including pronunciation, fluency, tone, completeness, and recording quality. The two layers can work together in the same voice pipeline.',
+    },
+    {
+      question: 'How does Chivox connect to LiveKit or Pipecat?',
+      answer:
+        'Capture the relevant user turn in your existing pipeline, send the audio and assessment context through MCP or API, then pass the approved scoring fields back to your agent. Your framework continues to control turn-taking, VAD, STT, the model, and TTS.',
+    },
+    {
+      question: 'Can we keep grading rules outside the LLM?',
+      answer:
+        'Yes. Keep pass thresholds, retry rules, routing, and high-impact decisions in application code. The model can explain the approved result naturally without becoming the source of truth for the score.',
+    },
+    {
+      question: 'Which speech signals can the agent use?',
+      answer:
+        'Depending on the assessment, the response can include pronunciation and fluency scores, audio-quality signals, completeness, word or character detail, phonemes, stress, liaison, Pinyin, and tones.',
+    },
+    {
+      question: 'How should assessment fit into a live conversation?',
+      answer:
+        'Assess only the turns that need scoring. Your product can evaluate a completed turn before the next response, run selected checks alongside other pipeline work, or reserve detailed grading for explicit practice and verification moments.',
+    },
+  ];
+
+  return (
+    <FadeUp className="mb-14 md:mb-18">
+      <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-12">
+        <div>
+          <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-700">/voice-agent-faq</div>
+          <h2 className="text-2xl font-semibold leading-tight tracking-[-0.025em] md:text-3xl">
+            Integration questions, answered.
+          </h2>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Keep your current voice stack and add assessment only where the product needs reliable speech evidence.
+          </p>
+          <Link
+            href="/faq"
+            className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-800 transition-colors hover:text-emerald-950"
+          >
+            Read all FAQs <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="divide-y divide-zinc-900/[0.07] overflow-hidden rounded-2xl border border-zinc-900/[0.08] bg-white/70">
+          {questions.map(({ question, answer }, index) => (
+            <details key={question} className="group" open={index === 0}>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-5 px-5 py-4 text-sm font-semibold text-zinc-900 transition-colors hover:bg-emerald-500/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 md:px-6">
+                {question}
+                <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <p className="px-5 pb-5 pr-12 text-[13px] leading-relaxed text-muted-foreground md:px-6 md:pb-6 md:pr-16">
+                {answer}
+              </p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </FadeUp>
+  );
+}
+
 function FeedbackCta() {
   return (
     <FadeUp>
@@ -477,17 +635,17 @@ function FeedbackCta() {
         <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="max-w-2xl">
             <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300">
-              /build-your-loop
+              /build-your-agent
             </div>
             <h2 className="mb-3 text-2xl font-semibold tracking-[-0.03em] md:text-4xl">
-              Build a feedback loop your product can trust.
+              Start with one speech turn, then scale your agent loop.
             </h2>
             <p className="text-sm leading-relaxed text-zinc-300 md:text-base">
-              Start with a language tutor, voice agent, interview workflow, or training product. Use the same
-              evidence contract to diagnose, prioritize, coach, and measure the retry.
+              Connect Chivox to LiveKit, Pipecat, or your own voice-native stack. Assess the turns that matter,
+              grade them with product-owned rules, and let the agent respond from approved evidence.
             </p>
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-zinc-300">
-              {['Grounded in speech evidence', 'Deterministic product rules', 'Measurable retries'].map((item) => (
+              {['Real-time speech assessment', 'MCP or API integration', 'Deterministic grading rules'].map((item) => (
                 <span key={item} className="inline-flex items-center gap-1.5">
                   <Check className="h-3.5 w-3.5 text-emerald-300" /> {item}
                 </span>
@@ -499,7 +657,7 @@ function FeedbackCta() {
               href="/docs#response-schema"
               className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
             >
-              Read implementation guide <ArrowRight className="h-4 w-4" />
+              Read integration guide <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/demo"
@@ -514,7 +672,7 @@ function FeedbackCta() {
   );
 }
 
-/* ─── The live reasoning demo — same payload → any LLM ─── */
+/* ─── Live agent demo — assessment evidence → approved response ─── */
 function ReasoningDemo() {
   const [tab, setTab] = useState<ReasoningTabId>('diagnose');
   const [typed, setTyped] = useState(0);
@@ -545,17 +703,17 @@ function ReasoningDemo() {
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-violet-500" />
             <span className="text-[13px] font-semibold tracking-[-0.005em] text-foreground">
-              How an agent turns speech evidence into an approved action
+              How a voice agent turns a live speech turn into an approved response
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-[10px] font-mono text-rose-700 dark:text-rose-400">
               <span className="h-1 w-1 rounded-full bg-rose-500" />
-              中文 · 你好 / 上海
+              Live audio · en-US
             </span>
           </div>
           <div
             className="flex rounded-md border border-border/60 bg-background p-0.5 self-start sm:self-auto"
             role="group"
-            aria-label="Feedback step"
+            aria-label="Voice agent assessment step"
           >
             {REASONING_TABS.map((t) => (
               <button
@@ -598,10 +756,10 @@ function ReasoningDemo() {
                 <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-zinc-900 text-white text-[9px] font-bold">
                   IN
                 </span>
-                Evidence + product instruction
+                Audio turn + product rubric
               </span>
               <span className="text-[10px] font-mono text-zinc-500">
-                {tab === 'diagnose' ? 'diagnose.ts' : 'drill.ts'}
+                {tab === 'diagnose' ? 'assess-turn.ts' : 'agent-response.ts'}
               </span>
             </div>
             <pre className="text-[11.5px] leading-[1.6] font-mono p-5 whitespace-pre overflow-x-auto max-h-[340px] text-zinc-800">
@@ -618,7 +776,7 @@ function ReasoningDemo() {
                 <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-violet-600 text-white text-[9px] font-bold">
                   OUT
                 </span>
-                Agent writes — {tab === 'diagnose' ? 'diagnosis' : 'drill plan'}
+                {tab === 'diagnose' ? 'Chivox returns — scoring evidence' : 'Agent writes — approved response'}
               </span>
               <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -638,8 +796,8 @@ function ReasoningDemo() {
           <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
           <span>
             The <strong className="text-foreground/85 font-semibold">same structured evidence</strong> works with
-            any model or agent stack that accepts JSON. Keep thresholds, pass/fail decisions, and safety rules in
-            application code.
+            LiveKit, Pipecat, or any agent stack that accepts JSON. Keep thresholds, pass/fail decisions, and safety
+            rules in application code.
           </span>
         </div>
       </div>

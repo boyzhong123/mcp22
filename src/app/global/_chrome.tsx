@@ -160,9 +160,9 @@ export const NAV_GROUPS: readonly {
         accent: 'from-teal-500/15 to-teal-500/0',
       },
       {
-        href: '/reasoning',
-        label: 'AI feedback engine',
-        summary: 'Turn speech evidence into grounded feedback and drills.',
+        href: '/solutions/voice-agent',
+        label: 'Voice Agent',
+        summary: 'Add real-time pronunciation scoring to voice-native agents.',
         eyebrow: 'Solution',
         icon: 'reasoning',
         accent: 'from-violet-500/15 to-violet-500/0',
@@ -1788,7 +1788,7 @@ export function SiteFooter() {
               </div>
               <ul className="flex flex-col gap-3 text-[13px] leading-5 text-zinc-600">
                 <li><Link href="/solutions/ai-language-tutor" className="transition-colors hover:text-zinc-900">AI language tutor</Link></li>
-                <li><Link href="/reasoning" className="transition-colors hover:text-zinc-900">AI feedback engine</Link></li>
+                <li><Link href="/solutions/voice-agent" className="transition-colors hover:text-zinc-900">Voice Agent</Link></li>
               </ul>
             </div>
 

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { SeoDetailPage } from '@/app/_marketing/seo-detail-page';
 import { SOLUTION_PAGES } from '@/app/_marketing/seo-content';
 import { absoluteUrl } from '@/lib/site';
@@ -7,9 +7,7 @@ import { absoluteUrl } from '@/lib/site';
 type Props = { params: Promise<{ slug: string }> };
 
 export function generateStaticParams() {
-  return Object.keys(SOLUTION_PAGES)
-    .filter((slug) => slug !== 'ai-language-tutor')
-    .map((slug) => ({ slug }));
+  return Object.keys(SOLUTION_PAGES).map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -25,10 +23,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SolutionPage({ params }: Props) {
   const { slug } = await params;
-  if (slug === 'ai-language-tutor') {
-    permanentRedirect('/products/english-speech-assessment');
-  }
-
   const page = SOLUTION_PAGES[slug];
   if (!page) notFound();
   return <SeoDetailPage page={page} />;

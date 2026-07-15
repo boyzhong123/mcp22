@@ -11,7 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: absoluteUrl('/docs'), changeFrequency: 'weekly', priority: 0.8 },
     { url: absoluteUrl('/faq'), changeFrequency: 'monthly', priority: 0.6 },
     { url: absoluteUrl('/blog'), changeFrequency: 'weekly', priority: 0.7 },
-    { url: absoluteUrl('/reasoning'), changeFrequency: 'monthly', priority: 0.7 },
+    { url: absoluteUrl('/solutions/voice-agent'), changeFrequency: 'monthly', priority: 0.8 },
     { url: absoluteUrl('/runtime'), changeFrequency: 'monthly', priority: 0.7 },
   ];
 
