@@ -51,17 +51,21 @@ export default function RechargeHistoryPage() {
           current?.id === transaction.id
             ? {
                 ...current,
-                description: detail.description ?? current.description,
-                balanceBeforeCents: detail.balance_before ?? current.balanceBeforeCents,
-                balanceAfterCents: detail.balance_after ?? current.balanceAfterCents,
                 basePoints: detail.base_points ?? current.basePoints,
-                bonusPoints: detail.bonus_points ?? current.bonusPoints,
+                pointsPerUsd: detail.points_per_usd ?? current.pointsPerUsd,
+                validityDays: detail.validity_days ?? current.validityDays,
+                pointsToGrant: detail.points_to_grant ?? current.pointsToGrant,
                 creditedPoints: detail.credited_points ?? current.creditedPoints,
                 balanceBeforePoints: detail.point_balance_before ?? current.balanceBeforePoints,
                 balanceAfterPoints: detail.point_balance_after ?? current.balanceAfterPoints,
-                pointsExpireAt: detail.points_expire_at ?? current.pointsExpireAt,
+                pointsExpireAt:
+                  detail.points_expires_at ?? detail.points_expire_at ?? current.pointsExpireAt,
                 usedPoints: detail.used_points ?? current.usedPoints,
                 remainingPoints: detail.remaining_points ?? current.remainingPoints,
+                expiredPoints: detail.expired_points ?? current.expiredPoints,
+                paypalOrderId: detail.paypal_order_id ?? current.paypalOrderId,
+                paypalCaptureId: detail.paypal_capture_id ?? current.paypalCaptureId,
+                effectiveAt: detail.effective_at ?? current.effectiveAt,
               }
             : current,
         );
@@ -316,7 +320,16 @@ function TransactionDetailDrawer({
               <DetailRow label={t('Payment method', '支付方式')} value={methodLabel(transaction.method, transaction.last4)} />
               <DetailRow label={t('Transaction time', '交易时间')} value={formatTransactionTimestamp(transaction.createdAt, lang)} />
               <DetailRow label={t('PayPal order ID', 'PayPal 订单号')} value={transaction.paypalOrderId ?? '—'} mono />
+              <DetailRow label={t('PayPal capture ID', 'PayPal Capture 号')} value={transaction.paypalCaptureId ?? '—'} mono />
               <DetailRow label={t('Transaction ID', '交易 ID')} value={transaction.id} mono />
+              <DetailRow
+                label={t('Credited at', '到账时间')}
+                value={
+                  transaction.effectiveAt
+                    ? formatTransactionTimestamp(transaction.effectiveAt, lang)
+                    : '—'
+                }
+              />
             </div>
 
             <div>
@@ -329,12 +342,15 @@ function TransactionDetailDrawer({
                   value={packageLabel(transaction.packageId, t)}
                 />
                 <DetailRow
-                  label={t('Base points', '基础积分')}
-                  value={formatPoints(transaction.basePoints ?? creditedPoints(transaction))}
-                />
-                <DetailRow
-                  label={t('Bonus points', '赠送积分')}
-                  value={formatPoints(transaction.bonusPoints ?? 0)}
+                  label={t('Rate snapshot', '兑换率快照')}
+                  value={
+                    transaction.pointsPerUsd
+                      ? t(
+                          `${transaction.pointsPerUsd.toLocaleString('en-US')} pts / $1`,
+                          `每 $1 ${transaction.pointsPerUsd.toLocaleString('en-US')} 积分`,
+                        )
+                      : '—'
+                  }
                 />
                 <DetailRow
                   label={t('Points credited', '实际到账')}

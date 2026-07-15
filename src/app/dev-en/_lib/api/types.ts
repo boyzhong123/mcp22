@@ -65,238 +65,249 @@ export interface ApiKeyUsageSummary {
   days_with_usage: number;
 }
 
-// ─── Usage (doc §4) ─────────────────────────────────────────────────────────
+// ─── Usage (doc §11) ────────────────────────────────────────────────────────
 
-// doc §4.1 — GET /usage/points returns a bare []UsagePoint.
-export interface UsagePoint {
-  id: number;
-  account_id: number;
-  key_id: number;
-  date: string; // ISO 8601, day precision
-  model: string; // default "mcp-call"
+// One CoreType bucket inside a UsagePoint. `core_type` is the stable grouping
+// key (case-sensitive after trim); `display_name` is display-only.
+export interface UsagePointCoreType {
+  core_type: string;
+  display_name: string;
   calls: number;
-  word_sentence_calls?: number;
-  paragraph_calls?: number;
-  word_sentence_points?: number;
-  paragraph_points?: number;
-  evaluation_points?: number;
-  cost_mills: number;
-  savings_mills: number;
+  events: number;
+  /** Actually deducted points (SUM(deducted_points)). */
+  evaluation_points: number;
+  /** Theoretical points (= evaluation_points + uncovered_points). */
+  required_points: number;
+  /** Executed but not covered by balance; never clawed back. */
+  uncovered_points: number;
 }
 
-export interface VolumeTier {
-  up_to: number | null; // null = no upper bound
-  discount: number;
-  label: string;
+// doc §11.1 — GET /usage/points returns a bare []UsagePoint (no envelope),
+// aggregated by UTC day × API key × CoreType.
+export interface UsagePoint {
+  date: string; // UTC RFC3339, day precision
+  key_id: number;
+  api_key_id: number; // alias of key_id
+  key_name: string;
+  calls: number;
+  events: number;
+  evaluation_points: number;
+  required_points: number;
+  uncovered_points: number;
+  core_types: UsagePointCoreType[];
 }
 
-// doc §4.2 GET /usage/account-summary
-export interface AccountSummary {
-  calls_this_month: number;
-  spend_mills_this_month: number;
-  savings_mills_this_month: number;
-  current_volume_tier: VolumeTier;
-  active_keys: number;
-}
+// ─── Billing (evaluation-points doc v1.0) ───────────────────────────────────
 
-// ─── Billing (doc §5) ───────────────────────────────────────────────────────
+export type PackageID = 'standard' | 'advanced' | 'flagship';
+export type BatchStatus = 'active' | 'exhausted' | 'expired';
 
-// doc §5.1 GET /billing/balance
-export interface AccountBalance {
-  balance_mills: number; // 1 USD = 1000 mills (0.1 cent each)
-  balance_usd: string; // formatted, e.g. "$5.00"
-  /** Canonical product balance; money fields are reconciliation metadata. */
-  evaluation_points_balance: number;
-  evaluation_points_used?: number;
-  evaluation_points_expires_at?: string | null;
-}
-
-export interface PricingTier {
-  up_to: number | null;
-  unit_cents: number;
-  label: string;
-}
-
-// doc §5.2 GET /billing/pricing
-export interface PricingInfo {
-  tiers: PricingTier[];
-  min_topup_cents: number;
-  topup_presets: number[];
-  pricing_mode: string;
-  trial_calls: number;
-  trial_days: number;
-  /** Config version metadata from admin pricing. */
-  version_id?: number;
-  version?: number;
-  currency?: string;
-  validity_days?: number;
-  evaluation_point_rules?: {
-    /** @deprecated Prefer per-tier points_per_usd on recharge_tiers. */
-    base_points_per_usd?: number;
-    word_sentence_points_per_use: number;
-    paragraph_points_per_use: number;
-    valid_days: number;
-  };
-  /**
-   * Canonical recharge tiers: amount range + points_per_usd.
-   * Prefer this key when volume `tiers` (unit_cents ladder) is also present.
-   * If the API only returns recharge bands as `tiers` (items with `code` +
-   * `points_per_usd`), the FE catalog mapper accepts that shape too.
-   */
-  recharge_tiers?: RechargePricingTier[];
-  /** @deprecated Prefer recharge_tiers / tiers with points_per_usd. */
-  topup_packages?: EvaluationPointPackage[];
-}
-
-/** One admin-configured recharge tier (amount band → pts per USD). */
-export interface RechargePricingTier {
-  code: 'standard' | 'advanced' | 'flagship';
+/** One top-up amount band (doc §5.1). Credited pts = usd × points_per_usd. */
+export interface BillingPricingPackage {
+  id: PackageID;
   min_amount_cents: number;
-  /** Exclusive upper bound; null = unlimited. */
+  /** Exclusive upper bound; flagship has null (unbounded). */
   max_amount_cents: number | null;
   points_per_usd: number;
-  preset_amount_cents?: number[];
 }
 
-export interface EvaluationPointPackage {
-  id: 'standard' | 'advanced' | 'flagship';
-  min_amount_cents: number;
-  /** @deprecated Prefer points_per_usd on RechargePricingTier. */
-  bonus_percent?: number;
-  /** Optional exclusive max for range display. */
-  max_amount_cents?: number | null;
-  /** Preferred when present — credited ≈ usd × points_per_usd. */
-  points_per_usd?: number;
-  preset_amount_cents: number[];
+/** Per-CoreType deduction rate (doc §5.1). Empty list = default rate only. */
+export interface CoreTypeRate {
+  core_type: string;
+  display_name: string;
+  points_per_request: number;
 }
 
-/** One expiring batch created by a successful top-up. */
+/** Server-authoritative quote for `?amount_cents=` (doc §5.1). */
+export interface PricingQuote {
+  amount_cents: number;
+  package_id: PackageID;
+  /** Points this amount buys — already rounded up server-side. */
+  quoted_points: number;
+}
+
+// doc §5.1 GET /billing/pricing[?amount_cents=...]
+export interface PricingInfo {
+  currency: string; // "USD"
+  /** Paid batches' validity in days. */
+  valid_days: number;
+  /** Signup grant, in points (not calls). */
+  signup_bonus_points: number;
+  signup_bonus_valid_days: number;
+  /** Deduction per request for CoreTypes without a specific rate. */
+  default_points_per_request: number;
+  topup_pricing_version_id: number;
+  topup_pricing_version: number;
+  topup_packages: BillingPricingPackage[];
+  core_type_pricing_version_id: number | null;
+  core_type_pricing_version: number | null;
+  core_type_rates: CoreTypeRate[];
+  /** Present only when the request carried `amount_cents`. */
+  quote: PricingQuote | null;
+}
+
+/** One expiring point batch (doc §10). Signup-bonus batches have no order. */
 export interface EvaluationPointBatch {
-  id: string;
-  transaction_id: number;
-  package_id: 'standard' | 'advanced' | 'flagship';
+  id: number;
+  transaction_id: number | null;
+  package_id: PackageID | null;
   credited_points: number;
   used_points: number;
   remaining_points: number;
   expires_at: string;
   created_at: string;
-  status: 'active' | 'exhausted' | 'expired';
+  status: BatchStatus;
 }
 
 export interface EvaluationPointBatchListResponse {
   batches: EvaluationPointBatch[];
+  page: number;
+  page_size: number;
   total: number;
 }
 
-// doc §5.8 / §5.9 — account-level four-axis limits.
+// doc §12 — account-level four-axis guardrails. PUT is a strict partial
+// update: send only known fields (unknown keys → 400 INVALID_REQUEST).
 export interface AccountLimits {
   monthly_evaluation_point_cap: number; // 0 = unlimited
   daily_evaluation_point_cap: number;
   daily_call_cap: number;
   monthly_call_cap: number;
+  /** Unique ints in 1–100; [] disables thresholds. Config-only today. */
   warn_at_percents: number[];
-  /** @deprecated Legacy money cap; clients must not use this for traffic. */
-  monthly_spend_cap_mills?: number;
-  /** @deprecated Legacy money cap; clients must not use this for traffic. */
-  daily_spend_cap_mills?: number;
 }
 
-// doc §5.10 GET /billing/summary
+/** UTC calendar-month rollup inside the billing summary (doc §8.1). */
+export interface BillingSummaryCurrentMonth {
+  granted_points: number;
+  deducted_points: number;
+  uncovered_points: number;
+  expired_points: number;
+  usage_count: number;
+  usage_events: number;
+  blocked_events: number;
+}
+
+// doc §8.1 GET /billing/summary — the authoritative balance source. The page's
+// main balance must come from `evaluation_points_balance` (never batch sums).
 export interface BillingSummary {
-  balance_mills: number;
-  balance_usd: string;
-  month_spend_mills: number;
-  month_call_count: number;
-  transaction_count_month: number;
-  trial_active: boolean;
-  trial_calls_remaining: number;
-  /** Total trial allowance; when absent, clients may fall back to pricing.trial_calls. */
-  trial_calls_total?: number;
-  trial_expires_at: string;
-  trial_days_remaining: number;
-  trial_burn_rate: number;
-  trial_est_days_left: number;
-  current_tier: string; // base | mid | high
-  current_unit_mills: number;
-  next_tier_at: number;
-  calls_to_next_tier: number;
-  est_runway_days: number;
-  active_keys: number;
-  paid_credits_mills: number;
-  paid_credits_used_mills: number;
-  /** Point-led fields used by billing, recharge history, and overview UI. */
+  as_of: string;
   evaluation_points_balance: number;
   evaluation_points_credited_total: number;
   evaluation_points_used_total: number;
-  evaluation_points_expiring_soon?: number;
-  evaluation_points_next_expiry_at?: string | null;
+  evaluation_points_expired_total: number;
+  /** Points expiring within the next 7 days. */
+  evaluation_points_expiring_soon: number;
+  /** Earliest expiry among active batches; null when none. */
+  evaluation_points_next_expiry_at: string | null;
+  /** Compat name — signup-bonus batch total, unit is POINTS not calls. */
+  trial_calls_total: number;
+  /** Compat name — signup-bonus batch remainder, unit is POINTS not calls. */
+  trial_calls_remaining: number;
+  trial_expires_at: string | null;
+  trial_active: boolean;
+  /** Same value as evaluation_points_balance. */
+  available_points: number;
+  signup_bonus_remaining: number;
+  paid_points_remaining: number;
+  /** Remaining points expiring within N days; the windows nest (3⊂7⊂30). */
+  expiring_in_3_days: number;
+  expiring_in_7_days: number;
+  expiring_in_30_days: number;
+  current_month: BillingSummaryCurrentMonth;
 }
 
-export type TransactionKind = 'balance-topup' | 'credit-topup' | string;
-export type TransactionStatus = 'pending' | 'succeeded' | 'failed' | string;
+export type TransactionStatus = 'pending' | 'succeeded' | 'failed';
 
-// doc §5.5 / §5.6 Transaction object
+// doc §9 Transaction object — one row per top-up order (never usage events).
+// pending/failed rows keep the order quote in points_to_grant with all batch
+// fields at 0 and null balance snapshots.
 export interface Transaction {
   id: number;
-  user_id?: number;
-  account_id?: number;
-  amount_cents: number;
+  transaction_id: number;
   status: TransactionStatus;
+  amount_cents: number;
+  currency: string;
   method: string; // "paypal"
-  description?: string;
-  invoice_number?: string;
-  kind: TransactionKind;
-  balance_before?: number;
-  balance_after?: number;
-  package_id?: 'standard' | 'advanced' | 'flagship';
-  base_points?: number;
-  bonus_points?: number;
-  credited_points?: number;
-  point_balance_before?: number;
-  point_balance_after?: number;
-  points_expire_at?: string | null;
-  /** Current usage snapshot for the batch/batches created by this top-up. */
-  used_points?: number;
-  remaining_points?: number;
-  /** PayPal order id for the history detail drawer. */
-  paypal_order_id?: string;
+  /** Native alias of package_id. */
+  tier_code: PackageID;
+  package_id: PackageID;
+  pricing_version_id: number;
+  pricing_version: number;
+  tier_min_amount_cents?: number;
+  tier_max_amount_cents?: number | null;
+  /** Exchange-rate snapshot fixed at order creation. */
+  points_per_usd: number;
+  validity_days: number;
+  /** Points quoted when the order was created. */
+  points_to_grant: number;
+  /** Points actually granted by the batch (== credited_points today). */
+  base_points: number;
+  credited_points: number;
+  /** Actually consumed (excludes expired): credited = used + remaining + expired. */
+  used_points: number;
+  remaining_points: number;
+  /** Returned by list/detail; the capture response omits it. */
+  expired_points?: number;
+  point_balance_before: number | null;
+  point_balance_after: number | null;
+  paypal_order_id: string;
+  paypal_capture_id: string | null;
+  effective_at: string | null;
+  effective_at_source?: string;
+  points_expires_at: string | null;
+  /** Third-party compat alias of points_expires_at. */
+  points_expire_at: string | null;
+  point_lot_id: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface TransactionListResponse {
   transactions: Transaction[];
-  total: number;
   page: number;
   page_size: number;
+  total: number;
 }
 
-// doc §5.3 POST /billing/topups/order
+// doc §6.1 POST /billing/topups/order — order created, points NOT yet
+// credited; only a successful capture flips it to `succeeded`.
 export interface TopupOrder {
-  paypal_order_id: string;
   transaction_id: number;
+  status: TransactionStatus;
   amount_cents: number;
-  /** Server-decided tier from amount_cents thresholds (not a request field). */
-  package_id: 'standard' | 'advanced' | 'flagship';
-  /** Server-authoritative points credited if this order captures successfully. */
+  currency: string;
+  /** Hand this to the PayPal JS SDK createOrder (NOT transaction_id). */
+  paypal_order_id: string;
+  paypal_capture_id: string | null;
+  pricing_version_id: number;
+  pricing_version: number;
+  /** Tier matched server-side from amount_cents. */
+  package_id: PackageID;
+  tier_min_amount_cents?: number;
+  tier_max_amount_cents?: number | null;
+  points_per_usd: number;
+  /** Points fixed into the order — the authoritative credited amount. */
   quoted_points: number;
-  /** Optional breakdown — reserved for when the backend starts returning them. */
-  quoted_base_points?: number;
-  quoted_bonus_points?: number;
-  points_expire_at?: string | null;
+  validity_days: number;
+  effective_at: string | null;
+  points_expires_at: string | null;
+  point_lot_id: number | null;
+  created_at: string;
+  updated_at?: string;
 }
 
-// ─── Notifications (doc §6) ─────────────────────────────────────────────────
+// ─── Notifications (doc §13) ────────────────────────────────────────────────
 
 export interface NotificationSettings {
+  id?: number;
+  account_id?: number;
   weekly_usage_report: boolean;
   payment_receipts: boolean;
-  invoice_ready?: boolean;
-  spend_limit_alerts: boolean;
+  /** Master switch for low-POINTS alerts (name keeps "balance" for compat). */
   low_balance_alerts_master: boolean;
-  /** Canonical user-facing low-credit threshold. */
-  low_evaluation_points_threshold?: number;
-  /** @deprecated Monetary compatibility field; do not drive product UI from it. */
-  low_balance_threshold_cents: number;
+  /** Low-points threshold, non-negative, unit is points. */
+  low_evaluation_points_threshold: number;
   product_updates: boolean;
   security_alerts: boolean;
 }

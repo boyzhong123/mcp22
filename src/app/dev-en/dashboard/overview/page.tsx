@@ -322,10 +322,19 @@ export default function OverviewPage() {
           icon={Receipt}
           label={t('Evaluation points used this month', '本月消耗评测积分')}
           value={monthlyUsage.totalPoints.toLocaleString('en-US')}
-          sub={t(
-            `Word/phrase/sentence ${monthlyUsage.wordSentencePoints.toLocaleString('en-US')} pts · paragraph ${monthlyUsage.paragraphPoints.toLocaleString('en-US')} pts`,
-            `字词句 ${monthlyUsage.wordSentencePoints.toLocaleString('en-US')} 积分 · 段落 ${monthlyUsage.paragraphPoints.toLocaleString('en-US')} 积分`,
-          )}
+          sub={
+            monthlyUsage.coreTypes.length > 0
+              ? monthlyUsage.coreTypes
+                  .slice(0, 2)
+                  .map((ct) =>
+                    t(
+                      `${ct.displayName} ${ct.evaluationPoints.toLocaleString('en-US')} pts`,
+                      `${ct.displayName} ${ct.evaluationPoints.toLocaleString('en-US')} 积分`,
+                    ),
+                  )
+                  .join(' · ')
+              : t('No usage this month yet', '本月暂无消耗')
+          }
           href="/dashboard/billing"
           cta={t('View billing', '查看账单')}
         />

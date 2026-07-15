@@ -23,12 +23,12 @@ import {
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { useLang } from '../../_lib/use-lang';
-import { toEvaluationUsage } from '../../_lib/evaluation-usage';
-import { EvaluationKernelInfo } from '../../_components/evaluation-kernel-info';
 import {
-  PARAGRAPH_POINTS_PER_USE,
-  WORD_SENTENCE_POINTS_PER_USE,
-} from '../../_lib/topup';
+  aggregateEvaluationUsage,
+  toEvaluationUsage,
+  type EvaluationUsageBreakdown,
+} from '../../_lib/evaluation-usage';
+import { EvaluationKernelInfo } from '../../_components/evaluation-kernel-info';
 
 type Period = 7 | 14 | 28 | 90;
 const PERIODS: Period[] = [7, 14, 28, 90];
@@ -122,7 +122,7 @@ export default function UsagePage() {
       perKeyCost: Record<string, number>;
       totalCalls: number;
       totalCostMills: number;
-      totalSavingsMills: number;
+      totalUncovered: number;
     }[] = [];
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(today.getTime() - i * 86400000);
@@ -131,23 +131,23 @@ export default function UsagePage() {
       const perKeyCost: Record<string, number> = {};
       let totalCalls = 0;
       let totalCostMills = 0;
-      let totalSavingsMills = 0;
+      let totalUncovered = 0;
       for (const p of filteredUsage.filter((x) => x.date === date)) {
         const evaluationUsage = toEvaluationUsage(p);
         perKey[p.keyId] = (perKey[p.keyId] ?? 0) + evaluationUsage.calls;
         perKeyCost[p.keyId] = (perKeyCost[p.keyId] ?? 0) + evaluationUsage.totalPoints;
         totalCalls += evaluationUsage.calls;
         totalCostMills += evaluationUsage.totalPoints;
-        totalSavingsMills += p.savingsMills;
+        totalUncovered += evaluationUsage.uncoveredPoints;
       }
-      days.push({ date, perKey, perKeyCost, totalCalls, totalCostMills, totalSavingsMills });
+      days.push({ date, perKey, perKeyCost, totalCalls, totalCostMills, totalUncovered });
     }
     return days;
   }, [filteredUsage, period]);
 
   const kpiTotalCalls = stackedData.reduce((a, d) => a + d.totalCalls, 0);
   const kpiTotalCost = stackedData.reduce((a, d) => a + d.totalCostMills, 0);
-  const kpiTotalSavings = stackedData.reduce((a, d) => a + d.totalSavingsMills, 0);
+  const kpiTotalUncovered = stackedData.reduce((a, d) => a + d.totalUncovered, 0);
   const kpiAvgPerDay = Math.round(kpiTotalCalls / Math.max(1, stackedData.length));
   const peakDay = stackedData.reduce(
     (acc, d) => (d.totalCalls > acc.totalCalls ? d : acc),
@@ -174,34 +174,41 @@ export default function UsagePage() {
       ? `${Math.round(v).toLocaleString('en-US')} ${tx('pts')}`
       : `${v.toLocaleString('en-US')} ${tx('calls')}`;
 
+  // Per-key rollup with the dynamic CoreType split. Column set = union of
+  // CoreTypes seen in the filtered window (case-sensitive keys, largest
+  // deduction first) — never a hardcoded business taxonomy.
   const perKeyBreakdown = useMemo(() => {
-    const map = new Map<string, { calls: number; points: number; wordCalls: number; paragraphCalls: number; wordPoints: number; paragraphPoints: number }>();
+    const byKey = new Map<string, UsagePoint[]>();
     for (const p of filteredUsage) {
-      const evaluationUsage = toEvaluationUsage(p);
-      const d = map.get(p.keyId) ?? { calls: 0, points: 0, wordCalls: 0, paragraphCalls: 0, wordPoints: 0, paragraphPoints: 0 };
-      d.calls += evaluationUsage.calls;
-      d.points += evaluationUsage.totalPoints;
-      d.wordCalls += evaluationUsage.wordSentenceCalls;
-      d.paragraphCalls += evaluationUsage.paragraphCalls;
-      d.wordPoints += evaluationUsage.wordSentencePoints;
-      d.paragraphPoints += evaluationUsage.paragraphPoints;
-      map.set(p.keyId, d);
+      const list = byKey.get(p.keyId) ?? [];
+      list.push(p);
+      byKey.set(p.keyId, list);
     }
-    return Array.from(map.entries())
-      .map(([keyId, d]) => {
-        const k = keys.find((kk) => kk.id === keyId);
-        return {
-          key: k,
-          ...d,
-        };
-      })
-      .filter((row) => row.key)
+    return Array.from(byKey.entries())
+      .map(([keyId, list]) => ({
+        key: keys.find((kk) => kk.id === keyId),
+        usage: aggregateEvaluationUsage(list),
+      }))
+      .filter((row): row is { key: ApiKey; usage: EvaluationUsageBreakdown } => !!row.key)
       .sort((a, b) => {
-        const av = breakdownSort.column === 'calls' ? a.calls : a.points;
-        const bv = breakdownSort.column === 'calls' ? b.calls : b.points;
+        const av = breakdownSort.column === 'calls' ? a.usage.calls : a.usage.totalPoints;
+        const bv = breakdownSort.column === 'calls' ? b.usage.calls : b.usage.totalPoints;
         return breakdownSort.dir === 'desc' ? bv - av : av - bv;
       });
   }, [filteredUsage, keys, breakdownSort]);
+
+  // Union of CoreType columns across the visible rows.
+  const coreTypeColumns = useMemo(() => {
+    const map = new Map<string, { coreType: string; displayName: string; points: number }>();
+    for (const row of perKeyBreakdown) {
+      for (const ct of row.usage.coreTypes) {
+        const cur = map.get(ct.coreType);
+        if (cur) cur.points += ct.evaluationPoints;
+        else map.set(ct.coreType, { coreType: ct.coreType, displayName: ct.displayName, points: ct.evaluationPoints });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.points - a.points);
+  }, [perKeyBreakdown]);
 
   const toggleBreakdownSort = (column: 'calls' | 'points') => {
     setBreakdownSort((prev) =>
@@ -302,6 +309,14 @@ export default function UsagePage() {
           label={t('Points consumed', '消耗积分')}
           value={kpiTotalCost.toLocaleString('en-US')}
           unit={t('pts', '积分')}
+          sub={
+            kpiTotalUncovered > 0
+              ? t(
+                  `+ ${kpiTotalUncovered.toLocaleString('en-US')} pts uncovered`,
+                  `另有 ${kpiTotalUncovered.toLocaleString('en-US')} 积分未覆盖`,
+                )
+              : undefined
+          }
         />
         <Kpi
           label={t('Avg calls / day', '日均调用')}
@@ -635,62 +650,79 @@ export default function UsagePage() {
                 </th>
                 <th className="text-right px-5 py-2.5 font-semibold">
                   <span className="flex items-center justify-end gap-1.5">
-                    {t('Word / phrase / sentence', '字词句')}
-                    <EvaluationKernelInfo
-                      wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-                      paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-                    />
+                    {t('Uncovered', '未覆盖')}
+                    <EvaluationKernelInfo />
                   </span>
                   <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
-                    {t('calls / pts', '次 / 积分')}
+                    {t('pts', '积分')}
                   </span>
                 </th>
-                <th className="text-right px-5 py-2.5 font-semibold">
-                  <span className="flex items-center justify-end gap-1.5">
-                    {t('Paragraph', '段落')}
-                    <EvaluationKernelInfo
-                      wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-                      paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-                    />
-                  </span>
-                  <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
-                    {t('calls / pts', '次 / 积分')}
-                  </span>
-                </th>
+                {coreTypeColumns.map((ct) => (
+                  <th key={ct.coreType} className="text-right px-5 py-2.5 font-semibold">
+                    <span className="block truncate max-w-[160px] ml-auto" title={ct.coreType}>
+                      {ct.displayName}
+                    </span>
+                    <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
+                      {t('calls / pts', '次 / 积分')}
+                    </span>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {perKeyBreakdown.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                  <td
+                    colSpan={5 + coreTypeColumns.length}
+                    className="px-5 py-8 text-center text-sm text-muted-foreground"
+                  >
                     {tx('No usage in this window.')}
                   </td>
                 </tr>
               ) : (
-                perKeyBreakdown.map((row) => (
-                  <tr key={row.key!.id}>
-                    <td className="px-5 py-3 text-sm font-medium">{row.key!.name}</td>
-                    <td className="px-5 py-3 font-mono text-[11px] text-muted-foreground">
-                      {keyLast4(row.key!.secret)}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular-nums">
-                      {row.calls.toLocaleString('en-US')} {tx('calls')}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular-nums font-medium">
-                      {row.points.toLocaleString('en-US')} {tx('pts')}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular-nums text-xs">
-                      {row.wordCalls.toLocaleString('en-US')} {tx('calls')}
-                      <span className="text-muted-foreground mx-1">/</span>
-                      {row.wordPoints.toLocaleString('en-US')} {tx('pts')}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular-nums text-xs">
-                      {row.paragraphCalls.toLocaleString('en-US')} {tx('calls')}
-                      <span className="text-muted-foreground mx-1">/</span>
-                      {row.paragraphPoints.toLocaleString('en-US')} {tx('pts')}
-                    </td>
-                  </tr>
-                ))
+                perKeyBreakdown.map((row) => {
+                  const byCoreType = new Map(row.usage.coreTypes.map((ct) => [ct.coreType, ct]));
+                  return (
+                    <tr key={row.key.id}>
+                      <td className="px-5 py-3 text-sm font-medium">{row.key.name}</td>
+                      <td className="px-5 py-3 font-mono text-[11px] text-muted-foreground">
+                        {keyLast4(row.key.secret)}
+                      </td>
+                      <td className="px-5 py-3 text-right tabular-nums">
+                        {row.usage.calls.toLocaleString('en-US')} {tx('calls')}
+                      </td>
+                      <td className="px-5 py-3 text-right tabular-nums font-medium">
+                        {row.usage.totalPoints.toLocaleString('en-US')} {tx('pts')}
+                      </td>
+                      <td
+                        className={cn(
+                          'px-5 py-3 text-right tabular-nums text-xs',
+                          row.usage.uncoveredPoints > 0
+                            ? 'text-amber-600 dark:text-amber-400 font-medium'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        {row.usage.uncoveredPoints.toLocaleString('en-US')} {tx('pts')}
+                      </td>
+                      {coreTypeColumns.map((col) => {
+                        const ct = byCoreType.get(col.coreType);
+                        return (
+                          <td key={col.coreType} className="px-5 py-3 text-right tabular-nums text-xs">
+                            {ct ? (
+                              <>
+                                {ct.calls.toLocaleString('en-US')} {tx('calls')}
+                                <span className="text-muted-foreground mx-1">/</span>
+                                {ct.evaluationPoints.toLocaleString('en-US')} {tx('pts')}
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -818,17 +850,20 @@ function exportUsageCsv(input: {
   const { rows, keys, period, keyFilter } = input;
   const keyById = new Map(keys.map((k) => [k.id, k]));
 
+  // Long format: one row per day × key × CoreType (dynamic taxonomy), plus a
+  // "(total)" row per day × key carrying the aggregate triple.
   const header = [
     'date',
     'key_id',
     'key_name',
     'key_masked',
+    'core_type',
+    'display_name',
     'calls',
-    'word_sentence_calls',
-    'paragraph_calls',
-    'word_sentence_points',
-    'paragraph_points',
+    'events',
     'evaluation_points',
+    'required_points',
+    'uncovered_points',
   ];
 
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
@@ -836,22 +871,37 @@ function exportUsageCsv(input: {
   for (const r of sorted) {
     const key = keyById.get(r.keyId);
     const evaluationUsage = toEvaluationUsage(r);
+    const keyCells = [r.date, r.keyId, key?.name ?? '', key?.maskedSecret ?? ''];
     lines.push(
       [
-        r.date,
-        r.keyId,
-        key?.name ?? '',
-        key?.maskedSecret ?? '',
+        ...keyCells,
+        '(total)',
+        '(total)',
         String(evaluationUsage.calls),
-        String(evaluationUsage.wordSentenceCalls),
-        String(evaluationUsage.paragraphCalls),
-        String(evaluationUsage.wordSentencePoints),
-        String(evaluationUsage.paragraphPoints),
+        String(evaluationUsage.events),
         String(evaluationUsage.totalPoints),
+        String(evaluationUsage.requiredPoints),
+        String(evaluationUsage.uncoveredPoints),
       ]
         .map(csvEscape)
         .join(','),
     );
+    for (const ct of evaluationUsage.coreTypes) {
+      lines.push(
+        [
+          ...keyCells,
+          ct.coreType,
+          ct.displayName,
+          String(ct.calls),
+          String(ct.events),
+          String(ct.evaluationPoints),
+          String(ct.requiredPoints),
+          String(ct.uncoveredPoints),
+        ]
+          .map(csvEscape)
+          .join(','),
+      );
+    }
   }
 
   const today = new Date().toISOString().slice(0, 10);

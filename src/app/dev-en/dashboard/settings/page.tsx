@@ -25,7 +25,6 @@ import { useLang } from '../../_lib/use-lang';
 const DEFAULT_NOTIF: NotificationSettings = {
   weeklyUsageReport: true,
   paymentReceipts: true,
-  spendLimitAlerts: true,
   productUpdates: false,
   securityAlerts: true,
 };
@@ -83,16 +82,6 @@ export default function SettingsPage() {
             )}
             on={notif.paymentReceipts}
             onChange={(v) => patch({ paymentReceipts: v })}
-          />
-          <Toggle
-            icon={Sparkles}
-            label={t('Point and call limit alerts', '积分与调用上限提醒')}
-            desc={t(
-              'Warn at 50 / 75 / 90% of an active monthly point or call cap, and when auto-cutoff fires.',
-              '月度积分或调用上限达到 50 / 75 / 90% 以及自动熔断时提醒。',
-            )}
-            on={notif.spendLimitAlerts}
-            onChange={(v) => patch({ spendLimitAlerts: v })}
           />
           <Toggle
             icon={Rss}

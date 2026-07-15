@@ -140,6 +140,18 @@ export interface AccountWallet {
   paidEvaluationPoints: number;
   usedEvaluationPoints: number;
   /**
+   * Authoritative current balance from `GET /billing/summary`
+   * (`evaluation_points_balance`, signup bonus included). When present it
+   * overrides any locally derived figure — batch sums are display-only.
+   */
+  balanceEvaluationPoints?: number;
+  /** Paid-only remainder (summary.paid_points_remaining). */
+  paidPointsRemaining?: number;
+  /** Signup-bonus remainder (summary.signup_bonus_remaining). */
+  signupBonusRemaining?: number;
+  /** Lifetime expired total (summary.evaluation_points_expired_total). */
+  expiredEvaluationPoints?: number;
+  /**
    * Compatibility mirrors for legacy spend/runway code. Do not use these for
    * new UI or API contracts — points above are the source of truth.
    */
@@ -174,18 +186,38 @@ export interface AccountLowBalanceAlert {
   thresholdPoints: number;
 }
 
+/**
+ * One CoreType bucket in a day×key usage record. CoreTypes are dynamic and
+ * case-sensitive — `coreType` is the stable grouping key, `displayName` is
+ * display-only. Never hardcode business categories off this list.
+ */
+export interface UsageCoreTypeBreakdown {
+  coreType: string;
+  displayName: string;
+  calls: number;
+  events: number;
+  /** Actually deducted points. */
+  evaluationPoints: number;
+  /** Theoretical points (= evaluationPoints + uncoveredPoints). */
+  requiredPoints: number;
+  /** Executed but not covered by balance; never clawed back. */
+  uncoveredPoints: number;
+}
+
 export interface UsagePoint {
   date: string; // YYYY-MM-DD (UTC)
   keyId: string;
   model: string;
   calls: number;
-  /** Successful word / phrase / sentence evaluations. */
-  wordSentenceCalls?: number;
-  /** Successful paragraph evaluations. */
-  paragraphCalls?: number;
-  wordSentencePoints?: number;
-  paragraphPoints?: number;
+  /** `/internal/usage` event rows — retries can double-count. */
+  events?: number;
+  /** Actually deducted points for the day×key. */
   evaluationPoints?: number;
+  requiredPoints?: number;
+  uncoveredPoints?: number;
+  /** Dynamic per-CoreType split. */
+  coreTypes?: UsageCoreTypeBreakdown[];
+  /** Demo-only money mirrors; the real usage API has no money fields. */
   costMills: number;
   savingsMills: number;
 }
@@ -250,17 +282,26 @@ export interface Transaction {
   paypalOrderId?: string;
   balanceBeforeCents?: number;
   balanceAfterCents?: number;
-  /** Point-led receipt data returned by the new billing transaction API. */
+  /** Point-led receipt data returned by the billing transaction API. */
   packageId?: 'standard' | 'advanced' | 'flagship';
+  /** Exchange-rate snapshot fixed at order creation (pts per $1). */
+  pointsPerUsd?: number;
+  /** Batch validity snapshot, in days. */
+  validityDays?: number;
+  /** Points quoted at order creation (points_to_grant). */
+  pointsToGrant?: number;
   basePoints?: number;
-  bonusPoints?: number;
   creditedPoints?: number;
   balanceBeforePoints?: number;
   balanceAfterPoints?: number;
   pointsExpireAt?: string;
-  /** Current usage snapshot for this top-up's point batch/batches. */
+  /** Current usage snapshot for this top-up's point batch. */
   usedPoints?: number;
   remainingPoints?: number;
+  /** Batch points forfeited by expiry (credited = used + remaining + expired). */
+  expiredPoints?: number;
+  paypalCaptureId?: string;
+  effectiveAt?: string;
   kind: TransactionKind;
   keyId?: string;
 }
@@ -271,8 +312,10 @@ export interface Transaction {
  */
 export interface EvaluationPointBatch {
   id: string;
-  transactionId: string;
-  packageId: 'standard' | 'advanced' | 'flagship';
+  /** Null for the signup-bonus batch (no payment order behind it). */
+  transactionId: string | null;
+  /** Null for the signup-bonus batch (no purchased package). */
+  packageId: 'standard' | 'advanced' | 'flagship' | null;
   creditedPoints: number;
   usedPoints: number;
   remainingPoints: number;
@@ -289,8 +332,6 @@ export interface NotificationSettings {
   // Product / ops
   weeklyUsageReport: boolean;
   paymentReceipts: boolean;
-  // Health
-  spendLimitAlerts: boolean;
   // Lifecycle
   productUpdates: boolean;
   securityAlerts: boolean; // always recommended on
@@ -358,7 +399,10 @@ export const VOLUME_TIERS: VolumeTier[] = [
 // v25: seed an expired point batch with leftover points for billing history UI.
 // v26: reliably link the voided (30-day unused) batch to the oldest top-up and
 // stamp usage fields on transactions so history always shows 已作废.
-const SCHEMA_VERSION = 26;
+// v27: evaluation-points API v1.0 — usage carries dynamic CoreType splits
+// (word/paragraph fields removed), transactions drop bonusPoints in favour of
+// pointsPerUsd snapshots, and spend-limit alert toggles left notifications.
+const SCHEMA_VERSION = 27;
 const SCHEMA_KEY = 'dev-en:schema-version';
 
 const STORAGE = {
@@ -769,8 +813,31 @@ function seedIfNeeded() {
 
         const calls = Math.round(keyDailyTotal);
         if (calls <= 0) continue;
+        // Dynamic CoreType split mirroring the real usage contract: a
+        // 1-pt word/sentence kernel plus a 2-pt paragraph kernel.
         const paragraphCalls = Math.max(1, Math.round(calls * 0.18));
         const wordSentenceCalls = Math.max(0, calls - paragraphCalls);
+        const coreTypes: UsageCoreTypeBreakdown[] = [
+          {
+            coreType: 'word_sentence.evaluate',
+            displayName: 'Word / Phrase / Sentence',
+            calls: wordSentenceCalls,
+            events: wordSentenceCalls,
+            evaluationPoints: wordSentenceCalls,
+            requiredPoints: wordSentenceCalls,
+            uncoveredPoints: 0,
+          },
+          {
+            coreType: 'paragraph.evaluate',
+            displayName: 'Paragraph Evaluation',
+            calls: paragraphCalls,
+            events: paragraphCalls,
+            evaluationPoints: paragraphCalls * 2,
+            requiredPoints: paragraphCalls * 2,
+            uncoveredPoints: 0,
+          },
+        ].filter((ct) => ct.calls > 0);
+        const evaluationPoints = coreTypes.reduce((a, ct) => a + ct.evaluationPoints, 0);
         const grossMills = Math.round((calls / 1000) * MCP_CALL_RATE_PER_K * 1000);
         const savingsMills =
           key.env === 'production' ? Math.round(grossMills * 0.12) : 0;
@@ -779,11 +846,11 @@ function seedIfNeeded() {
           keyId: key.id,
           model: MCP_CALL_MODEL_ID,
           calls,
-          wordSentenceCalls,
-          paragraphCalls,
-          wordSentencePoints: wordSentenceCalls,
-          paragraphPoints: paragraphCalls * 2,
-          evaluationPoints: wordSentenceCalls + paragraphCalls * 2,
+          events: calls,
+          evaluationPoints,
+          requiredPoints: evaluationPoints,
+          uncoveredPoints: 0,
+          coreTypes,
           costMills: grossMills - savingsMills,
           savingsMills,
         });
@@ -875,20 +942,26 @@ function seedIfNeeded() {
     const mkTxn = (
       o: Omit<Transaction, 'id'> & { id?: string },
     ): Transaction => {
-      const basePoints = Math.floor((o.amountCents / 100) * 250);
-      const bonusPct = o.amountCents >= 19_990 ? 20 : o.amountCents >= 9_990 ? 10 : 0;
-      const bonusPoints = Math.round(basePoints * (bonusPct / 100));
-      const credited = basePoints + bonusPoints;
+      // Tier snapshot follows the current points_per_usd bands: standard 250,
+      // advanced 275, flagship 300 pts/$ (no bonus split under the new model).
+      const packageId =
+        o.amountCents >= 19_990 ? 'flagship' : o.amountCents >= 9_990 ? 'advanced' : 'standard';
+      const pointsPerUsd = packageId === 'flagship' ? 300 : packageId === 'advanced' ? 275 : 250;
+      const credited = Math.ceil((o.amountCents / 100) * pointsPerUsd);
       const { id: preferredId, usedPoints, remainingPoints, ...rest } = o;
       return {
         ...rest,
         id: preferredId ?? uuid('txn_'),
-        packageId: bonusPct === 20 ? 'flagship' : bonusPct === 10 ? 'advanced' : 'standard',
-        basePoints,
-        bonusPoints,
+        packageId,
+        pointsPerUsd,
+        validityDays: 30,
+        pointsToGrant: credited,
+        basePoints: credited,
         creditedPoints: credited,
         balanceBeforePoints: Math.floor(((o.balanceBeforeCents ?? 0) / 100) * 250),
         balanceAfterPoints: Math.floor(((o.balanceAfterCents ?? 0) / 100) * 250),
+        effectiveAt: o.createdAt,
+        paypalCaptureId: o.paypalOrderId ? `${o.paypalOrderId}-CAP` : undefined,
         pointsExpireAt: new Date(new Date(o.createdAt).getTime() + 30 * 86400000).toISOString(),
         // Usage snapshot mirrors the matching point batch (fallback when
         // batch join misses). Remaining > 0 past expiry → voided in UI.
@@ -1003,7 +1076,6 @@ function seedIfNeeded() {
     const seeded: NotificationSettings = {
       weeklyUsageReport: true,
       paymentReceipts: true,
-      spendLimitAlerts: true,
       productUpdates: false,
       securityAlerts: true,
     };
@@ -1225,8 +1297,15 @@ export function getAccountBalanceCents(): number {
   return Math.max(0, w.paidCreditsCents - w.paidCreditsUsedCents);
 }
 
-/** Remaining paid evaluation points. This is the balance shown to users. */
+/** Remaining evaluation points. This is the balance shown to users. */
 export function getAccountEvaluationPoints(): number {
+  const w = getWallet();
+  // Authoritative balance hydrated from GET /billing/summary — the API
+  // contract forbids deriving the main balance from batch sums.
+  if (typeof w.balanceEvaluationPoints === 'number') {
+    return Math.max(0, w.balanceEvaluationPoints);
+  }
+  // Demo/offline fallbacks only.
   const batches = getEvaluationPointBatches();
   if (batches.length > 0) {
     return batches.reduce(
@@ -1234,7 +1313,6 @@ export function getAccountEvaluationPoints(): number {
       0,
     );
   }
-  const w = getWallet();
   return Math.max(0, w.paidEvaluationPoints - w.usedEvaluationPoints);
 }
 

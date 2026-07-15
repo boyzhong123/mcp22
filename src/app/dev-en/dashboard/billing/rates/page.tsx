@@ -17,18 +17,19 @@ import {
   formatCents,
   getAccountCallsThisMonth,
   getAccountEvaluationPoints,
-  getAccountSpendThisMonthMills,
+  getUsage,
+  type UsagePoint,
 } from '../../../_lib/mock-store';
 import { useMockStore } from '../../../_lib/use-mock-store';
 import { useLang } from '../../../_lib/use-lang';
 import { useBillingPricing } from '../../../_lib/use-billing-pricing';
 import { formatTierAmountRange, previewQuotedPoints } from '../../../_lib/billing-pricing';
+import { aggregateEvaluationUsage } from '../../../_lib/evaluation-usage';
 import { EvaluationKernelInfo } from '../../../_components/evaluation-kernel-info';
 import {
   TOPUP_BONUS_TIERS,
   formatBonusPercent,
   formatEvaluationUnitDollars,
-  getEvaluationUnitPrices,
 } from '../../../_lib/topup';
 
 const ALL_PLANS_INCLUDE = [
@@ -55,15 +56,21 @@ export default function PricingPage() {
   const { t, tx } = useLang();
   const { catalog } = useBillingPricing();
   const calls = useMockStore(getAccountCallsThisMonth, 0);
-  const spendMills = useMockStore(getAccountSpendThisMonthMills, 0);
+  const usage = useMockStore(getUsage, [] as UsagePoint[]);
   const points = useMockStore(getAccountEvaluationPoints, 0);
 
   const packages = catalog.packages.length ? catalog.packages : TOPUP_BONUS_TIERS;
   const advanced = packages.find((p) => p.id === 'advanced') ?? packages[1] ?? packages[0];
   const exampleAmount = advanced?.presetCents[1] ?? advanced?.minCents ?? 15_000;
   const example = previewQuotedPoints(catalog, exampleAmount, advanced.id);
-  const spentPointsThisMonth = Math.round(
-    (spendMills / 1000) * catalog.rules.basePointsPerUsd,
+  // Actually deducted points this month, from the usage rollup (never a
+  // money-based derivation — the API is points-native).
+  const ym = new Date().toISOString().slice(0, 7);
+  const spentPointsThisMonth = aggregateEvaluationUsage(
+    usage.filter((p) => p.date.startsWith(ym)),
+  ).totalPoints;
+  const baselinePointsPerUsd = Math.min(
+    ...packages.map((p) => p.pointsPerUsd ?? Number.POSITIVE_INFINITY),
   );
 
   return (
@@ -90,8 +97,8 @@ export default function PricingPage() {
           </h2>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
             {t(
-              `Base ${catalog.rules.basePointsPerUsd} pts per $1 · word/phrase/sentence ${catalog.rules.wordSentencePointsPerUse} pt · paragraph ${catalog.rules.paragraphPointsPerUse} pts · valid ${catalog.rules.validDays} days. Credited points for a payment come from the server quote.`,
-              `每 $1 基础 ${catalog.rules.basePointsPerUsd} 积分 · 字/词/句 ${catalog.rules.wordSentencePointsPerUse} 分 · 段落 ${catalog.rules.paragraphPointsPerUse} 分 · 有效期 ${catalog.rules.validDays} 天。正式到账积分以服务端报价为准。`,
+              `From ${baselinePointsPerUsd} pts per $1 · default deduction ${catalog.defaultPointsPerRequest} pt per request · valid ${catalog.validDays} days. Credited points for a payment come from the server quote.`,
+              `每 $1 ${baselinePointsPerUsd} 积分起 · 默认每次扣 ${catalog.defaultPointsPerRequest} 积分 · 有效期 ${catalog.validDays} 天。正式到账积分以服务端报价为准。`,
             )}
           </p>
         </div>
@@ -154,9 +161,11 @@ export default function PricingPage() {
             </thead>
             <tbody>
               {packages.map((pkg) => {
-                const unit = getEvaluationUnitPrices(pkg.id);
                 const label = PACKAGE_LABELS[pkg.id];
-                const pts = pkg.pointsPerUsd ?? catalog.rules.basePointsPerUsd;
+                const pts = pkg.pointsPerUsd ?? baselinePointsPerUsd;
+                // Reference price of one default-rate request at this tier.
+                const defaultRequestDollars =
+                  pts > 0 ? catalog.defaultPointsPerRequest / pts : 0;
                 return (
                   <tr key={pkg.id} className="border-b border-border/70 last:border-0">
                     <td className="px-5 py-3 font-medium">{t(label.en, label.zh)}</td>
@@ -172,8 +181,8 @@ export default function PricingPage() {
                       )}
                     </td>
                     <td className="px-5 py-3 text-muted-foreground">
-                      {formatEvaluationUnitDollars(unit.wordSentenceDollars)} /{' '}
-                      {formatEvaluationUnitDollars(unit.paragraphDollars)}
+                      {formatEvaluationUnitDollars(defaultRequestDollars)}{' '}
+                      {t('/ request (default rate)', '/ 次（默认费率）')}
                     </td>
                   </tr>
                 );
@@ -190,39 +199,33 @@ export default function PricingPage() {
             {t('Deduction rules', '扣分规则')}
           </div>
           <ul className="text-sm text-muted-foreground space-y-1.5">
-            <li className="flex gap-2">
-              <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-              <span>
-                {t(
-                  `Word / phrase / sentence: ${catalog.rules.wordSentencePointsPerUse} pt each`,
-                  `字 / 词 / 句：每次 ${catalog.rules.wordSentencePointsPerUse} 积分`,
-                )}
-              </span>
-              <EvaluationKernelInfo
-                wordSentencePoints={catalog.rules.wordSentencePointsPerUse}
-                paragraphPoints={catalog.rules.paragraphPointsPerUse}
-                className="-my-1"
-              />
-            </li>
+            {catalog.coreTypeRates.slice(0, 3).map((rate) => (
+              <li key={rate.coreType} className="flex gap-2">
+                <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                <span>
+                  {t(
+                    `${rate.displayName}: ${rate.pointsPerRequest} pts per request`,
+                    `${rate.displayName}：每次 ${rate.pointsPerRequest} 积分`,
+                  )}
+                </span>
+                <EvaluationKernelInfo className="-my-1" />
+              </li>
+            ))}
             <li className="flex gap-2">
               <AlignLeft className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
               <span>
                 {t(
-                  `Paragraph: ${catalog.rules.paragraphPointsPerUse} pts each`,
-                  `段落：每次 ${catalog.rules.paragraphPointsPerUse} 积分`,
+                  `Other CoreTypes: default ${catalog.defaultPointsPerRequest} pt per request`,
+                  `其余 CoreType：默认每次 ${catalog.defaultPointsPerRequest} 积分`,
                 )}
               </span>
-              <EvaluationKernelInfo
-                wordSentencePoints={catalog.rules.wordSentencePointsPerUse}
-                paragraphPoints={catalog.rules.paragraphPointsPerUse}
-                className="-my-1"
-              />
+              <EvaluationKernelInfo className="-my-1" />
             </li>
             <li className="flex gap-2">
               <Wallet className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
               {t(
-                `Valid ${catalog.rules.validDays} days · FIFO by earliest expiry`,
-                `有效期 ${catalog.rules.validDays} 天 · 最早到期优先扣减`,
+                `Valid ${catalog.validDays} days · FIFO by earliest expiry`,
+                `有效期 ${catalog.validDays} 天 · 最早到期优先扣减`,
               )}
             </li>
           </ul>
@@ -234,8 +237,8 @@ export default function PricingPage() {
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
             {t(
-              `${catalog.trialCalls.toLocaleString('en-US')} points for ${catalog.trialDays} days at signup, shared by every key.`,
-              `注册赠送 ${catalog.trialCalls.toLocaleString('en-US')} 积分，有效 ${catalog.trialDays} 天，全账号 Key 共享。`,
+              `${catalog.signupBonusPoints.toLocaleString('en-US')} points for ${catalog.signupBonusValidDays} days at signup, shared by every key.`,
+              `注册赠送 ${catalog.signupBonusPoints.toLocaleString('en-US')} 积分，有效 ${catalog.signupBonusValidDays} 天，全账号 Key 共享。`,
             )}
           </p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">

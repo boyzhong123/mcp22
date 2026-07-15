@@ -53,6 +53,7 @@ import { useLang } from '../_lib/use-lang';
 import {
   BASE_POINTS_PER_USD,
   COMPARE_PACKAGE_IDS,
+  DEFAULT_POINTS_PER_REQUEST,
   PARAGRAPH_POINTS_PER_USE,
   TOPUP_BONUS_TIERS,
   TRIAL_CALLS,
@@ -71,7 +72,7 @@ import {
   type TopupBonusTier,
   type TopupQuote,
 } from '../_lib/topup';
-import { findPackage, previewQuotedPoints } from '../_lib/billing-pricing';
+import { fetchServerQuote, findPackage, previewQuotedPoints } from '../_lib/billing-pricing';
 import { useBillingPricing } from '../_lib/use-billing-pricing';
 import { billing, describeError } from '../_lib/api';
 import { hydrateFromApi } from '../_lib/mock-store-bridge';
@@ -162,13 +163,20 @@ function pointPricingSummary(
 
 function pointDebitSummary(
   t: (en: string, zh: string) => string,
-  wordPts = WORD_SENTENCE_POINTS_PER_USE,
-  paraPts = PARAGRAPH_POINTS_PER_USE,
+  coreTypeRates: Array<{ displayName: string; pointsPerRequest: number }> = [],
+  defaultPointsPerRequest = DEFAULT_POINTS_PER_REQUEST,
 ): string {
-  return t(
-    `Word / phrase / sentence ${wordPts} pt · paragraph ${paraPts} pts`,
-    `字 / 词 / 句 ${wordPts} 积分/次 · 段落 ${paraPts} 积分/次`,
+  // CoreType rates are dynamic and server-configured; list the top two and
+  // fall back to the default per-request deduction.
+  const parts = coreTypeRates
+    .slice(0, 2)
+    .map((r) =>
+      t(`${r.displayName} ${r.pointsPerRequest} pt`, `${r.displayName} ${r.pointsPerRequest} 积分/次`),
+    );
+  parts.push(
+    t(`others ${defaultPointsPerRequest} pt`, `其余 ${defaultPointsPerRequest} 积分/次`),
   );
+  return parts.join(' · ');
 }
 
 function formatPointsCount(points: number): string {
@@ -316,6 +324,30 @@ function OpenedCheckoutModal({
   // Three deliberate decisions: choose a package, set an amount, then pay.
   type Step = 1 | 2 | 3;
   const [step, setStep] = useState<Step>(1);
+
+  // Server-authoritative quote for the current amount (doc §5.1): debounced
+  // 250ms per the contract, GET /billing/pricing?amount_cents=… →
+  // quote.quoted_points. Falls back to the catalog estimate when the API is
+  // unreachable (demo/offline) or the amount misses every band.
+  useEffect(() => {
+    if (!amountCents || amountCents <= 0) {
+      setServerQuotedPoints(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const serverQuote = await fetchServerQuote(amountCents);
+        if (!cancelled) setServerQuotedPoints(serverQuote?.quoted_points ?? null);
+      } catch {
+        if (!cancelled) setServerQuotedPoints(null);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [amountCents]);
 
   const effectiveCents = useMemo(() => {
     if (customAmount.trim()) {
@@ -500,8 +532,10 @@ function OpenedCheckoutModal({
       balanceBeforeCents,
       balanceAfterCents,
       packageId: selectedBonusTier.id,
-      basePoints: pointMath.basePoints,
-      bonusPoints: pointMath.bonusPoints,
+      pointsPerUsd: pointMath.pointsPerUsd,
+      validityDays: TRIAL_VALID_DAYS,
+      pointsToGrant: pointMath.totalPoints,
+      basePoints: pointMath.totalPoints,
       creditedPoints: pending ? 0 : pointMath.totalPoints,
       balanceBeforePoints,
       balanceAfterPoints,
@@ -681,7 +715,7 @@ function OpenedCheckoutModal({
                   <TierComparePanel
                     selectedPackageId={selectedPackageId}
                     packages={paidPackages}
-                    trialCalls={catalog.trialCalls}
+                    trialCalls={catalog.signupBonusPoints}
                     onSelectPackage={(packageId) => {
                       setSelectedPackageId(packageId);
                       if (isPaidPackageId(packageId)) {
@@ -927,8 +961,8 @@ function OpenedCheckoutModal({
                       <div className="text-[11px] font-bold leading-snug text-indigo-800 dark:text-indigo-300">
                         {pointDebitSummary(
                           t,
-                          catalog.rules.wordSentencePointsPerUse,
-                          catalog.rules.paragraphPointsPerUse,
+                          catalog.coreTypeRates,
+                          catalog.defaultPointsPerRequest,
                         )}
                       </div>
                     </div>
@@ -1423,6 +1457,7 @@ const POINTS_HINT_DISMISS_KEY = 'chivox.checkout.points-hint.dismissed';
 
 function FreeTierBanner() {
   const { t } = useLang();
+  const { catalog } = useBillingPricing();
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -1464,21 +1499,16 @@ function FreeTierBanner() {
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-1.5 text-[13px] font-semibold tracking-tight text-foreground">
             {t('How points are deducted', '评测积分怎么扣')}
-            <EvaluationKernelInfo
-              wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-              paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-            />
+            <EvaluationKernelInfo />
           </div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            {t(
-              `Only successful evaluations · ${WORD_SENTENCE_POINTS_PER_USE} pt / word, phrase or sentence · ${PARAGRAPH_POINTS_PER_USE} pts / paragraph`,
-              `仅成功评测扣分 · 字 / 词 / 句 ${WORD_SENTENCE_POINTS_PER_USE} 积分 · 段落 ${PARAGRAPH_POINTS_PER_USE} 积分`,
-            )}
+            {t('Only successful evaluations · ', '仅成功评测扣分 · ')}
+            {pointDebitSummary(t, catalog.coreTypeRates, catalog.defaultPointsPerRequest)}
           </p>
           <p className="text-[11px] leading-relaxed text-sky-800/85 dark:text-sky-200/80">
             {t(
-              `New accounts also receive ${TRIAL_CALLS} free points, valid ${TRIAL_VALID_DAYS} days.`,
-              `新账号另送 ${TRIAL_CALLS} 免费积分，有效期 ${TRIAL_VALID_DAYS} 天。`,
+              `New accounts also receive ${catalog.signupBonusPoints.toLocaleString('en-US')} free points, valid ${catalog.signupBonusValidDays} days.`,
+              `新账号另送 ${catalog.signupBonusPoints.toLocaleString('en-US')} 免费积分，有效期 ${catalog.signupBonusValidDays} 天。`,
             )}
           </p>
         </div>
@@ -2404,10 +2434,7 @@ function TierComparePanel({
         <div>
           <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             {t('Compare packages', '套餐对比')}
-            <EvaluationKernelInfo
-              wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-              paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-            />
+            <EvaluationKernelInfo />
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
             {t(
@@ -2842,10 +2869,7 @@ function CompareLabelCell({
           {row.label}
         </span>
         {row.evaluationInfo ? (
-          <EvaluationKernelInfo
-            wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-            paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-          />
+          <EvaluationKernelInfo />
         ) : null}
       </span>
       {row.sub && (
@@ -3337,10 +3361,7 @@ function QuoteLine({
           {label}
         </span>
         {evaluationInfo ? (
-          <EvaluationKernelInfo
-            wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-            paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-          />
+          <EvaluationKernelInfo />
         ) : null}
         {hint && !compact && (
           <span className="truncate text-[10px] tabular-nums text-zinc-400 dark:text-white/70">· {hint}</span>

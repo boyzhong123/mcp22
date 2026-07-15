@@ -42,6 +42,8 @@ export const BASE_POINTS_PER_USD = 250;
 export const WALLET_POINTS_PER_USD = BASE_POINTS_PER_USD;
 export const WORD_SENTENCE_POINTS_PER_USE = 1;
 export const PARAGRAPH_POINTS_PER_USE = 2;
+/** Server default deduction for CoreTypes without a configured rate. */
+export const DEFAULT_POINTS_PER_REQUEST = 1;
 
 export interface TopupBonusTier {
   id: 'standard' | 'advanced' | 'flagship';

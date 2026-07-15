@@ -37,10 +37,6 @@ import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
 import { EvaluationKernelInfo } from '../../_components/evaluation-kernel-info';
 import { useLang } from '../../_lib/use-lang';
-import {
-  PARAGRAPH_POINTS_PER_USE,
-  WORD_SENTENCE_POINTS_PER_USE,
-} from '../../_lib/topup';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_WALLET: AccountWallet = {
@@ -82,6 +78,13 @@ export default function BillingPage() {
     const ym = new Date().toISOString().slice(0, 7);
     return aggregateEvaluationUsageByKey(usage.filter((point) => point.date.startsWith(ym)));
   }, [usage]);
+
+  // Dynamic CoreType columns for the per-key table — top two by deducted
+  // points this month (CoreTypes are server-defined, never hardcoded).
+  const coreTypeColumns = useMemo(
+    () => monthlyEvaluationUsage.coreTypes.slice(0, 2),
+    [monthlyEvaluationUsage],
+  );
 
   const activeKeyCount = useMemo(
     () => keys.filter((k) => k.status === 'active').length,
@@ -157,10 +160,23 @@ export default function BillingPage() {
           icon={ReceiptText}
           label={t('Evaluation points used this month', '本月消耗评测积分')}
           value={monthlyEvaluationUsage.totalPoints.toLocaleString('en-US')}
-          sub={t(
-            `${formatCalls(monthlyEvaluationUsage.calls)} calls · word/phrase/sentence ${monthlyEvaluationUsage.wordSentenceCalls.toLocaleString('en-US')} (${monthlyEvaluationUsage.wordSentencePoints.toLocaleString('en-US')} pts) · paragraph ${monthlyEvaluationUsage.paragraphCalls.toLocaleString('en-US')} (${monthlyEvaluationUsage.paragraphPoints.toLocaleString('en-US')} pts)`,
-            `${formatCalls(monthlyEvaluationUsage.calls)} 次调用 · 字词句 ${monthlyEvaluationUsage.wordSentenceCalls.toLocaleString('en-US')} 次（${monthlyEvaluationUsage.wordSentencePoints.toLocaleString('en-US')} 积分）· 段落 ${monthlyEvaluationUsage.paragraphCalls.toLocaleString('en-US')} 次（${monthlyEvaluationUsage.paragraphPoints.toLocaleString('en-US')} 积分）`,
-          )}
+          sub={
+            monthlyEvaluationUsage.coreTypes.length > 0
+              ? t(
+                  `${formatCalls(monthlyEvaluationUsage.calls)} calls · ${monthlyEvaluationUsage.coreTypes
+                    .slice(0, 2)
+                    .map((ct) => `${ct.displayName} ${ct.calls.toLocaleString('en-US')} (${ct.evaluationPoints.toLocaleString('en-US')} pts)`)
+                    .join(' · ')}`,
+                  `${formatCalls(monthlyEvaluationUsage.calls)} 次调用 · ${monthlyEvaluationUsage.coreTypes
+                    .slice(0, 2)
+                    .map((ct) => `${ct.displayName} ${ct.calls.toLocaleString('en-US')} 次（${ct.evaluationPoints.toLocaleString('en-US')} 积分）`)
+                    .join(' · ')}`,
+                )
+              : t(
+                  `${formatCalls(monthlyEvaluationUsage.calls)} calls this month`,
+                  `本月 ${formatCalls(monthlyEvaluationUsage.calls)} 次调用`,
+                )
+          }
         />
         <StatCard
           icon={CreditCard}
@@ -188,8 +204,8 @@ export default function BillingPage() {
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {t(
-                'Every key drains the same point pool — see calls and the word/phrase/sentence versus paragraph point split for each key.',
-                '所有 Key 共用同一积分池；下方按 Key 展示调用次数，以及字词句与段落的积分消耗。',
+                'Every key drains the same point pool — see calls and the per-CoreType point split for each key.',
+                '所有 Key 共用同一积分池；下方按 Key 展示调用次数与各 CoreType 的积分消耗。',
               )}
             </p>
           </div>
@@ -210,67 +226,86 @@ export default function BillingPage() {
         ) : (
           <div className="overflow-x-auto">
             <div className="min-w-[920px]">
-              <div className="grid grid-cols-[minmax(220px,1.5fr)_120px_175px_155px_145px] gap-5 border-b border-border bg-muted/20 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <div>{tx('Key')}</div>
-                <div className="text-right">{t('Total calls', '总调用')}</div>
-                <div className="flex items-center justify-end gap-1.5 text-right">
-                  {t('Word / phrase / sentence', '字词句')}
-                  <EvaluationKernelInfo
-                    wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-                    paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-                  />
-                </div>
-                <div className="flex items-center justify-end gap-1.5 text-right">
-                  {t('Paragraph', '段落')}
-                  <EvaluationKernelInfo
-                    wordSentencePoints={WORD_SENTENCE_POINTS_PER_USE}
-                    paragraphPoints={PARAGRAPH_POINTS_PER_USE}
-                  />
-                </div>
-                <div className="text-right">{t('Points consumed', '消耗积分')}</div>
-              </div>
-              <ul className="divide-y divide-border">
-                {sortedKeys.map((k) => {
-                  const monthUsage = usageByKeyThisMonth.get(k.id);
-                  const monthCalls = monthUsage?.calls ?? 0;
-                  const revoked = k.status === 'revoked';
-
-                  return (
-                    <li
-                      key={k.id}
-                      className="grid grid-cols-[minmax(220px,1.5fr)_120px_175px_155px_145px] items-center gap-5 px-5 py-4"
+              {(() => {
+                // Grid adapts to the (dynamic) CoreType column count.
+                const gridTemplateColumns = `minmax(220px,1.5fr) 120px ${coreTypeColumns
+                  .map(() => '165px')
+                  .join(' ')} 145px`.trim();
+                return (
+                  <>
+                    <div
+                      className="grid gap-5 border-b border-border bg-muted/20 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                      style={{ gridTemplateColumns }}
                     >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <span className="truncate">{k.name}</span>
-                          {revoked && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
-                              {tx('Revoked')}
-                            </span>
-                          )}
+                      <div>{tx('Key')}</div>
+                      <div className="text-right">{t('Total calls', '总调用')}</div>
+                      {coreTypeColumns.map((ct) => (
+                        <div
+                          key={ct.coreType}
+                          className="flex items-center justify-end gap-1.5 text-right"
+                        >
+                          <span className="truncate max-w-[130px]" title={ct.coreType}>
+                            {ct.displayName}
+                          </span>
+                          <EvaluationKernelInfo />
                         </div>
-                        <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                          {k.maskedSecret.slice(-12)}
-                        </div>
-                      </div>
-                      <div className="text-right text-sm tabular-nums">
-                        {formatCalls(monthCalls)}
-                      </div>
-                      <div className="text-right tabular-nums">
-                        <div className="text-sm font-medium">{monthUsage?.wordSentenceCalls.toLocaleString('en-US') ?? 0} {t('calls', '次')}</div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">{monthUsage?.wordSentencePoints.toLocaleString('en-US') ?? 0} {t('pts', '积分')}</div>
-                      </div>
-                      <div className="text-right tabular-nums">
-                        <div className="text-sm font-medium">{monthUsage?.paragraphCalls.toLocaleString('en-US') ?? 0} {t('calls', '次')}</div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">{monthUsage?.paragraphPoints.toLocaleString('en-US') ?? 0} {t('pts', '积分')}</div>
-                      </div>
-                      <div className="text-right text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                        {(monthUsage?.totalPoints ?? 0).toLocaleString('en-US')} {t('pts', '积分')}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                      ))}
+                      <div className="text-right">{t('Points consumed', '消耗积分')}</div>
+                    </div>
+                    <ul className="divide-y divide-border">
+                      {sortedKeys.map((k) => {
+                        const monthUsage = usageByKeyThisMonth.get(k.id);
+                        const monthCalls = monthUsage?.calls ?? 0;
+                        const revoked = k.status === 'revoked';
+                        const byCoreType = new Map(
+                          (monthUsage?.coreTypes ?? []).map((ct) => [ct.coreType, ct]),
+                        );
+
+                        return (
+                          <li
+                            key={k.id}
+                            className="grid items-center gap-5 px-5 py-4"
+                            style={{ gridTemplateColumns }}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <span className="truncate">{k.name}</span>
+                                {revoked && (
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
+                                    {tx('Revoked')}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                                {k.maskedSecret.slice(-12)}
+                              </div>
+                            </div>
+                            <div className="text-right text-sm tabular-nums">
+                              {formatCalls(monthCalls)}
+                            </div>
+                            {coreTypeColumns.map((col) => {
+                              const ct = byCoreType.get(col.coreType);
+                              return (
+                                <div key={col.coreType} className="text-right tabular-nums">
+                                  <div className="text-sm font-medium">
+                                    {(ct?.calls ?? 0).toLocaleString('en-US')} {t('calls', '次')}
+                                  </div>
+                                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                    {(ct?.evaluationPoints ?? 0).toLocaleString('en-US')} {t('pts', '积分')}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            <div className="text-right text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                              {(monthUsage?.totalPoints ?? 0).toLocaleString('en-US')} {t('pts', '积分')}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

@@ -1,61 +1,93 @@
 import { invalidate, request } from './client';
 import type {
-  AccountBalance,
   AccountLimits,
   BillingSummary,
+  EvaluationPointBatch,
   EvaluationPointBatchListResponse,
+  PackageID,
   PricingInfo,
   TopupOrder,
   Transaction,
   TransactionListResponse,
+  TransactionStatus,
 } from './types';
 
-// doc §5.1
-export function balance(): Promise<AccountBalance> {
-  return request<AccountBalance>('/billing/balance');
+// doc §5.1 — pass amount_cents to also get the server-authoritative quote.
+// Credited points MUST come from quote.quoted_points (or the order's
+// quoted_points), never from a client-side formula.
+export function pricing(amountCents?: number): Promise<PricingInfo> {
+  return request<PricingInfo>('/billing/pricing', {
+    query: amountCents && amountCents > 0 ? { amount_cents: Math.round(amountCents) } : undefined,
+  });
 }
 
-// doc §5.2
-export function pricing(): Promise<PricingInfo> {
-  return request<PricingInfo>('/billing/pricing');
-}
-
-// doc §5.10
+// doc §8.1 — the page's authoritative balance + rollups.
 export function summary(): Promise<BillingSummary> {
   return request<BillingSummary>('/billing/summary');
 }
 
-/** Expiring point batches, ordered by the next expiry first. */
-export function listEvaluationPointBatches(): Promise<EvaluationPointBatchListResponse> {
-  return request<EvaluationPointBatchListResponse>('/billing/evaluation-points/batches');
+// doc §10.1 — paginated point batches (signup bonus + paid orders).
+export interface BatchesQuery {
+  page?: number;
+  page_size?: number;
+  status?: 'active' | 'exhausted' | 'expired';
+  source_type?: 'signup_bonus' | 'paid_order';
+  from?: string; // RFC3339, inclusive
+  to?: string; // RFC3339, exclusive
 }
 
-// doc §5.8 — account-level four-axis limits.
+export function listEvaluationPointBatches(
+  q: BatchesQuery = {},
+): Promise<EvaluationPointBatchListResponse> {
+  return request<EvaluationPointBatchListResponse>('/billing/evaluation-points/batches', {
+    query: q,
+  });
+}
+
+// doc §10.1 — the expiry-distribution chart must see EVERY batch, so walk all
+// pages instead of trusting page 1.
+export async function listAllEvaluationPointBatches(
+  q: Omit<BatchesQuery, 'page' | 'page_size'> = {},
+): Promise<EvaluationPointBatch[]> {
+  const pageSize = 100;
+  let page = 1;
+  let total = 0;
+  const batches: EvaluationPointBatch[] = [];
+  do {
+    const data = await listEvaluationPointBatches({ ...q, page, page_size: pageSize });
+    const chunk = data.batches ?? [];
+    batches.push(...chunk);
+    total = data.total ?? batches.length;
+    page += 1;
+    if (chunk.length === 0) break; // defensive: avoid spinning on a bad total
+  } while (batches.length < total);
+  return batches;
+}
+
+// doc §12.1
 export function getLimits(): Promise<AccountLimits> {
   return request<AccountLimits>('/billing/limits');
 }
 
-// doc §5.9 — all fields optional; only the ones sent are updated.
+// doc §12.2 — strict partial update; only send fields you mean to change.
 export async function setLimits(patch: Partial<AccountLimits>): Promise<AccountLimits> {
   const data = await request<AccountLimits>('/billing/limits', { method: 'PUT', body: patch });
   invalidate('spend-limit');
   return data;
 }
 
-// doc §5.3 — create a PayPal order; returns the PayPal order id + our
-// transaction id. The browser then drives buyer approval via the PayPal SDK.
-// Package tier is decided server-side from amount_cents; do not rely on
-// sending package_id (optional / ignored by backend).
-export function createTopupOrder(params: {
-  amount_cents: number;
-  /** @deprecated Backend derives tier from amount; omit or ignored. */
-  package_id?: 'standard' | 'advanced' | 'flagship';
-}): Promise<TopupOrder> {
-  const body: { amount_cents: number } = { amount_cents: params.amount_cents };
-  return request<TopupOrder>('/billing/topups/order', { method: 'POST', body });
+// doc §6.1 — create the local order + PayPal Order. The server matches the
+// tier from amount_cents; package_id is NOT part of the request.
+export function createTopupOrder(params: { amount_cents: number }): Promise<TopupOrder> {
+  return request<TopupOrder>('/billing/topups/order', {
+    method: 'POST',
+    body: { amount_cents: params.amount_cents },
+  });
 }
 
-// doc §5.4 — capture an approved order by our transaction id.
+// doc §7.1 — capture after PayPal onApprove, keyed by OUR transaction_id.
+// Idempotent server-side; on timeout retry the SAME id (never re-create the
+// order).
 export async function captureTopup(transactionId: number): Promise<Transaction> {
   const data = await request<Transaction>(`/billing/topups/${transactionId}/capture`, {
     method: 'POST',
@@ -65,20 +97,22 @@ export async function captureTopup(transactionId: number): Promise<Transaction> 
   return data;
 }
 
-// doc §5.5
+// doc §9.1
 export interface TransactionsQuery {
   page?: number;
   page_size?: number;
-  kind?: string;
-  from?: string;
-  to?: string;
+  status?: TransactionStatus;
+  package_id?: PackageID;
+  pricing_version_id?: number;
+  from?: string; // RFC3339, inclusive
+  to?: string; // RFC3339, exclusive
 }
 
 export function listTransactions(q: TransactionsQuery = {}): Promise<TransactionListResponse> {
   return request<TransactionListResponse>('/billing/transactions', { query: q });
 }
 
-// doc §5.6
+// doc §9.2
 export function transactionDetail(id: number): Promise<Transaction> {
   return request<Transaction>(`/billing/transactions/${id}`);
 }

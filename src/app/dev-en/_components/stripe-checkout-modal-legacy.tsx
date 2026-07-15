@@ -916,9 +916,9 @@ function PayPalTopupButtons({
         createOrder={async () => {
           onProcessing(true);
           try {
+            // Tier is decided server-side from amount_cents (doc §6.1).
             const order = await billing.createTopupOrder({
               amount_cents: amountCents,
-              package_id: 'standard',
             });
             txnIdRef.current = order.transaction_id;
             return order.paypal_order_id;
