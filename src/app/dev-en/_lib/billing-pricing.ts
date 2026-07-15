@@ -1,10 +1,12 @@
 /**
  * Server-authoritative billing pricing catalog.
  *
- * Source of truth: `GET /billing/pricing` (evaluation-points doc §5) —
- * `topup_packages[]` amount bands with `points_per_usd`, plus CoreType
- * deduction rates. Local constants in `topup.ts` are Demo / offline
- * fallbacks only.
+ * Sources of truth (evaluation-points doc §5):
+ * - `GET /billing/pricing` for top-up packages and server quotes.
+ * - `GET /billing/core-type-pricing` for current CoreType deductions.
+ *
+ * The two endpoints are intentionally independent. Local constants in
+ * `topup.ts` are Demo / offline fallbacks only.
  *
  * Credited points for a live amount must come from the server quote:
  * `GET /billing/pricing?amount_cents=…` → `quote.quoted_points`, or the
@@ -15,6 +17,8 @@
 import { billing } from './api';
 import type {
   BillingPricingPackage,
+  CoreTypePricingInfo,
+  CoreTypeRate,
   PricingInfo,
   PricingQuote,
 } from './api/types';
@@ -33,6 +37,10 @@ export interface CoreTypeRateInfo {
   /** Stable grouping key — case-sensitive, matches usage `core_type`. */
   coreType: string;
   displayName: string;
+  /** Server-provided display category, when available. */
+  category?: string | null;
+  /** Server-provided language code (`zh` or `en`), when available. */
+  language?: string | null;
   pointsPerRequest: number;
 }
 
@@ -53,9 +61,13 @@ export interface BillingPricingCatalog {
   topupPresets: number[];
   versionId?: number;
   version?: number;
+  coreTypeVersionId?: number | null;
+  coreTypeVersion?: number | null;
   currency?: string;
   /** Raw API payload when available — reserved for future fields. */
   raw?: PricingInfo;
+  /** Raw payload from the independent CoreType pricing endpoint. */
+  rawCoreTypePricing?: CoreTypePricingInfo;
 }
 
 /** Demo-only CoreType rates so offline sessions render a realistic table. */
@@ -63,11 +75,13 @@ export const FALLBACK_CORE_TYPE_RATES: CoreTypeRateInfo[] = [
   {
     coreType: 'word_sentence.evaluate',
     displayName: 'Word / Phrase / Sentence',
+    language: 'zh',
     pointsPerRequest: WORD_SENTENCE_POINTS_PER_USE,
   },
   {
     coreType: 'paragraph.evaluate',
     displayName: 'Paragraph Evaluation',
+    language: 'en',
     pointsPerRequest: PARAGRAPH_POINTS_PER_USE,
   },
 ];
@@ -114,6 +128,21 @@ function mapPackage(p: BillingPricingPackage, baselinePointsPerUsd: number): Top
   };
 }
 
+function mapCoreTypeRates(rates: CoreTypeRate[]): CoreTypeRateInfo[] {
+  return rates
+    .map((rate) => ({
+      coreType: rate.core_type,
+      displayName: rate.display_name || rate.core_type,
+      category: rate.category,
+      language: rate.language,
+      pointsPerRequest: rate.points_per_request,
+    }))
+    .sort(
+      (a, b) =>
+        b.pointsPerRequest - a.pointsPerRequest || a.coreType.localeCompare(b.coreType),
+    );
+}
+
 export function catalogFromPricingInfo(info: PricingInfo): BillingPricingCatalog {
   const serverPackages = info.topup_packages ?? [];
   const baseline = serverPackages.length
@@ -127,11 +156,9 @@ export function catalogFromPricingInfo(info: PricingInfo): BillingPricingCatalog
 
   // No active CoreType pricing version is a normal state — everything is
   // deducted at default_points_per_request then.
-  const coreTypeRates: CoreTypeRateInfo[] = (info.core_type_rates ?? []).map((r) => ({
-    coreType: r.core_type,
-    displayName: r.display_name || r.core_type,
-    pointsPerRequest: r.points_per_request,
-  }));
+  // Kept as a compatibility source for backends that expose the rates only
+  // on the combined endpoint. A successful independent request overrides it.
+  const coreTypeRates = mapCoreTypeRates(info.core_type_rates ?? []);
 
   return {
     fromServer: serverPackages.length > 0,
@@ -147,19 +174,49 @@ export function catalogFromPricingInfo(info: PricingInfo): BillingPricingCatalog
     topupPresets: packages.flatMap((t) => t.presetCents),
     versionId: info.topup_pricing_version_id,
     version: info.topup_pricing_version,
+    coreTypeVersionId: info.core_type_pricing_version_id,
+    coreTypeVersion: info.core_type_pricing_version,
     currency: info.currency ?? 'USD',
     raw: info,
   };
 }
 
-/** Fetch pricing; on failure / empty, return local fallback (Demo-safe). */
+/** Override only CoreType pricing; recharge catalog data stays untouched. */
+export function catalogWithCoreTypePricing(
+  catalog: BillingPricingCatalog,
+  info: CoreTypePricingInfo,
+): BillingPricingCatalog {
+  return {
+    ...catalog,
+    defaultPointsPerRequest:
+      info.default_points_per_request ?? FALLBACK_BILLING_PRICING.defaultPointsPerRequest,
+    // [] is meaningful: no active version means every CoreType uses default.
+    coreTypeRates: mapCoreTypeRates(info.core_type_rates ?? []),
+    coreTypeVersionId: info.core_type_pricing_version_id,
+    coreTypeVersion: info.core_type_pricing_version,
+    rawCoreTypePricing: info,
+  };
+}
+
+/**
+ * Load recharge and CoreType pricing independently. A failure on one endpoint
+ * must not discard valid data from the other endpoint.
+ */
 export async function loadBillingPricing(): Promise<BillingPricingCatalog> {
-  try {
-    const info = await billing.pricing();
-    return catalogFromPricingInfo(info);
-  } catch {
-    return FALLBACK_BILLING_PRICING;
+  const [pricingResult, coreTypeResult] = await Promise.allSettled([
+    billing.pricing(),
+    billing.coreTypePricing(),
+  ]);
+
+  let catalog = pricingResult.status === 'fulfilled'
+    ? catalogFromPricingInfo(pricingResult.value)
+    : FALLBACK_BILLING_PRICING;
+
+  if (coreTypeResult.status === 'fulfilled') {
+    catalog = catalogWithCoreTypePricing(catalog, coreTypeResult.value);
   }
+
+  return catalog;
 }
 
 /**

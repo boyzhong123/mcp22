@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ChevronDown,
   CreditCard,
+  Eye,
   HelpCircle,
   ReceiptText,
   Sparkles,
@@ -35,8 +36,9 @@ import {
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
-import { EvaluationKernelInfo } from '../../_components/evaluation-kernel-info';
+import { KernelUsageDetailsModal } from '../../_components/kernel-usage-details-modal';
 import { useLang } from '../../_lib/use-lang';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_WALLET: AccountWallet = {
@@ -57,6 +59,7 @@ export default function BillingPage() {
   const lifetimeEvaluationPoints = useMockStore(getAccountLifetimeEvaluationPoints, 0);
 
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
+  const [detailsKeyId, setDetailsKeyId] = useState<string | null>(null);
 
   // Legacy deep-link: `/dashboard/billing?edit=spend-limit` used to
   // open the inline cap modal. The cap UI now lives at /dashboard/limits,
@@ -78,13 +81,6 @@ export default function BillingPage() {
     const ym = new Date().toISOString().slice(0, 7);
     return aggregateEvaluationUsageByKey(usage.filter((point) => point.date.startsWith(ym)));
   }, [usage]);
-
-  // Dynamic CoreType columns for the per-key table — top two by deducted
-  // points this month (CoreTypes are server-defined, never hardcoded).
-  const coreTypeColumns = useMemo(
-    () => monthlyEvaluationUsage.coreTypes.slice(0, 2),
-    [monthlyEvaluationUsage],
-  );
 
   const activeKeyCount = useMemo(
     () => keys.filter((k) => k.status === 'active').length,
@@ -111,6 +107,13 @@ export default function BillingPage() {
       return bc - ac;
     });
   }, [keys, usageByKeyThisMonth]);
+
+  const detailsKey = detailsKeyId
+    ? keys.find((key) => key.id === detailsKeyId) ?? null
+    : null;
+  const detailsUsage = detailsKeyId
+    ? usageByKeyThisMonth.get(detailsKeyId) ?? null
+    : null;
 
   const openAddCredits = () => setAddCreditsOpen(true);
 
@@ -160,23 +163,10 @@ export default function BillingPage() {
           icon={ReceiptText}
           label={t('Evaluation points used this month', '本月消耗评测积分')}
           value={monthlyEvaluationUsage.totalPoints.toLocaleString('en-US')}
-          sub={
-            monthlyEvaluationUsage.coreTypes.length > 0
-              ? t(
-                  `${formatCalls(monthlyEvaluationUsage.calls)} calls · ${monthlyEvaluationUsage.coreTypes
-                    .slice(0, 2)
-                    .map((ct) => `${ct.displayName} ${ct.calls.toLocaleString('en-US')} (${ct.evaluationPoints.toLocaleString('en-US')} pts)`)
-                    .join(' · ')}`,
-                  `${formatCalls(monthlyEvaluationUsage.calls)} 次调用 · ${monthlyEvaluationUsage.coreTypes
-                    .slice(0, 2)
-                    .map((ct) => `${ct.displayName} ${ct.calls.toLocaleString('en-US')} 次（${ct.evaluationPoints.toLocaleString('en-US')} 积分）`)
-                    .join(' · ')}`,
-                )
-              : t(
-                  `${formatCalls(monthlyEvaluationUsage.calls)} calls this month`,
-                  `本月 ${formatCalls(monthlyEvaluationUsage.calls)} 次调用`,
-                )
-          }
+          sub={t(
+            `${formatCalls(monthlyEvaluationUsage.calls)} calls this month`,
+            `本月 ${formatCalls(monthlyEvaluationUsage.calls)} 次调用`,
+          )}
         />
         <StatCard
           icon={CreditCard}
@@ -204,8 +194,8 @@ export default function BillingPage() {
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {t(
-                'Every key drains the same point pool — see calls and the per-CoreType point split for each key.',
-                '所有 Key 共用同一积分池；下方按 Key 展示调用次数与各 CoreType 的积分消耗。',
+                'Every key drains the same point pool. Open details to see the per-kernel calls and consumed points.',
+                '所有 Key 共用同一积分池；点击查看明细可查看各内核的调用次数与消耗积分。',
               )}
             </p>
           </div>
@@ -225,12 +215,9 @@ export default function BillingPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <div className="min-w-[920px]">
+            <div className="min-w-[720px]">
               {(() => {
-                // Grid adapts to the (dynamic) CoreType column count.
-                const gridTemplateColumns = `minmax(220px,1.5fr) 120px ${coreTypeColumns
-                  .map(() => '165px')
-                  .join(' ')} 145px`.trim();
+                const gridTemplateColumns = 'minmax(220px,1.5fr) 130px 145px 120px';
                 return (
                   <>
                     <div
@@ -238,28 +225,15 @@ export default function BillingPage() {
                       style={{ gridTemplateColumns }}
                     >
                       <div>{tx('Key')}</div>
-                      <div className="text-right">{t('Total calls', '总调用')}</div>
-                      {coreTypeColumns.map((ct) => (
-                        <div
-                          key={ct.coreType}
-                          className="flex items-center justify-end gap-1.5 text-right"
-                        >
-                          <span className="truncate max-w-[130px]" title={ct.coreType}>
-                            {ct.displayName}
-                          </span>
-                          <EvaluationKernelInfo />
-                        </div>
-                      ))}
+                      <div className="text-right">{t('Call count', '调用次数')}</div>
                       <div className="text-right">{t('Points consumed', '消耗积分')}</div>
+                      <div className="text-right">{t('Kernel details', '内核明细')}</div>
                     </div>
                     <ul className="divide-y divide-border">
                       {sortedKeys.map((k) => {
                         const monthUsage = usageByKeyThisMonth.get(k.id);
                         const monthCalls = monthUsage?.calls ?? 0;
                         const revoked = k.status === 'revoked';
-                        const byCoreType = new Map(
-                          (monthUsage?.coreTypes ?? []).map((ct) => [ct.coreType, ct]),
-                        );
 
                         return (
                           <li
@@ -283,21 +257,19 @@ export default function BillingPage() {
                             <div className="text-right text-sm tabular-nums">
                               {formatCalls(monthCalls)}
                             </div>
-                            {coreTypeColumns.map((col) => {
-                              const ct = byCoreType.get(col.coreType);
-                              return (
-                                <div key={col.coreType} className="text-right tabular-nums">
-                                  <div className="text-sm font-medium">
-                                    {(ct?.calls ?? 0).toLocaleString('en-US')} {t('calls', '次')}
-                                  </div>
-                                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                                    {(ct?.evaluationPoints ?? 0).toLocaleString('en-US')} {t('pts', '积分')}
-                                  </div>
-                                </div>
-                              );
-                            })}
                             <div className="text-right text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
                               {(monthUsage?.totalPoints ?? 0).toLocaleString('en-US')} {t('pts', '积分')}
+                            </div>
+                            <div className="text-right">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDetailsKeyId(k.id)}
+                              >
+                                <Eye />
+                                {t('View details', '查看明细')}
+                              </Button>
                             </div>
                           </li>
                         );
@@ -310,6 +282,13 @@ export default function BillingPage() {
           </div>
         )}
       </div>
+
+      <KernelUsageDetailsModal
+        open={detailsKey !== null}
+        keyName={detailsKey?.name ?? ''}
+        usage={detailsUsage}
+        onClose={() => setDetailsKeyId(null)}
+      />
 
       {/* Recent top-ups preview */}
       <div className="rounded-2xl border border-border bg-background p-5">
@@ -412,6 +391,7 @@ function PointExpiryBreakdown({
   const availablePercentages = allocateWholePercentages(expiryBatches, availablePoints);
   const nextExpiry = expiryBatches[0];
   const hoveredBatch = expiryBatches.find((batch) => batch.id === hoveredBatchId) ?? null;
+  const detailBatch = hoveredBatch ?? nextExpiry ?? null;
   const locale = lang === 'zh' ? 'zh-CN' : 'en-US';
   const daysUntilNextExpiry = nextExpiry
     ? Math.max(0, Math.ceil((Date.parse(nextExpiry.expiresAt) - now) / 86400000))
@@ -475,8 +455,27 @@ function PointExpiryBreakdown({
                 {availablePoints.toLocaleString('en-US')} {t('pts', '积分')}
               </span>
             </div>
-            {hoveredBatch ? (
-              <div className="rounded-xl border border-border bg-background px-3 py-2.5 shadow-sm animate-in fade-in duration-150">
+            <div className="grid">
+              <p
+                aria-hidden={hoveredBatch !== null}
+                className={cn(
+                  'col-start-1 row-start-1 self-center text-[11px] text-muted-foreground',
+                  hoveredBatch && 'invisible',
+                )}
+              >
+                {t(
+                  'Each color represents one top-up batch; the percentage is its share of available points. Hover a slice for details.',
+                  '每种颜色代表一笔充值批次；百分比为该批次占可用积分的比例。悬停扇区可查看详情。',
+                )}
+              </p>
+              {detailBatch && (
+              <div
+                aria-hidden={hoveredBatch === null}
+                className={cn(
+                  'col-start-1 row-start-1 rounded-xl border border-border bg-background px-3 py-2.5 shadow-sm',
+                  !hoveredBatch && 'invisible',
+                )}
+              >
                 <div className="flex items-center gap-1.5">
                   <span
                     className="h-2 w-2 shrink-0 rounded-sm"
@@ -485,53 +484,47 @@ function PointExpiryBreakdown({
                         chartColors[
                           Math.max(
                             0,
-                            expiryBatches.findIndex((batch) => batch.id === hoveredBatch.id),
+                            expiryBatches.findIndex((batch) => batch.id === detailBatch.id),
                           ) % chartColors.length
                         ],
                     }}
                   />
                   <span className="text-[11px] font-semibold tabular-nums leading-tight">
-                    {formatExpiryTimestamp(hoveredBatch.expiresAt, locale)}
+                    {formatExpiryTimestamp(detailBatch.expiresAt, locale)}
                   </span>
                 </div>
                 <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                   <div className="flex justify-between gap-2">
                     <span>{t('Remaining', '剩余')}</span>
                     <span className="font-medium tabular-nums text-foreground">
-                      {hoveredBatch.remainingPoints.toLocaleString('en-US')} {t('pts', '积分')}
+                      {detailBatch.remainingPoints.toLocaleString('en-US')} {t('pts', '积分')}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span>{t('Share', '占比')}</span>
                     <span className="font-medium tabular-nums text-foreground">
-                      {availablePercentages.get(hoveredBatch.id) ?? 0}%
+                      {availablePercentages.get(detailBatch.id) ?? 0}%
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span>{t('Expires in', '到期')}</span>
                     <span className="font-medium tabular-nums text-foreground">
                       {t(
-                        `${Math.max(0, Math.ceil((Date.parse(hoveredBatch.expiresAt) - now) / 86400000))}d`,
-                        `${Math.max(0, Math.ceil((Date.parse(hoveredBatch.expiresAt) - now) / 86400000))} 天`,
+                        `${Math.max(0, Math.ceil((Date.parse(detailBatch.expiresAt) - now) / 86400000))}d`,
+                        `${Math.max(0, Math.ceil((Date.parse(detailBatch.expiresAt) - now) / 86400000))} 天`,
                       )}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span>{t('Used', '已用')}</span>
                     <span className="font-medium tabular-nums text-foreground">
-                      {hoveredBatch.usedPoints.toLocaleString('en-US')} {t('pts', '积分')}
+                      {detailBatch.usedPoints.toLocaleString('en-US')} {t('pts', '积分')}
                     </span>
                   </div>
                 </div>
               </div>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">
-                {t(
-                  'Each color represents one top-up batch; the percentage is its share of available points. Hover a slice for details.',
-                  '每种颜色代表一笔充值批次；百分比为该批次占可用积分的比例。悬停扇区可查看详情。',
-                )}
-              </p>
-            )}
+              )}
+            </div>
         <div className="mt-3 grid gap-x-5 gap-y-1.5 text-[11px] text-muted-foreground sm:grid-cols-2">
           {expiryBatches.map((batch, index) => {
             const percentage = availablePercentages.get(batch.id) ?? 0;
@@ -744,36 +737,57 @@ function ExpiryDonut({
           return (
             <g
               key={batch.id}
-              style={{
-                transform: `translate(${dx}px, ${dy}px)`,
-                transition: 'transform 180ms ease, opacity 180ms ease',
-              }}
               opacity={dimmed ? 0.38 : 1}
-              onMouseEnter={() => onHoverBatch(batch.id)}
-              onMouseLeave={() => onHoverBatch(null)}
-              className="cursor-pointer"
+              style={{
+                transition: 'opacity 180ms ease',
+              }}
             >
               <title>
                 {`${formatExpiryTimestamp(batch.expiresAt, locale)} · ${batch.remainingPoints.toLocaleString('en-US')} ${t('pts', '积分')} · ${displayPercentages.get(batch.id) ?? Math.round(percent)}%`}
               </title>
-              <path
-                d={donutSlicePath(centerX, centerY, r0, r1, startAngle, endAngle)}
-                fill={colors[index % colors.length]}
+              <g
+                pointerEvents="none"
                 style={{
-                  transition: 'opacity 180ms ease',
-                  filter: isHovered
-                    ? 'drop-shadow(0 4px 8px rgba(15, 23, 42, 0.22))'
-                    : undefined,
+                  transform: `translate(${dx}px, ${dy}px)`,
+                  transition: 'transform 180ms ease',
                 }}
-              />
-              {/* Wider invisible hit area for thin slices */}
+              >
+                <path
+                  d={donutSlicePath(centerX, centerY, r0, r1, startAngle, endAngle)}
+                  fill={colors[index % colors.length]}
+                  style={{
+                    transition: 'opacity 180ms ease',
+                    filter: isHovered
+                      ? 'drop-shadow(0 4px 8px rgba(15, 23, 42, 0.22))'
+                      : undefined,
+                  }}
+                />
+              </g>
+              {/* Keep the hover target stationary while the visual slice lifts.
+                  Otherwise a pointer near the edge repeatedly enters and leaves
+                  the moving slice, producing a rapid hover/unhover feedback loop. */}
               <path
                 d={donutSlicePath(centerX, centerY, innerR - 4, outerR + 8, startAngle, endAngle)}
                 fill="transparent"
+                pointerEvents="all"
+                onMouseEnter={() => onHoverBatch(batch.id)}
+                onMouseLeave={() => onHoverBatch(null)}
+                className="cursor-pointer"
               />
             </g>
           );
         })}
+        {/* Keep the visible donut hole as a true non-interactive area. The
+            widened slice hit targets extend inside innerR, so this topmost
+            circle must intercept the pointer and clear any active slice. */}
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={innerR}
+          fill="transparent"
+          pointerEvents="all"
+          onMouseEnter={() => onHoverBatch(null)}
+        />
         {labeledSegments.map(({ batch, index, percent, labelAngle, labelY, side }) => {
           const isHovered = hoveredBatchId === batch.id;
           const dimmed = hoveredBatchId !== null && !isHovered;
@@ -804,9 +818,7 @@ function ExpiryDonut({
               key={`label-${batch.id}`}
               opacity={dimmed ? 0.35 : 1}
               style={{ transition: 'opacity 180ms ease' }}
-              onMouseEnter={() => onHoverBatch(batch.id)}
-              onMouseLeave={() => onHoverBatch(null)}
-              className="cursor-pointer"
+              pointerEvents="none"
             >
               <polyline
                 points={`${startX},${startY} ${elbowX},${labelY} ${lineEndX},${labelY}`}

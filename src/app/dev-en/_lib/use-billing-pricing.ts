@@ -9,8 +9,8 @@ import {
 } from './billing-pricing';
 
 /**
- * Loads GET /billing/pricing into a stable catalog. Demo / offline sessions
- * keep the local fallback so the UI still renders.
+ * Loads recharge pricing and independent CoreType pricing into one stable
+ * catalog. Demo / offline sessions keep the local fallback so the UI renders.
  */
 export function useBillingPricing(): {
   catalog: BillingPricingCatalog;

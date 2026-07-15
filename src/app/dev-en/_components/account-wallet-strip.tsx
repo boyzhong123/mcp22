@@ -222,19 +222,21 @@ export function AccountWalletStrip({
           <button
             type="button"
             onClick={onAddCredits}
-            className="group relative mt-4 inline-flex h-10 items-center gap-2 overflow-hidden rounded-xl border border-zinc-200/80 bg-white px-3 pr-3.5 text-[13px] font-semibold text-[#10233f] shadow-[0_8px_20px_-12px_rgba(0,0,0,0.45)] transition-all hover:-translate-y-px hover:shadow-[0_12px_24px_-12px_rgba(0,0,0,0.55)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+            className="group relative mt-4 inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-[14px] border border-white/90 bg-white px-2.5 pr-2 text-[13px] font-bold tracking-[0.01em] text-[#10233f] shadow-[0_10px_24px_-12px_rgba(2,8,23,0.85),0_2px_0_rgba(148,163,184,0.42)] transition-[transform,box-shadow,border-color] duration-200 motion-safe:hover:-translate-y-0.5 hover:border-emerald-100 hover:shadow-[0_15px_30px_-13px_rgba(2,8,23,0.9),0_3px_0_rgba(52,211,153,0.42)] active:translate-y-px active:shadow-[0_5px_14px_-9px_rgba(2,8,23,0.75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
           >
-            {/* Green top accent — the one deliberate flourish that keeps this
-                from reading as a default white pill; echoes the card's glow. */}
+            {/* A short mint edge keeps the CTA branded without turning the
+                whole control into another dark surface inside the card. */}
             <span
               aria-hidden
-              className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-emerald-400 to-teal-400"
+              className="absolute left-4 right-4 top-0 h-[2px] rounded-b-full bg-emerald-400 shadow-[0_1px_6px_rgba(52,211,153,0.55)] transition-[left,right] duration-200 group-hover:left-3 group-hover:right-3"
             />
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400/15 to-teal-400/15 text-emerald-600 ring-1 ring-emerald-500/20">
-              <Wallet className="h-3.5 w-3.5" strokeWidth={2.5} />
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20 transition-colors duration-200 group-hover:bg-emerald-100 group-hover:text-emerald-700">
+              <Wallet className="h-4 w-4" strokeWidth={2.4} />
             </span>
-            {tx('Add points')}
-            <ArrowRight className="h-3.5 w-3.5 text-[#10233f]/45 transition-all group-hover:translate-x-0.5 group-hover:text-[#10233f]" />
+            <span>{tx('Add points')}</span>
+            <span className="ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] text-slate-400 transition-[background-color,color,transform] duration-200 group-hover:translate-x-0.5 group-hover:bg-slate-100 group-hover:text-[#10233f]">
+              <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
+            </span>
           </button>
         </div>
       </div>

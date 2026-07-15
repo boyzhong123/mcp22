@@ -1,10 +1,12 @@
 'use client';
 
-import { ArrowUpRight, Info, X } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Info, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ModalPortal } from './modal-portal';
+import { kernelCategoryLabel } from '../_lib/kernel-category';
+import { kernelLanguage } from '../_lib/kernel-language';
 import { useLang } from '../_lib/use-lang';
 import { useBillingPricing } from '../_lib/use-billing-pricing';
 
@@ -12,11 +14,20 @@ interface EvaluationKernelInfoProps {
   className?: string;
 }
 
+function pointRateBadgeClassName(pointsPerRequest: number, defaultRate: number) {
+  return cn(
+    'inline-flex min-w-7 justify-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
+    pointsPerRequest > defaultRate
+      ? 'border-amber-300/70 bg-amber-50 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/35 dark:text-amber-200'
+      : 'border-slate-300/80 bg-slate-100 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800 dark:text-slate-200',
+  );
+}
+
 /**
  * "How points are deducted" info dialog. CoreType rates are dynamic and
- * server-configured (`GET /billing/pricing` → `core_type_rates[]`); anything
- * not specifically configured deducts `default_points_per_request`. An empty
- * rate list is a normal state, not an error.
+ * server-configured (`GET /billing/core-type-pricing`); anything not
+ * specifically configured deducts `default_points_per_request`. An empty rate
+ * list is a normal state, not an error.
  */
 export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
   const [open, setOpen] = useState(false);
@@ -30,8 +41,17 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
 
   const rates = catalog.coreTypeRates;
   const defaultRate = catalog.defaultPointsPerRequest;
-  // Distinct configured rates, for the summary chips (max 2 + default chip).
-  const topRates = rates.slice(0, 2);
+  const defaultCategory = kernelCategoryLabel(undefined, defaultRate);
+  // Summarize price levels instead of showing two arbitrary CoreTypes. The
+  // full, deterministically sorted list remains available in the table.
+  const configuredRateGroups = Array.from(
+    rates.reduce((groups, rate) => {
+      groups.set(rate.pointsPerRequest, (groups.get(rate.pointsPerRequest) ?? 0) + 1);
+      return groups;
+    }, new Map<number, number>()),
+    ([pointsPerRequest, count]) => ({ pointsPerRequest, count }),
+  ).sort((a, b) => b.pointsPerRequest - a.pointsPerRequest);
+  const summaryRateGroups = configuredRateGroups.slice(0, 2);
 
   useEffect(() => {
     if (!open) return;
@@ -143,34 +163,53 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
               </div>
 
               <div className="shrink-0 border-b border-border/60 bg-muted/20 px-4 py-3 sm:px-6">
-                <div className={cn('grid gap-2', topRates.length > 0 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1')}>
-                  {topRates.map((rate) => (
-                    <div
-                      key={rate.coreType}
-                      className="flex items-center gap-3 rounded-xl border border-foreground/20 bg-foreground/[0.035] px-3 py-2.5"
-                    >
-                      <span className="text-2xl font-semibold tabular-nums tracking-tight">
-                        {rate.pointsPerRequest}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                          {t('points / request', '积分 / 次')}
-                        </div>
-                        <div className="mt-0.5 truncate text-xs font-medium" title={rate.coreType}>
-                          {rate.displayName}
-                        </div>
-                      </div>
+                <div className="overflow-hidden rounded-xl border border-border/80 bg-background/80 sm:flex sm:items-stretch">
+                  <div className="min-w-0 flex-1 px-4 py-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {t('Configured rates', '已配置费率')}
                     </div>
-                  ))}
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
-                    <span className="text-2xl font-semibold tabular-nums tracking-tight">{defaultRate}</span>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {t('points / request', '积分 / 次')}
+                    {summaryRateGroups.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+                        {summaryRateGroups.map((group) => (
+                          <div key={group.pointsPerRequest} className="flex items-baseline gap-2">
+                            <span
+                              className={cn(
+                                'text-xl font-semibold tabular-nums tracking-tight',
+                                group.pointsPerRequest > defaultRate
+                                  ? 'text-amber-700 dark:text-amber-300'
+                                  : 'text-slate-700 dark:text-slate-200',
+                              )}
+                            >
+                              {group.pointsPerRequest}
+                            </span>
+                            <span className="text-xs font-medium">{t('points / request', '积分 / 次')}</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {t(
+                                `${group.count} kernel${group.count === 1 ? '' : 's'}`,
+                                `${group.count} 个内核`,
+                              )}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="mt-0.5 truncate text-xs font-medium">
-                        {t('Default (unconfigured CoreTypes)', '默认（未单独配置）')}
+                    ) : (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        {t('No kernel-specific rates', '暂无内核专项费率')}
                       </div>
+                    )}
+                  </div>
+                  <div className="border-t border-border/70 px-4 py-3 sm:w-48 sm:border-l sm:border-t-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {t('Default rate', '默认费率')}
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-xl font-semibold tabular-nums tracking-tight text-slate-700 dark:text-slate-200">
+                        {defaultRate}
+                      </span>
+                      <span className="text-xs font-medium">{t('points / request', '积分 / 次')}</span>
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                      {t('For unconfigured kernels', '适用于未单独配置的内核')}
                     </div>
                   </div>
                 </div>
@@ -181,43 +220,67 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
                 className="min-h-0 flex-1 overscroll-contain overflow-y-auto px-4 py-3 sm:px-6 sm:py-4"
               >
                 <div className="overflow-hidden rounded-xl border border-border/80">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full table-fixed text-left text-sm">
                     <thead className="sticky top-0 z-10 bg-muted/95 text-[10px] uppercase tracking-[0.1em] text-muted-foreground backdrop-blur">
                       <tr className="border-b border-border">
-                        <th className="px-4 py-2.5 font-semibold">{t('CoreType', 'CoreType')}</th>
-                        <th className="px-4 py-2.5 font-semibold">{t('Display name', '显示名')}</th>
-                        <th className="w-28 px-4 py-2.5 text-right font-semibold">
-                          {t('Points / request', '积分 / 次')}
+                        <th className="w-[22%] px-2 py-2.5 font-semibold sm:w-24 sm:px-4">
+                          {t('Category', '类别')}
+                        </th>
+                        <th className="px-2 py-2.5 font-semibold sm:px-4">{t('Kernel', '内核名')}</th>
+                        <th className="w-[16%] px-2 py-2.5 font-semibold sm:w-20 sm:px-4">
+                          {t('Language', '语言')}
+                        </th>
+                        <th
+                          className="w-[24%] px-2 py-2.5 text-right font-semibold sm:w-28 sm:px-4"
+                          aria-sort="descending"
+                        >
+                          <span className="inline-flex items-center justify-end gap-1">
+                            {t('Points / request', '积分 / 次')}
+                            <ArrowDown className="size-3" aria-hidden="true" />
+                          </span>
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rates.map((rate) => (
-                        <tr key={rate.coreType} className="border-b border-border/60">
-                          <td className="px-4 py-2.5">
-                            <code className="break-all font-mono text-[11px] font-medium text-foreground">
-                              {rate.coreType}
-                            </code>
-                          </td>
-                          <td className="px-4 py-2.5 text-xs">{rate.displayName}</td>
-                          <td className="px-4 py-2.5 text-right">
-                            <span className="inline-flex min-w-7 justify-center rounded-md border border-foreground bg-foreground px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-background">
-                              {rate.pointsPerRequest}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {rates.map((rate) => {
+                        const category = kernelCategoryLabel(rate.category, rate.pointsPerRequest);
+                        return (
+                          <tr key={rate.coreType} className="border-b border-border/60">
+                            <td className="break-words px-2 py-2.5 text-xs font-medium sm:px-4">
+                              {t(category.en, category.zh)}
+                            </td>
+                            <td className="px-2 py-2.5 sm:px-4">
+                              <code className="break-all font-mono text-[11px] font-medium text-foreground">
+                                {rate.coreType}
+                              </code>
+                            </td>
+                            <td className="px-2 py-2.5 sm:px-4">
+                              <span className="inline-flex min-w-8 justify-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                {kernelLanguage(rate.language, rate.coreType)}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2.5 text-right sm:px-4">
+                              <span className={pointRateBadgeClassName(rate.pointsPerRequest, defaultRate)}>
+                                {rate.pointsPerRequest}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                       <tr className="last:border-0">
-                        <td className="px-4 py-2.5">
-                          <span className="text-xs text-muted-foreground">
-                            {t('All other CoreTypes', '其余所有 CoreType')}
+                        <td className="break-words px-2 py-2.5 text-xs font-medium text-muted-foreground sm:px-4">
+                          {t(defaultCategory.en, defaultCategory.zh)}
+                        </td>
+                        <td className="px-2 py-2.5 text-xs text-muted-foreground sm:px-4">
+                          {t('All unconfigured kernels', '其他未配置内核')}
+                        </td>
+                        <td className="px-2 py-2.5 sm:px-4">
+                          <span className="inline-flex min-w-8 justify-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                            —
                           </span>
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                          {t('Default rate', '默认费率')}
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <span className="inline-flex min-w-7 justify-center rounded-md border border-border bg-muted/35 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+                        <td className="px-2 py-2.5 text-right sm:px-4">
+                          <span className={pointRateBadgeClassName(defaultRate, defaultRate)}>
                             {defaultRate}
                           </span>
                         </td>

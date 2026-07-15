@@ -50,7 +50,9 @@ const PACKAGE_LABELS: Record<
 /**
  * Pricing reference page for the evaluation-point billing model.
  *
- * Prefers GET /billing/pricing when available; local topup.ts is Demo fallback.
+ * Uses GET /billing/pricing for recharge tiers and the independent
+ * GET /billing/core-type-pricing endpoint for deduction rules. Local topup.ts
+ * is the Demo fallback.
  */
 export default function PricingPage() {
   const { t, tx } = useLang();
@@ -198,6 +200,12 @@ export default function PricingPage() {
             <Type className="h-4 w-4" />
             {t('Deduction rules', '扣分规则')}
           </div>
+          <p className="text-xs text-muted-foreground">
+            {t(
+              'Current rates from GET /billing/core-type-pricing.',
+              '当前费率来自 GET /billing/core-type-pricing。',
+            )}
+          </p>
           <ul className="text-sm text-muted-foreground space-y-1.5">
             {catalog.coreTypeRates.slice(0, 3).map((rate) => (
               <li key={rate.coreType} className="flex gap-2">

@@ -22,6 +22,7 @@ import {
   setToken,
 } from './api';
 import type { ApiUser, OAuthProvider } from './api';
+import { resetAccountDataForDemo } from './mock-store';
 
 export type { ApiUser } from './api';
 
@@ -311,6 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginAsDemo = useCallback(() => {
     setToken(DEMO_TOKEN);
+    resetAccountDataForDemo();
     setUser(DEMO_USER);
     setIsDemo(true);
     setIsNewUser(true);

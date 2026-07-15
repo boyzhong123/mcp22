@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   ArrowLeft,
   BookOpen,
@@ -33,13 +34,40 @@ import { EnterpriseContactForm } from './enterprise-contact-form';
 const SUPPORT_EMAIL = 'support@chivox.com';
 
 type Panel = 'menu' | 'sales';
+type PanelPlacement = 'above' | 'below';
+
+type LauncherPosition = {
+  x: number | null;
+  y: number | null;
+};
+
+const VIEWPORT_GAP = 16;
+const DRAG_THRESHOLD = 5;
+const POSITION_STORAGE_KEY = 'dev-en:contact-widget-position';
 
 export function DevEnContactWidget() {
+  const pathname = usePathname();
   const { t } = useLang();
   const { user } = useMockAuth();
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<Panel>('menu');
+  const [position, setPosition] = useState<LauncherPosition>({ x: null, y: null });
+  const [panelPlacement, setPanelPlacement] = useState<PanelPlacement>('above');
+  const [dragging, setDragging] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    width: number;
+    height: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+  const isAuthRoute = ['/login', '/register', '/forgot-password'].includes(pathname);
 
   useEffect(() => {
     if (!open) return;
@@ -64,20 +92,154 @@ export function DevEnContactWidget() {
   }, [open, panel]);
 
   useEffect(() => {
-    if (!open) setPanel('menu');
-  }, [open]);
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem(POSITION_STORAGE_KEY) ?? 'null') as {
+          y?: number;
+        } | null;
+        const launcherHeight = launcherRef.current?.getBoundingClientRect().height ?? 48;
+        if (
+          saved &&
+          typeof saved.y === 'number' &&
+          Number.isFinite(saved.y)
+        ) {
+          const y = Math.min(
+            Math.max(VIEWPORT_GAP, saved.y),
+            Math.max(VIEWPORT_GAP, window.innerHeight - launcherHeight - VIEWPORT_GAP),
+          );
+          setPosition({ x: null, y });
+        }
+      } catch {
+        // Invalid or unavailable storage falls back to the default position.
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    const keepDockedInsideViewport = () => {
+      const launcher = launcherRef.current;
+      if (!launcher) return;
+      setPosition((current) => {
+        if (current.y === null) return current;
+        const rect = launcher.getBoundingClientRect();
+        const y = Math.min(
+          Math.max(VIEWPORT_GAP, current.y),
+          Math.max(VIEWPORT_GAP, window.innerHeight - rect.height - VIEWPORT_GAP),
+        );
+        if (current.x === null) return { ...current, y };
+        const x = Math.min(
+          Math.max(VIEWPORT_GAP, current.x),
+          Math.max(VIEWPORT_GAP, window.innerWidth - rect.width - VIEWPORT_GAP),
+        );
+        return { ...current, x, y };
+      });
+    };
+    window.addEventListener('resize', keepDockedInsideViewport);
+    return () => window.removeEventListener('resize', keepDockedInsideViewport);
+  }, []);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: rect.left,
+      originY: rect.top,
+      width: rect.width,
+      height: rect.height,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      drag.moved = true;
+      suppressClickRef.current = true;
+      setDragging(true);
+      setOpen(false);
+      setPanel('menu');
+    }
+
+    const x = Math.min(
+      Math.max(VIEWPORT_GAP, drag.originX + dx),
+      Math.max(VIEWPORT_GAP, window.innerWidth - drag.width - VIEWPORT_GAP),
+    );
+    const y = Math.min(
+      Math.max(VIEWPORT_GAP, drag.originY + dy),
+      Math.max(VIEWPORT_GAP, window.innerHeight - drag.height - VIEWPORT_GAP),
+    );
+    setPosition((current) => ({ ...current, x, y }));
+  };
+
+  const finishDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current = null;
+    setDragging(false);
+    if (!drag.moved) return;
+
+    const dy = event.clientY - drag.startY;
+    const y = Math.min(
+      Math.max(VIEWPORT_GAP, drag.originY + dy),
+      Math.max(VIEWPORT_GAP, window.innerHeight - drag.height - VIEWPORT_GAP),
+    );
+    setPosition({ x: null, y });
+    try {
+      window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify({ y }));
+    } catch {
+      // Position persistence is optional; dragging still works without it.
+    }
+  };
+
+  const toggleOpen = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    const rect = launcherRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPanelPlacement(rect.top < window.innerHeight / 2 ? 'below' : 'above');
+    }
+    if (open) {
+      setOpen(false);
+      setPanel('menu');
+    } else {
+      setOpen(true);
+    }
+  };
 
   return (
     <div
       ref={rootRef}
-      className="fixed bottom-[4.75rem] right-4 z-40 flex flex-col items-end gap-3"
+      className={cn('fixed z-40', isAuthRoute && 'max-sm:hidden')}
+      style={position.y === null
+        ? { bottom: '4.75rem', right: '1rem' }
+        : position.x !== null
+          ? { left: position.x, top: position.y }
+          : { right: VIEWPORT_GAP, top: position.y }}
     >
       {open && (
         <div
           role="dialog"
           aria-label={t('Contact us', '联系我们')}
           className={cn(
-            'origin-bottom-right overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl shadow-black/[0.16] dark:shadow-black/60 ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200',
+            'absolute overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl shadow-black/[0.16] dark:shadow-black/60 ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 duration-200',
+            'right-0 origin-bottom-right',
+            panelPlacement === 'above'
+              ? 'bottom-[calc(100%+0.75rem)] slide-in-from-bottom-2'
+              : 'top-[calc(100%+0.75rem)] slide-in-from-top-2',
             panel === 'sales'
               ? 'w-[min(22.5rem,calc(100vw-2rem))]'
               : 'w-[min(21rem,calc(100vw-2rem))]',
@@ -186,13 +348,19 @@ export function DevEnContactWidget() {
       )}
 
       <button
+        ref={launcherRef}
         type="button"
         data-tour="contact-launcher"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishDrag}
+        onPointerCancel={finishDrag}
         aria-expanded={open}
         aria-label={open ? t('Close contact', '关闭联系我们') : t('Contact us', '联系我们')}
         className={cn(
-          'group relative inline-flex h-12 items-center gap-2 rounded-full shadow-lg shadow-black/20 dark:shadow-black/50 transition-all duration-200 active:scale-95',
+          'group relative inline-flex h-12 touch-none select-none items-center gap-2 rounded-full shadow-lg shadow-black/20 dark:shadow-black/50 transition-[width,background-color,color,box-shadow,transform] duration-200',
+          dragging ? 'cursor-grabbing scale-[1.02]' : 'cursor-grab active:scale-95',
           open
             ? 'w-12 justify-center border border-border bg-card text-foreground hover:bg-muted/70'
             : 'bg-foreground px-5 text-background hover:shadow-xl hover:shadow-black/25',

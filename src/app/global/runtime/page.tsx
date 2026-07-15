@@ -28,7 +28,7 @@ const CONTROLS = [
     body: 'Use scoped keys for development, staging, and production. Rotate access safely while every environment keeps the same endpoint and response contract.',
     proofs: ['Scoped keys', 'Safe rotation'],
     tone: 'emerald',
-    art: '/runtime/keys-v2.jpg',
+    art: '/runtime/keys-v3.jpg',
     artAlt: 'API keys dashboard floating over a desk — Dev, Staging, and Prod keys with usage bars',
   },
   {
@@ -39,7 +39,7 @@ const CONTROLS = [
     body: 'Assign a monthly cap to each key. When a limit is reached, the API returns a structured 429 so your product can degrade gracefully.',
     proofs: ['Per-key cap', 'Structured 429'],
     tone: 'amber',
-    art: '/runtime/budgets-v2.jpg',
+    art: '/runtime/budgets-v3.jpg',
     artAlt: 'Spend limits panel with evaluation-point gauge and monthly or daily caps',
   },
   {
@@ -50,7 +50,7 @@ const CONTROLS = [
     body: 'Notify engineering and operations by email or webhook as usage approaches a limit, leaving time to investigate, increase capacity, or adjust traffic.',
     proofs: ['Email alerts', 'Webhook thresholds'],
     tone: 'rose',
-    art: '/runtime/alerts-v2.jpg',
+    art: '/runtime/alerts-v3.jpg',
     artAlt: 'Notification settings with alert thresholds and a low-balance toast',
   },
 ] as const;
@@ -182,7 +182,7 @@ export default function GlobalRuntimePage() {
                 </div>
                 <div className="relative aspect-[16/10] overflow-hidden rounded-[1.25rem] border border-zinc-900/[0.07] bg-[#f5f1e8]">
                   <Image
-                    src="/runtime/observability-v2.jpg"
+                    src="/runtime/observability-v3.jpg"
                     alt="Chivox speech assessment API usage and latency analytics dashboard"
                     fill
                     priority
@@ -301,7 +301,7 @@ export default function GlobalRuntimePage() {
               <FadeUp delay={0.08}>
                 <div className="overflow-hidden rounded-[1.75rem] border border-zinc-900/10 bg-white/70 p-2.5 shadow-[0_30px_70px_-40px_rgba(0,0,0,0.35)] backdrop-blur">
                   <div className="relative aspect-[16/11] overflow-hidden rounded-[1.25rem]">
-                    <Image src="/runtime/observability-v2.jpg" alt="Per-key speech assessment API usage charts" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
+                    <Image src="/runtime/observability-v3.jpg" alt="Per-key speech assessment API usage charts" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
                   </div>
                 </div>
               </FadeUp>
@@ -330,7 +330,7 @@ export default function GlobalRuntimePage() {
                   title: 'Audio in. Assessment JSON out.',
                   body: 'Audio is scored in memory, never used for training, and not stockpiled by the scoring runtime.',
                   stat: 'TTL 0s',
-                  art: '/runtime/privacy-v2.jpg',
+                  art: '/runtime/privacy-v3.jpg',
                   alt: 'Stateless speech assessment streaming and zero audio retention',
                   tone: 'text-emerald-800 bg-emerald-500/10',
                 },
@@ -340,7 +340,7 @@ export default function GlobalRuntimePage() {
                   title: 'A runtime built for peak traffic.',
                   body: '9.2B+ evaluations per year, p50 latency of 240 ms, and a 99.95% uptime SLA on the enterprise tier.',
                   stat: '9.2B+ / year',
-                  art: '/runtime/scale-v2.jpg',
+                  art: '/runtime/scale-v3.jpg',
                   alt: 'Global speech assessment API status and latency',
                   tone: 'text-sky-800 bg-sky-500/10',
                 },

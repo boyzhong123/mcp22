@@ -8,11 +8,17 @@ import {
   ArrowUp,
   ArrowUpDown,
   BarChart3,
+  Check,
   ChevronDown,
+  Copy,
   Download,
+  Eye,
+  EyeOff,
   LayoutGrid,
 } from 'lucide-react';
 import { UsageActivityHeatmap } from '../../_components/usage-activity-heatmap';
+import { KernelUsageDetailsModal } from '../../_components/kernel-usage-details-modal';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   getUsage,
@@ -22,13 +28,14 @@ import {
   type UsagePoint,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
-import { useLang } from '../../_lib/use-lang';
+import { useLang, type DevEnLang } from '../../_lib/use-lang';
 import {
   aggregateEvaluationUsage,
   toEvaluationUsage,
   type EvaluationUsageBreakdown,
 } from '../../_lib/evaluation-usage';
-import { EvaluationKernelInfo } from '../../_components/evaluation-kernel-info';
+import { keys as keysApi } from '../../_lib/api';
+import { realKeyId } from '../../_lib/mock-store-bridge';
 
 type Period = 7 | 14 | 28 | 90;
 const PERIODS: Period[] = [7, 14, 28, 90];
@@ -47,7 +54,7 @@ const SERIES_COLORS = [
 ];
 
 export default function UsagePage() {
-  const { t, tx } = useLang();
+  const { lang, t, tx } = useLang();
   const usage = useMockStore(getUsage, [] as UsagePoint[]);
   const keys = useMockStore(listKeys, [] as ApiKey[]);
   const searchParams = useSearchParams();
@@ -68,6 +75,73 @@ export default function UsagePage() {
     column: 'calls' | 'points';
     dir: 'asc' | 'desc';
   }>({ column: 'calls', dir: 'desc' });
+  const [detailsKeyId, setDetailsKeyId] = useState<string | null>(null);
+  const [revealedKeySecrets, setRevealedKeySecrets] = useState<Record<string, string>>({});
+  const [visibleKeyIds, setVisibleKeyIds] = useState<Set<string>>(() => new Set());
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!copiedKeyId) return;
+    const timer = window.setTimeout(() => setCopiedKeyId(null), 1500);
+    return () => window.clearTimeout(timer);
+  }, [copiedKeyId]);
+
+  const revealKeySecret = async (keyId: string) => {
+    const cached = revealedKeySecrets[keyId];
+    if (cached) return cached;
+    try {
+      const secret = await keysApi.reveal(realKeyId(keyId));
+      if (!secret) return null;
+      setRevealedKeySecrets((current) => ({ ...current, [keyId]: secret }));
+      return secret;
+    } catch (error) {
+      console.error('[usage] unable to reveal key', keyId, error);
+      return null;
+    }
+  };
+
+  const toggleKeyVisibility = async (keyId: string) => {
+    if (visibleKeyIds.has(keyId)) {
+      setVisibleKeyIds((current) => {
+        const next = new Set(current);
+        next.delete(keyId);
+        return next;
+      });
+      return;
+    }
+    const secret = await revealKeySecret(keyId);
+    if (!secret) return;
+    setVisibleKeyIds((current) => new Set(current).add(keyId));
+  };
+
+  const copyKeySecret = async (keyId: string) => {
+    const secret = await revealKeySecret(keyId);
+    if (!secret) return;
+    let copied = false;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(secret);
+        copied = true;
+      } catch {
+        // Fall through for non-secure contexts and restricted browsers.
+      }
+    }
+    if (!copied) {
+      const textarea = document.createElement('textarea');
+      textarea.value = secret;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        copied = document.execCommand('copy');
+      } catch {
+        copied = false;
+      }
+      document.body.removeChild(textarea);
+    }
+    if (copied) setCopiedKeyId(keyId);
+  };
 
   // Deep-link: `/dashboard/usage?key=<keyId>` pre-selects that key so
   // clicking "View usage" from the API Keys page drops the user into a
@@ -197,18 +271,9 @@ export default function UsagePage() {
       });
   }, [filteredUsage, keys, breakdownSort]);
 
-  // Union of CoreType columns across the visible rows.
-  const coreTypeColumns = useMemo(() => {
-    const map = new Map<string, { coreType: string; displayName: string; points: number }>();
-    for (const row of perKeyBreakdown) {
-      for (const ct of row.usage.coreTypes) {
-        const cur = map.get(ct.coreType);
-        if (cur) cur.points += ct.evaluationPoints;
-        else map.set(ct.coreType, { coreType: ct.coreType, displayName: ct.displayName, points: ct.evaluationPoints });
-      }
-    }
-    return [...map.values()].sort((a, b) => b.points - a.points);
-  }, [perKeyBreakdown]);
+  const detailsRow = detailsKeyId
+    ? perKeyBreakdown.find((row) => row.key.id === detailsKeyId) ?? null
+    : null;
 
   const toggleBreakdownSort = (column: 'calls' | 'points') => {
     setBreakdownSort((prev) =>
@@ -623,111 +688,170 @@ export default function UsagePage() {
         <div className="px-5 py-4 border-b border-border/60">
           <div className="text-sm font-semibold">{tx('Per-key breakdown')}</div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {t('Calls and evaluation points per key within the current filter.', '当前筛选范围内，按 Key 展示调用次数与评测积分拆分。')}
+            {t(
+              'Calls and consumed points per key. Open details to see the per-kernel breakdown.',
+              '按 Key 展示调用次数与消耗积分；点击查看明细可查看各内核用量。',
+            )}
           </p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-hidden">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-[18%]" />
+              <col className="w-[20%]" />
+              <col className="w-[9%]" />
+              <col className="w-[15%]" />
+              <col className="w-[12%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+            </colgroup>
             <thead className="bg-muted/30">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="text-left px-5 py-2.5 font-semibold">{tx('Name')}</th>
-                <th className="text-left px-5 py-2.5 font-semibold">{tx('Key')}</th>
-                <th className="text-right px-5 py-2.5 font-semibold">
+                <th className="px-3 py-2.5 text-left font-semibold">{tx('Name')}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{tx('Key')}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t('Status', '状态')}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t('Last used', '最近调用')}</th>
+                <th className="px-3 py-2.5 text-right font-semibold">
                   <SortHeader
-                    label={tx('Calls')}
+                    label={t('Call count', '调用次数')}
                     active={breakdownSort.column === 'calls'}
                     dir={breakdownSort.dir}
                     onClick={() => toggleBreakdownSort('calls')}
                   />
                 </th>
-                <th className="text-right px-5 py-2.5 font-semibold">
+                <th className="px-3 py-2.5 text-right font-semibold">
                   <SortHeader
-                    label={t('Points', '积分')}
+                    label={t('Points consumed', '消耗积分')}
                     active={breakdownSort.column === 'points'}
                     dir={breakdownSort.dir}
                     onClick={() => toggleBreakdownSort('points')}
                   />
                 </th>
-                <th className="text-right px-5 py-2.5 font-semibold">
-                  <span className="flex items-center justify-end gap-1.5">
-                    {t('Uncovered', '未覆盖')}
-                    <EvaluationKernelInfo />
-                  </span>
-                  <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
-                    {t('pts', '积分')}
-                  </span>
+                <th className="px-3 py-2.5 text-right font-semibold">
+                  {t('Kernel details', '内核明细')}
                 </th>
-                {coreTypeColumns.map((ct) => (
-                  <th key={ct.coreType} className="text-right px-5 py-2.5 font-semibold">
-                    <span className="block truncate max-w-[160px] ml-auto" title={ct.coreType}>
-                      {ct.displayName}
-                    </span>
-                    <span className="block font-normal normal-case tracking-normal text-muted-foreground/80">
-                      {t('calls / pts', '次 / 积分')}
-                    </span>
-                  </th>
-                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {perKeyBreakdown.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5 + coreTypeColumns.length}
+                    colSpan={7}
                     className="px-5 py-8 text-center text-sm text-muted-foreground"
                   >
                     {tx('No usage in this window.')}
                   </td>
                 </tr>
               ) : (
-                perKeyBreakdown.map((row) => {
-                  const byCoreType = new Map(row.usage.coreTypes.map((ct) => [ct.coreType, ct]));
-                  return (
-                    <tr key={row.key.id}>
-                      <td className="px-5 py-3 text-sm font-medium">{row.key.name}</td>
-                      <td className="px-5 py-3 font-mono text-[11px] text-muted-foreground">
-                        {keyLast4(row.key.secret)}
-                      </td>
-                      <td className="px-5 py-3 text-right tabular-nums">
-                        {row.usage.calls.toLocaleString('en-US')} {tx('calls')}
-                      </td>
-                      <td className="px-5 py-3 text-right tabular-nums font-medium">
-                        {row.usage.totalPoints.toLocaleString('en-US')} {tx('pts')}
-                      </td>
-                      <td
+                perKeyBreakdown.map((row) => (
+                  <tr key={row.key.id}>
+                    <td className="px-3 py-3">
+                      <div className="truncate text-sm font-medium" title={row.key.name}>{row.key.name}</div>
+                      <div className="mt-1 truncate text-[10px] text-muted-foreground">
+                        {t('Created', '创建于')} {formatKeyDate(row.key.createdAt, lang, false)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex min-w-0 items-center gap-0.5">
+                        <code
+                          className={cn(
+                            'mr-1 min-w-0 shrink truncate font-mono text-[11px]',
+                            visibleKeyIds.has(row.key.id)
+                              ? 'break-all text-foreground'
+                              : 'truncate text-muted-foreground',
+                          )}
+                        >
+                          {visibleKeyIds.has(row.key.id)
+                            ? revealedKeySecrets[row.key.id]
+                            : keyLast4(row.key.secret)}
+                        </code>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                          aria-label={visibleKeyIds.has(row.key.id)
+                            ? t('Hide full key', '隐藏完整 Key')
+                            : t('Show full key', '显示完整 Key')}
+                          title={visibleKeyIds.has(row.key.id)
+                            ? t('Hide full key', '隐藏完整 Key')
+                            : t('Show full key', '显示完整 Key')}
+                          onClick={() => void toggleKeyVisibility(row.key.id)}
+                        >
+                          {visibleKeyIds.has(row.key.id) ? <EyeOff /> : <Eye />}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                          aria-label={copiedKeyId === row.key.id
+                            ? t('Copied', '已复制')
+                            : t('Copy full key', '复制完整 Key')}
+                          title={copiedKeyId === row.key.id
+                            ? t('Copied', '已复制')
+                            : t('Copy full key', '复制完整 Key')}
+                          onClick={() => void copyKeySecret(row.key.id)}
+                        >
+                          {copiedKeyId === row.key.id
+                            ? <Check className="text-emerald-600" />
+                            : <Copy />}
+                        </Button>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span
                         className={cn(
-                          'px-5 py-3 text-right tabular-nums text-xs',
-                          row.usage.uncoveredPoints > 0
-                            ? 'text-amber-600 dark:text-amber-400 font-medium'
-                            : 'text-muted-foreground',
+                          'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                          row.key.status === 'active' && 'border-emerald-300/70 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300',
+                          row.key.status === 'paused' && 'border-amber-300/70 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300',
+                          row.key.status === 'revoked' && 'border-border bg-muted/50 text-muted-foreground',
                         )}
                       >
-                        {row.usage.uncoveredPoints.toLocaleString('en-US')} {tx('pts')}
-                      </td>
-                      {coreTypeColumns.map((col) => {
-                        const ct = byCoreType.get(col.coreType);
-                        return (
-                          <td key={col.coreType} className="px-5 py-3 text-right tabular-nums text-xs">
-                            {ct ? (
-                              <>
-                                {ct.calls.toLocaleString('en-US')} {tx('calls')}
-                                <span className="text-muted-foreground mx-1">/</span>
-                                {ct.evaluationPoints.toLocaleString('en-US')} {tx('pts')}
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })
+                        {row.key.status === 'active'
+                          ? t('Active', '已启用')
+                          : row.key.status === 'paused'
+                            ? t('Paused', '已停用')
+                            : t('Revoked', '已撤销')}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-xs leading-tight text-muted-foreground">
+                      {row.key.lastUsedAt
+                        ? formatKeyDate(row.key.lastUsedAt, lang, true)
+                        : t('Never used', '尚未调用')}
+                    </td>
+                    <td className="px-3 py-3 text-right text-xs tabular-nums">
+                      {row.usage.calls.toLocaleString('en-US')} {tx('calls')}
+                    </td>
+                    <td className="px-3 py-3 text-right text-xs font-medium tabular-nums">
+                      {row.usage.totalPoints.toLocaleString('en-US')} {tx('pts')}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="whitespace-nowrap px-2.5"
+                        onClick={() => setDetailsKeyId(row.key.id)}
+                      >
+                        <Eye />
+                        {t('View details', '查看明细')}
+                      </Button>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <KernelUsageDetailsModal
+        open={detailsRow !== null}
+        keyName={detailsRow?.key.name ?? ''}
+        usage={detailsRow?.usage ?? null}
+        onClose={() => setDetailsKeyId(null)}
+      />
     </div>
   );
 }
@@ -833,6 +957,17 @@ function Kpi({
       {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
+}
+
+function formatKeyDate(value: string, lang: DevEnLang, includeTime: boolean): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  }).format(date);
 }
 
 /**

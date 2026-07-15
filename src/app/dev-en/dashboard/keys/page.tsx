@@ -8,6 +8,8 @@ import {
   Copy,
   CreditCard,
   DollarSign,
+  Eye,
+  EyeOff,
   Info,
   Key,
   MoreHorizontal,
@@ -32,7 +34,9 @@ import {
   getAccountTrialRemaining,
   getBillingTier,
   getKeyMonthlyCalls,
-  keyLast4,
+  getKeyMonthlyEvaluationPoints,
+  getKeyTodayCalls,
+  getKeyTodayEvaluationPoints,
   listKeys,
   renameKey,
   setKeyPaused,
@@ -42,6 +46,7 @@ import {
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
+import { showActionToast } from '../../_components/action-toast';
 import { KeySettingsModal } from '../../_components/key-settings-modal';
 import { ModalPortal } from '../../_components/modal-portal';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
@@ -65,6 +70,8 @@ export default function KeysPage() {
   const { tx, t } = useLang();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({});
+  const [visibleKeyIds, setVisibleKeyIds] = useState<Set<string>>(() => new Set());
 
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
@@ -95,15 +102,41 @@ export default function KeysPage() {
     });
   }, [allKeys]);
 
-  // Copy the full plaintext key via the reveal endpoint.
-  const copy = async (_secret: string | undefined, id: string) => {
-    let full: string;
+  const reveal = async (id: string) => {
+    const cached = revealedSecrets[id];
+    if (cached) return cached;
     try {
-      full = await keysApi.reveal(realKeyId(id));
+      const full = await keysApi.reveal(realKeyId(id));
+      if (!full) return null;
+      setRevealedSecrets((current) => ({ ...current, [id]: full }));
+      return full;
     } catch (err) {
       console.error('[keys] reveal failed for', id, err);
+      return null;
+    }
+  };
+
+  const toggleVisibility = async (id: string) => {
+    if (visibleKeyIds.has(id)) {
+      setVisibleKeyIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
       return;
     }
+    const full = await reveal(id);
+    if (!full) return;
+    setVisibleKeyIds((current) => new Set(current).add(id));
+  };
+
+  // Copy the full plaintext key via the reveal endpoint. A freshly created
+  // key is already available in memory, so that one does not need a second
+  // reveal request.
+  const copy = async (freshSecret: string | undefined, id: string) => {
+    const isFresh = id.endsWith(':fresh');
+    const baseId = isFresh ? id.slice(0, -':fresh'.length) : id;
+    const full = isFresh ? freshSecret : await reveal(baseId);
     if (!full) return;
     let ok = false;
     if (navigator.clipboard?.writeText) {
@@ -139,6 +172,10 @@ export default function KeysPage() {
     const created = createKey(newName);
     setJustCreated(created);
     setCreateOpen(false);
+    showActionToast({
+      title: t('Key created', 'Key 创建成功'),
+      description: t('Copy and store the secret securely.', '请及时复制并妥善保存完整 Key。'),
+    });
   };
 
   return (
@@ -229,6 +266,9 @@ export default function KeysPage() {
                   apiKey={k}
                   copy={copy}
                   copiedId={copiedId}
+                  revealedSecret={revealedSecrets[k.id]}
+                  visible={visibleKeyIds.has(k.id)}
+                  onToggleVisibility={() => void toggleVisibility(k.id)}
                   onSettings={() => setSettingsFor(k)}
                   onPause={() => setConfirmPause(k)}
                   onResume={() => setKeyPaused(k.id, false)}
@@ -387,7 +427,7 @@ function SectionHeader({
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
-      <div className="min-w-0">
+      <div className="min-h-12 min-w-0">
         <div className="flex items-center gap-2">
           <Icon className={cn('h-4 w-4', toneClass)} />
           <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-foreground">
@@ -480,10 +520,13 @@ function NewKeyToast({
 function PaidTableHeader() {
   const { t, tx } = useLang();
   return (
-    <div className="hidden md:grid grid-cols-[1.6fr_1.1fr_1.1fr_auto] gap-5 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70 bg-gradient-to-b from-muted/60 to-muted/30 border-b border-border rounded-t-xl">
+    <div className="hidden lg:grid grid-cols-[minmax(150px,1.1fr)_minmax(140px,.9fr)_minmax(150px,.95fr)_minmax(95px,.65fr)_minmax(95px,.65fr)_minmax(85px,.55fr)_112px] gap-3 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70 bg-gradient-to-b from-muted/60 to-muted/30 border-b border-border rounded-t-xl">
       <div>{tx('Key')}</div>
-      <div>{t('Calls this month', '本月调用')}</div>
-      <div>{tx('Limits')}</div>
+      <div>{t('Usage today', '今日用量')}</div>
+      <div>{t('Usage this month', '本月用量')}</div>
+      <div>{t('Monthly limits', '月度上限')}</div>
+      <div>{t('Daily limits', '每日上限')}</div>
+      <div>{t('Last used', '最近使用')}</div>
       <div className="text-right pr-1">{tx('Actions')}</div>
     </div>
   );
@@ -518,6 +561,9 @@ function PaidKeyRow({
   apiKey: k,
   copy,
   copiedId,
+  revealedSecret,
+  visible,
+  onToggleVisibility,
   onSettings,
   onPause,
   onResume,
@@ -529,6 +575,9 @@ function PaidKeyRow({
   apiKey: ApiKey;
   copy: (secret: string, id: string) => Promise<void>;
   copiedId: string | null;
+  revealedSecret?: string;
+  visible: boolean;
+  onToggleVisibility: () => void;
   onSettings: () => void;
   /** Open the confirm-disable modal. */
   onPause: () => void;
@@ -540,27 +589,27 @@ function PaidKeyRow({
   menuOpen: boolean;
   setMenu: (open: boolean) => void;
 }) {
-  const { tx, t } = useLang();
+  const { lang, tx, t } = useLang();
   const isRevoked = k.status === 'revoked';
   const isPaused = k.status === 'paused';
   const isEnabled = !isRevoked && !isPaused;
   const isPinned = !!k.pinned;
   const tier = getBillingTier(k);
+  const todayCalls = getKeyTodayCalls(k.id);
+  const todayPoints = getKeyTodayEvaluationPoints(k.id);
   const monthCalls = getKeyMonthlyCalls(k.id);
+  const monthPoints = getKeyMonthlyEvaluationPoints(k.id);
   const callCap = k.monthlyCallCap;
-  const capPct =
-    callCap != null && callCap > 0
-      ? Math.min(100, (monthCalls / callCap) * 100)
-      : null;
 
   const hasPointCap = k.monthlyPointCap !== null && k.monthlyPointCap > 0;
   const hasCallCap = callCap != null && callCap > 0;
-  const hasAnyCap = hasPointCap || hasCallCap;
+  const dailyPointCap = k.dailyPointCap ?? null;
+  const dailyCallCap = k.dailyCallCap ?? null;
 
   return (
     <li
       className={cn(
-        'group relative px-5 py-3.5 md:grid md:grid-cols-[1.6fr_1.1fr_1.1fr_auto] md:gap-5 md:items-center flex flex-col gap-3 transition-colors hover:bg-muted/20',
+        'group relative px-5 py-3.5 lg:grid lg:grid-cols-[minmax(150px,1.1fr)_minmax(140px,.9fr)_minmax(150px,.95fr)_minmax(95px,.65fr)_minmax(95px,.65fr)_minmax(85px,.55fr)_112px] lg:gap-3 lg:items-start flex flex-col gap-3 transition-colors hover:bg-muted/20',
         // Pinned rows get a faint amber wash and a left accent — visible
         // but never noisy enough to fight the row's own status colour.
         isPinned && !isRevoked && 'bg-amber-50/40 dark:bg-amber-500/[0.04] hover:bg-amber-50/60',
@@ -579,7 +628,7 @@ function PaidKeyRow({
       )}
 
       {/* ─── Identity column: toggle · name · status pills · last4 ─── */}
-      <div className="min-w-0">
+      <div className="min-h-12 min-w-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <EnableToggle
             enabled={isEnabled}
@@ -620,13 +669,30 @@ function PaidKeyRow({
           )}
         </div>
         <div className="flex items-center gap-1 mt-1 pl-[40px]">
-          <code className="font-mono text-[11px] text-muted-foreground/90 tracking-tight">
-            sk_…{keyLast4(k.secret)}
+          <code
+            className={cn(
+              'font-mono text-[11px] tracking-tight',
+              visible ? 'break-all text-foreground' : 'text-muted-foreground/90',
+            )}
+          >
+            {visible ? revealedSecret : `sk_…${k.secret.slice(-4)}`}
           </code>
           <button
+            type="button"
+            onClick={onToggleVisibility}
+            disabled={isRevoked}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/80 hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
+            aria-label={visible ? t('Hide full key', '隐藏完整 Key') : t('Show full key', '显示完整 Key')}
+            title={visible ? t('Hide full key', '隐藏完整 Key') : t('Show full key', '显示完整 Key')}
+          >
+            {visible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+          </button>
+          <button
+            type="button"
             onClick={() => copy(k.secret, k.id)}
             disabled={isRevoked}
-            className="h-5 w-5 rounded hover:bg-muted/60 flex items-center justify-center text-muted-foreground/80 hover:text-foreground disabled:opacity-40"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/80 hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
+            aria-label={copiedId === k.id ? t('Copied', '已复制') : t('Copy full key', '复制完整 Key')}
             title={tx('Copy full secret')}
           >
             {copiedId === k.id ? (
@@ -641,92 +707,56 @@ function PaidKeyRow({
         </div>
       </div>
 
-      {/* ─── Calls this month (with optional cap progress) ─── */}
-      <div className="min-w-0">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[15px] font-semibold tabular-nums tracking-tight">
-            {formatCalls(monthCalls)}
-          </span>
-          {capPct !== null && (
-            <span className="text-[10px] text-muted-foreground tabular-nums">
-              / {formatCalls(callCap ?? 0)}
-            </span>
-          )}
-        </div>
-        {capPct !== null ? (
-          <>
-            <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all',
-                  capPct >= 90
-                    ? 'bg-amber-500'
-                    : capPct >= 70
-                      ? 'bg-foreground/60'
-                      : 'bg-emerald-500/70',
-                )}
-                style={{ width: `${capPct}%` }}
-              />
-            </div>
-            <div className="text-[10.5px] text-muted-foreground mt-1 tabular-nums">
-              {t(`${capPct.toFixed(0)}% used this month`, `本月已用 ${capPct.toFixed(0)}%`)}
-            </div>
-          </>
-        ) : (
-          <div className="text-[10.5px] text-muted-foreground/80 mt-1">
-            {t('this month', '本月调用')}
-          </div>
-        )}
-      </div>
+      <KeyUsageCell
+        label={t('Usage today', '今日用量')}
+        calls={todayCalls}
+        points={todayPoints}
+        callCap={dailyCallCap}
+        pointCap={dailyPointCap}
+      />
+
+      <KeyUsageCell
+        label={t('Usage this month', '本月用量')}
+        calls={monthCalls}
+        points={monthPoints}
+        callCap={callCap}
+        pointCap={k.monthlyPointCap}
+      />
 
       {/* ─── Limits column ───────────────────────────────────────
-           When no caps are set we collapse the three-element placeholder
-           ($ No cap · Calls No cap · Click to set) into a single subtle
-           "Set limits" affordance — three muted bits next to each other
-           read as a single noisy stripe and made the row feel cluttered.
-           When caps *are* set we show only the active chips. */}
-      <div className="min-w-0">
-        {hasAnyCap ? (
-          <button
-            type="button"
-            onClick={onSettings}
-            disabled={isRevoked}
-            className="flex flex-wrap items-center gap-1 -mx-1 px-1 py-1 rounded-md text-left transition-colors hover:bg-muted/40 disabled:opacity-40 disabled:pointer-events-none"
-            title={tx('Configure point cap & monthly call cap')}
-          >
-            {hasPointCap && (
-              <CapChip
-                icon={Sparkles}
-                label={`${formatCalls(k.monthlyPointCap ?? 0)} ${t('points', '积分')}/${t('mo', '月')}`}
-              />
-            )}
-            {hasCallCap && (
-              <CapChip
-                icon={Zap}
-                label={`${formatCalls(callCap ?? 0)}/${t('mo', '月')}`}
-              />
-            )}
-            {(!hasPointCap || !hasCallCap) && (
-              <span className="text-[10.5px] text-muted-foreground/70">
-                {!hasPointCap && !hasCallCap
-                  ? null
-                  : !hasPointCap
-                    ? t('· no point cap', '· 不限积分')
-                    : t('· no call cap', '· 不限次数')}
-              </span>
-            )}
-          </button>
+           Monthly and daily caps are separate columns so every value saved
+           in the settings dialog remains visible from the list. */}
+      <KeyLimitCell
+        label={t('Monthly limits', '月度上限')}
+        pointCap={hasPointCap ? k.monthlyPointCap : null}
+        callCap={hasCallCap ? callCap : null}
+        onSettings={onSettings}
+        disabled={isRevoked}
+      />
+
+      <KeyLimitCell
+        label={t('Daily limits', '每日上限')}
+        pointCap={dailyPointCap != null && dailyPointCap > 0 ? dailyPointCap : null}
+        callCap={dailyCallCap != null && dailyCallCap > 0 ? dailyCallCap : null}
+        onSettings={onSettings}
+        disabled={isRevoked}
+      />
+
+      <div className="min-h-12 min-w-0 text-xs tabular-nums">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground lg:hidden">
+          {t('Last used', '最近使用')}
+        </div>
+        {k.lastUsedAt ? (
+          <span className="text-foreground/80">
+            {new Date(k.lastUsedAt).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
         ) : (
-          <button
-            type="button"
-            onClick={onSettings}
-            disabled={isRevoked}
-            className="inline-flex items-center gap-1 h-6 px-2 -mx-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:pointer-events-none border border-dashed border-border/70"
-            title={tx('Configure point cap & monthly call cap')}
-          >
-            <Plus className="h-3 w-3" />
-            {t('Set limits', '设置上限')}
-          </button>
+          <span className="text-muted-foreground">{t('Never used', '尚未使用')}</span>
         )}
       </div>
 
@@ -737,7 +767,7 @@ function PaidKeyRow({
            now (driven by the wallet strip CTA), so a per-row dollar icon
            was misleading. The "more" trigger sits past a hairline divider
            to mark it as the menu launcher. */}
-      <div className="flex md:justify-end items-center relative">
+      <div className="flex lg:justify-end items-center relative">
         <div className="inline-flex items-center rounded-lg border border-border bg-background shadow-sm p-0.5 gap-0.5">
           <IconButton
             icon={isPinned ? PinOff : Pin}
@@ -809,24 +839,159 @@ function PaidKeyRow({
   );
 }
 
+function KeyUsageCell({
+  label,
+  calls,
+  points,
+  callCap,
+  pointCap,
+}: {
+  label: string;
+  calls: number;
+  points: number;
+  callCap: number | null;
+  pointCap: number | null;
+}) {
+  const { t } = useLang();
+
+  return (
+    <div className="min-h-14 min-w-0 space-y-2">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground lg:hidden">
+        {label}
+      </div>
+      <UsageMetric
+        icon={Zap}
+        label={t('Calls', '次数')}
+        used={calls}
+        cap={callCap}
+      />
+      <UsageMetric
+        icon={Sparkles}
+        label={t('Points', '积分')}
+        used={points}
+        cap={pointCap}
+      />
+    </div>
+  );
+}
+
+function UsageMetric({
+  icon: Icon,
+  label,
+  used,
+  cap,
+}: {
+  icon: LucideIcon;
+  label: string;
+  used: number;
+  cap: number | null;
+}) {
+  const { t } = useLang();
+  const normalizedCap = cap != null && cap > 0 ? cap : null;
+  const percent = normalizedCap == null ? null : Math.min(100, (used / normalizedCap) * 100);
+  const progressTone = percent == null
+    ? null
+    : percent >= 100
+      ? { bar: 'bg-red-500', text: 'text-red-600 dark:text-red-400' }
+      : percent >= 90
+        ? { bar: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400' }
+        : percent >= 70
+          ? { bar: 'bg-amber-400', text: 'text-amber-700 dark:text-amber-300' }
+          : { bar: 'bg-emerald-500/70', text: 'text-emerald-700 dark:text-emerald-300' };
+
+  return (
+    <div>
+      <div className="flex min-w-0 items-center gap-1 text-[10.5px] leading-none tabular-nums">
+        <Icon className="size-3 shrink-0 text-muted-foreground" />
+        <span className="shrink-0 text-muted-foreground">{label}</span>
+        <span className="truncate font-semibold text-foreground">
+          {formatCalls(used)} / {normalizedCap == null ? t('Unlimited', '不限') : formatCalls(normalizedCap)}
+        </span>
+        {percent != null ? (
+          <span className={cn('ml-auto shrink-0 text-[9.5px] font-medium', progressTone?.text)}>
+            {percent.toFixed(0)}%
+          </span>
+        ) : null}
+      </div>
+      {percent != null ? (
+        <div
+          className="mt-1 h-1 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-label={`${label} ${percent.toFixed(0)}%`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(percent)}
+        >
+          <div
+            className={cn('h-full rounded-full transition-colors', progressTone?.bar)}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Compact pill showing a single per-key cap (spend $/mo or calls/mo).
  * Active = a cap is configured; muted = "no cap". Clicking the parent
  * row's button takes the user into the settings modal — the chip
  * itself is presentational.
  */
-function CapChip({
-  icon: Icon,
+function KeyLimitCell({
   label,
+  pointCap,
+  callCap,
+  onSettings,
+  disabled,
 }: {
-  icon: LucideIcon;
   label: string;
+  pointCap: number | null;
+  callCap: number | null;
+  onSettings: () => void;
+  disabled: boolean;
 }) {
+  const { t } = useLang();
+  const hasLimit = pointCap != null || callCap != null;
+
   return (
-    <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] font-medium tabular-nums bg-foreground/[0.04] border border-border text-foreground">
-      <Icon className="h-2.5 w-2.5 shrink-0" />
-      <span>{label}</span>
-    </span>
+    <div className="min-h-12 min-w-0">
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground lg:hidden">
+        {label}
+      </div>
+      <button
+        type="button"
+        onClick={onSettings}
+        disabled={disabled}
+        className={cn(
+          '-mx-1 rounded-md px-1 py-0 text-left transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-40',
+          !hasLimit && 'inline-flex items-center gap-1 text-muted-foreground',
+        )}
+        title={t('Configure key limits', '配置 Key 上限')}
+      >
+        {hasLimit ? (
+          <span className="grid gap-1 text-[11px] tabular-nums">
+            <span className={cn('inline-flex items-center gap-1.5', pointCap == null && 'text-muted-foreground')}>
+              <Sparkles className="size-3 shrink-0" />
+              {pointCap == null
+                ? t('Points: unlimited', '积分：不限')
+                : t(`${formatCalls(pointCap)} points`, `${formatCalls(pointCap)} 积分`)}
+            </span>
+            <span className={cn('inline-flex items-center gap-1.5', callCap == null && 'text-muted-foreground')}>
+              <Zap className="size-3 shrink-0" />
+              {callCap == null
+                ? t('Calls: unlimited', '次数：不限')
+                : t(`${formatCalls(callCap)} calls`, `${formatCalls(callCap)} 次`)}
+            </span>
+          </span>
+        ) : (
+          <>
+            <Plus className="size-3" />
+            <span className="text-[11px]">{t('Set limits', '设置上限')}</span>
+          </>
+        )}
+      </button>
+    </div>
   );
 }
 

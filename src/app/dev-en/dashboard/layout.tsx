@@ -11,6 +11,7 @@ import { DataHydrator } from '../_components/data-hydrator';
 import { OnboardingTour } from '../_components/onboarding-tour';
 import { BrandLoader } from '../_components/brand-loader';
 import { NavigationProgress } from '../_components/navigation-progress';
+import { ActionToastHost } from '../_components/action-toast';
 import { useUi } from '../_lib/use-ui-store';
 
 export default function DevEnDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -62,6 +63,7 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
       <DevEnCommandPalette />
       <DataHydrator />
       <OnboardingTour />
+      <ActionToastHost />
     </div>
   );
 }

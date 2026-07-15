@@ -105,6 +105,7 @@ export default function RechargeHistoryPage() {
     () => succeeded.reduce((acc, transaction) => acc + creditedPoints(transaction), 0),
     [succeeded],
   );
+  const latestSucceeded = succeeded[0];
 
   return (
     <div className="space-y-6">
@@ -121,9 +122,9 @@ export default function RechargeHistoryPage() {
         />
         <SummaryCard
           label={t('Latest credit', '最近到账积分')}
-          value={all[0] ? formatPoints(creditedPoints(all[0])) : '—'}
-          hint={all[0] ? formatDate(all[0].createdAt) : tx('No payments yet')}
-          badge={all[0] ? <StatusPill status={all[0].status} /> : undefined}
+          value={latestSucceeded ? formatPoints(creditedPoints(latestSucceeded)) : '—'}
+          hint={latestSucceeded ? formatDate(latestSucceeded.createdAt) : tx('No payments yet')}
+          badge={latestSucceeded ? <StatusPill status={latestSucceeded.status} /> : undefined}
         />
       </div>
 
@@ -183,7 +184,9 @@ export default function RechargeHistoryPage() {
         ) : (
           <ul className="divide-y divide-border">
             {filtered.map((transaction) => {
-              const usage = pointUsage(transaction, pointBatches);
+              const usage = transaction.status === 'succeeded'
+                ? pointUsage(transaction, pointBatches)
+                : null;
               return (
               <li key={transaction.id}>
                 <button
@@ -202,12 +205,18 @@ export default function RechargeHistoryPage() {
                     <span className="mr-1 text-[11px] font-medium text-muted-foreground md:hidden">
                       {t('Credited', '到账')}
                     </span>
-                    +{formatPoints(creditedPoints(transaction))}
+                    {transaction.status === 'succeeded'
+                      ? `+${formatPoints(creditedPoints(transaction))}`
+                      : '—'}
                   </div>
-                  <PointUsageProgress
-                    creditedPoints={creditedPoints(transaction)}
-                    usage={usage}
-                  />
+                  {usage ? (
+                    <PointUsageProgress
+                      creditedPoints={creditedPoints(transaction)}
+                      usage={usage}
+                    />
+                  ) : (
+                    <UncreditedPointUsage status={transaction.status} />
+                  )}
                   <div>
                     <StatusPill status={transaction.status} />
                   </div>
@@ -221,7 +230,9 @@ export default function RechargeHistoryPage() {
       </div>
       <TransactionDetailDrawer
         transaction={selectedTransaction}
-        pointUsage={selectedTransaction ? pointUsage(selectedTransaction, pointBatches) : null}
+        pointUsage={selectedTransaction?.status === 'succeeded'
+          ? pointUsage(selectedTransaction, pointBatches)
+          : null}
         loading={detailLoading}
         onClose={() => setSelectedTransaction(null)}
       />
@@ -265,6 +276,10 @@ function TransactionDetailDrawer({
 }) {
   const { t, tx, lang } = useLang();
   if (!transaction) return null;
+  const isCredited = transaction.status === 'succeeded';
+  const uncreditedLabel = transaction.status === 'pending'
+    ? t('Not credited yet', '尚未到账')
+    : t('Not credited', '未到账');
 
   return (
     <ModalPortal>
@@ -307,7 +322,7 @@ function TransactionDetailDrawer({
                 <div>
                   <p className="text-xs text-muted-foreground">{t('Top-up amount', '充值金额')}</p>
                   <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                    +{formatPoints(creditedPoints(transaction))}
+                    {isCredited ? `+${formatPoints(creditedPoints(transaction))}` : '—'}
                   </p>
                 </div>
                 <StatusPill status={transaction.status} />
@@ -354,7 +369,7 @@ function TransactionDetailDrawer({
                 />
                 <DetailRow
                   label={t('Points credited', '实际到账')}
-                  value={`+${formatPoints(creditedPoints(transaction))}`}
+                  value={isCredited ? `+${formatPoints(creditedPoints(transaction))}` : '—'}
                 />
                 <DetailRow
                   label={t('Valid through', '有效期至')}
@@ -386,33 +401,41 @@ function TransactionDetailDrawer({
               <div className="rounded-xl border border-border divide-y divide-border">
                 <DetailRow
                   label={t('Points used', '已用积分')}
-                  value={formatPoints(pointUsage?.usedPoints ?? 0)}
+                  value={pointUsage ? formatPoints(pointUsage.usedPoints) : '—'}
                 />
                 <DetailRow
                   label={t('Points remaining', '剩余积分')}
-                  value={formatPoints(pointUsage?.remainingPoints ?? creditedPoints(transaction))}
+                  value={pointUsage ? formatPoints(pointUsage.remainingPoints) : '—'}
                 />
+                {pointUsage?.state === 'expired' && (
+                  <DetailRow
+                    label={t('Points voided', '作废积分')}
+                    value={formatPoints(pointUsage.voidedPoints)}
+                  />
+                )}
                 <DetailRow
                   label={t('Usage status', '使用状态')}
                   value={
-                    pointUsage?.state === 'expired'
+                    !pointUsage
+                      ? uncreditedLabel
+                      : pointUsage.state === 'expired'
                       ? t('Voided (unused after 30 days)', '已作废（30 天未用完）')
-                      : pointUsage?.state === 'exhausted'
+                      : pointUsage.state === 'exhausted'
                         ? t('Used up', '已用完')
                         : t('In use', '使用中')
                   }
                 />
               </div>
               <div className="mt-3 rounded-xl border border-border bg-muted/20 p-4">
-                <PointUsageProgress
-                  creditedPoints={creditedPoints(transaction)}
-                  usage={pointUsage ?? {
-                    usedPoints: 0,
-                    remainingPoints: creditedPoints(transaction),
-                    state: 'active',
-                  }}
-                  detailed
-                />
+                {pointUsage ? (
+                  <PointUsageProgress
+                    creditedPoints={creditedPoints(transaction)}
+                    usage={pointUsage}
+                    detailed
+                  />
+                ) : (
+                  <UncreditedPointUsage status={transaction.status} />
+                )}
               </div>
             </div>
 
@@ -454,10 +477,25 @@ function creditedPoints(transaction: Transaction): number {
 type PointUsage = {
   usedPoints: number;
   remainingPoints: number;
+  voidedPoints: number;
   /** Lifecycle of this top-up's point batch(es). */
   state: 'active' | 'exhausted' | 'expired';
   expiresAt?: string;
 };
+
+function UncreditedPointUsage({ status }: { status: Transaction['status'] }) {
+  const { t } = useLang();
+  return (
+    <div className="min-w-0 py-0.5 text-[11px] text-muted-foreground">
+      <span className="text-[12px] font-semibold text-foreground">—</span>
+      <div className="mt-1">
+        {status === 'pending'
+          ? t('Not credited yet', '尚未到账')
+          : t('Not credited', '未到账')}
+      </div>
+    </div>
+  );
+}
 
 function batchLifecycle(batch: EvaluationPointBatch): PointUsage['state'] {
   // Prefer the stored batch status when the API/mock already classified it.
@@ -490,7 +528,7 @@ function PointUsageProgress({
     : 0;
   const voidedPercent =
     usage.state === 'expired' && credited > 0
-      ? Math.min(100, Math.max(0, (usage.remainingPoints / credited) * 100))
+      ? Math.min(100, Math.max(0, (usage.voidedPoints / credited) * 100))
       : 0;
 
   const theme =
@@ -533,8 +571,8 @@ function PointUsageProgress({
   const footer =
     usage.state === 'expired'
       ? t(
-          `${formatPoints(usage.remainingPoints)} voided · ${formatPoints(usage.usedPoints)} used · ${formatPoints(credited)} credited`,
-          `作废 ${formatPoints(usage.remainingPoints)} · 已用 ${formatPoints(usage.usedPoints)} · 到账 ${formatPoints(credited)}`,
+          `${formatPoints(usage.voidedPoints)} voided · ${formatPoints(usage.usedPoints)} used · ${formatPoints(credited)} credited`,
+          `作废 ${formatPoints(usage.voidedPoints)} · 已用 ${formatPoints(usage.usedPoints)} · 到账 ${formatPoints(credited)}`,
         )
       : usage.state === 'exhausted'
         ? t(
@@ -599,14 +637,22 @@ function PointUsageProgress({
 function pointUsage(transaction: Transaction, batches: EvaluationPointBatch[]): PointUsage {
   const matchingBatches = batches.filter((batch) => batch.transactionId === transaction.id);
   if (matchingBatches.length > 0) {
-    const usage = matchingBatches.reduce(
-      (total, batch) => ({
-        usedPoints: total.usedPoints + batch.usedPoints,
-        remainingPoints: total.remainingPoints + batch.remainingPoints,
-      }),
-      { usedPoints: 0, remainingPoints: 0 },
-    );
     const states = matchingBatches.map(batchLifecycle);
+    const usage = matchingBatches.reduce(
+      (total, batch, index) => {
+        const expired = states[index] === 'expired';
+        const derivedVoided = expired
+          ? Math.max(0, batch.creditedPoints - batch.usedPoints - batch.remainingPoints)
+          : 0;
+        const legacyVoided = expired ? Math.max(0, batch.remainingPoints) : 0;
+        return {
+          usedPoints: total.usedPoints + batch.usedPoints,
+          remainingPoints: total.remainingPoints + (expired ? 0 : batch.remainingPoints),
+          voidedPoints: total.voidedPoints + Math.max(derivedVoided, legacyVoided),
+        };
+      },
+      { usedPoints: 0, remainingPoints: 0, voidedPoints: 0 },
+    );
     const state: PointUsage['state'] = states.includes('active')
       ? 'active'
       : states.includes('expired')
@@ -615,27 +661,41 @@ function pointUsage(transaction: Transaction, batches: EvaluationPointBatch[]): 
     const expiresAt = matchingBatches
       .map((batch) => batch.expiresAt)
       .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
-    return { ...usage, state, expiresAt };
+    return {
+      ...usage,
+      voidedPoints: Math.max(usage.voidedPoints, transaction.expiredPoints ?? 0),
+      state,
+      expiresAt,
+    };
   }
 
+  const credited = creditedPoints(transaction);
   const usedPoints = Math.max(0, transaction.usedPoints ?? 0);
-  const remainingPoints = Math.max(
+  const rawRemainingPoints = Math.max(
     0,
-    transaction.remainingPoints ?? creditedPoints(transaction) - usedPoints,
+    transaction.remainingPoints ?? credited - usedPoints,
   );
+  const explicitVoided = Math.max(0, transaction.expiredPoints ?? 0);
   const pastExpiry = transaction.pointsExpireAt
     ? Date.now() >= Date.parse(transaction.pointsExpireAt)
     : false;
   const state: PointUsage['state'] =
-    pastExpiry && remainingPoints > 0
+    explicitVoided > 0 || (pastExpiry && usedPoints < credited)
       ? 'expired'
-      : remainingPoints <= 0
+      : rawRemainingPoints <= 0
         ? 'exhausted'
         : 'active';
+  const derivedVoided = state === 'expired'
+    ? Math.max(0, credited - usedPoints - rawRemainingPoints)
+    : 0;
+  const legacyVoided = state === 'expired' ? rawRemainingPoints : 0;
 
   return {
     usedPoints,
-    remainingPoints,
+    remainingPoints: state === 'expired' ? 0 : rawRemainingPoints,
+    voidedPoints: state === 'expired'
+      ? Math.max(explicitVoided, derivedVoided, legacyVoided)
+      : 0,
     state,
     expiresAt: transaction.pointsExpireAt,
   };

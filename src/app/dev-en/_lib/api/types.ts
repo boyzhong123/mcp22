@@ -42,7 +42,6 @@ export interface ApiKey {
   created_at: string;
   total_used?: number;
   period_used?: number;
-  env?: string; // e.g. "production"
   last_used_at?: string | null; // ISO 8601 or null
   limits?: KeyLimits | null; // null when unset
 }
@@ -72,6 +71,10 @@ export interface ApiKeyUsageSummary {
 export interface UsagePointCoreType {
   core_type: string;
   display_name: string;
+  /** Optional display category; absent on older backend versions. */
+  category?: string | null;
+  /** Language code returned by the backend (`zh` or `en`). */
+  language?: string | null;
   calls: number;
   events: number;
   /** Actually deducted points (SUM(deducted_points)). */
@@ -111,11 +114,26 @@ export interface BillingPricingPackage {
   points_per_usd: number;
 }
 
-/** Per-CoreType deduction rate (doc §5.1). Empty list = default rate only. */
+/** Per-CoreType deduction rate (doc §5.1/§5.2). Empty list = default rate only. */
 export interface CoreTypeRate {
   core_type: string;
   display_name: string;
+  /** Optional display category; absent on older backend versions. */
+  category?: string | null;
+  /** Language code returned by the backend (`zh` or `en`). */
+  language?: string | null;
   points_per_request: number;
+}
+
+// doc §5.2 GET /billing/core-type-pricing. This endpoint is independent of
+// top-up pricing, so CoreType cost hints can still load when no recharge
+// pricing version is configured.
+export interface CoreTypePricingInfo {
+  /** Deduction per request for CoreTypes without a specific rate. */
+  default_points_per_request: number;
+  core_type_pricing_version_id: number | null;
+  core_type_pricing_version: number | null;
+  core_type_rates: CoreTypeRate[];
 }
 
 /** Server-authoritative quote for `?amount_cents=` (doc §5.1). */

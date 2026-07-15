@@ -194,6 +194,10 @@ export interface AccountLowBalanceAlert {
 export interface UsageCoreTypeBreakdown {
   coreType: string;
   displayName: string;
+  /** Server-provided display category, when available. */
+  category?: string | null;
+  /** Server-provided language code (`zh` or `en`), when available. */
+  language?: string | null;
   calls: number;
   events: number;
   /** Actually deducted points. */
@@ -462,6 +466,36 @@ const cache: Cache = {
 
 let pointBatchSnapshotFor: EvaluationPointBatch[] | null = null;
 let pointBatchSnapshot: EvaluationPointBatch[] = [];
+
+/**
+ * Start a fresh, isolated demo session.
+ *
+ * Real-account API responses and demo data intentionally share this legacy
+ * store while the dashboard is being migrated. Crossing into demo mode must
+ * therefore clear both persistence and module-level state before the demo
+ * seeder runs, otherwise the previous account remains visible.
+ */
+export function resetAccountDataForDemo(): void {
+  if (isBrowser()) {
+    try {
+      for (const key of Object.values(STORAGE)) {
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }
+
+  for (const key of Object.keys(cache) as (keyof Cache)[]) {
+    if (key === 'seeded') continue;
+    cache[key] = null;
+  }
+  cache.seeded = false;
+  pointBatchSnapshotFor = null;
+  pointBatchSnapshot = [];
+  mutationProxy = {};
+  notify();
+}
 
 function isBrowser() {
   return typeof window !== 'undefined';
@@ -821,6 +855,7 @@ function seedIfNeeded() {
           {
             coreType: 'word_sentence.evaluate',
             displayName: 'Word / Phrase / Sentence',
+            language: 'zh',
             calls: wordSentenceCalls,
             events: wordSentenceCalls,
             evaluationPoints: wordSentenceCalls,
@@ -830,6 +865,7 @@ function seedIfNeeded() {
           {
             coreType: 'paragraph.evaluate',
             displayName: 'Paragraph Evaluation',
+            language: 'en',
             calls: paragraphCalls,
             events: paragraphCalls,
             evaluationPoints: paragraphCalls * 2,
@@ -1433,6 +1469,30 @@ export function getKeyMonthlyCalls(keyId: string): number {
   return getUsage()
     .filter((p) => p.keyId === keyId && p.date.startsWith(ym))
     .reduce((acc, p) => acc + (p.calls ?? 0), 0);
+}
+
+/** Today's UTC call count for one key, derived from the daily usage records. */
+export function getKeyTodayCalls(keyId: string): number {
+  const today = new Date().toISOString().slice(0, 10);
+  return getUsage()
+    .filter((p) => p.keyId === keyId && p.date.startsWith(today))
+    .reduce((acc, p) => acc + (p.calls ?? 0), 0);
+}
+
+/** Today's UTC deducted evaluation points for one key. */
+export function getKeyTodayEvaluationPoints(keyId: string): number {
+  const today = new Date().toISOString().slice(0, 10);
+  return getUsage()
+    .filter((p) => p.keyId === keyId && p.date.startsWith(today))
+    .reduce((acc, p) => acc + (p.evaluationPoints ?? 0), 0);
+}
+
+/** Current UTC month's deducted evaluation points for one key. */
+export function getKeyMonthlyEvaluationPoints(keyId: string): number {
+  const month = new Date().toISOString().slice(0, 7);
+  return getUsage()
+    .filter((p) => p.keyId === keyId && p.date.startsWith(month))
+    .reduce((acc, p) => acc + (p.evaluationPoints ?? 0), 0);
 }
 
 /** Net spend (mills, after discounts) for one key in the current UTC month. */

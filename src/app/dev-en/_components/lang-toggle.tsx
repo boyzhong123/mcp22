@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { Languages } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useLang } from '../_lib/use-lang';
 
 /**
@@ -18,13 +19,18 @@ import { useLang } from '../_lib/use-lang';
 const LANG_TOGGLE_VISIBLE = true;
 
 export function DevEnLangToggle() {
+  const pathname = usePathname();
   const { lang, setLang } = useLang();
+  const isAuthRoute = ['/login', '/register', '/forgot-password'].includes(pathname);
 
   if (!LANG_TOGGLE_VISIBLE) return null;
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-40 flex items-center gap-0.5 rounded-full bg-background border border-border shadow-lg shadow-black/[0.08] dark:shadow-black/40 p-0.5 pl-2.5"
+      className={cn(
+        'fixed bottom-4 right-4 z-40 flex items-center gap-0.5 rounded-full border border-border bg-background p-0.5 pl-2.5 shadow-lg shadow-black/[0.08] dark:shadow-black/40',
+        isAuthRoute && 'max-sm:top-4 max-sm:bottom-auto',
+      )}
       role="group"
       aria-label="Language toggle (developer preview)"
     >

@@ -68,7 +68,9 @@ function capOrNull(v: number | undefined | null): number | null {
 // Mappers
 
 function mapKey(k: RealApiKey): MockApiKey {
-  const env: Environment = k.env === 'development' ? 'development' : 'production';
+  // The backend does not expose a key environment. Keep a fixed legacy value
+  // only because historical mock usage aggregation still requires one.
+  const env: Environment = 'production';
 
   // Heuristic fallback for payloads that don't expose `is_starter`: the
   // auto-provisioned default key is still named "Starter".
@@ -247,6 +249,8 @@ function mapUsagePoint(p: RealUsagePoint): MockUsagePoint {
     coreTypes: (p.core_types ?? []).map((ct) => ({
       coreType: ct.core_type,
       displayName: ct.display_name || ct.core_type,
+      category: ct.category,
+      language: ct.language,
       calls: ct.calls ?? 0,
       events: ct.events ?? 0,
       evaluationPoints: ct.evaluation_points ?? 0,
@@ -374,7 +378,8 @@ let lastHydrate = 0;
 
 export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<void> {
   if (typeof window === 'undefined') return;
-  if (!getToken()) return; // not signed in — keep mock seed
+  const sessionToken = getToken();
+  if (!sessionToken) return; // not signed in — keep mock seed
   if (inFlight) return;
   if (!opts.force && Date.now() - lastHydrate < 2000) return;
 
@@ -419,8 +424,13 @@ export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<vo
       partial.wallet = mapWalletFromSummary(summaryRes.value);
     }
 
-    __replaceCache(partial);
-    lastHydrate = Date.now();
+    // The user may have signed out or entered the isolated demo while these
+    // requests were in flight. Never let a stale real-account response cross
+    // that session boundary and overwrite the new store.
+    if (getToken() === sessionToken) {
+      __replaceCache(partial);
+      lastHydrate = Date.now();
+    }
   } catch (err) {
     console.warn('[mock-store-bridge] hydrate failed:', describeError(err));
   } finally {

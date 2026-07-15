@@ -55,6 +55,7 @@ import {
 import { rankActiveKeysThisMonth } from '../../_lib/overview-key-ranking.mjs';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
+import { showActionToast } from '../../_components/action-toast';
 import { ModalPortal } from '../../_components/modal-portal';
 import { StatCard } from '../../_components/stat-card';
 import { useLang } from '../../_lib/use-lang';
@@ -122,6 +123,10 @@ export default function OverviewPage() {
     const created = createKey(newKeyName);
     setCreateKeyOpen(false);
     setJustCreatedKey(created);
+    showActionToast({
+      title: t('Key created', 'Key 创建成功'),
+      description: t('Copy and store the secret securely.', '请及时复制并妥善保存完整 Key。'),
+    });
   };
   const copyFreshKey = async (secret: string, id: string) => {
     let ok = false;
@@ -323,16 +328,11 @@ export default function OverviewPage() {
           label={t('Evaluation points used this month', '本月消耗评测积分')}
           value={monthlyUsage.totalPoints.toLocaleString('en-US')}
           sub={
-            monthlyUsage.coreTypes.length > 0
-              ? monthlyUsage.coreTypes
-                  .slice(0, 2)
-                  .map((ct) =>
-                    t(
-                      `${ct.displayName} ${ct.evaluationPoints.toLocaleString('en-US')} pts`,
-                      `${ct.displayName} ${ct.evaluationPoints.toLocaleString('en-US')} 积分`,
-                    ),
-                  )
-                  .join(' · ')
+            monthlyUsage.calls > 0
+              ? t(
+                  `${formatCalls(monthlyUsage.calls)} calls this month`,
+                  `本月 ${formatCalls(monthlyUsage.calls)} 次调用`,
+                )
               : t('No usage this month yet', '本月暂无消耗')
           }
           href="/dashboard/billing"

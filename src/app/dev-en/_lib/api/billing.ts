@@ -2,6 +2,7 @@ import { invalidate, request } from './client';
 import type {
   AccountLimits,
   BillingSummary,
+  CoreTypePricingInfo,
   EvaluationPointBatch,
   EvaluationPointBatchListResponse,
   PackageID,
@@ -19,6 +20,13 @@ export function pricing(amountCents?: number): Promise<PricingInfo> {
   return request<PricingInfo>('/billing/pricing', {
     query: amountCents && amountCents > 0 ? { amount_cents: Math.round(amountCents) } : undefined,
   });
+}
+
+// doc §5.2 — independent CoreType point prices for evaluation descriptions,
+// task creation, and cost hints. An empty rate list is a valid 200 response;
+// callers must use default_points_per_request for unconfigured CoreTypes.
+export function coreTypePricing(): Promise<CoreTypePricingInfo> {
+  return request<CoreTypePricingInfo>('/billing/core-type-pricing');
 }
 
 // doc §8.1 — the page's authoritative balance + rollups.
