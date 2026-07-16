@@ -5,7 +5,9 @@ import { ArrowRight, Clock3 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { BreadcrumbPill, SiteFooter, TopNav } from '@/app/global/_chrome';
 import { absoluteUrl } from '@/lib/site';
-import { BLOG_POSTS, getBlogPost, type BlogFigure } from '../posts';
+import { BLOG_POSTS, getBlogPost } from '../posts';
+import { ArticleFigure } from './_components/article-figure';
+import { FigureGalleryProvider } from './_components/figure-gallery';
 
 export const dynamicParams = false;
 
@@ -36,27 +38,6 @@ export async function generateMetadata({
   };
 }
 
-function ArticleFigure({ figure }: { figure: BlogFigure }) {
-  return (
-    <figure className="my-10 overflow-hidden rounded-[1.35rem] border border-zinc-900/[0.08] bg-[#eef4ee]">
-      <div className="relative aspect-[16/10]">
-        <Image
-          src={figure.src}
-          alt={figure.alt}
-          fill
-          sizes="(max-width: 768px) 100vw, 720px"
-          className="object-cover"
-        />
-      </div>
-      {figure.caption ? (
-        <figcaption className="border-t border-zinc-900/[0.06] bg-white/70 px-5 py-3.5 text-[13px] leading-relaxed text-zinc-500">
-          {figure.caption}
-        </figcaption>
-      ) : null}
-    </figure>
-  );
-}
-
 function headingId(heading: string) {
   return heading
     .toLowerCase()
@@ -84,6 +65,9 @@ export default async function BlogArticlePage({
   const currentIndex = BLOG_POSTS.findIndex((item) => item.slug === post.slug);
   const nextPost = BLOG_POSTS[(currentIndex + 1) % BLOG_POSTS.length];
   const readTime = readingMinutes(post);
+
+  const figures = post.sections.flatMap((section) => (section.figure ? [section.figure] : []));
+  let figureCursor = 0;
 
   return (
     <div
@@ -155,6 +139,7 @@ export default async function BlogArticlePage({
               />
             </div>
 
+            <FigureGalleryProvider figures={figures}>
             <div className="mx-auto grid max-w-5xl gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,720px)_220px] lg:items-start lg:gap-14">
               <div className="min-w-0">
                 <p className="font-[family-name:var(--font-hero-serif)] text-[22px] font-medium leading-[1.65] tracking-[-0.018em] text-zinc-800 first-letter:float-left first-letter:mr-3 first-letter:mt-1 first-letter:text-[60px] first-letter:font-semibold first-letter:leading-[0.8] first-letter:text-emerald-900">
@@ -177,7 +162,9 @@ export default async function BlogArticlePage({
                             <p key={paragraph.slice(0, 48)}>{paragraph}</p>
                           ))}
                       </div>
-                      {section.figure ? <ArticleFigure figure={section.figure} /> : null}
+                      {section.figure ? (
+                        <ArticleFigure figure={section.figure} index={figureCursor++} />
+                      ) : null}
                     </section>
                   ))}
                 </div>
@@ -254,6 +241,7 @@ export default async function BlogArticlePage({
                 </nav>
               </aside>
             </div>
+            </FigureGalleryProvider>
           </div>
           </article>
         </main>

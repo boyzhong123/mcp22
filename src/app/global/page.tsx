@@ -1084,9 +1084,9 @@ function PricingUsageStory() {
       id="pricing"
       className="relative scroll-mt-24 border-b border-[#e9e2d2]/70 py-16 md:py-24"
     >
-      <div className="container mx-auto max-w-7xl px-6">
-        <div className="grid min-w-0 gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
-          <FadeUp className="min-w-0">
+      <div className="container mx-auto max-w-[1440px] px-6">
+        <div className="grid min-w-0 gap-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(560px,1.18fr)] lg:items-start lg:gap-20 xl:gap-24">
+          <FadeUp className="min-w-0 lg:pt-8">
             <div className="mb-5 flex items-center gap-3">
               <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
                 Pricing
@@ -1094,25 +1094,31 @@ function PricingUsageStory() {
               <span className="text-[12px] font-medium text-foreground/60">Pay for results</span>
             </div>
 
-            <h2 className="heading-display text-crisp max-w-xl text-3xl leading-[1.08] tracking-[-0.035em] md:text-[46px]">
+            <h2 className="heading-display text-crisp max-w-[11ch] text-[36px] leading-[1.04] tracking-[-0.04em] md:text-[43px] xl:text-[46px]">
               Simple points for successful speech evaluations.
             </h2>
 
-            <p className="mt-5 max-w-xl text-[15px] leading-7 text-zinc-600 md:text-base">
+            <p className="mt-6 max-w-[34rem] text-[15px] leading-7 text-zinc-600 md:text-[16px]">
               One point for a word or sentence. Two for a paragraph. Failed calls use zero points,
               so you only pay when Chivox returns an assessment.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-2">
-              {pricingFacts.map(({ icon: Icon, label }) => (
-                <span key={label} className="inline-flex items-center gap-2 rounded-full border border-zinc-900/[0.08] bg-white/65 px-3 py-2 text-[11.5px] font-medium text-zinc-700 backdrop-blur-sm">
-                  <Icon className="h-3.5 w-3.5 text-emerald-700" strokeWidth={2} />
-                  {label}
-                </span>
+            <ul className="mt-8 grid max-w-[34rem] overflow-hidden rounded-2xl border border-zinc-900/[0.08] bg-white/75 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] sm:grid-cols-3">
+              {pricingFacts.map(({ icon: Icon, label }, index) => (
+                <li
+                  key={label}
+                  className={cn(
+                    'flex min-w-0 items-start gap-2.5 px-3.5 py-3 text-[11px] font-medium leading-snug text-zinc-700',
+                    index > 0 && 'border-t border-zinc-900/[0.07] sm:border-l sm:border-t-0',
+                  )}
+                >
+                  <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700" strokeWidth={2.25} />
+                  <span>{label}</span>
+                </li>
               ))}
-            </div>
+            </ul>
 
-            <div className="mt-7 flex flex-wrap items-center gap-4">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 href="/login"
                 className="group inline-flex h-11 items-center gap-2 rounded-full bg-zinc-900 pl-5 pr-3 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(0,0,0,0.4)] transition-all hover:-translate-y-px hover:bg-zinc-800"
@@ -1138,50 +1144,55 @@ function PricingUsageStory() {
           </FadeUp>
 
           <FadeUp delay={0.08} className="min-w-0">
-            <div className="rounded-[28px] border border-zinc-900/[0.08] bg-white/72 p-5 shadow-[0_26px_65px_-46px_rgba(15,23,42,0.48)] backdrop-blur-md sm:p-6">
-              <div className="flex items-center justify-between gap-4 border-b border-zinc-900/[0.07] pb-4">
+            <div
+              aria-labelledby="points-work-title"
+              className="overflow-hidden rounded-[30px] border border-zinc-900/[0.09] bg-white/88 p-6 shadow-[0_30px_80px_-52px_rgba(15,23,42,0.48)] backdrop-blur-md sm:p-8 lg:p-9"
+            >
+              <div className="flex flex-col gap-4 border-b border-zinc-900/[0.08] pb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                 <div>
-                  <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-700">How points work</div>
-                  <h3 className="mt-1.5 text-[18px] font-semibold tracking-[-0.02em] text-zinc-950">From free trial to production</h3>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-700">How points work</div>
+                  <h3 id="points-work-title" className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-zinc-950 sm:text-[29px]">
+                    From free trial to production
+                  </h3>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/[0.08] px-3 py-1.5 text-[10px] font-semibold text-emerald-800">
-                  <Sparkles className="h-3.5 w-3.5" /> No card
+                <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-500/[0.08] px-3.5 py-2 text-[11px] font-semibold text-emerald-800">
+                  <Sparkles className="h-4 w-4" /> No card required
                 </span>
               </div>
 
-              <ol className="mt-5 space-y-5">
-                <li className="grid grid-cols-[36px_1fr_auto] items-center gap-3">
+              <ol className="mt-6 space-y-3">
+                <li className="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.035] px-4 py-4 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:px-5">
                   <PricingStepNumber value="1" />
                   <div>
-                    <h4 className="text-[14px] font-semibold text-zinc-900">Start free</h4>
-                    <p className="mt-0.5 text-[11.5px] text-zinc-500">Valid for {TRIAL_VALID_DAYS} days</p>
+                    <h4 className="text-[16px] font-semibold tracking-[-0.02em] text-zinc-900">Start free</h4>
+                    <p className="mt-1 text-[13px] text-zinc-500">Valid for {TRIAL_VALID_DAYS} days</p>
                   </div>
-                  <strong className="text-[22px] font-semibold tabular-nums tracking-[-0.03em] text-emerald-700">{TRIAL_CALLS} pts</strong>
+                  <strong className="text-[26px] font-semibold tabular-nums tracking-[-0.04em] text-emerald-700 sm:text-[30px]">{TRIAL_CALLS} pts</strong>
                 </li>
 
-                <li className="grid grid-cols-[36px_1fr] gap-3">
+                <li className="grid grid-cols-[44px_minmax(0,1fr)] gap-4 rounded-2xl border border-zinc-900/[0.08] bg-white/60 px-4 py-4 sm:grid-cols-[48px_minmax(0,1fr)] sm:px-5">
                   <PricingStepNumber value="2" />
                   <div className="min-w-0">
-                    <h4 className="text-[14px] font-semibold text-zinc-900">Evaluate successfully</h4>
-                    <p className="mt-0.5 text-[11.5px] text-zinc-500">Points are deducted only when an assessment returns.</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <h4 className="text-[16px] font-semibold tracking-[-0.02em] text-zinc-900">Evaluate successfully</h4>
+                    <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">Points are deducted only when an assessment returns.</p>
+                    <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                       <PricingCodeRow code="word · sentence" points="−1 pt" />
                       <PricingCodeRow code="paragraph" points="−2 pts" />
                     </div>
                   </div>
                 </li>
 
-                <li className="grid grid-cols-[36px_1fr_auto] items-center gap-3">
+                <li className="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl border border-zinc-900/[0.08] bg-zinc-50/65 px-4 py-4 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:px-5">
                   <PricingStepNumber value="3" />
                   <div>
-                    <h4 className="text-[14px] font-semibold text-zinc-900">Top up as you grow</h4>
-                    <p className="mt-0.5 text-[11.5px] text-zinc-500">Higher packs lower your unit cost.</p>
+                    <h4 className="text-[16px] font-semibold tracking-[-0.02em] text-zinc-900">Top up as you grow</h4>
+                    <p className="mt-1 text-[13px] text-zinc-500">Higher packs lower your unit cost.</p>
                   </div>
-                  <strong className="inline-flex items-center gap-1.5 text-[20px] font-semibold tracking-[-0.03em] text-emerald-700"><Gift className="h-4 w-4" />+20%</strong>
+                  <strong className="inline-flex items-center gap-2 text-[26px] font-semibold tracking-[-0.04em] text-emerald-700 sm:text-[30px]"><Gift className="h-6 w-6" />+20%</strong>
                 </li>
               </ol>
 
-              <div className="mt-5 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.045] px-4 py-3 text-[11.5px] font-medium text-emerald-900">
+              <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.045] px-5 py-3.5 text-[13px] font-medium text-emerald-900">
                 Failed calls cost $0 and use 0 points.
               </div>
             </div>
@@ -1649,7 +1660,7 @@ function PricingCompareMatrix() {
 
 function PricingStepNumber({ value }: { value: string }) {
   return (
-    <span className="relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/20 bg-[#fbfaf6] text-sm font-semibold text-emerald-800 ring-4 ring-emerald-500/[0.055]">
+    <span className="relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/25 bg-[#fbfaf6] text-[15px] font-semibold text-emerald-800 ring-4 ring-emerald-500/[0.055] sm:h-11 sm:w-11">
       {value}
     </span>
   );
@@ -1657,10 +1668,10 @@ function PricingStepNumber({ value }: { value: string }) {
 
 function PricingCodeRow({ code, points }: { code: string; points: string }) {
   return (
-    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-zinc-900/[0.07] bg-white/70 px-3.5 py-3">
-      <code className="min-w-0 truncate font-mono text-[10.5px] text-foreground/70 sm:text-[11px]">{code}</code>
-      <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-semibold tabular-nums text-emerald-700">
-        <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-zinc-900/[0.08] bg-zinc-50/75 px-3.5 py-3">
+      <code className="min-w-0 whitespace-nowrap font-mono text-[10.5px] text-foreground/70 sm:text-[11px]">{code}</code>
+      <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold tabular-nums text-emerald-700">
+        <Check className="h-3.5 w-3.5" strokeWidth={2.75} />
         {points}
       </span>
     </div>
