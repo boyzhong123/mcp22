@@ -24,6 +24,275 @@ export type BlogPost = {
 };
 
 export const BLOG_POSTS: readonly BlogPost[] = [
+
+  {
+    slug: 'chivox-vs-speechsuper-speechace-azure',
+    title: 'Chivox AI vs SpeechSuper vs Speechace vs Azure Pronunciation Assessment',
+    excerpt:
+      'An EdTech-focused comparison of four pronunciation platforms—and how to choose by product job, not feature count.',
+    category: 'Comparison',
+    date: 'July 16, 2026',
+    image: '/blog/banners/comparison-v2.jpg',
+    imageAlt: 'Editorial cover: Chivox AI vs SpeechSuper vs Speechace vs Azure',
+    intro:
+      'Selecting a speech assessment platform is one of the most important technical decisions for an EdTech product. Feature tables look similar until you map each vendor to a real product job: tutoring, examination, consumer practice, or cloud ecosystem fit.',
+    sections: [
+      {
+        heading: 'Compare the product job, not the checkbox',
+        body: `Chivox AI, SpeechSuper, Speechace, and Microsoft Azure Pronunciation Assessment all score pronunciation. The useful differences appear when you ask what the score must do next.
+
+For AI tutors and speaking examinations, you usually need phoneme diagnostics, fluency and prosody signals, stable structured JSON, and a clean path into agent workflows. For consumer practice apps, learner-friendly feedback and self-service onboarding may matter more. For teams already standardized on Azure speech services, native cloud integration can outweigh education-specific depth.
+
+Start with the decision the score must support. Then evaluate vendors against that decision.`,
+        figure: {
+          src: '/blog/figures/comparison-glance.jpg',
+          alt: 'Comparison glance across pronunciation scoring, correction, phoneme feedback, and MCP',
+          caption: 'Most vendors score pronunciation. Fewer support correction workflows, deep phoneme feedback, and MCP-native agent integration.',
+        },
+      },
+      {
+        heading: 'Where each platform tends to fit',
+        body: `A practical shortlist looks like this:
+
+- AI language tutors and voice agents → education-focused assessment plus structured tool output (Chivox AI)
+- High-stakes speaking examinations → proven education assessment depth and operational reliability (Chivox AI)
+- Consumer pronunciation practice → learner-friendly coaching UX (Speechace)
+- Enterprise Azure ecosystems → native cloud speech integration (Azure)
+
+SpeechSuper can be a fit when you need available speech scoring without committing to an Azure-first architecture. Azure remains strong when pronunciation assessment is one module inside a broader Microsoft speech stack.
+
+The point is not that one vendor wins every row. It is that the wrong “best overall” choice creates years of product friction.`,
+        figure: {
+          src: '/blog/figures/comparison-fit.jpg',
+          alt: 'Requirement-to-platform fit tiles for tutors exams practice and Azure cloud',
+          caption: 'Match the platform to the requirement. Tutors, exams, consumer practice, and cloud ecosystems pull in different directions.',
+        },
+      },
+      {
+        heading: 'What Chivox AI optimizes for',
+        body: `Chivox AI is built for educational speech assessment rather than general speech AI. Typical strengths include pronunciation scoring, pronunciation correction workflows, word- and phoneme-level feedback, fluency and prosody analysis, structured JSON output, enterprise deployment options, and MCP integration for AI agents.
+
+That focus is also the trade-off. The product is oriented toward long-term EdTech platforms—AI tutors, K–12, speaking exams, publishers, and enterprise learning systems—more than instant consumer self-service or general-purpose speech tooling.
+
+If your roadmap is an AI language tutor or examination system, education-first diagnostics matter more than a longer generic speech feature list.`,
+      },
+      {
+        heading: 'MCP and agent workflows change the shortlist',
+        body: `Once pronunciation scoring sits inside a voice agent, integration shape matters as much as score quality. An MCP-native assessment tool lets the agent call scoring as a reusable capability and receive typed evidence the model can cite.
+
+Direct REST APIs still work. MCP becomes valuable when multiple agents, frameworks, or surfaces need the same assessment contract without rebuilding orchestration each time.
+
+In a comparison, treat MCP readiness as a product requirement if your roadmap includes tutors, voice agents, or tool-calling workflows—not as a nice-to-have checkbox.`,
+      },
+      {
+        heading: 'Choose by goals, then validate on your learners',
+        body: `Each platform serves different needs. Chivox AI is optimized for education and AI language tutors, Speechace for consumer pronunciation learning, and Azure for enterprise cloud speech AI.
+
+Before locking a vendor, validate with recordings from your real learner population—especially children, multilingual speakers, and noisy classroom devices. Score quality on marketing demos is not the same as score usefulness on your content and audio conditions.`,
+      },
+    ],
+    takeaways: [
+      'Choose by product job—tutor, exam, consumer practice, or cloud ecosystem—not by feature count alone.',
+      'Treat structured output and MCP readiness as requirements when agents will consume the score.',
+      'Validate on your learner audio before procurement closes.',
+    ],
+  },
+  {
+    slug: 'add-pronunciation-scoring-to-voice-agent-with-mcp',
+    title: 'How to add pronunciation scoring to your voice agent with MCP',
+    excerpt:
+      'Connect a voice agent to a Pronunciation Assessment MCP so LLMs can coach from structured speech evidence—not guessed scores.',
+    category: 'Integration',
+    date: 'July 15, 2026',
+    image: '/blog/banners/voice-agent-mcp-v2.jpg',
+    imageAlt: 'Editorial cover: Add pronunciation scoring to a voice agent with MCP',
+    intro:
+      'Voice agents can already understand spoken questions and generate conversational responses. What most LLMs still cannot do is objectively evaluate pronunciation quality. A Pronunciation Assessment MCP closes that gap by exposing speech scoring as a reusable tool the agent can call.',
+    sections: [
+      {
+        heading: 'Why conversation alone is not enough',
+        body: `A voice agent can translate, explain grammar, and guide exercises. Language learning also needs objective feedback on pronunciation accuracy, word-level performance, phoneme errors, fluency, prosody, and reading completeness.
+
+Asking the model to estimate pronunciation from a transcript is unreliable. Modern systems invoke a dedicated speech assessment service instead, then let the LLM turn structured results into coaching language.`,
+      },
+      {
+        heading: 'What a Pronunciation Assessment MCP is',
+        body: `A Pronunciation Assessment MCP is a Model Context Protocol server that exposes pronunciation scoring as a tool. Developers register the assessment service once. Agents call it whenever evaluation is required.
+
+The MCP returns structured assessment results the LLM can interpret. Conversational reasoning and speech assessment stay separate, but they work together in one workflow.`,
+        figure: {
+          src: '/blog/figures/voice-agent-architecture.jpg',
+          alt: 'Voice agent architecture from learner audio through MCP scoring to AI feedback',
+          caption: 'Keep conversation and assessment modular: the agent reasons; the MCP scores; the tutor explains.',
+        },
+      },
+      {
+        heading: 'A practical four-step integration',
+        body: `1. Register the MCP server in your MCP client after creating a Chivox AI developer account.
+2. Invoke pronunciation assessment with learner audio and the expected reference text.
+3. Receive structured JSON results—scores, diagnostics, and validity signals your app can process.
+4. Let the AI tutor coach the learner in natural language instead of dumping raw metrics.
+
+Example coaching style: acknowledge what worked, name one concrete fix, and invite an immediate retry. That combination of objective scoring and conversational teaching is the product.`,
+        figure: {
+          src: '/blog/figures/voice-agent-coach.jpg',
+          alt: 'Structured score fields transforming into a short tutor coaching reply',
+          caption: 'Scores are evidence. The tutor reply is teaching language built from those fields.',
+        },
+      },
+      {
+        heading: 'Why MCP instead of only direct API calls',
+        body: `REST APIs remain valid. MCP adds advantages for AI-native apps: standardized tool invocation, reusable integrations across agents, simpler orchestration, easier maintenance, and cleaner architecture as more platforms adopt the protocol.
+
+If you already build with tool-calling agents, MCP turns pronunciation scoring into the same class of capability as search or retrieval—callable, typed, and inspectable.`,
+      },
+      {
+        heading: 'Use cases and best practices',
+        body: `Common fits include AI language tutors, speaking practice apps, K–12 classroom speaking activities, educational robots, and corporate spoken-English training.
+
+Practical habits that improve outcomes:
+- Prefer high-quality audio input
+- Keep reference text synchronized with the speaking task
+- Combine objective scores with LLM explanations
+- Track progress across sessions
+- Personalize later lessons from pronunciation history
+- Validate with recordings from your target learners, especially children and multilingual speakers`,
+      },
+    ],
+    takeaways: [
+      'Do not ask the LLM to invent pronunciation scores from text alone.',
+      'Use MCP to keep assessment modular and reusable across agents.',
+      'Turn structured results into one clear coaching move, then retry.',
+    ],
+  },
+  {
+    slug: 'mandarin-tone-assessment-why-its-hard',
+    title: 'Mandarin tone assessment: why it is hard—and how modern AI makes it possible',
+    excerpt:
+      'Tone carries meaning in Mandarin. That is why ASR is not enough—and why dedicated pitch-aware assessment matters for Chinese learning products.',
+    category: 'Learning design',
+    date: 'July 14, 2026',
+    image: '/blog/banners/tone-assessment-hard-v2.jpg',
+    imageAlt: 'Editorial cover: Mandarin tone assessment why it is hard',
+    intro:
+      'Learning Mandarin pronunciation is fundamentally different from learning pronunciation in many other languages. Changing only the tone can completely change meaning—for example, 水饺 (dumplings) versus 睡觉 (to sleep). That single fact reshapes what speech technology must measure.',
+    sections: [
+      {
+        heading: 'Why Mandarin is different',
+        body: `Mandarin is a tonal language with four primary tones and one neutral tone. Tone carries lexical meaning, so accurate pronunciation is not optional polish—it is part of saying the intended word.
+
+Products that only confirm “the learner said something close to the transcript” can miss the error that matters most.`,
+      },
+      {
+        heading: 'Speech recognition is not tone assessment',
+        body: `Speech recognition identifies what was said. Tone assessment evaluates how accurately it was pronounced—especially pitch contour and tone target.
+
+A system can recognize the intended syllable while still failing to judge whether the contour was flat, rising, falling, or fall-rising. Those are different jobs, and they need different signals.`,
+        figure: {
+          src: '/blog/figures/tone-asr-vs-assessment.jpg',
+          alt: 'Side-by-side ASR transcript versus tone contour assessment',
+          caption: 'ASR answers what was said. Tone assessment answers whether the pitch contour was right.',
+        },
+      },
+      {
+        heading: 'Why tone assessment is difficult',
+        body: `Useful Mandarin assessment has to analyze pitch contour, tone transitions, pronunciation accuracy, fluency, rhythm, and prosody—not only recognize words.
+
+Real learner audio adds harder cases: tone sandhi, connected speech, children’s voices, speaking speed variation, and contextual pronunciation. Classroom noise and short utterances make contour estimation even less forgiving.
+
+This is why generic ASR confidence is a weak proxy for Mandarin coaching quality.`,
+      },
+      {
+        heading: 'What a modern AI pipeline looks like',
+        body: `A typical educational pipeline includes audio preprocessing, speech recognition, forced alignment, acoustic modeling, pitch extraction, tone evaluation, pronunciation scoring, and feedback generation.
+
+The educational value appears at the end of that chain: tone accuracy, word- and sentence-level scores, fluency and prosody signals, confidence measures, and structured JSON outputs that tutors and UIs can consume.`,
+        figure: {
+          src: '/blog/figures/tone-pipeline.jpg',
+          alt: 'Compact Mandarin tone assessment pipeline from audio to feedback',
+          caption: 'Pitch extraction and tone evaluation sit between recognition and learner feedback—skip them and coaching gets vague.',
+        },
+      },
+      {
+        heading: 'What Chivox AI provides for Mandarin products',
+        body: `Chivox AI supports Mandarin pronunciation assessment, tone evaluation, fluency analysis, reading assessment, cloud APIs, structured JSON responses, and MCP-compatible integration for EdTech.
+
+Dedicated Mandarin tone assessment lets AI tutors and Chinese learning applications deliver coaching beyond basic speech recognition—especially when meaning depends on getting the contour right.`,
+      },
+    ],
+    takeaways: [
+      'In Mandarin, tone errors can change meaning—not only accent quality.',
+      'Treat ASR and tone assessment as separate product capabilities.',
+      'Expose tone evidence in structured form so tutors can coach one clear contour fix.',
+    ],
+  },
+  {
+    slug: 'why-ai-tutors-need-pronunciation-assessment-mcp',
+    title: 'Why every AI language tutor needs a Pronunciation Assessment MCP',
+    excerpt:
+      'LLMs can converse, but they cannot objectively score pronunciation. An MCP-backed assessment engine makes speaking feedback measurable.',
+    category: 'Product',
+    date: 'July 13, 2026',
+    image: '/blog/banners/tutor-pronunciation-mcp-v2.jpg',
+    imageAlt: 'Editorial cover: Why AI tutors need a Pronunciation Assessment MCP',
+    intro:
+      'Modern AI language tutors can explain grammar, generate exercises, and hold natural conversations. They still cannot objectively evaluate pronunciation without a dedicated speech assessment engine. A Pronunciation Assessment MCP gives tutors a standardized way to call that engine and coach from evidence.',
+    sections: [
+      {
+        heading: 'Spoken language is still the hard skill',
+        body: `Today’s tutors deliver adaptive learning experiences, but spoken language remains difficult to assess. Learners expect feedback on pronunciation, fluency, rhythm, and intonation—not only confirmation that speech recognition heard them.
+
+Without an external scoring system, tutors improvise. Improvised scores drift, and progress becomes hard to trust.`,
+      },
+      {
+        heading: 'Recognition is not assessment',
+        body: `Speech recognition identifies what a learner says. Pronunciation assessment evaluates how it is spoken: accuracy, word- and phoneme-level performance, fluency, prosody, completeness, confidence, and mispronunciation detection.
+
+If your tutor only reacts to transcripts, it is missing the signals that make speaking practice useful.`,
+      },
+      {
+        heading: 'How a tutor uses a Pronunciation Assessment MCP',
+        body: `A clean loop looks like this:
+
+1. The learner speaks
+2. Audio is captured
+3. Audio is sent to the Pronunciation Assessment MCP
+4. The MCP evaluates pronunciation and fluency
+5. Structured scores are returned
+6. The LLM explains mistakes and recommends practice
+7. Progress is recorded for personalization
+
+The MCP keeps scoring outside the prompt. The model stays responsible for teaching language, not inventing metrics.`,
+        figure: {
+          src: '/blog/figures/tutor-mcp-loop.jpg',
+          alt: 'Seven-step tutor loop from speak to MCP score to personalized practice',
+          caption: 'Assessment is a tool call. Teaching is the model’s job after evidence returns.',
+        },
+      },
+      {
+        heading: 'What the assessment result should include',
+        body: `Useful tutor payloads typically include overall pronunciation score, word-level scoring, phoneme-level diagnostics, fluency, prosody, completeness, mispronunciation detection, confidence, and structured JSON responses.
+
+You do not need to show every field to the learner. You do need those fields available so the tutor can choose one priority issue and so teachers or analytics can inspect the same evidence later.`,
+        figure: {
+          src: '/blog/figures/tutor-mcp-results.jpg',
+          alt: 'Compact pronunciation result chips for score fluency phoneme and confidence',
+          caption: 'Return decision-ready fields. Learners see one tip; systems keep the full evidence.',
+        },
+      },
+      {
+        heading: 'Why EdTech teams adopt MCP for this',
+        body: `MCP provides standardized integration, modular architecture, easier maintenance, interoperability across AI frameworks, scalable deployment, and faster development of tutors and voice-enabled learning products.
+
+Chivox AI’s education-focused engine—English pronunciation assessment, phoneme diagnostics, fluency and prosody analysis, reading assessment, real-time scoring, and structured JSON—fits cleanly behind that interface for AI tutors, K–12, speaking exams, corporate training, and voice-enabled learning apps.`,
+      },
+    ],
+    takeaways: [
+      'LLMs need an external pronunciation engine to score speech objectively.',
+      'MCP keeps assessment modular while tutors stay conversational.',
+      'Store structured evidence so coaching, analytics, and personalization share one source of truth.',
+    ],
+  },
   {
     slug: 'grounding-voice-agents-with-speech-evidence',
     title: 'Grounding voice agents with structured speech evidence',
