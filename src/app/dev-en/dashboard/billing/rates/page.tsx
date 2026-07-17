@@ -28,6 +28,8 @@ import { aggregateEvaluationUsage } from '../../../_lib/evaluation-usage';
 import { EvaluationKernelInfo } from '../../../_components/evaluation-kernel-info';
 import {
   TOPUP_BONUS_TIERS,
+  PARAGRAPH_POINTS_PER_USE,
+  WORD_SENTENCE_POINTS_PER_USE,
   formatBonusPercent,
   formatEvaluationUnitDollars,
 } from '../../../_lib/topup';
@@ -50,9 +52,9 @@ const PACKAGE_LABELS: Record<
 /**
  * Pricing reference page for the evaluation-point billing model.
  *
- * Uses GET /billing/pricing for recharge tiers and the independent
- * GET /billing/core-type-pricing endpoint for deduction rules. Local topup.ts
- * is the Demo fallback.
+ * Uses GET /billing/pricing for recharge tiers. The public deduction summary
+ * stays intentionally generic; technical CoreType pricing and Catalog data
+ * are requested only after the user opens the detail dialog.
  */
 export default function PricingPage() {
   const { t, tx } = useLang();
@@ -81,15 +83,6 @@ export default function PricingPage() {
         <div className="max-w-2xl">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5" /> {t('Evaluation points', '评测积分')}
-            {catalog.fromServer ? (
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 normal-case tracking-normal">
-                {t('Live from API', '已接定价接口')}
-              </span>
-            ) : (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 normal-case tracking-normal">
-                {t('Local fallback', '本地兜底规则')}
-              </span>
-            )}
           </div>
           <h2 className="mt-2 text-xl font-semibold tracking-tight">
             {t(
@@ -200,34 +193,27 @@ export default function PricingPage() {
             <Type className="h-4 w-4" />
             {t('Deduction rules', '扣分规则')}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {t(
-              'Current rates from GET /billing/core-type-pricing.',
-              '当前费率来自 GET /billing/core-type-pricing。',
-            )}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+              {t('Latest point rules', '当前最新积分规则')}
+            </p>
+            <EvaluationKernelInfo trigger="button" />
+          </div>
           <ul className="text-sm text-muted-foreground space-y-1.5">
-            {catalog.coreTypeRates.slice(0, 3).map((rate) => (
-              <li key={rate.coreType} className="flex gap-2">
-                <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-                <span>
-                  {t(
-                    `${rate.displayName}: ${rate.pointsPerRequest} pts per request`,
-                    `${rate.displayName}：每次 ${rate.pointsPerRequest} 积分`,
-                  )}
-                </span>
-                <EvaluationKernelInfo className="-my-1" />
-              </li>
-            ))}
+            <li className="flex gap-2">
+              <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+              {t(
+                `Word / phrase / sentence: ${WORD_SENTENCE_POINTS_PER_USE} point per request`,
+                `字 / 词 / 句：每次 ${WORD_SENTENCE_POINTS_PER_USE} 积分`,
+              )}
+            </li>
             <li className="flex gap-2">
               <AlignLeft className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-              <span>
-                {t(
-                  `Other CoreTypes: default ${catalog.defaultPointsPerRequest} pt per request`,
-                  `其余 CoreType：默认每次 ${catalog.defaultPointsPerRequest} 积分`,
-                )}
-              </span>
-              <EvaluationKernelInfo className="-my-1" />
+              {t(
+                `Paragraph: ${PARAGRAPH_POINTS_PER_USE} points per request`,
+                `段落：每次 ${PARAGRAPH_POINTS_PER_USE} 积分`,
+              )}
             </li>
             <li className="flex gap-2">
               <Wallet className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />

@@ -1,17 +1,10 @@
-/**
- * Normalize the API's language value for display. Older responses may omit
- * the field, in which case a CoreType prefix is used as a compatibility hint.
- */
+/** Normalize only Catalog-provided language metadata. CoreType prefixes are
+ * not a reliable product contract and must not be used as a fallback. */
 export function kernelLanguage(
   language: string | null | undefined,
-  coreType: string,
 ): 'zh' | 'en' | '—' {
   const serverLanguage = language?.trim().toLowerCase();
-  if (serverLanguage === 'zh' || serverLanguage === 'cn') return 'zh';
-  if (serverLanguage === 'en') return 'en';
-
-  const prefix = coreType.trim().split('.')[0]?.toLowerCase();
-  if (prefix === 'zh' || prefix === 'cn') return 'zh';
-  if (prefix === 'en') return 'en';
+  if (serverLanguage?.startsWith('zh') || serverLanguage === 'cn') return 'zh';
+  if (serverLanguage?.startsWith('en')) return 'en';
   return '—';
 }

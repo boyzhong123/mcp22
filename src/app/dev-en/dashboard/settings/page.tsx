@@ -21,6 +21,9 @@ import {
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
 import { useLang } from '../../_lib/use-lang';
+import { describeError, notifications as notificationsApi } from '../../_lib/api';
+import { useAuth } from '../../_lib/auth-context';
+import { hydrateFromApi } from '../../_lib/mock-store-bridge';
 
 const DEFAULT_NOTIF: NotificationSettings = {
   weeklyUsageReport: true,
@@ -41,18 +44,57 @@ const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
 // concerns stop fighting for the same page.
 export default function SettingsPage() {
   const { t } = useLang();
+  const { isDemo } = useAuth();
   const notif = useMockStore(getNotificationSettings, DEFAULT_NOTIF);
   const accountAlert = useMockStore(getAccountAlert, DEFAULT_ACCOUNT_ALERT);
 
-  const patch = (p: Partial<NotificationSettings>) => {
-    updateNotificationSettings(p);
+  const [error, setError] = useState<string | null>(null);
+
+  const patch = async (p: Partial<NotificationSettings>) => {
+    setError(null);
+    try {
+      if (isDemo) {
+        updateNotificationSettings(p);
+        return;
+      }
+      const body: Parameters<typeof notificationsApi.patch>[0] = {};
+      if (p.weeklyUsageReport !== undefined) body.weekly_usage_report = p.weeklyUsageReport;
+      if (p.paymentReceipts !== undefined) body.payment_receipts = p.paymentReceipts;
+      if (p.productUpdates !== undefined) body.product_updates = p.productUpdates;
+      if (p.securityAlerts !== undefined) body.security_alerts = p.securityAlerts;
+      await notificationsApi.patch(body);
+      await hydrateFromApi({ force: true });
+    } catch (err) {
+      setError(describeError(err));
+    }
+  };
+
+  const patchAlert = async (next: AccountLowBalanceAlert) => {
+    setError(null);
+    try {
+      if (isDemo) {
+        updateAccountAlert(next);
+        return;
+      }
+      await notificationsApi.patch({
+        low_balance_alerts_master: next.enabled,
+        low_evaluation_points_threshold: next.thresholdPoints,
+      });
+      await hydrateFromApi({ force: true });
+    } catch (err) {
+      setError(describeError(err));
+    }
   };
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-xs text-destructive">{error}</div>
+      ) : null}
       <AccountAlertSection
+        key={accountAlert.thresholdPoints}
         alert={accountAlert}
-        onChange={(next) => updateAccountAlert(next)}
+        onChange={(next) => void patchAlert(next)}
       />
       <Section
         icon={Bell}
@@ -71,7 +113,7 @@ export default function SettingsPage() {
               '每周一汇总上周调用量、消费和最活跃的 Key。',
             )}
             on={notif.weeklyUsageReport}
-            onChange={(v) => patch({ weeklyUsageReport: v })}
+            onChange={(v) => void patch({ weeklyUsageReport: v })}
           />
           <Toggle
             icon={CreditCard}
@@ -81,7 +123,7 @@ export default function SettingsPage() {
               '每次充值成功后发送。',
             )}
             on={notif.paymentReceipts}
-            onChange={(v) => patch({ paymentReceipts: v })}
+            onChange={(v) => void patch({ paymentReceipts: v })}
           />
           <Toggle
             icon={Rss}
@@ -91,7 +133,7 @@ export default function SettingsPage() {
               '新功能和定价变更时偶尔邮件通知。',
             )}
             on={notif.productUpdates}
-            onChange={(v) => patch({ productUpdates: v })}
+            onChange={(v) => void patch({ productUpdates: v })}
           />
           <Toggle
             icon={Lock}
@@ -101,7 +143,7 @@ export default function SettingsPage() {
               '新设备登录、密钥轮换、计费邮箱变更。无法关闭。',
             )}
             on={notif.securityAlerts}
-            onChange={(v) => patch({ securityAlerts: v })}
+            onChange={(v) => void patch({ securityAlerts: v })}
             forced
           />
         </div>

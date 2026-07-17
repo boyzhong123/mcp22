@@ -313,8 +313,8 @@ export const DICT: Record<string, string> = {
   'Your Starter Key': '你的入门 Key',
   'Pre-provisioned — no signup required':
     '账号预置 —— 无需手动创建',
-  'This key includes a signup trial package that expires when its time window ends or its calls are used up.':
-    '此 key 可使用注册试用包；到期或次数用完即失效。',
+  'This key shares signup bonus points that expire when their validity window ends or when they are used up.':
+    '此 Key 共享注册赠送积分；到期或用完即失效。',
   'Create and fund paid keys for production traffic.':
     '为生产流量创建并充值付费 key。',
 

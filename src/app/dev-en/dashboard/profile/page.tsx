@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useLang } from '../../_lib/use-lang';
 import { useMockAuth } from '../../_lib/mock-auth';
-import { upload as uploadApi, describeError } from '../../_lib/api';
+import { auth as authApi, upload as uploadApi, describeError } from '../../_lib/api';
 import { authMethodLabel, isEmailAuthMethod } from '../../_lib/profile-auth-method';
 import { AvatarCropModal } from '../../_components/avatar-crop-modal';
 
@@ -301,9 +301,6 @@ export default function ProfilePage() {
 }
 
 // Standalone so its form state is isolated from the profile form above.
-// 设计稿：提交为本地模拟，真正接入时替换为：
-//   POST /api/auth/change-password  body: { current_password, new_password }
-// （需登录，client.ts 的 request() 默认会带上 Authorization 头。）
 function ChangePasswordCard() {
   const { t } = useLang();
   const [current, setCurrent] = useState('');
@@ -339,14 +336,18 @@ function ChangePasswordCard() {
       return;
     }
     setSubmitting(true);
-    // TODO(api): await auth.changePassword({ current_password: current, new_password: next });
-    await new Promise((r) => window.setTimeout(r, 800));
-    setSubmitting(false);
-    setCurrent('');
-    setNext('');
-    setConfirm('');
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 2400);
+    try {
+      await authApi.changePassword({ current_password: current, new_password: next });
+      setCurrent('');
+      setNext('');
+      setConfirm('');
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 2400);
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const fieldClass =

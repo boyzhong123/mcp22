@@ -10,6 +10,9 @@ import {
 } from '../_lib/mock-store';
 import { useMockStore } from '../_lib/use-mock-store';
 import { useLang } from '../_lib/use-lang';
+import { billing, describeError } from '../_lib/api';
+import { useAuth } from '../_lib/auth-context';
+import { hydrateFromApi } from '../_lib/mock-store-bridge';
 import { ModalPortal } from './modal-portal';
 
 interface SpendLimitModalProps {
@@ -50,6 +53,7 @@ export function SpendLimitForm({
   saveLabel?: string;
 }) {
   const { tx, t } = useLang();
+  const { isDemo } = useAuth();
   const limit = useMockStore<SpendLimit>(getSpendLimit, DEFAULT_LIMIT);
 
   const [monthlyPointsOn, setMonthlyPointsOn] = useState(
@@ -70,10 +74,27 @@ export function SpendLimitForm({
   const [dailyCalls, setDailyCalls] = useState(
     limit.dailyCallCap != null ? String(limit.dailyCallCap) : '5000',
   );
-  const [warn, setWarn] = useState<number[]>(() =>
-    limit.warnAtPercents.length ? limit.warnAtPercents : WARN_PRESETS,
-  );
+  const [warn, setWarn] = useState<number[]>(() => limit.warnAtPercents);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The first render may use the local fallback while DataHydrator is still
+  // loading. Keep the draft synchronized when the authoritative limits arrive.
+  useEffect(() => {
+    // This is an intentional external-store hydration boundary: the form may
+    // mount before the authenticated limits request completes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMonthlyPointsOn(limit.monthlyPointCap != null);
+    setMonthlyPoints(limit.monthlyPointCap != null ? String(limit.monthlyPointCap) : '50000');
+    setMonthlyCallsOn(limit.monthlyCallCap != null);
+    setMonthlyCalls(limit.monthlyCallCap != null ? String(limit.monthlyCallCap) : '100000');
+    setDailyPointsOn(limit.dailyPointCap != null);
+    setDailyPoints(limit.dailyPointCap != null ? String(limit.dailyPointCap) : '5000');
+    setDailyCallsOn(limit.dailyCallCap != null);
+    setDailyCalls(limit.dailyCallCap != null ? String(limit.dailyCallCap) : '5000');
+    setWarn(limit.warnAtPercents);
+  }, [limit]);
 
   const toggleWarn = (p: number) => {
     setWarn((w) =>
@@ -87,16 +108,37 @@ export function SpendLimitForm({
     return n;
   };
 
-  const handleSave = () => {
-    updateSpendLimit({
+  const handleSave = async () => {
+    const next: SpendLimit = {
       monthlyPointCap: monthlyPointsOn ? parseCalls(monthlyPoints) : null,
       monthlyCallCap: monthlyCallsOn ? parseCalls(monthlyCalls) : null,
       dailyPointCap: dailyPointsOn ? parseCalls(dailyPoints) : null,
       dailyCallCap: dailyCallsOn ? parseCalls(dailyCalls) : null,
       warnAtPercents: warn,
-    });
-    onSaved?.(getSpendLimit());
-    setSavedAt(Date.now());
+      resetDay: 1,
+    };
+    setSaving(true);
+    setError(null);
+    try {
+      if (isDemo) {
+        updateSpendLimit(next);
+      } else {
+        await billing.setLimits({
+          monthly_evaluation_point_cap: next.monthlyPointCap ?? 0,
+          monthly_call_cap: next.monthlyCallCap ?? 0,
+          daily_evaluation_point_cap: next.dailyPointCap ?? 0,
+          daily_call_cap: next.dailyCallCap ?? 0,
+          warn_at_percents: next.warnAtPercents,
+        });
+        await hydrateFromApi({ force: true });
+      }
+      onSaved?.(isDemo ? getSpendLimit() : next);
+      setSavedAt(Date.now());
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -214,14 +256,17 @@ export function SpendLimitForm({
           <Info className="h-3.5 w-3.5 shrink-0 mt-[1px]" />
           <div className="leading-relaxed">
             {t(
-              'Caps are enforced with up to 10 minutes of latency; small overages may occur. Each axis evaluates independently — whichever cap is hit first stops traffic.',
-              '上限的生效延迟最多 10 分钟，可能出现少量超额。各维度独立判定，先达到的维度先触发停服。',
+              'Checks do not reserve calls or points, so brief overages are possible under concurrency. Each axis evaluates independently — whichever cap is hit first stops later traffic.',
+              '检查不会预占调用量或积分，因此并发时可能短暂超额。各维度独立判定，先达到的维度会阻断后续流量。',
             )}
           </div>
         </div>
       </div>
 
       <div className="mt-6 pt-4 border-t border-border/60 flex items-center justify-end gap-2">
+        {error && (
+          <span className="mr-auto max-w-[65%] text-[11px] text-destructive">{error}</span>
+        )}
         {savedAt && (
           <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mr-auto">
             {t('Saved', '已保存')}
@@ -238,10 +283,11 @@ export function SpendLimitForm({
         )}
         <button
           type="button"
-          onClick={handleSave}
-          className="h-9 px-4 text-xs font-semibold rounded-md bg-foreground text-background hover:bg-foreground/90 transition-colors"
+          onClick={() => void handleSave()}
+          disabled={saving}
+          className="h-9 px-4 text-xs font-semibold rounded-md bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saveLabel ?? t('Save limits', '保存上限')}
+          {saving ? t('Saving…', '正在保存…') : saveLabel ?? t('Save limits', '保存上限')}
         </button>
       </div>
     </>

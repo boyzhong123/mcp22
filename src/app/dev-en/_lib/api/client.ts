@@ -106,6 +106,19 @@ export function describeError(err: unknown, ctx?: ErrorContext): string {
         return t('This action is not allowed for the Starter key.', 'Starter 密钥不允许此操作。');
       case 'NOT_FOUND':
         return t('Resource not found.', '资源未找到。');
+      case 'USAGE_EXPORT_TOO_LARGE':
+        return t(
+          'The export is too large. Narrow the date range or filters.',
+          '导出数据过多，请缩小日期范围或增加筛选条件。',
+        );
+      case 'INVALID_BILLING_LIMITS':
+        return t('One or more limits are invalid.', '一个或多个上限值无效。');
+      case 'AMOUNT_BELOW_MINIMUM':
+        return t('The amount is below the minimum top-up.', '充值金额低于最低要求。');
+      case 'PRICING_NOT_CONFIGURED':
+        return t('Pricing is not configured yet.', '充值定价尚未配置。');
+      case 'ORDER_STATE_CONFLICT':
+        return t('The order status changed. Refresh the transaction.', '订单状态已变化，请刷新交易详情。');
       case 'INVALID_INPUT':
         return err.message || t('Invalid input.', '输入无效。');
       case 'EMAIL_EXISTS':
@@ -203,7 +216,16 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   if (asBlob) {
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
-      throw new ApiError(txt || `HTTP ${res.status}`, res.status);
+      let code = 'UNKNOWN';
+      let message = txt || `HTTP ${res.status}`;
+      try {
+        const parsed = JSON.parse(txt) as { error?: { code?: string; message?: string } };
+        code = parsed.error?.code ?? code;
+        message = parsed.error?.message ?? message;
+      } catch {
+        // Non-JSON errors keep the raw response text.
+      }
+      throw new ApiError(message, res.status, code);
     }
     return (await res.blob()) as unknown as T;
   }

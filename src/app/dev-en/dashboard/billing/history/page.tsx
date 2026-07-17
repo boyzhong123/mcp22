@@ -320,9 +320,15 @@ function TransactionDetailDrawer({
             <div className="rounded-xl border border-border bg-muted/20 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs text-muted-foreground">{t('Top-up amount', '充值金额')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isCredited
+                      ? t('Points credited', '到账积分')
+                      : t('Expected points', '预计到账积分')}
+                  </p>
                   <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                    {isCredited ? `+${formatPoints(creditedPoints(transaction))}` : '—'}
+                    +{formatPoints(
+                      isCredited ? creditedPoints(transaction) : (transaction.pointsToGrant ?? 0),
+                    )}
                   </p>
                 </div>
                 <StatusPill status={transaction.status} />
@@ -368,8 +374,12 @@ function TransactionDetailDrawer({
                   }
                 />
                 <DetailRow
-                  label={t('Points credited', '实际到账')}
-                  value={isCredited ? `+${formatPoints(creditedPoints(transaction))}` : '—'}
+                  label={isCredited
+                    ? t('Points credited', '实际到账')
+                    : t('Quoted points', '订单报价积分')}
+                  value={`+${formatPoints(
+                    isCredited ? creditedPoints(transaction) : (transaction.pointsToGrant ?? 0),
+                  )}`}
                 />
                 <DetailRow
                   label={t('Valid through', '有效期至')}

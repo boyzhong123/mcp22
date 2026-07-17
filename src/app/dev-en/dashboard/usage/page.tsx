@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { UsageActivityHeatmap } from '../../_components/usage-activity-heatmap';
 import { KernelUsageDetailsModal } from '../../_components/kernel-usage-details-modal';
+import { UsageEventsTable } from '../../_components/usage-events-table';
+import { showActionToast } from '../../_components/action-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -32,13 +34,16 @@ import { useLang, type DevEnLang } from '../../_lib/use-lang';
 import {
   aggregateEvaluationUsage,
   toEvaluationUsage,
-  type EvaluationUsageBreakdown,
 } from '../../_lib/evaluation-usage';
-import { keys as keysApi } from '../../_lib/api';
+import { describeError, keys as keysApi, usage as usageApi } from '../../_lib/api';
+import { useAuth } from '../../_lib/auth-context';
 import { realKeyId } from '../../_lib/mock-store-bridge';
 
-type Period = 7 | 14 | 28 | 90;
-const PERIODS: Period[] = [7, 14, 28, 90];
+// A period is either a rolling day count or the current calendar month.
+// 'month' exists so Billing's "points used this month" card can deep-link
+// here at a matching scope — no rolling window equals a calendar month.
+type Period = 7 | 14 | 28 | 90 | 'month';
+const PERIODS: Period[] = [7, 14, 28, 90, 'month'];
 
 // Deterministic palette used to colour each API key across the chart.
 // Cycled by index — enough distinct hues for a typical account's key count.
@@ -55,12 +60,16 @@ const SERIES_COLORS = [
 
 export default function UsagePage() {
   const { lang, t, tx } = useLang();
+  const { isDemo } = useAuth();
   const usage = useMockStore(getUsage, [] as UsagePoint[]);
   const keys = useMockStore(listKeys, [] as ApiKey[]);
   const searchParams = useSearchParams();
 
   const [period, setPeriod] = useState<Period>(28);
   const [keyFilter, setKeyFilter] = useState<string>('all');
+  // Which of the two detail tables is showing. Both read the same filtered
+  // window, so this is a view switch, not a filter.
+  const [tableTab, setTableTab] = useState<'keys' | 'events'>('keys');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   // Chart Y-axis dimension toggle: stack daily *calls* (count) or consumed
   // *evaluation points*. Both share the same X-axis and per-key colour
@@ -79,6 +88,7 @@ export default function UsagePage() {
   const [revealedKeySecrets, setRevealedKeySecrets] = useState<Record<string, string>>({});
   const [visibleKeyIds, setVisibleKeyIds] = useState<Set<string>>(() => new Set());
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!copiedKeyId) return;
@@ -89,6 +99,12 @@ export default function UsagePage() {
   const revealKeySecret = async (keyId: string) => {
     const cached = revealedKeySecrets[keyId];
     if (cached) return cached;
+    if (isDemo) {
+      const secret = keys.find((key) => key.id === keyId)?.secret;
+      if (!secret) return null;
+      setRevealedKeySecrets((current) => ({ ...current, [keyId]: secret }));
+      return secret;
+    }
     try {
       const secret = await keysApi.reveal(realKeyId(keyId));
       if (!secret) return null;
@@ -96,6 +112,10 @@ export default function UsagePage() {
       return secret;
     } catch (error) {
       console.error('[usage] unable to reveal key', keyId, error);
+      showActionToast({
+        title: t('Unable to reveal key', '无法显示完整 Key'),
+        description: describeError(error),
+      });
       return null;
     }
   };
@@ -152,18 +172,67 @@ export default function UsagePage() {
     // Only honour the param if the key actually exists, otherwise leave the
     // filter alone so the page doesn't render an empty state for a stale id.
     if (keys.some((k) => k.id === kid)) {
+      // URL state arrives independently from the asynchronously hydrated key list.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKeyFilter(kid);
     }
   }, [searchParams, keys]);
+
+  // Deep-link: `/dashboard/usage?range=month` opens at month-to-date, which is
+  // how Billing's "points used this month" card hands off without the two
+  // pages disagreeing about the window.
+  useEffect(() => {
+    if (searchParams.get('range') !== 'month') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPeriod('month');
+  }, [searchParams]);
+
+  // The events table is API-backed and renders nothing for the demo account,
+  // so its tab only exists when it has something to show. `activeTableTab`
+  // guards against a stale 'events' selection outliving the tab.
+  const hasEventsTab = !isDemo;
+  const activeTableTab = hasEventsTab ? tableTab : 'keys';
+
+  const dateRange = useMemo(() => usageDateRange(period), [period]);
+  const periodDays = useMemo(() => rangeDayCount(dateRange), [dateRange]);
+  // "last 28 days" vs "this month" — the chart/KPI captions read differently
+  // for a rolling window than for a month-to-date one.
+  const periodLabel = period === 'month'
+    ? t('this month', '本月')
+    : t(`last ${period} days`, `过去 ${period} 天`);
 
   const filteredUsage = useMemo(() => {
     return usage.filter((p) => {
       const key = keys.find((k) => k.id === p.keyId);
       if (!key) return false;
       if (keyFilter !== 'all' && p.keyId !== keyFilter) return false;
+      if (p.date < dateRange.from || p.date > dateRange.to) return false;
       return true;
     });
-  }, [usage, keys, keyFilter]);
+  }, [usage, keys, keyFilter, dateRange]);
+
+  const handleExport = async () => {
+    if (isDemo) {
+      exportLocalUsageCsv({ rows: filteredUsage, keys, period, keyFilter });
+      return;
+    }
+    setExporting(true);
+    try {
+      const blob = await usageApi.exportCsv({
+        from: dateRange.from,
+        to: dateRange.to,
+        key_id: keyFilter === 'all' ? undefined : realKeyId(keyFilter),
+      });
+      downloadBlob(blob, `chivox-usage_${dateRange.from}_${dateRange.to}.csv`);
+    } catch (error) {
+      showActionToast({
+        title: t('Export failed', '导出失败'),
+        description: describeError(error),
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Keys that actually show up in the filtered window, sorted by total
   // calls desc. We use this list both for the stack order (largest on
@@ -198,7 +267,7 @@ export default function UsagePage() {
       totalCostMills: number;
       totalUncovered: number;
     }[] = [];
-    for (let i = period - 1; i >= 0; i--) {
+    for (let i = periodDays - 1; i >= 0; i--) {
       const d = new Date(today.getTime() - i * 86400000);
       const date = d.toISOString().slice(0, 10);
       const perKey: Record<string, number> = {};
@@ -217,7 +286,7 @@ export default function UsagePage() {
       days.push({ date, perKey, perKeyCost, totalCalls, totalCostMills, totalUncovered });
     }
     return days;
-  }, [filteredUsage, period]);
+  }, [filteredUsage, periodDays]);
 
   const kpiTotalCalls = stackedData.reduce((a, d) => a + d.totalCalls, 0);
   const kpiTotalCost = stackedData.reduce((a, d) => a + d.totalCostMills, 0);
@@ -251,6 +320,10 @@ export default function UsagePage() {
   // Per-key rollup with the dynamic CoreType split. Column set = union of
   // CoreTypes seen in the filtered window (case-sensitive keys, largest
   // deduction first) — never a hardcoded business taxonomy.
+  //
+  // Every key gets a row, including ones with no calls in the window: an
+  // idle key is a fact worth seeing, and a key silently missing from the
+  // table reads as data loss. `keyFilter` still narrows the row set.
   const perKeyBreakdown = useMemo(() => {
     const byKey = new Map<string, UsagePoint[]>();
     for (const p of filteredUsage) {
@@ -258,22 +331,33 @@ export default function UsagePage() {
       list.push(p);
       byKey.set(p.keyId, list);
     }
-    return Array.from(byKey.entries())
-      .map(([keyId, list]) => ({
-        key: keys.find((kk) => kk.id === keyId),
-        usage: aggregateEvaluationUsage(list),
+    return keys
+      .filter((k) => keyFilter === 'all' || k.id === keyFilter)
+      .map((key) => ({
+        key,
+        usage: aggregateEvaluationUsage(byKey.get(key.id) ?? []),
       }))
-      .filter((row): row is { key: ApiKey; usage: EvaluationUsageBreakdown } => !!row.key)
       .sort((a, b) => {
         const av = breakdownSort.column === 'calls' ? a.usage.calls : a.usage.totalPoints;
         const bv = breakdownSort.column === 'calls' ? b.usage.calls : b.usage.totalPoints;
-        return breakdownSort.dir === 'desc' ? bv - av : av - bv;
+        if (av !== bv) return breakdownSort.dir === 'desc' ? bv - av : av - bv;
+        return a.key.name.localeCompare(b.key.name);
       });
-  }, [filteredUsage, keys, breakdownSort]);
+  }, [filteredUsage, keys, keyFilter, breakdownSort]);
 
   const detailsRow = detailsKeyId
     ? perKeyBreakdown.find((row) => row.key.id === detailsKeyId) ?? null
     : null;
+
+  const usageEventCoreTypeOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const point of usage) {
+      for (const coreType of point.coreTypes ?? []) {
+        options.set(coreType.coreType, coreType.displayName || coreType.coreType);
+      }
+    }
+    return [...options.entries()].map(([coreType, displayName]) => ({ coreType, displayName }));
+  }, [usage]);
 
   const toggleBreakdownSort = (column: 'calls' | 'points') => {
     setBreakdownSort((prev) =>
@@ -337,7 +421,7 @@ export default function UsagePage() {
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {p}{t('d', '天')}
+              {p === 'month' ? t('Month', '本月') : `${p}${t('d', '天')}`}
             </button>
           ))}
         </div>
@@ -345,20 +429,13 @@ export default function UsagePage() {
         <div className="ml-auto">
           <button
             type="button"
-            onClick={() =>
-              exportUsageCsv({
-                rows: filteredUsage,
-                keys,
-                period,
-                keyFilter,
-              })
-            }
-            disabled={filteredUsage.length === 0}
+            onClick={() => void handleExport()}
+            disabled={exporting || (isDemo && filteredUsage.length === 0)}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-background hover:bg-muted/50 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             title={t('Export current view to CSV', '将当前视图导出为 CSV')}
           >
             <Download className="h-3.5 w-3.5" />
-            {t('Export CSV', '导出 CSV')}
+            {exporting ? t('Exporting…', '正在导出…') : t('Export CSV', '导出 CSV')}
           </button>
         </div>
       </div>
@@ -413,21 +490,21 @@ export default function UsagePage() {
               {chartView === 'heatmap'
                 ? isCostMetric
                   ? t(
-                      `${kpiTotalCost.toLocaleString('en-US')} points · ${period} days · one square per day`,
-                      `过去 ${period} 天 · 共消耗 ${kpiTotalCost.toLocaleString('en-US')} 积分 · 每格一天`,
+                      `${kpiTotalCost.toLocaleString('en-US')} points · ${periodLabel} · one square per day`,
+                      `${periodLabel} · 共消耗 ${kpiTotalCost.toLocaleString('en-US')} 积分 · 每格一天`,
                     )
                   : t(
-                      `${kpiTotalCalls.toLocaleString('en-US')} calls · ${period} days · one square per day`,
-                      `过去 ${period} 天 · ${kpiTotalCalls.toLocaleString('en-US')} 次调用 · 每格一天`,
+                      `${kpiTotalCalls.toLocaleString('en-US')} calls · ${periodLabel} · one square per day`,
+                      `${periodLabel} · ${kpiTotalCalls.toLocaleString('en-US')} 次调用 · 每格一天`,
                     )
                 : isCostMetric
                   ? t(
-                      `${kpiTotalCost.toLocaleString('en-US')} points · last ${period} days`,
-                      `过去 ${period} 天 · 共消耗 ${kpiTotalCost.toLocaleString('en-US')} 积分`,
+                      `${kpiTotalCost.toLocaleString('en-US')} points · ${periodLabel}`,
+                      `${periodLabel} · 共消耗 ${kpiTotalCost.toLocaleString('en-US')} 积分`,
                     )
                   : t(
-                      `${kpiTotalCalls.toLocaleString('en-US')} calls · last ${period} days`,
-                      `过去 ${period} 天 · ${kpiTotalCalls.toLocaleString('en-US')} 次调用`,
+                      `${kpiTotalCalls.toLocaleString('en-US')} calls · ${periodLabel}`,
+                      `${periodLabel} · ${kpiTotalCalls.toLocaleString('en-US')} 次调用`,
                     )}
             </div>
           </div>
@@ -683,17 +760,72 @@ export default function UsagePage() {
         )}
       </div>
 
-      {/* Per-key breakdown */}
+      {/* Two granularities of the same filtered data — aggregated per key, or
+           the raw event log. Tabbed rather than stacked: you want one or the
+           other, and stacking them made the page a very long scroll. The chart
+           above stays visible for both, since spotting a spike there and then
+           asking "which key?" is a single motion. */}
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60">
-          <div className="text-sm font-semibold">{tx('Per-key breakdown')}</div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t(
-              'Calls and consumed points per key. Open details to see the per-kernel breakdown.',
-              '按 Key 展示调用次数与消耗积分；点击查看明细可查看各内核用量。',
-            )}
+          {/* The events tab is backed by a live API the demo account has no
+               data for, so it's hidden there rather than offering a tab that
+               opens an empty panel. With one view left, a plain title reads
+               better than a one-item tab strip. */}
+          {hasEventsTab ? (
+            <div
+              role="tablist"
+              aria-label={t('Usage detail view', '用量明细视图')}
+              className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5 text-xs font-medium"
+            >
+              {([
+                { id: 'keys' as const, label: tx('Per-key breakdown') },
+                { id: 'events' as const, label: t('Point charge events', '逐请求扣分事件') },
+              ]).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTableTab === tab.id}
+                  onClick={() => setTableTab(tab.id)}
+                  className={cn(
+                    'h-8 rounded-md px-3 transition-colors',
+                    activeTableTab === tab.id
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm font-semibold">{tx('Per-key breakdown')}</div>
+          )}
+          <p className={cn('text-xs text-muted-foreground', hasEventsTab ? 'mt-2' : 'mt-0.5')}>
+            {activeTableTab === 'keys'
+              ? t(
+                  'Every key, including ones idle in this range. Open details to see the per-kernel breakdown.',
+                  '列出全部 Key（含当前范围内无调用的）；点击查看明细可查看各内核用量。',
+                )
+              : t(
+                  'One row per recorded usage event. Billing status is point coverage, not evaluation success or failure.',
+                  '每行是一条已记账用量事件；计费状态表示积分覆盖情况，不代表评测成功或失败。',
+                )}
           </p>
         </div>
+        {activeTableTab === 'events' ? (
+          <UsageEventsTable
+            key={`${dateRange.from}:${dateRange.to}:${keyFilter}`}
+            embedded
+            from={dateRange.from}
+            to={dateRange.to}
+            keyId={keyFilter === 'all' ? undefined : realKeyId(keyFilter)}
+            coreTypeOptions={usageEventCoreTypeOptions}
+            enabled={!isDemo}
+          />
+        ) : (
+        <>
+
         <div className="overflow-hidden">
           <table className="w-full table-fixed text-sm">
             <colgroup>
@@ -739,7 +871,10 @@ export default function UsagePage() {
                     colSpan={7}
                     className="px-5 py-8 text-center text-sm text-muted-foreground"
                   >
-                    {tx('No usage in this window.')}
+                    {t(
+                      'No keys yet. Create one on the API Keys page.',
+                      '尚无 Key。前往 API Keys 页面创建即可。',
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -844,6 +979,8 @@ export default function UsagePage() {
             </tbody>
           </table>
         </div>
+        </>
+        )}
       </div>
 
       <KernelUsageDetailsModal
@@ -976,7 +1113,7 @@ function formatKeyDate(value: string, lang: DevEnLang, includeTime: boolean): st
  * RFC 4180-escape every cell (double any quotes, wrap anything with comma /
  * newline / quote in quotes) to avoid Excel corruption.
  */
-function exportUsageCsv(input: {
+function exportLocalUsageCsv(input: {
   rows: UsagePoint[];
   keys: ApiKey[];
   period: Period;
@@ -1041,7 +1178,7 @@ function exportUsageCsv(input: {
 
   const today = new Date().toISOString().slice(0, 10);
   const scope = [
-    `period-${period}d`,
+    period === 'month' ? 'period-month-to-date' : `period-${period}d`,
     keyFilter === 'all' ? 'all-keys' : keyFilter,
   ].join('_');
   const filename = `chivox-usage_${today}_${scope}.csv`;
@@ -1055,6 +1192,44 @@ function exportUsageCsv(input: {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function usageDateRange(period: Period): { from: string; to: string } {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const to = today.toISOString().slice(0, 10);
+  if (period === 'month') {
+    // Month-to-date: 1st of the current month through today.
+    const first = new Date(today);
+    first.setUTCDate(1);
+    return { from: first.toISOString().slice(0, 10), to };
+  }
+  return {
+    from: new Date(today.getTime() - (period - 1) * 86400000).toISOString().slice(0, 10),
+    to,
+  };
+}
+
+/**
+ * Inclusive day count spanned by a date range. The chart and the KPI strip
+ * need "how many buckets", which is only the same as `period` for the
+ * rolling windows — a month-to-date range is however long the month is so far.
+ */
+function rangeDayCount(range: { from: string; to: string }): number {
+  const from = Date.parse(`${range.from}T00:00:00Z`);
+  const to = Date.parse(`${range.to}T00:00:00Z`);
+  return Math.max(1, Math.round((to - from) / 86400000) + 1);
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
 }
 

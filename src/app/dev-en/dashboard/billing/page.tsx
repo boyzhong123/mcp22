@@ -7,7 +7,6 @@ import {
   CalendarClock,
   ChevronDown,
   CreditCard,
-  Eye,
   HelpCircle,
   ReceiptText,
   Sparkles,
@@ -29,16 +28,11 @@ import {
   type UsagePoint,
 } from '../../_lib/mock-store';
 import { useMockStore } from '../../_lib/use-mock-store';
-import {
-  aggregateEvaluationUsage,
-  aggregateEvaluationUsageByKey,
-} from '../../_lib/evaluation-usage';
+import { aggregateEvaluationUsage } from '../../_lib/evaluation-usage';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { StatCard } from '../../_components/stat-card';
 import { StripeCheckoutModal } from '../../_components/stripe-checkout-modal';
-import { KernelUsageDetailsModal } from '../../_components/kernel-usage-details-modal';
 import { useLang } from '../../_lib/use-lang';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_WALLET: AccountWallet = {
@@ -59,8 +53,6 @@ export default function BillingPage() {
   const lifetimeEvaluationPoints = useMockStore(getAccountLifetimeEvaluationPoints, 0);
 
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
-  const [detailsKeyId, setDetailsKeyId] = useState<string | null>(null);
-
   // Legacy deep-link: `/dashboard/billing?edit=spend-limit` used to
   // open the inline cap modal. The cap UI now lives at /dashboard/limits,
   // so we redirect there transparently if the param is present.
@@ -77,16 +69,6 @@ export default function BillingPage() {
     return aggregateEvaluationUsage(usage.filter((point) => point.date.startsWith(ym)));
   }, [usage]);
 
-  const usageByKeyThisMonth = useMemo(() => {
-    const ym = new Date().toISOString().slice(0, 7);
-    return aggregateEvaluationUsageByKey(usage.filter((point) => point.date.startsWith(ym)));
-  }, [usage]);
-
-  const activeKeyCount = useMemo(
-    () => keys.filter((k) => k.status === 'active').length,
-    [keys],
-  );
-
   const recentTopUps = useMemo(
     () =>
       transactions
@@ -94,26 +76,6 @@ export default function BillingPage() {
         .slice(0, 3),
     [transactions],
   );
-
-  // Rank: active keys first, ordered by this month's call volume so the
-  // hottest workloads sit on top. Revoked sinks to the bottom.
-  const sortedKeys = useMemo(() => {
-    return [...keys].sort((a, b) => {
-      const aRevoked = a.status === 'revoked' ? 1 : 0;
-      const bRevoked = b.status === 'revoked' ? 1 : 0;
-      if (aRevoked !== bRevoked) return aRevoked - bRevoked;
-      const ac = usageByKeyThisMonth.get(a.id)?.totalPoints ?? 0;
-      const bc = usageByKeyThisMonth.get(b.id)?.totalPoints ?? 0;
-      return bc - ac;
-    });
-  }, [keys, usageByKeyThisMonth]);
-
-  const detailsKey = detailsKeyId
-    ? keys.find((key) => key.id === detailsKeyId) ?? null
-    : null;
-  const detailsUsage = detailsKeyId
-    ? usageByKeyThisMonth.get(detailsKeyId) ?? null
-    : null;
 
   const openAddCredits = () => setAddCreditsOpen(true);
 
@@ -159,6 +121,10 @@ export default function BillingPage() {
             '所有 Key 共享',
           )}
         />
+        {/* Billing answers "how much is left / what did I pay"; which key
+             burned it is a Usage question. `range=month` opens Usage at the
+             same calendar-month scope this card reports, so the two pages
+             can't show different numbers for the same claim. */}
         <StatCard
           icon={ReceiptText}
           label={t('Evaluation points used this month', '本月消耗评测积分')}
@@ -167,6 +133,8 @@ export default function BillingPage() {
             `${formatCalls(monthlyEvaluationUsage.calls)} calls this month`,
             `本月 ${formatCalls(monthlyEvaluationUsage.calls)} 次调用`,
           )}
+          href="/dashboard/usage?range=month"
+          cta={t('View usage by key', '查看各 Key 用量')}
         />
         <StatCard
           icon={CreditCard}
@@ -182,113 +150,6 @@ export default function BillingPage() {
       <PointExpiryBreakdown batches={pointBatches} lang={lang} t={t} />
 
 
-      {/* Per-key point-consumption breakdown. Cap-related chrome
-           (progress bars, /limit suffixes, per-key point-cap subtext)
-           lives on the API Keys page; here we show only what each key
-           cost this month. */}
-      <div className="rounded-2xl border border-border bg-background overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold flex items-center gap-2">
-              <Wallet className="h-4 w-4" /> {t('Evaluation-point usage by key (this month)', '本月各 Key 积分消耗明细')}
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {t(
-                'Every key drains the same point pool. Open details to see the per-kernel calls and consumed points.',
-                '所有 Key 共用同一积分池；点击查看明细可查看各内核的调用次数与消耗积分。',
-              )}
-            </p>
-          </div>
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            {t(
-              `${activeKeyCount} active key${activeKeyCount === 1 ? '' : 's'}`,
-              `${activeKeyCount} 把活跃 Key`,
-            )}
-          </span>
-        </div>
-        {sortedKeys.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-            {t(
-              "No keys yet. Create one on the API Keys page — your free trial unlocks automatically.",
-              '尚无 Key。前往 API Keys 页面创建即可，免费试用次数自动解锁。',
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <div className="min-w-[720px]">
-              {(() => {
-                const gridTemplateColumns = 'minmax(220px,1.5fr) 130px 145px 120px';
-                return (
-                  <>
-                    <div
-                      className="grid gap-5 border-b border-border bg-muted/20 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
-                      style={{ gridTemplateColumns }}
-                    >
-                      <div>{tx('Key')}</div>
-                      <div className="text-right">{t('Call count', '调用次数')}</div>
-                      <div className="text-right">{t('Points consumed', '消耗积分')}</div>
-                      <div className="text-right">{t('Kernel details', '内核明细')}</div>
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {sortedKeys.map((k) => {
-                        const monthUsage = usageByKeyThisMonth.get(k.id);
-                        const monthCalls = monthUsage?.calls ?? 0;
-                        const revoked = k.status === 'revoked';
-
-                        return (
-                          <li
-                            key={k.id}
-                            className="grid items-center gap-5 px-5 py-4"
-                            style={{ gridTemplateColumns }}
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 text-sm font-medium">
-                                <span className="truncate">{k.name}</span>
-                                {revoked && (
-                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
-                                    {tx('Revoked')}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                                {k.maskedSecret.slice(-12)}
-                              </div>
-                            </div>
-                            <div className="text-right text-sm tabular-nums">
-                              {formatCalls(monthCalls)}
-                            </div>
-                            <div className="text-right text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                              {(monthUsage?.totalPoints ?? 0).toLocaleString('en-US')} {t('pts', '积分')}
-                            </div>
-                            <div className="text-right">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDetailsKeyId(k.id)}
-                              >
-                                <Eye />
-                                {t('View details', '查看明细')}
-                              </Button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <KernelUsageDetailsModal
-        open={detailsKey !== null}
-        keyName={detailsKey?.name ?? ''}
-        usage={detailsUsage}
-        onClose={() => setDetailsKeyId(null)}
-      />
 
       {/* Recent top-ups preview */}
       <div className="rounded-2xl border border-border bg-background p-5">

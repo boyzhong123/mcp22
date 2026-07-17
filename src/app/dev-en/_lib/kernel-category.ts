@@ -3,22 +3,19 @@ export type KernelCategoryLabel = {
   zh: string;
 };
 
-/**
- * Prefer the server-provided category. Older API versions do not return one,
- * so keep the points-per-request mapping as a backwards-compatible fallback.
- */
+/** Render only Catalog-provided category metadata. Never infer business
+ * category from the current point price. */
 export function kernelCategoryLabel(
-  category: string | null | undefined,
-  pointsPerRequest: number,
+  categoryCode: string | null | undefined,
+  categoryName?: string | null,
 ): KernelCategoryLabel {
-  const serverCategory = category?.trim();
-  if (serverCategory) return { en: serverCategory, zh: serverCategory };
-
-  if (pointsPerRequest === 1) {
-    return { en: 'Words / phrases / sentences', zh: '字词句' };
-  }
-  if (pointsPerRequest === 2) {
-    return { en: 'Paragraph', zh: '段落' };
+  const code = categoryCode?.trim();
+  const name = categoryName?.trim();
+  if (code || name) {
+    const english = code
+      ? code.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+      : name!;
+    return { en: english, zh: name || code! };
   }
   return { en: 'Unassigned', zh: '待归类' };
 }

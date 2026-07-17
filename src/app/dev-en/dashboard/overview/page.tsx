@@ -36,6 +36,7 @@ import {
   getAccountEvaluationPoints,
   getAccountTrialRemaining,
   getKeyMonthlyCalls,
+  getCurrentMonthTotals,
   getSpendLimit,
   getTransactions,
   getUsage,
@@ -64,6 +65,9 @@ import {
   aggregateEvaluationUsageByKey,
 } from '../../_lib/evaluation-usage';
 import { centsToWalletPoints } from '../../_lib/topup';
+import { describeError, keys as keysApi } from '../../_lib/api';
+import { useAuth } from '../../_lib/auth-context';
+import { hydrateFromApi, mapApiKeyToMock } from '../../_lib/mock-store-bridge';
 
 const DEFAULT_WALLET: AccountWallet = {
   paidEvaluationPoints: 0,
@@ -88,6 +92,7 @@ const DEFAULT_ACCOUNT_ALERT: AccountLowBalanceAlert = {
 export default function OverviewPage() {
   const { user } = useMockAuth();
   const { t, tx, lang } = useLang();
+  const { isDemo } = useAuth();
   const usage = useMockStore(getUsage, [] as UsagePoint[]);
   const wallet = useMockStore(getWallet, DEFAULT_WALLET);
   const evaluationPoints = useMockStore(getAccountEvaluationPoints, 0);
@@ -97,6 +102,7 @@ export default function OverviewPage() {
   );
   const accountAlert = useMockStore(getAccountAlert, DEFAULT_ACCOUNT_ALERT);
   const lowPoints = useMockStore(isAccountLowPoints, false);
+  const currentMonth = useMockStore(getCurrentMonthTotals, null);
   const keys = useMockStore(listKeys, [] as ApiKey[]);
   const transactions = useMockStore(getTransactions, [] as Transaction[]);
   const spendLimit = useMockStore(getSpendLimit, {
@@ -111,22 +117,36 @@ export default function OverviewPage() {
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
   const [createKeyOpen, setCreateKeyOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [createKeyError, setCreateKeyError] = useState<string | null>(null);
   const [justCreatedKey, setJustCreatedKey] = useState<ApiKey | null>(null);
   const [copiedFreshId, setCopiedFreshId] = useState<string | null>(null);
   const openAddCredits = () => setAddCreditsOpen(true);
   const openCreateKey = () => {
     setNewKeyName('');
+    setCreateKeyError(null);
     setCreateKeyOpen(true);
   };
-  const handleCreateKey = (event: FormEvent) => {
+  const handleCreateKey = async (event: FormEvent) => {
     event.preventDefault();
-    const created = createKey(newKeyName);
-    setCreateKeyOpen(false);
-    setJustCreatedKey(created);
-    showActionToast({
-      title: t('Key created', 'Key 创建成功'),
-      description: t('Copy and store the secret securely.', '请及时复制并妥善保存完整 Key。'),
-    });
+    setCreatingKey(true);
+    setCreateKeyError(null);
+    try {
+      const created = isDemo
+        ? createKey(newKeyName)
+        : mapApiKeyToMock(await keysApi.create({ name: newKeyName.trim() || 'Untitled key' }));
+      if (!isDemo) await hydrateFromApi({ force: true });
+      setCreateKeyOpen(false);
+      setJustCreatedKey(created);
+      showActionToast({
+        title: t('Key created', 'Key 创建成功'),
+        description: t('Copy and store the secret securely.', '请及时复制并妥善保存完整 Key。'),
+      });
+    } catch (err) {
+      setCreateKeyError(describeError(err));
+    } finally {
+      setCreatingKey(false);
+    }
   };
   const copyFreshKey = async (secret: string, id: string) => {
     let ok = false;
@@ -159,10 +179,23 @@ export default function OverviewPage() {
   };
 
   const activeKeys = keys.filter((k) => k.status === 'active');
+  // Account-wide month totals come from GET /billing/summary — the same rollup
+  // the backend enforces caps against. Aggregating usage points locally would
+  // silently drift if the server ever changes its month boundary, so the
+  // derived figure is a demo/offline fallback only.
   const monthlyUsage = useMemo(() => {
     const month = new Date().toISOString().slice(0, 7);
-    return aggregateEvaluationUsage(usage.filter((point) => point.date.startsWith(month)));
-  }, [usage]);
+    const derived = aggregateEvaluationUsage(usage.filter((point) => point.date.startsWith(month)));
+    if (!currentMonth) return derived;
+    return {
+      ...derived,
+      calls: currentMonth.calls,
+      events: currentMonth.events,
+      totalPoints: currentMonth.deductedPoints,
+      uncoveredPoints: currentMonth.uncoveredPoints,
+      requiredPoints: currentMonth.deductedPoints + currentMonth.uncoveredPoints,
+    };
+  }, [usage, currentMonth]);
   const usageByKeyThisMonth = useMemo(() => {
     const month = new Date().toISOString().slice(0, 7);
     return aggregateEvaluationUsageByKey(usage.filter((point) => point.date.startsWith(month)));
@@ -314,7 +347,7 @@ export default function OverviewPage() {
             trialRemaining.totalExhausted
               ? trialRemaining.expired
                 ? t('Trial expired', '试用已过期')
-                : t('Trial used up', '试用次数已用完')
+                : t('Signup bonus used up', '注册赠送积分已用完')
               : t(
                   `${trialRemaining.daysLeft} days left · valid to ${trialExpiryLabel}`,
                   `剩余 ${trialRemaining.daysLeft} 天 · 有效期至 ${trialExpiryLabel}`,
@@ -395,8 +428,8 @@ export default function OverviewPage() {
               <p className="text-sm font-medium">{tx('No keys yet')}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {t(
-                  "Create your first API key to start integrating. Free trial calls are unlocked automatically.",
-                  '创建第一把 API 密钥即可开始接入，免费试用次数自动解锁。',
+                  "Create your first API key to start integrating. Signup bonus points are available automatically.",
+                  '创建第一把 API 密钥即可开始接入，注册赠送积分会自动生效。',
                 )}
               </p>
               <button
@@ -672,6 +705,9 @@ export default function OverviewPage() {
                 )}
               </span>
             </div>
+            {createKeyError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">{createKeyError}</div>
+            ) : null}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 type="button"
@@ -682,9 +718,10 @@ export default function OverviewPage() {
               </button>
               <button
                 type="submit"
-                className="h-9 rounded-lg bg-foreground px-4 text-sm font-medium text-background hover:brightness-110"
+                disabled={creatingKey}
+                className="h-9 rounded-lg bg-foreground px-4 text-sm font-medium text-background hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {t('Create key', '创建 Key')}
+                {creatingKey ? t('Creating…', '正在创建…') : t('Create key', '创建 Key')}
               </button>
             </div>
           </form>
@@ -882,7 +919,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
   if (evaluationPoints === 0 && trialRemaining.totalExhausted) {
     const reason = trialRemaining.expired
       ? t('the signup trial window has expired', '注册试用已过期')
-      : t('the signup trial calls are spent', '注册试用次数已用完');
+      : t('the signup bonus points are spent', '注册赠送积分已用完');
     rows.push({
       id: 'points-empty',
       severity: 'critical',
@@ -907,7 +944,7 @@ function buildAccountAlerts(i: AlertInputs): AlertRow[] {
   ) {
     const reason = trialRemaining.expired
       ? t('The signup trial window has expired', '注册试用已过期')
-      : t('The signup trial calls are all spent', '注册试用次数已用完');
+      : t('The signup bonus points are all spent', '注册赠送积分已用完');
     rows.push({
       id: 'trial-exhausted',
       severity: 'warning',

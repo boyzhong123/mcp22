@@ -2,11 +2,14 @@
 
 import { Info, Sparkles, X, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { updateKeySettings, type ApiKey } from '../_lib/mock-store';
 import { useLang } from '../_lib/use-lang';
 import { ModalPortal } from './modal-portal';
+import { describeError, keys as keysApi } from '../_lib/api';
+import { useAuth } from '../_lib/auth-context';
+import { hydrateFromApi, realKeyId } from '../_lib/mock-store-bridge';
 
 interface KeySettingsModalProps {
   open: boolean;
@@ -40,6 +43,7 @@ function OpenedKeySettingsModal({
   onClose: () => void;
 }) {
   const { tx, t } = useLang();
+  const { isDemo } = useAuth();
 
   const [monthlyPointsOn, setMonthlyPointsOn] = useState(apiKey.monthlyPointCap != null);
   const [monthlyPoints, setMonthlyPoints] = useState(
@@ -62,6 +66,33 @@ function OpenedKeySettingsModal({
   const [dailyCalls, setDailyCalls] = useState(
     apiKey.dailyCallCap != null ? String(apiKey.dailyCallCap) : '5000',
   );
+  const [loading, setLoading] = useState(!isDemo);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isDemo) return;
+    let cancelled = false;
+    keysApi.getLimits(realKeyId(apiKey.id))
+      .then((limits) => {
+        if (cancelled) return;
+        setMonthlyPointsOn(limits.monthly_evaluation_point_cap > 0);
+        setMonthlyPoints(String(limits.monthly_evaluation_point_cap || 50000));
+        setMonthlyCallsOn(limits.monthly_call_cap > 0);
+        setMonthlyCalls(String(limits.monthly_call_cap || 50000));
+        setDailyPointsOn(limits.daily_evaluation_point_cap > 0);
+        setDailyPoints(String(limits.daily_evaluation_point_cap || 5000));
+        setDailyCallsOn(limits.daily_call_cap > 0);
+        setDailyCalls(String(limits.daily_call_cap || 5000));
+      })
+      .catch((err) => {
+        if (!cancelled) setError(describeError(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [apiKey.id, isDemo]);
 
   const parseCalls = (raw: string): number | null => {
     const n = parseInt(raw.replace(/[^0-9]/g, ''), 10);
@@ -69,14 +100,33 @@ function OpenedKeySettingsModal({
     return n;
   };
 
-  const save = () => {
-    updateKeySettings(apiKey.id, {
+  const save = async () => {
+    const patch = {
       monthlyPointCap: monthlyPointsOn ? parseCalls(monthlyPoints) : null,
       monthlyCallCap: monthlyCallsOn ? parseCalls(monthlyCalls) : null,
       dailyPointCap: dailyPointsOn ? parseCalls(dailyPoints) : null,
       dailyCallCap: dailyCallsOn ? parseCalls(dailyCalls) : null,
-    });
-    onClose();
+    };
+    setSaving(true);
+    setError(null);
+    try {
+      if (isDemo) {
+        updateKeySettings(apiKey.id, patch);
+      } else {
+        await keysApi.patchSettings(realKeyId(apiKey.id), {
+          monthly_evaluation_point_cap: patch.monthlyPointCap ?? 0,
+          monthly_call_cap: patch.monthlyCallCap ?? 0,
+          daily_evaluation_point_cap: patch.dailyPointCap ?? 0,
+          daily_call_cap: patch.dailyCallCap ?? 0,
+        });
+        await hydrateFromApi({ force: true });
+      }
+      onClose();
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -108,7 +158,7 @@ function OpenedKeySettingsModal({
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-6">
+        <div className={cn('px-5 py-5 space-y-6', loading && 'pointer-events-none opacity-60')}>
           <CapSection
             icon={Sparkles}
             title={t('Monthly evaluation-point cap', '月度评测积分上限')}
@@ -182,6 +232,9 @@ function OpenedKeySettingsModal({
               {t(' page.', ' 页面配置。')}
             </span>
           </div>
+          {error ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">{error}</div>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border/60 bg-muted/20">
@@ -194,10 +247,11 @@ function OpenedKeySettingsModal({
           </button>
           <button
             type="button"
-            onClick={save}
-            className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110"
+            onClick={() => void save()}
+            disabled={loading || saving}
+            className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {tx('Save settings')}
+            {saving ? t('Saving…', '正在保存…') : tx('Save settings')}
           </button>
         </div>
       </div>

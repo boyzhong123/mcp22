@@ -68,6 +68,8 @@ function mergeCoreTypes(
     cur.calls += ct.calls;
     cur.events += ct.events;
     cur.category ??= ct.category;
+    cur.categoryCode ??= ct.categoryCode;
+    cur.categoryName ??= ct.categoryName;
     cur.language ??= ct.language;
     cur.evaluationPoints += ct.evaluationPoints;
     cur.requiredPoints += ct.requiredPoints;

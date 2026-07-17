@@ -1,6 +1,7 @@
 export * as auth from './auth';
 export * as keys from './keys';
 export * as usage from './usage';
+export * as catalog from './catalog';
 export * as billing from './billing';
 export * as notifications from './notifications';
 export * as webhooks from './webhooks';

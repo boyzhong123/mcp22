@@ -52,8 +52,9 @@ import { ModalPortal } from '../../_components/modal-portal';
 import { AccountWalletStrip } from '../../_components/account-wallet-strip';
 import { AccountLimitsSummary } from '../../_components/account-limits-summary';
 import { useLang } from '../../_lib/use-lang';
-import { keys as keysApi } from '../../_lib/api';
-import { realKeyId } from '../../_lib/mock-store-bridge';
+import { describeError, keys as keysApi } from '../../_lib/api';
+import { useAuth } from '../../_lib/auth-context';
+import { hydrateFromApi, mapApiKeyToMock, realKeyId } from '../../_lib/mock-store-bridge';
 
 const DEFAULT_TRIAL: AccountTrialRemaining = {
   totalLeft: 0,
@@ -68,6 +69,7 @@ export default function KeysPage() {
   // subscribe once to the full key list and render it flat.
   const allKeys = useMockStore(listKeys, [] as ApiKey[]);
   const { tx, t } = useLang();
+  const { isDemo } = useAuth();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({});
@@ -76,6 +78,8 @@ export default function KeysPage() {
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [justCreated, setJustCreated] = useState<ApiKey | null>(null);
   const [confirmPause, setConfirmPause] = useState<ApiKey | null>(null);
   const [rename, setRename] = useState<{ key: ApiKey; value: string } | null>(null);
@@ -105,6 +109,12 @@ export default function KeysPage() {
   const reveal = async (id: string) => {
     const cached = revealedSecrets[id];
     if (cached) return cached;
+    if (isDemo) {
+      const secret = allKeys.find((key) => key.id === id)?.secret;
+      if (!secret) return null;
+      setRevealedSecrets((current) => ({ ...current, [id]: secret }));
+      return secret;
+    }
     try {
       const full = await keysApi.reveal(realKeyId(id));
       if (!full) return null;
@@ -112,6 +122,10 @@ export default function KeysPage() {
       return full;
     } catch (err) {
       console.error('[keys] reveal failed for', id, err);
+      showActionToast({
+        title: t('Unable to reveal key', '无法显示完整 Key'),
+        description: describeError(err),
+      });
       return null;
     }
   };
@@ -162,20 +176,30 @@ export default function KeysPage() {
 
   const openCreate = () => {
     setNewName('');
+    setCreateError(null);
     setCreateOpen(true);
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Wallet model: project and env are no longer asked for; createKey keeps
-    // legacy defaults internally for usage/billing compatibility.
-    const created = createKey(newName);
-    setJustCreated(created);
-    setCreateOpen(false);
-    showActionToast({
-      title: t('Key created', 'Key 创建成功'),
-      description: t('Copy and store the secret securely.', '请及时复制并妥善保存完整 Key。'),
-    });
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const created = isDemo
+        ? createKey(newName)
+        : mapApiKeyToMock(await keysApi.create({ name: newName.trim() || 'Untitled key' }));
+      if (!isDemo) await hydrateFromApi({ force: true });
+      setJustCreated(created);
+      setCreateOpen(false);
+      showActionToast({
+        title: t('Key created', 'Key 创建成功'),
+        description: t('Copy and store the secret securely.', '请及时复制并妥善保存完整 Key。'),
+      });
+    } catch (err) {
+      setCreateError(describeError(err));
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -186,8 +210,8 @@ export default function KeysPage() {
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">{t('API Keys', 'API 密钥')}</h1>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
             {t(
-              'Create as many keys as you need — every key on the account shares the same signup trial package and evaluation-point pool. The trial expires when its time window ends or its calls are used up.',
-              '按需创建任意数量的 Key — 账户内所有 Key 共享同一份注册试用包和评测积分池；试用包到期或次数用完即失效。',
+              'Create as many keys as you need — every key on the account shares the same signup bonus and evaluation-point pool. Bonus points expire when their validity window ends or when they are used up.',
+              '按需创建任意数量的 Key — 账户内所有 Key 共享同一份注册赠送积分和评测积分池；赠送积分到期或用完即失效。',
             )}
           </p>
         </div>
@@ -309,6 +333,9 @@ export default function KeysPage() {
                 )}
               </span>
             </div>
+            {createError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">{createError}</div>
+            ) : null}
 
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
@@ -320,9 +347,10 @@ export default function KeysPage() {
               </button>
               <button
                 type="submit"
-                className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110"
+                disabled={creating}
+                className="h-9 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {t('Create key', '创建 Key')}
+                {creating ? t('Creating…', '正在创建…') : t('Create key', '创建 Key')}
               </button>
             </div>
           </form>
@@ -524,8 +552,8 @@ function PaidTableHeader() {
       <div>{tx('Key')}</div>
       <div>{t('Usage today', '今日用量')}</div>
       <div>{t('Usage this month', '本月用量')}</div>
-      <div>{t('Monthly limits', '月度上限')}</div>
       <div>{t('Daily limits', '每日上限')}</div>
+      <div>{t('Monthly limits', '月度上限')}</div>
       <div>{t('Last used', '最近使用')}</div>
       <div className="text-right pr-1">{tx('Actions')}</div>
     </div>
@@ -543,7 +571,7 @@ function EmptyPaidKeysState({ onCreate }: { onCreate: () => void }) {
       <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
         {t(
           'Create your first key to start integrating. The free trial unlocks automatically — add evaluation points whenever you need more.',
-          '创建第一把 Key 即可开始接入。免费试用次数自动解锁；用完后随时充值评测积分即可继续。',
+          '创建第一把 Key 即可开始接入。注册赠送积分会自动生效；用完后随时充值评测积分即可继续。',
         )}
       </p>
       <button
@@ -724,20 +752,21 @@ function PaidKeyRow({
       />
 
       {/* ─── Limits column ───────────────────────────────────────
-           Monthly and daily caps are separate columns so every value saved
-           in the settings dialog remains visible from the list. */}
+           Daily and monthly caps are separate columns so every value saved
+           in the settings dialog remains visible from the list. Their order
+           mirrors the usage columns to the left (today, then this month). */}
       <KeyLimitCell
-        label={t('Monthly limits', '月度上限')}
-        pointCap={hasPointCap ? k.monthlyPointCap : null}
-        callCap={hasCallCap ? callCap : null}
+        label={t('Daily limits', '每日上限')}
+        pointCap={dailyPointCap != null && dailyPointCap > 0 ? dailyPointCap : null}
+        callCap={dailyCallCap != null && dailyCallCap > 0 ? dailyCallCap : null}
         onSettings={onSettings}
         disabled={isRevoked}
       />
 
       <KeyLimitCell
-        label={t('Daily limits', '每日上限')}
-        pointCap={dailyPointCap != null && dailyPointCap > 0 ? dailyPointCap : null}
-        callCap={dailyCallCap != null && dailyCallCap > 0 ? dailyCallCap : null}
+        label={t('Monthly limits', '月度上限')}
+        pointCap={hasPointCap ? k.monthlyPointCap : null}
+        callCap={hasCallCap ? callCap : null}
         onSettings={onSettings}
         disabled={isRevoked}
       />
@@ -965,7 +994,8 @@ function KeyLimitCell({
         disabled={disabled}
         className={cn(
           '-mx-1 rounded-md px-1 py-0 text-left transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-40',
-          !hasLimit && 'inline-flex items-center gap-1 text-muted-foreground',
+          !hasLimit &&
+            'inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300',
         )}
         title={t('Configure key limits', '配置 Key 上限')}
       >

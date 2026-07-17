@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import type { EvaluationUsageBreakdown } from '../_lib/evaluation-usage';
 import { kernelCategoryLabel } from '../_lib/kernel-category';
 import { kernelLanguage } from '../_lib/kernel-language';
-import { useBillingPricing } from '../_lib/use-billing-pricing';
+import { useEvaluationKernelDetails } from '../_lib/use-evaluation-kernel-details';
 import { useLang } from '../_lib/use-lang';
 import { ModalPortal } from './modal-portal';
 
@@ -27,16 +27,15 @@ type KernelPresentation = {
 };
 
 function getKernelPresentation(
-  coreType: string,
-  category: string | null | undefined,
+  categoryCode: string | null | undefined,
+  categoryName: string | null | undefined,
   language: string | null | undefined,
-  pointsPerRequest: number,
 ): KernelPresentation {
-  const categoryLabel = kernelCategoryLabel(category, pointsPerRequest);
+  const categoryLabel = kernelCategoryLabel(categoryCode, categoryName);
   return {
     categoryEn: categoryLabel.en,
     categoryZh: categoryLabel.zh,
-    language: kernelLanguage(language, coreType),
+    language: kernelLanguage(language),
   };
 }
 
@@ -47,7 +46,7 @@ export function KernelUsageDetailsModal({
   onClose,
 }: KernelUsageDetailsModalProps) {
   const { t } = useLang();
-  const { catalog } = useBillingPricing();
+  const { catalog, load: loadKernelDetails } = useEvaluationKernelDetails();
   const titleId = useId();
   const descriptionId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -60,10 +59,9 @@ export function KernelUsageDetailsModal({
     return {
       ...kernel,
       presentation: getKernelPresentation(
-        kernel.coreType,
-        kernel.category?.trim() || rate?.category,
+        kernel.categoryCode?.trim() || rate?.categoryCode,
+        kernel.categoryName?.trim() || kernel.category?.trim() || rate?.categoryName,
         kernel.language?.trim() || rate?.language,
-        rate?.pointsPerRequest ?? catalog.defaultPointsPerRequest,
       ),
     };
   });
@@ -102,6 +100,7 @@ export function KernelUsageDetailsModal({
 
   useEffect(() => {
     if (!open) return;
+    void loadKernelDetails();
     const previousOverflow = document.body.style.overflow;
     const previousFocus = document.activeElement instanceof HTMLElement
       ? document.activeElement
@@ -118,7 +117,7 @@ export function KernelUsageDetailsModal({
       window.removeEventListener('keydown', closeOnEscape);
       previousFocus?.focus();
     };
-  }, [onClose, open]);
+  }, [loadKernelDetails, onClose, open]);
 
   if (!open) return null;
 

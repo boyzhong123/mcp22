@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDown, ArrowUpRight, Info, X } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Info, LoaderCircle, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,10 +8,11 @@ import { ModalPortal } from './modal-portal';
 import { kernelCategoryLabel } from '../_lib/kernel-category';
 import { kernelLanguage } from '../_lib/kernel-language';
 import { useLang } from '../_lib/use-lang';
-import { useBillingPricing } from '../_lib/use-billing-pricing';
+import { useEvaluationKernelDetails } from '../_lib/use-evaluation-kernel-details';
 
 interface EvaluationKernelInfoProps {
   className?: string;
+  trigger?: 'icon' | 'button';
 }
 
 function pointRateBadgeClassName(pointsPerRequest: number, defaultRate: number) {
@@ -29,7 +30,10 @@ function pointRateBadgeClassName(pointsPerRequest: number, defaultRate: number) 
  * specifically configured deducts `default_points_per_request`. An empty rate
  * list is a normal state, not an error.
  */
-export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
+export function EvaluationKernelInfo({
+  className,
+  trigger = 'icon',
+}: EvaluationKernelInfoProps) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const descriptionId = useId();
@@ -37,11 +41,13 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { t } = useLang();
-  const { catalog } = useBillingPricing();
+  const { catalog, load, loaded, loading } = useEvaluationKernelDetails();
 
   const rates = catalog.coreTypeRates;
   const defaultRate = catalog.defaultPointsPerRequest;
-  const defaultCategory = kernelCategoryLabel(undefined, defaultRate);
+  // The final row is a pricing fallback, not an uncatalogued real kernel.
+  // Label it as a rule so it is not mistaken for missing Catalog metadata.
+  const defaultCategory = { en: 'Default rule', zh: '默认规则' };
   // Summarize price levels instead of showing two arbitrary CoreTypes. The
   // full, deterministically sorted list remains available in the table.
   const configuredRateGroups = Array.from(
@@ -52,6 +58,11 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
     ([pointsPerRequest, count]) => ({ pointsPerRequest, count }),
   ).sort((a, b) => b.pointsPerRequest - a.pointsPerRequest);
   const summaryRateGroups = configuredRateGroups.slice(0, 2);
+
+  const openDetails = () => {
+    setOpen(true);
+    void load();
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -104,23 +115,37 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
 
   return (
     <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="ghost"
-        size="icon-xs"
-        className={cn(
-          'size-5 rounded-full border-0 bg-transparent p-0 text-muted-foreground/45 shadow-none hover:bg-muted/60 hover:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring/35',
-          className,
-        )}
-        aria-label={t(
-          'View CoreType point deduction rates',
-          '查看 CoreType 扣分费率',
-        )}
-        onClick={() => setOpen(true)}
-      >
-        <Info className="size-3" strokeWidth={1.65} />
-      </Button>
+      {trigger === 'button' ? (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn('h-7 gap-1.5 rounded-lg px-2.5 text-xs', className)}
+          onClick={openDetails}
+        >
+          <Info className="size-3.5" />
+          {t('View details', '查看详细')}
+        </Button>
+      ) : (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className={cn(
+            'size-5 rounded-full border-0 bg-transparent p-0 text-muted-foreground/45 shadow-none hover:bg-muted/60 hover:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring/35',
+            className,
+          )}
+          aria-label={t(
+            'View kernel point deduction rates',
+            '查看内核扣分费率',
+          )}
+          onClick={openDetails}
+        >
+          <Info className="size-3" strokeWidth={1.65} />
+        </Button>
+      )}
 
       {open ? (
         <ModalPortal>
@@ -140,12 +165,30 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
               <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border/70 px-4 py-4 sm:px-6 sm:py-5">
                 <div className="min-w-0">
                     <h2 id={titleId} className="text-base font-semibold tracking-tight sm:text-lg">
-                      {t('CoreTypes and point deductions', 'CoreType 与积分扣除')}
+                      {t('Kernel names and point deductions', '内核名与积分扣除')}
                     </h2>
                     <p id={descriptionId} className="mt-1 text-xs leading-relaxed text-muted-foreground">
                       {t(
-                        'Rates come from the current server pricing version. CoreTypes are case-sensitive; anything without a specific rate deducts the default per request.',
-                        '费率来自服务端当前定价版本。CoreType 区分大小写；未单独配置的类型按默认费率每次扣分。',
+                        'Rates come from the current server pricing version. Kernel names are case-sensitive; anything without a specific rate deducts the default per request.',
+                        '费率来自服务端当前定价版本。内核名区分大小写；未单独配置的内核按默认费率每次扣分。',
+                      )}
+                    </p>
+                    <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                      {loading || !loaded ? (
+                        <>
+                          <LoaderCircle className="size-3 animate-spin" />
+                          {t('Reading the latest point rules…', '正在读取最新积分规则…')}
+                        </>
+                      ) : catalog.kernelDetailsFromServer ? (
+                        <>
+                          <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+                          {t('Latest rules loaded from the server', '已读取服务端最新积分规则')}
+                        </>
+                      ) : (
+                        <>
+                          <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+                          {t('Latest Demo reference rules', '当前最新 Demo 参考规则')}
+                        </>
                       )}
                     </p>
                 </div>
@@ -242,8 +285,20 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {rates.map((rate) => {
-                        const category = kernelCategoryLabel(rate.category, rate.pointsPerRequest);
+                      {loading || !loaded ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-2">
+                              <LoaderCircle className="size-4 animate-spin" />
+                              {t('Loading kernel rates…', '正在加载内核费率…')}
+                            </span>
+                          </td>
+                        </tr>
+                      ) : rates.map((rate) => {
+                        const category = kernelCategoryLabel(
+                          rate.categoryCode,
+                          rate.categoryName || rate.category,
+                        );
                         return (
                           <tr key={rate.coreType} className="border-b border-border/60">
                             <td className="break-words px-2 py-2.5 text-xs font-medium sm:px-4">
@@ -256,7 +311,7 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
                             </td>
                             <td className="px-2 py-2.5 sm:px-4">
                               <span className="inline-flex min-w-8 justify-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                {kernelLanguage(rate.language, rate.coreType)}
+                                {kernelLanguage(rate.language)}
                               </span>
                             </td>
                             <td className="px-2 py-2.5 text-right sm:px-4">
@@ -267,32 +322,34 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
                           </tr>
                         );
                       })}
-                      <tr className="last:border-0">
-                        <td className="break-words px-2 py-2.5 text-xs font-medium text-muted-foreground sm:px-4">
-                          {t(defaultCategory.en, defaultCategory.zh)}
-                        </td>
-                        <td className="px-2 py-2.5 text-xs text-muted-foreground sm:px-4">
-                          {t('All unconfigured kernels', '其他未配置内核')}
-                        </td>
-                        <td className="px-2 py-2.5 sm:px-4">
-                          <span className="inline-flex min-w-8 justify-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                            —
-                          </span>
-                        </td>
-                        <td className="px-2 py-2.5 text-right sm:px-4">
-                          <span className={pointRateBadgeClassName(defaultRate, defaultRate)}>
-                            {defaultRate}
-                          </span>
-                        </td>
-                      </tr>
+                      {!loading && loaded ? (
+                        <tr className="last:border-0">
+                          <td className="break-words px-2 py-2.5 text-xs font-medium text-muted-foreground sm:px-4">
+                            {t(defaultCategory.en, defaultCategory.zh)}
+                          </td>
+                          <td className="px-2 py-2.5 text-xs text-muted-foreground sm:px-4">
+                            {t('All unconfigured kernels', '其他未配置内核')}
+                          </td>
+                          <td className="px-2 py-2.5 sm:px-4">
+                            <span className="inline-flex min-w-8 justify-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              —
+                            </span>
+                          </td>
+                          <td className="px-2 py-2.5 text-right sm:px-4">
+                            <span className={pointRateBadgeClassName(defaultRate, defaultRate)}>
+                              {defaultRate}
+                            </span>
+                          </td>
+                        </tr>
+                      ) : null}
                     </tbody>
                   </table>
                 </div>
                 {rates.length === 0 ? (
                   <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                     {t(
-                      'No CoreType-specific rates are currently published — every request deducts the default rate above.',
-                      '当前没有生效的 CoreType 专项费率——所有请求均按上方默认费率扣分。',
+                      'No kernel-specific rates are currently published — every request deducts the default rate above.',
+                      '当前没有生效的内核专项费率——所有请求均按上方默认费率扣分。',
                     )}
                   </p>
                 ) : null}
@@ -301,8 +358,8 @@ export function EvaluationKernelInfo({ className }: EvaluationKernelInfoProps) {
               <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/70 bg-muted/20 px-4 py-3 sm:px-6">
                 <p className="text-[10px] leading-relaxed text-muted-foreground sm:text-xs">
                   {t(
-                    'Successful evaluations are billed per use; failed requests do not deduct points.',
-                    '成功评测按次扣分；失败请求不扣积分。',
+                    'Recorded usage is billed per request. Billing status describes point coverage, not the evaluation result.',
+                    '已上报的用量按请求扣分；计费状态只表示积分覆盖情况，不代表评测成功或失败。',
                   )}
                 </p>
                 <a

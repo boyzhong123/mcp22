@@ -44,24 +44,19 @@ export interface ApiKey {
   period_used?: number;
   last_used_at?: string | null; // ISO 8601 or null
   limits?: KeyLimits | null; // null when unset
+  env?: string;
 }
 
 // doc §3.7 GET /keys/:id/usage
 export interface ApiKeyUsage {
   total_used: number;
+  total_events: number;
+  deducted_points: number;
+  uncovered_points: number;
   period_used: number;
   period_limit: number;
   period_type: PeriodType;
   daily_breakdown: { date: string; count: number }[];
-}
-
-// doc §3.14 GET /keys/:id/usage/summary
-export interface ApiKeyUsageSummary {
-  calls: number;
-  cost_mills: number;
-  savings_mills: number;
-  avg_daily_net_mills: number;
-  days_with_usage: number;
 }
 
 // ─── Usage (doc §11) ────────────────────────────────────────────────────────
@@ -83,6 +78,29 @@ export interface UsagePointCoreType {
   required_points: number;
   /** Executed but not covered by balance; never clawed back. */
   uncovered_points: number;
+}
+
+export type EvaluationKernelStatus = 'active' | 'deprecated';
+
+/** Stable product metadata from GET /catalog/evaluation-kernels. */
+export interface EvaluationKernel {
+  core_type: string;
+  display_name: string;
+  category_code: string;
+  category_name: string;
+  category_parent_code: string;
+  language: string;
+  billing_unit: string;
+  modality: string;
+  granularity: string;
+  documentation_url: string;
+  status: EvaluationKernelStatus;
+  sort_order: number;
+}
+
+export interface EvaluationKernelListResponse {
+  items: EvaluationKernel[];
+  total: number;
 }
 
 // doc §11.1 — GET /usage/points returns a bare []UsagePoint (no envelope),
@@ -218,12 +236,19 @@ export interface BillingSummary {
   evaluation_points_expiring_soon: number;
   /** Earliest expiry among active batches; null when none. */
   evaluation_points_next_expiry_at: string | null;
-  /** Compat name — signup-bonus batch total, unit is POINTS not calls. */
-  trial_calls_total: number;
-  /** Compat name — signup-bonus batch remainder, unit is POINTS not calls. */
-  trial_calls_remaining: number;
-  trial_expires_at: string | null;
-  trial_active: boolean;
+  signup_bonus_total_points: number;
+  signup_bonus_remaining_points: number;
+  signup_bonus_granted_at: string | null;
+  signup_bonus_expires_at: string | null;
+  signup_bonus_active: boolean;
+  /** @deprecated Compatibility with pre-2026-07-16 deployments. */
+  trial_calls_total?: number;
+  /** @deprecated Compatibility with pre-2026-07-16 deployments. */
+  trial_calls_remaining?: number;
+  /** @deprecated Compatibility with pre-2026-07-16 deployments. */
+  trial_expires_at?: string | null;
+  /** @deprecated Compatibility with pre-2026-07-16 deployments. */
+  trial_active?: boolean;
   /** Same value as evaluation_points_balance. */
   available_points: number;
   signup_bonus_remaining: number;
@@ -233,6 +258,58 @@ export interface BillingSummary {
   expiring_in_7_days: number;
   expiring_in_30_days: number;
   current_month: BillingSummaryCurrentMonth;
+}
+
+// ─── Usage charge/event detail (2026-07-16 contract §9) ───────────────────
+
+export type UsageRateSource = 'configured' | 'default';
+export type UsageChargeStatus =
+  | 'fully_charged'
+  | 'partially_charged'
+  | 'uncovered_after_check';
+
+export interface UsageCharge {
+  id: number;
+  account_id: number;
+  api_key_id: number;
+  key_id: number;
+  api_key_name: string;
+  key_name: string;
+  core_type: string;
+  core_type_display_name: string;
+  count: number;
+  pricing_version_id: number | null;
+  pricing_version: number | null;
+  points_per_request: number;
+  rate_source: UsageRateSource;
+  required_points: number;
+  deducted_points: number;
+  charged_points: number;
+  uncovered_points: number;
+  available_before: number;
+  charge_status: UsageChargeStatus;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface UsageEvent extends UsageCharge {
+  event_id: number;
+  available_after: number;
+  billing_status: UsageChargeStatus;
+}
+
+export interface UsageChargeListResponse {
+  items: UsageCharge[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface UsageEventListResponse {
+  items: UsageEvent[];
+  page: number;
+  page_size: number;
+  total: number;
 }
 
 export type TransactionStatus = 'pending' | 'succeeded' | 'failed';

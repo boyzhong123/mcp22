@@ -1,5 +1,5 @@
 import { request, invalidate } from './client';
-import type { ApiKey, ApiKeyUsage, ApiKeyUsageSummary, KeyLimits } from './types';
+import type { ApiKey, ApiKeyUsage, KeyLimits } from './types';
 
 // doc §3.1
 export async function list(): Promise<ApiKey[]> {
@@ -84,15 +84,15 @@ export async function patchSettings(
   return data.api_key ?? (data as ApiKey);
 }
 
+/** Query per-key guardrails without creating a settings row. */
+export function getLimits(id: number): Promise<KeyLimits> {
+  return request<KeyLimits>(`/keys/${id}/limits`);
+}
+
 // doc §3.7
 export async function usage(id: number): Promise<ApiKeyUsage> {
   const data = await request<{ usage: ApiKeyUsage }>(`/keys/${id}/usage`);
   return data.usage;
-}
-
-// doc §3.14 — window e.g. "7d" | "28d" | "90d".
-export async function usageSummary(id: number, window = '28d'): Promise<ApiKeyUsageSummary> {
-  return request<ApiKeyUsageSummary>(`/keys/${id}/usage/summary`, { query: { window } });
 }
 
 // doc §3.3

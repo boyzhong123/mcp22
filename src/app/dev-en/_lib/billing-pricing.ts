@@ -14,11 +14,12 @@
  * estimate for offline/demo sessions.
  */
 
-import { billing } from './api';
+import { billing, catalog as catalogApi } from './api';
 import type {
   BillingPricingPackage,
   CoreTypePricingInfo,
   CoreTypeRate,
+  EvaluationKernel,
   PricingInfo,
   PricingQuote,
 } from './api/types';
@@ -39,6 +40,8 @@ export interface CoreTypeRateInfo {
   displayName: string;
   /** Server-provided display category, when available. */
   category?: string | null;
+  categoryCode?: string | null;
+  categoryName?: string | null;
   /** Server-provided language code (`zh` or `en`), when available. */
   language?: string | null;
   pointsPerRequest: number;
@@ -54,6 +57,7 @@ export interface BillingPricingCatalog {
   defaultPointsPerRequest: number;
   /** Specifically configured CoreType rates; [] = default rate only. */
   coreTypeRates: CoreTypeRateInfo[];
+  kernelCatalog: EvaluationKernel[];
   /** Signup grant — unit is POINTS (the API's trial_* names are legacy). */
   signupBonusPoints: number;
   signupBonusValidDays: number;
@@ -68,23 +72,127 @@ export interface BillingPricingCatalog {
   raw?: PricingInfo;
   /** Raw payload from the independent CoreType pricing endpoint. */
   rawCoreTypePricing?: CoreTypePricingInfo;
+  /** True only after the on-demand detail view read both live endpoints. */
+  kernelDetailsFromServer?: boolean;
 }
 
-/** Demo-only CoreType rates so offline sessions render a realistic table. */
-export const FALLBACK_CORE_TYPE_RATES: CoreTypeRateInfo[] = [
+/** Snapshot of the current authenticated Catalog response for Demo/offline
+ * sessions. The live app still replaces this with the server response. */
+export const FALLBACK_EVALUATION_KERNELS: EvaluationKernel[] = [
   {
-    coreType: 'word_sentence.evaluate',
-    displayName: 'Word / Phrase / Sentence',
-    language: 'zh',
-    pointsPerRequest: WORD_SENTENCE_POINTS_PER_USE,
+    core_type: 'cn.pred.score',
+    display_name: 'cn.pred.score',
+    category_code: 'paragraph',
+    category_name: '中文段落',
+    category_parent_code: '',
+    language: 'zh-CN',
+    billing_unit: 'evaluation_request',
+    modality: '',
+    granularity: '',
+    documentation_url: '',
+    status: 'active',
+    sort_order: 0,
   },
   {
-    coreType: 'paragraph.evaluate',
-    displayName: 'Paragraph Evaluation',
+    core_type: 'en.pred.score',
+    display_name: 'en.pred.score',
+    category_code: 'paragraph',
+    category_name: '英文段落',
+    category_parent_code: '',
     language: 'en',
-    pointsPerRequest: PARAGRAPH_POINTS_PER_USE,
+    billing_unit: 'evaluation_request',
+    modality: '',
+    granularity: '',
+    documentation_url: '',
+    status: 'active',
+    sort_order: 0,
+  },
+  {
+    core_type: 'cn.sent.score',
+    display_name: 'cn.sent.score',
+    category_code: 'sentence',
+    category_name: '中文句子',
+    category_parent_code: '',
+    language: 'zh-CN',
+    billing_unit: 'evaluation_request',
+    modality: '',
+    granularity: '',
+    documentation_url: '',
+    status: 'active',
+    sort_order: 0,
+  },
+  {
+    core_type: 'en.sent.score',
+    display_name: 'en.sent.score',
+    category_code: 'sentence',
+    category_name: '英文句子',
+    category_parent_code: '',
+    language: 'en',
+    billing_unit: 'evaluation_request',
+    modality: '',
+    granularity: '',
+    documentation_url: '',
+    status: 'active',
+    sort_order: 0,
+  },
+  {
+    core_type: 'cn.word.raw',
+    display_name: 'cn.word.raw',
+    category_code: 'word',
+    category_name: '中文字词',
+    category_parent_code: '',
+    language: 'zh-CN',
+    billing_unit: 'evaluation_request',
+    modality: '',
+    granularity: '',
+    documentation_url: '',
+    status: 'active',
+    sort_order: 0,
+  },
+  {
+    core_type: 'cn.word.score',
+    display_name: 'cn.word.score',
+    category_code: 'word',
+    category_name: '中文字词',
+    category_parent_code: '',
+    language: 'zh-CN',
+    billing_unit: 'evaluation_request',
+    modality: '',
+    granularity: '',
+    documentation_url: '',
+    status: 'active',
+    sort_order: 0,
+  },
+  {
+    core_type: 'en.word.score',
+    display_name: 'en.word.score',
+    category_code: 'word',
+    category_name: '英文单词',
+    category_parent_code: '',
+    language: 'en',
+    billing_unit: 'evaluation_request',
+    modality: '',
+    granularity: '',
+    documentation_url: '',
+    status: 'active',
+    sort_order: 0,
   },
 ];
+
+/** Current point deductions returned alongside the Catalog snapshot above. */
+export const FALLBACK_CORE_TYPE_RATES: CoreTypeRateInfo[] =
+  FALLBACK_EVALUATION_KERNELS.map((kernel) => ({
+    coreType: kernel.core_type,
+    displayName: kernel.display_name,
+    category: kernel.category_name,
+    categoryCode: kernel.category_code,
+    categoryName: kernel.category_name,
+    language: kernel.language,
+    pointsPerRequest:
+      kernel.category_code === 'paragraph'
+        ? PARAGRAPH_POINTS_PER_USE
+        : WORD_SENTENCE_POINTS_PER_USE,
+  }));
 
 export const FALLBACK_BILLING_PRICING: BillingPricingCatalog = {
   fromServer: false,
@@ -96,10 +204,12 @@ export const FALLBACK_BILLING_PRICING: BillingPricingCatalog = {
   validDays: TRIAL_VALID_DAYS,
   defaultPointsPerRequest: DEFAULT_POINTS_PER_REQUEST,
   coreTypeRates: FALLBACK_CORE_TYPE_RATES.map((r) => ({ ...r })),
+  kernelCatalog: FALLBACK_EVALUATION_KERNELS.map((kernel) => ({ ...kernel })),
   signupBonusPoints: TRIAL_CALLS,
   signupBonusValidDays: TRIAL_VALID_DAYS,
   minTopupCents: TOPUP_BONUS_TIERS[0]?.minCents ?? 1_990,
   topupPresets: TOPUP_BONUS_TIERS.flatMap((t) => t.presetCents),
+  kernelDetailsFromServer: false,
 };
 
 /**
@@ -133,14 +243,44 @@ function mapCoreTypeRates(rates: CoreTypeRate[]): CoreTypeRateInfo[] {
     .map((rate) => ({
       coreType: rate.core_type,
       displayName: rate.display_name || rate.core_type,
-      category: rate.category,
-      language: rate.language,
+      category: rate.category ?? null,
+      categoryCode: null,
+      categoryName: rate.category ?? null,
+      language: rate.language ?? null,
       pointsPerRequest: rate.points_per_request,
     }))
     .sort(
       (a, b) =>
         b.pointsPerRequest - a.pointsPerRequest || a.coreType.localeCompare(b.coreType),
     );
+}
+
+/** Merge pricing with independent product metadata. Catalog entries without a
+ * configured price use the server default rate; priced-but-uncatalogued
+ * CoreTypes remain visible as unassigned instead of being guessed. */
+export function catalogWithEvaluationKernels(
+  catalog: BillingPricingCatalog,
+  kernels: EvaluationKernel[],
+): BillingPricingCatalog {
+  const rates = new Map(catalog.coreTypeRates.map((rate) => [rate.coreType, rate]));
+  const merged: CoreTypeRateInfo[] = kernels.map((kernel) => {
+    const configured = rates.get(kernel.core_type);
+    rates.delete(kernel.core_type);
+    return {
+      coreType: kernel.core_type,
+      displayName: kernel.display_name || configured?.displayName || kernel.core_type,
+      category: kernel.category_name || kernel.category_code || null,
+      categoryCode: kernel.category_code || null,
+      categoryName: kernel.category_name || null,
+      language: kernel.language || null,
+      pointsPerRequest: configured?.pointsPerRequest ?? catalog.defaultPointsPerRequest,
+    } satisfies CoreTypeRateInfo;
+  });
+  merged.push(...rates.values());
+  merged.sort(
+    (a, b) => b.pointsPerRequest - a.pointsPerRequest || a.coreType.localeCompare(b.coreType),
+  );
+  return { ...catalog, kernelCatalog: kernels, coreTypeRates: merged };
 }
 
 export function catalogFromPricingInfo(info: PricingInfo): BillingPricingCatalog {
@@ -167,6 +307,7 @@ export function catalogFromPricingInfo(info: PricingInfo): BillingPricingCatalog
     defaultPointsPerRequest:
       info.default_points_per_request ?? FALLBACK_BILLING_PRICING.defaultPointsPerRequest,
     coreTypeRates,
+    kernelCatalog: [],
     signupBonusPoints: info.signup_bonus_points ?? FALLBACK_BILLING_PRICING.signupBonusPoints,
     signupBonusValidDays:
       info.signup_bonus_valid_days ?? FALLBACK_BILLING_PRICING.signupBonusValidDays,
@@ -198,25 +339,41 @@ export function catalogWithCoreTypePricing(
   };
 }
 
-/**
- * Load recharge and CoreType pricing independently. A failure on one endpoint
- * must not discard valid data from the other endpoint.
- */
+/** Load the recharge catalog used by the page shell. Kernel details are kept
+ * out of this request path and loaded only when the user opens the detail UI. */
 export async function loadBillingPricing(): Promise<BillingPricingCatalog> {
-  const [pricingResult, coreTypeResult] = await Promise.allSettled([
-    billing.pricing(),
+  try {
+    return catalogFromPricingInfo(await billing.pricing());
+  } catch {
+    return FALLBACK_BILLING_PRICING;
+  }
+}
+
+/** Read the technical CoreType rate table and product metadata on demand.
+ * The two endpoints remain independent: partial success still produces a
+ * useful table, while `kernelDetailsFromServer` is true only when both are
+ * current live responses. */
+export async function loadBillingKernelDetails(
+  baseCatalog: BillingPricingCatalog = FALLBACK_BILLING_PRICING,
+): Promise<BillingPricingCatalog> {
+  const [coreTypeResult, kernelResult] = await Promise.allSettled([
     billing.coreTypePricing(),
+    catalogApi.evaluationKernels(),
   ]);
 
-  let catalog = pricingResult.status === 'fulfilled'
-    ? catalogFromPricingInfo(pricingResult.value)
-    : FALLBACK_BILLING_PRICING;
-
+  let catalog = baseCatalog;
   if (coreTypeResult.status === 'fulfilled') {
     catalog = catalogWithCoreTypePricing(catalog, coreTypeResult.value);
   }
+  if (kernelResult.status === 'fulfilled') {
+    catalog = catalogWithEvaluationKernels(catalog, kernelResult.value.items ?? []);
+  }
 
-  return catalog;
+  return {
+    ...catalog,
+    kernelDetailsFromServer:
+      coreTypeResult.status === 'fulfilled' && kernelResult.status === 'fulfilled',
+  };
 }
 
 /**

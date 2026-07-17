@@ -187,6 +187,22 @@ export interface AccountLowBalanceAlert {
 }
 
 /**
+ * Server-authoritative UTC-calendar-month totals from `GET /billing/summary`
+ * (`current_month`). Account-level only — the summary carries no per-key or
+ * per-CoreType split, so those still come from the usage points aggregate.
+ */
+export interface MonthlyUsageTotals {
+  /** summary.current_month.usage_count — SUM(count), the call-cap axis. */
+  calls: number;
+  /** summary.current_month.usage_events — /internal/usage event rows. */
+  events: number;
+  /** summary.current_month.deducted_points — the point-cap axis. */
+  deductedPoints: number;
+  /** summary.current_month.uncovered_points — executed but never charged. */
+  uncoveredPoints: number;
+}
+
+/**
  * One CoreType bucket in a day×key usage record. CoreTypes are dynamic and
  * case-sensitive — `coreType` is the stable grouping key, `displayName` is
  * display-only. Never hardcode business categories off this list.
@@ -194,9 +210,11 @@ export interface AccountLowBalanceAlert {
 export interface UsageCoreTypeBreakdown {
   coreType: string;
   displayName: string;
-  /** Server-provided display category, when available. */
+  /** @deprecated Use categoryCode/categoryName from the Catalog. */
   category?: string | null;
-  /** Server-provided language code (`zh` or `en`), when available. */
+  categoryCode?: string | null;
+  categoryName?: string | null;
+  /** Server-provided language code from the Catalog. */
   language?: string | null;
   calls: number;
   events: number;
@@ -406,7 +424,9 @@ export const VOLUME_TIERS: VolumeTier[] = [
 // v27: evaluation-points API v1.0 — usage carries dynamic CoreType splits
 // (word/paragraph fields removed), transactions drop bonusPoints in favour of
 // pointsPerUsd snapshots, and spend-limit alert toggles left notifications.
-const SCHEMA_VERSION = 27;
+// v28: replace placeholder Demo CoreTypes with the current server Catalog
+// snapshot so categories, languages and deduction rates match the live UI.
+const SCHEMA_VERSION = 28;
 const SCHEMA_KEY = 'dev-en:schema-version';
 
 const STORAGE = {
@@ -447,6 +467,7 @@ interface Cache {
   wallet: AccountWallet | null;
   trial: TrialAllowance | null;
   accountAlert: AccountLowBalanceAlert | null;
+  currentMonth: MonthlyUsageTotals | null;
   seeded: boolean;
 }
 
@@ -461,6 +482,7 @@ const cache: Cache = {
   wallet: null,
   trial: null,
   accountAlert: null,
+  currentMonth: null,
   seeded: false,
 };
 
@@ -588,6 +610,7 @@ export function __replaceCache(partial: {
   wallet?: AccountWallet;
   trial?: TrialAllowance;
   accountAlert?: AccountLowBalanceAlert;
+  currentMonth?: MonthlyUsageTotals;
 }): void {
   if (partial.keys !== undefined) cache.keys = partial.keys;
   if (partial.usage !== undefined) cache.usage = partial.usage;
@@ -599,6 +622,7 @@ export function __replaceCache(partial: {
   if (partial.wallet !== undefined) cache.wallet = partial.wallet;
   if (partial.trial !== undefined) cache.trial = partial.trial;
   if (partial.accountAlert !== undefined) cache.accountAlert = partial.accountAlert;
+  if (partial.currentMonth !== undefined) cache.currentMonth = partial.currentMonth;
   cache.seeded = true;
   notify();
 }
@@ -847,24 +871,30 @@ function seedIfNeeded() {
 
         const calls = Math.round(keyDailyTotal);
         if (calls <= 0) continue;
-        // Dynamic CoreType split mirroring the real usage contract: a
-        // 1-pt word/sentence kernel plus a 2-pt paragraph kernel.
+        // Demo usage uses the same official CoreTypes, category metadata and
+        // point relationship as the current server Catalog snapshot.
         const paragraphCalls = Math.max(1, Math.round(calls * 0.18));
-        const wordSentenceCalls = Math.max(0, calls - paragraphCalls);
+        const sentenceCalls = Math.max(0, calls - paragraphCalls);
         const coreTypes: UsageCoreTypeBreakdown[] = [
           {
-            coreType: 'word_sentence.evaluate',
-            displayName: 'Word / Phrase / Sentence',
-            language: 'zh',
-            calls: wordSentenceCalls,
-            events: wordSentenceCalls,
-            evaluationPoints: wordSentenceCalls,
-            requiredPoints: wordSentenceCalls,
+            coreType: 'cn.sent.score',
+            displayName: 'cn.sent.score',
+            category: '中文句子',
+            categoryCode: 'sentence',
+            categoryName: '中文句子',
+            language: 'zh-CN',
+            calls: sentenceCalls,
+            events: sentenceCalls,
+            evaluationPoints: sentenceCalls,
+            requiredPoints: sentenceCalls,
             uncoveredPoints: 0,
           },
           {
-            coreType: 'paragraph.evaluate',
-            displayName: 'Paragraph Evaluation',
+            coreType: 'en.pred.score',
+            displayName: 'en.pred.score',
+            category: '英文段落',
+            categoryCode: 'paragraph',
+            categoryName: '英文段落',
             language: 'en',
             calls: paragraphCalls,
             events: paragraphCalls,
@@ -1320,6 +1350,16 @@ export function getWallet(): AccountWallet {
 export function getTrial(): TrialAllowance {
   seedIfNeeded();
   return cache.trial ?? DEFAULT_TRIAL;
+}
+
+/**
+ * Server-authoritative current-month totals, or `null` when the store holds
+ * demo/seed data. Callers must fall back to aggregating `getUsage()` — the
+ * summary is account-wide, so per-key and per-CoreType views cannot use it.
+ */
+export function getCurrentMonthTotals(): MonthlyUsageTotals | null {
+  seedIfNeeded();
+  return cache.currentMonth;
 }
 
 export function getAccountAlert(): AccountLowBalanceAlert {

@@ -53,7 +53,6 @@ import { useLang } from '../_lib/use-lang';
 import {
   BASE_POINTS_PER_USD,
   COMPARE_PACKAGE_IDS,
-  DEFAULT_POINTS_PER_REQUEST,
   PARAGRAPH_POINTS_PER_USE,
   TOPUP_BONUS_TIERS,
   TRIAL_CALLS,
@@ -163,20 +162,11 @@ function pointPricingSummary(
 
 function pointDebitSummary(
   t: (en: string, zh: string) => string,
-  coreTypeRates: Array<{ displayName: string; pointsPerRequest: number }> = [],
-  defaultPointsPerRequest = DEFAULT_POINTS_PER_REQUEST,
 ): string {
-  // CoreType rates are dynamic and server-configured; list the top two and
-  // fall back to the default per-request deduction.
-  const parts = coreTypeRates
-    .slice(0, 2)
-    .map((r) =>
-      t(`${r.displayName} ${r.pointsPerRequest} pt`, `${r.displayName} ${r.pointsPerRequest} 积分/次`),
-    );
-  parts.push(
-    t(`others ${defaultPointsPerRequest} pt`, `其余 ${defaultPointsPerRequest} 积分/次`),
+  return t(
+    `Word / phrase / sentence ${WORD_SENTENCE_POINTS_PER_USE} pt/use · paragraph ${PARAGRAPH_POINTS_PER_USE} pts/use`,
+    `字 / 词 / 句 ${WORD_SENTENCE_POINTS_PER_USE} 积分/次 · 段落 ${PARAGRAPH_POINTS_PER_USE} 积分/次`,
   );
-  return parts.join(' · ');
 }
 
 function formatPointsCount(points: number): string {
@@ -331,6 +321,8 @@ function OpenedCheckoutModal({
   // unreachable (demo/offline) or the amount misses every band.
   useEffect(() => {
     if (!amountCents || amountCents <= 0) {
+      // Derived quote state must be cleared when an invalid amount is entered.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setServerQuotedPoints(null);
       return;
     }
@@ -377,6 +369,8 @@ function OpenedCheckoutModal({
 
   // Amount / package changes invalidate any previous server quote.
   useEffect(() => {
+    // Prevent a stale amount's quote from flashing while the debounced request runs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setServerQuotedPoints(null);
   }, [effectiveCents, selectedBonusTierId]);
   const taxCents = 0;
@@ -956,14 +950,10 @@ function OpenedCheckoutModal({
                     </div>
                     <div className="rounded-lg bg-indigo-500/[0.06] px-2.5 py-1.5">
                       <div className="text-[10px] font-medium text-indigo-700 dark:text-indigo-300">
-                        {t('Points deducted per successful evaluation', '成功评测扣分规则')}
+                        {t('Points charged per recorded evaluation request', '已记账评测请求扣分规则')}
                       </div>
                       <div className="text-[11px] font-bold leading-snug text-indigo-800 dark:text-indigo-300">
-                        {pointDebitSummary(
-                          t,
-                          catalog.coreTypeRates,
-                          catalog.defaultPointsPerRequest,
-                        )}
+                        {pointDebitSummary(t)}
                       </div>
                     </div>
                   </div>
@@ -1181,8 +1171,8 @@ function OpenedCheckoutModal({
                           '付款前确认充值金额、到账积分和预计可用次数。',
                         )
                       : t(
-                          `Only successful evaluations deduct points · valid ${TRIAL_VALID_DAYS} days · non-refundable after top-up.`,
-                          `仅成功评测扣分 · ${TRIAL_VALID_DAYS} 天有效 · 充值后不支持退款。`,
+                          `Points are charged when evaluation usage is recorded · valid ${TRIAL_VALID_DAYS} days · non-refundable after top-up.`,
+                          `评测用量事件入账时计费 · ${TRIAL_VALID_DAYS} 天有效 · 充值后不支持退款。`,
                         )}
               </p>
             </div>
@@ -1502,8 +1492,8 @@ function FreeTierBanner() {
             <EvaluationKernelInfo />
           </div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            {t('Only successful evaluations · ', '仅成功评测扣分 · ')}
-            {pointDebitSummary(t, catalog.coreTypeRates, catalog.defaultPointsPerRequest)}
+            {t('Charged on recorded evaluation usage · ', '评测用量入账时计费 · ')}
+            {pointDebitSummary(t)}
           </p>
           <p className="text-[11px] leading-relaxed text-sky-800/85 dark:text-sky-200/80">
             {t(
@@ -2434,7 +2424,6 @@ function TierComparePanel({
         <div>
           <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             {t('Compare packages', '套餐对比')}
-            <EvaluationKernelInfo />
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
             {t(
@@ -2657,8 +2646,8 @@ function TierComparePanel({
 
       <p className="px-0.5 text-[10px] leading-relaxed text-muted-foreground">
         {t(
-          `Rules: only successful evaluations deduct points · valid ${TRIAL_VALID_DAYS} days · shared across all API keys · earliest-expiring batch first · paid top-ups are non-refundable.`,
-          `规则：仅成功评测扣分 · ${TRIAL_VALID_DAYS} 天有效 · 账号下所有 Key 共享 · 优先扣最早到期积分 · 付费充值后不支持退款。`,
+          `Rules: charged when evaluation usage is recorded · valid ${TRIAL_VALID_DAYS} days · shared across all API keys · oldest active batch first · paid top-ups are non-refundable.`,
+          `规则：评测用量入账时计费 · ${TRIAL_VALID_DAYS} 天有效 · 账号下所有 Key 共享 · 优先扣最早生效的有效积分 · 付费充值后不支持退款。`,
         )}
       </p>
     </div>
@@ -3320,8 +3309,8 @@ function TierQuoteCard({
         <Clock className="h-3 w-3 shrink-0 text-amber-700 dark:text-white/80" />
         <p className="text-[10px] font-medium leading-snug text-amber-950/80 dark:text-white/85">
           {t(
-            `Only successful evaluations deduct points · valid ${TRIAL_VALID_DAYS} days · expires ${expiresDate} · non-refundable`,
-            `仅成功评测扣分 · ${TRIAL_VALID_DAYS} 天有效 · ${expiresDate} 前用完 · 过期不退`,
+            `Charged when evaluation usage is recorded · valid ${TRIAL_VALID_DAYS} days · expires ${expiresDate} · non-refundable`,
+            `评测用量入账时计费 · ${TRIAL_VALID_DAYS} 天有效 · ${expiresDate} 前用完 · 过期不退`,
           )}
         </p>
       </div>

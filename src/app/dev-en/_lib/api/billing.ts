@@ -11,6 +11,9 @@ import type {
   Transaction,
   TransactionListResponse,
   TransactionStatus,
+  UsageChargeListResponse,
+  UsageChargeStatus,
+  UsageRateSource,
 } from './types';
 
 // doc §5.1 — pass amount_cents to also get the server-authoritative quote.
@@ -120,7 +123,47 @@ export function listTransactions(q: TransactionsQuery = {}): Promise<Transaction
   return request<TransactionListResponse>('/billing/transactions', { query: q });
 }
 
+/** Hydration-backed history views are not paginated yet, so fetch every page
+ * explicitly rather than silently truncating the account at page one. */
+export async function listAllTransactions(
+  q: Omit<TransactionsQuery, 'page' | 'page_size'> = {},
+): Promise<Transaction[]> {
+  const pageSize = 100;
+  let page = 1;
+  let total = 0;
+  const transactions: Transaction[] = [];
+  do {
+    const data = await listTransactions({ ...q, page, page_size: pageSize });
+    const chunk = data.transactions ?? [];
+    transactions.push(...chunk);
+    total = data.total ?? transactions.length;
+    page += 1;
+    if (chunk.length === 0) break;
+  } while (transactions.length < total);
+  return transactions;
+}
+
 // doc §9.2
 export function transactionDetail(id: number): Promise<Transaction> {
   return request<Transaction>(`/billing/transactions/${id}`);
+}
+
+export interface UsageChargesQuery {
+  page?: number;
+  page_size?: number;
+  from?: string;
+  to?: string;
+  api_key_id?: number;
+  key_id?: number;
+  core_type?: string;
+  pricing_version_id?: number;
+  rate_source?: UsageRateSource;
+  charge_status?: UsageChargeStatus;
+}
+
+/** Raw point-charge rows for billing reconciliation. */
+export function usageCharges(
+  query: UsageChargesQuery = {},
+): Promise<UsageChargeListResponse> {
+  return request<UsageChargeListResponse>('/billing/usage-charges', { query });
 }

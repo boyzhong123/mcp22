@@ -8,7 +8,7 @@
  *   10,000+ /mo           → $0.005/call
  *
  * Top-up rules: minimum top-up $10; the paid amount lands 1:1 in the shared
- * account wallet. Every new account also gets 600 free trial calls valid for
+ * account wallet. Every new account also gets 600 signup-bonus points valid for
  * 30 days, consumed before wallet credit.
  */
 
@@ -244,8 +244,8 @@ export function buildTopupPointDetails(
         : `每 $1 到账 ${math.pointsPerUsd.toLocaleString('en-US', {
             maximumFractionDigits: Number.isInteger(math.pointsPerUsd) ? 0 : 1,
           })} 基础评测积分，不额外赠送。`,
-      `字、词、句评测每次 ${WORD_SENTENCE_POINTS_PER_USE} 积分，段落评测每次 ${PARAGRAPH_POINTS_PER_USE} 积分；仅成功评测扣除。`,
-      `有效期 30 天，扣除时优先使用最早到期批次。`,
+      `字、词、句评测每次 ${WORD_SENTENCE_POINTS_PER_USE} 积分，段落评测每次 ${PARAGRAPH_POINTS_PER_USE} 积分；评测用量入账时计费。`,
+      `有效期 30 天，扣除时优先使用最早生效的有效批次。`,
     ],
   };
 }

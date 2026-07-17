@@ -19,6 +19,7 @@ import {
   type ApiKey as MockApiKey,
   type Environment,
   type EvaluationPointBatch as MockEvaluationPointBatch,
+  type MonthlyUsageTotals,
   type NotificationSettings as MockNotifications,
   type SpendLimit as MockSpendLimit,
   type Transaction as MockTransaction,
@@ -28,6 +29,7 @@ import {
 } from './mock-store';
 import {
   billing,
+  catalog as catalogApi,
   describeError,
   getToken,
   keys as keysApi,
@@ -38,6 +40,7 @@ import type {
   AccountLimits as RealAccountLimits,
   ApiKey as RealApiKey,
   BillingSummary,
+  EvaluationKernel,
   EvaluationPointBatch as RealEvaluationPointBatch,
   NotificationSettings as RealNotifications,
   Transaction as RealTransaction,
@@ -67,10 +70,10 @@ function capOrNull(v: number | undefined | null): number | null {
 // ────────────────────────────────────────────────────────────────────────────
 // Mappers
 
-function mapKey(k: RealApiKey): MockApiKey {
-  // The backend does not expose a key environment. Keep a fixed legacy value
-  // only because historical mock usage aggregation still requires one.
-  const env: Environment = 'production';
+export function mapApiKeyToMock(k: RealApiKey): MockApiKey {
+  const env: Environment = k.env === 'dev' || k.env === 'development'
+    ? 'development'
+    : 'production';
 
   // Heuristic fallback for payloads that don't expose `is_starter`: the
   // auto-provisioned default key is still named "Starter".
@@ -83,8 +86,8 @@ function mapKey(k: RealApiKey): MockApiKey {
 
   const limits = k.limits ?? null;
 
-  // The backend returns the full plaintext key in `api_key`; we keep it as the
-  // secret (used by the copy button) and only mask it for display.
+  // List responses contain only a masked key. Create/rotate responses contain
+  // the one-time full secret and use the same mapper.
   const secret = k.api_key ?? '';
 
   return {
@@ -92,7 +95,7 @@ function mapKey(k: RealApiKey): MockApiKey {
     name: k.name,
     env,
     secret,
-    maskedSecret: maskSecret(secret),
+    maskedSecret: secret.includes('...') || secret.includes('****') ? secret : maskSecret(secret),
     createdAt: k.created_at,
     lastUsedAt: k.last_used_at ?? null,
     status,
@@ -113,17 +116,28 @@ function mapKey(k: RealApiKey): MockApiKey {
   };
 }
 
-// `trial_calls_*` are compat names — the unit is signup-bonus POINTS.
 function mapTrialFromSummary(summary: BillingSummary): TrialAllowance {
-  const totalLimit = Math.max(0, summary.trial_calls_total ?? TRIAL_DEFAULT_TOTAL);
-  const remaining = summary.trial_active
-    ? Math.max(0, Math.min(totalLimit, summary.trial_calls_remaining ?? 0))
+  const totalLimit = Math.max(
+    0,
+    summary.signup_bonus_total_points ?? summary.trial_calls_total ?? TRIAL_DEFAULT_TOTAL,
+  );
+  const active = summary.signup_bonus_active ?? summary.trial_active ?? false;
+  const remaining = active
+    ? Math.max(
+        0,
+        Math.min(
+          totalLimit,
+          summary.signup_bonus_remaining_points ?? summary.trial_calls_remaining ?? 0,
+        ),
+      )
     : 0;
-  const expiresAt = summary.trial_expires_at ?? '';
+  const expiresAt = summary.signup_bonus_expires_at ?? summary.trial_expires_at ?? '';
   const expiresAtMs = Date.parse(expiresAt);
-  const grantedAt = Number.isFinite(expiresAtMs)
-    ? new Date(expiresAtMs - TRIAL_DEFAULT_VALID_DAYS * 86400000).toISOString()
-    : new Date().toISOString();
+  const grantedAt = summary.signup_bonus_granted_at ?? (
+    Number.isFinite(expiresAtMs)
+      ? new Date(expiresAtMs - TRIAL_DEFAULT_VALID_DAYS * 86400000).toISOString()
+      : new Date().toISOString()
+  );
 
   return {
     totalLimit,
@@ -145,10 +159,28 @@ function mapWalletFromSummary(summary: BillingSummary): AccountWallet {
       summary.evaluation_points_balance ?? summary.available_points ?? 0,
     ),
     paidPointsRemaining: Math.max(0, summary.paid_points_remaining ?? 0),
-    signupBonusRemaining: Math.max(0, summary.signup_bonus_remaining ?? 0),
+    signupBonusRemaining: Math.max(
+      0,
+      summary.signup_bonus_remaining_points ?? summary.signup_bonus_remaining ?? 0,
+    ),
     expiredEvaluationPoints: Math.max(0, summary.evaluation_points_expired_total ?? 0),
     paidCreditsCents: 0,
     paidCreditsUsedCents: 0,
+  };
+}
+
+/**
+ * doc §8.1 `current_month` — the authoritative UTC-month rollup. Same axes the
+ * backend enforces caps on: `usage_count` is SUM(count), `deducted_points`
+ * excludes uncovered points.
+ */
+function mapCurrentMonthFromSummary(summary: BillingSummary): MonthlyUsageTotals {
+  const m = summary.current_month;
+  return {
+    calls: Math.max(0, m?.usage_count ?? 0),
+    events: Math.max(0, m?.usage_events ?? 0),
+    deductedPoints: Math.max(0, m?.deducted_points ?? 0),
+    uncoveredPoints: Math.max(0, m?.uncovered_points ?? 0),
   };
 }
 
@@ -213,7 +245,7 @@ function mapLimits(s: RealAccountLimits): MockSpendLimit {
     dailyPointCap: capOrNull(s.daily_evaluation_point_cap),
     dailyCallCap: capOrNull(s.daily_call_cap),
     resetDay: 1,
-    warnAtPercents: s.warn_at_percents?.length ? s.warn_at_percents : [50, 75, 90],
+    warnAtPercents: s.warn_at_percents ?? [50, 75, 90],
   };
 }
 
@@ -236,7 +268,10 @@ function mapAccountAlert(n: Partial<RealNotifications>): AccountLowBalanceAlert 
 
 // New usage contract: one record per UTC day × key, with a dynamic,
 // case-sensitive CoreType split. No money fields.
-function mapUsagePoint(p: RealUsagePoint): MockUsagePoint {
+function mapUsagePoint(
+  p: RealUsagePoint,
+  kernelsByCoreType: Map<string, EvaluationKernel>,
+): MockUsagePoint {
   return {
     date: (p.date || '').slice(0, 10),
     keyId: p.key_id != null ? mockKeyId(p.key_id) : 'key_*',
@@ -246,17 +281,22 @@ function mapUsagePoint(p: RealUsagePoint): MockUsagePoint {
     evaluationPoints: p.evaluation_points ?? 0,
     requiredPoints: p.required_points ?? 0,
     uncoveredPoints: p.uncovered_points ?? 0,
-    coreTypes: (p.core_types ?? []).map((ct) => ({
-      coreType: ct.core_type,
-      displayName: ct.display_name || ct.core_type,
-      category: ct.category,
-      language: ct.language,
-      calls: ct.calls ?? 0,
-      events: ct.events ?? 0,
-      evaluationPoints: ct.evaluation_points ?? 0,
-      requiredPoints: ct.required_points ?? 0,
-      uncoveredPoints: ct.uncovered_points ?? 0,
-    })),
+    coreTypes: (p.core_types ?? []).map((ct) => {
+      const kernel = kernelsByCoreType.get(ct.core_type);
+      return {
+        coreType: ct.core_type,
+        displayName: kernel?.display_name || ct.display_name || ct.core_type,
+        category: kernel?.category_name || kernel?.category_code || ct.category,
+        categoryCode: kernel?.category_code || null,
+        categoryName: kernel?.category_name || null,
+        language: kernel?.language || ct.language,
+        calls: ct.calls ?? 0,
+        events: ct.events ?? 0,
+        evaluationPoints: ct.evaluation_points ?? 0,
+        requiredPoints: ct.required_points ?? 0,
+        uncoveredPoints: ct.uncovered_points ?? 0,
+      };
+    }),
     costMills: 0,
     savingsMills: 0,
   };
@@ -387,24 +427,29 @@ export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<vo
   __markSeeded(); // prevent seed fallback before first response lands
 
   try {
-    const [keysRes, txRes, batchesRes, limitsRes, notifRes, usageRes, summaryRes] = await Promise.allSettled([
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const usageFrom = new Date(today.getTime() - 89 * 86400000).toISOString().slice(0, 10);
+    const usageTo = today.toISOString().slice(0, 10);
+    const [keysRes, txRes, batchesRes, limitsRes, notifRes, usageRes, summaryRes, kernelsRes] = await Promise.allSettled([
       keysApi.list(),
-      billing.listTransactions({ page: 1, page_size: 50 }),
+      billing.listAllTransactions(),
       // Expiry views need every batch, so walk all pages (doc §10).
       billing.listAllEvaluationPointBatches(),
       billing.getLimits(),
       notifApi.get(),
-      usageApi.points({ granularity: 'day' }),
+      usageApi.points({ from: usageFrom, to: usageTo, granularity: 'day' }),
       billing.summary(),
+      catalogApi.evaluationKernels(),
     ]);
 
     const partial: Parameters<typeof __replaceCache>[0] = {};
 
     if (keysRes.status === 'fulfilled') {
-      partial.keys = keysRes.value.map(mapKey);
+      partial.keys = keysRes.value.map(mapApiKeyToMock);
     }
     if (txRes.status === 'fulfilled') {
-      partial.transactions = (txRes.value.transactions ?? []).map(mapTransaction);
+      partial.transactions = txRes.value.map(mapTransaction);
     }
     if (batchesRes.status === 'fulfilled') {
       partial.evaluationPointBatches = (batchesRes.value ?? []).map(mapEvaluationPointBatch);
@@ -417,11 +462,14 @@ export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<vo
       partial.accountAlert = mapAccountAlert(notifRes.value);
     }
     if (usageRes.status === 'fulfilled') {
-      partial.usage = (usageRes.value ?? []).map(mapUsagePoint);
+      const kernels = kernelsRes.status === 'fulfilled' ? kernelsRes.value.items ?? [] : [];
+      const kernelsByCoreType = new Map(kernels.map((kernel) => [kernel.core_type, kernel]));
+      partial.usage = (usageRes.value ?? []).map((point) => mapUsagePoint(point, kernelsByCoreType));
     }
     if (summaryRes.status === 'fulfilled') {
       partial.trial = mapTrialFromSummary(summaryRes.value);
       partial.wallet = mapWalletFromSummary(summaryRes.value);
+      partial.currentMonth = mapCurrentMonthFromSummary(summaryRes.value);
     }
 
     // The user may have signed out or entered the isolated demo while these
