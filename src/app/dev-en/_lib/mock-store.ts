@@ -486,18 +486,20 @@ const cache: Cache = {
   seeded: false,
 };
 
+// `useSyncExternalStore` requires stable snapshot identities. Real accounts
+// intentionally hold null data while their first API hydration is pending, so
+// readers must share these sentinels rather than allocate a new `[]` on every
+// getSnapshot call.
+const EMPTY_KEYS: ApiKey[] = [];
+const EMPTY_USAGE: UsagePoint[] = [];
+const EMPTY_TRANSACTIONS: Transaction[] = [];
+const EMPTY_POINT_BATCHES: EvaluationPointBatch[] = [];
+const EMPTY_PAYMENT_METHODS: PaymentMethod[] = [];
+
 let pointBatchSnapshotFor: EvaluationPointBatch[] | null = null;
 let pointBatchSnapshot: EvaluationPointBatch[] = [];
 
-/**
- * Start a fresh, isolated demo session.
- *
- * Real-account API responses and demo data intentionally share this legacy
- * store while the dashboard is being migrated. Crossing into demo mode must
- * therefore clear both persistence and module-level state before the demo
- * seeder runs, otherwise the previous account remains visible.
- */
-export function resetAccountDataForDemo(): void {
+function clearAccountData(allowDemoSeed: boolean): void {
   if (isBrowser()) {
     try {
       for (const key of Object.values(STORAGE)) {
@@ -512,11 +514,89 @@ export function resetAccountDataForDemo(): void {
     if (key === 'seeded') continue;
     cache[key] = null;
   }
-  cache.seeded = false;
+
+  if (!allowDemoSeed) {
+    const now = new Date().toISOString();
+    // Safe, non-sensitive fallbacks keep the dashboard renderable when one
+    // optional account endpoint fails while the authoritative data hydrates.
+    cache.keys = EMPTY_KEYS;
+    cache.usage = EMPTY_USAGE;
+    cache.transactions = EMPTY_TRANSACTIONS;
+    cache.evaluationPointBatches = EMPTY_POINT_BATCHES;
+    cache.paymentMethods = EMPTY_PAYMENT_METHODS;
+    cache.spendLimit = {
+      monthlyPointCap: null,
+      monthlyCallCap: null,
+      dailyPointCap: null,
+      dailyCallCap: null,
+      resetDay: 1,
+      warnAtPercents: [50, 75, 90],
+    };
+    cache.notifications = {
+      weeklyUsageReport: false,
+      paymentReceipts: true,
+      productUpdates: false,
+      securityAlerts: true,
+    };
+    cache.wallet = {
+      paidEvaluationPoints: 0,
+      usedEvaluationPoints: 0,
+      balanceEvaluationPoints: 0,
+      paidPointsRemaining: 0,
+      signupBonusRemaining: 0,
+      expiredEvaluationPoints: 0,
+      paidCreditsCents: 0,
+      paidCreditsUsedCents: 0,
+    };
+    cache.trial = {
+      totalLimit: 0,
+      totalUsed: 0,
+      grantedAt: now,
+      expiresAt: now,
+    };
+    cache.accountAlert = {
+      enabled: false,
+      thresholdPoints: 0,
+    };
+    cache.currentMonth = {
+      calls: 0,
+      events: 0,
+      deductedPoints: 0,
+      uncoveredPoints: 0,
+    };
+  }
+
+  // Real accounts must stay empty until their authenticated API hydration
+  // completes. Only the explicit demo session may run the local data seeder.
+  cache.seeded = !allowDemoSeed;
   pointBatchSnapshotFor = null;
   pointBatchSnapshot = [];
   mutationProxy = {};
   notify();
+}
+
+/**
+ * Prepare the legacy store for an authenticated API account.
+ *
+ * The store predates authentication and uses global `dev-en:*` localStorage
+ * keys. Clearing both persistence and module state before publishing a new
+ * authenticated user prevents a slow hydration from briefly rendering the
+ * previous account's keys, usage, wallet, or transactions.
+ */
+export function prepareAccountDataForApi(): void {
+  clearAccountData(false);
+}
+
+/**
+ * Start a fresh, isolated demo session.
+ *
+ * Real-account API responses and demo data intentionally share this legacy
+ * store while the dashboard is being migrated. Crossing into demo mode must
+ * therefore clear both persistence and module-level state before the demo
+ * seeder runs, otherwise the previous account remains visible.
+ */
+export function resetAccountDataForDemo(): void {
+  clearAccountData(true);
 }
 
 function isBrowser() {
@@ -1263,7 +1343,7 @@ function seedIfNeeded() {
 // ─── Readers ────────────────────────────────────────────────────────────────
 export function listKeys(): ApiKey[] {
   seedIfNeeded();
-  return cache.keys ?? [];
+  return cache.keys ?? EMPTY_KEYS;
 }
 
 export function getKey(id: string): ApiKey | undefined {
@@ -1272,18 +1352,18 @@ export function getKey(id: string): ApiKey | undefined {
 
 export function getUsage(): UsagePoint[] {
   seedIfNeeded();
-  return cache.usage ?? [];
+  return cache.usage ?? EMPTY_USAGE;
 }
 
 export function getTransactions(): Transaction[] {
   seedIfNeeded();
-  return cache.transactions ?? [];
+  return cache.transactions ?? EMPTY_TRANSACTIONS;
 }
 
 /** All paid-point batches, soonest expiry first. */
 export function getEvaluationPointBatches(): EvaluationPointBatch[] {
   seedIfNeeded();
-  const source = cache.evaluationPointBatches ?? [];
+  const source = cache.evaluationPointBatches ?? EMPTY_POINT_BATCHES;
   if (pointBatchSnapshotFor === source) return pointBatchSnapshot;
   pointBatchSnapshotFor = source;
   pointBatchSnapshot = [...source].sort(
@@ -1299,7 +1379,7 @@ export function getSpendLimit(): SpendLimit {
 
 export function listPaymentMethods(): PaymentMethod[] {
   seedIfNeeded();
-  return cache.paymentMethods ?? [];
+  return cache.paymentMethods ?? EMPTY_PAYMENT_METHODS;
 }
 
 export function getDefaultPaymentMethod(): PaymentMethod | undefined {
@@ -1576,7 +1656,7 @@ export function getKeyCallsUsed(k: ApiKey): number {
 export function getBillingTier(k: ApiKey): BillingTier {
   if (k.status === 'revoked') return 'revoked';
   if (k.status === 'paused') return 'paused';
-  return getAccountCallsRemaining() > 0 ? 'paid-active' : 'needs-credits';
+  return getAccountEvaluationPoints() > 0 ? 'paid-active' : 'needs-credits';
 }
 
 /** True if this key is the account's default ("starter") key. */
@@ -1620,7 +1700,7 @@ export function isStarterUpgraded(_k: ApiKey): boolean {
  */
 export function isKeyServing(k: ApiKey): boolean {
   if (k.status === 'revoked' || k.status === 'paused') return false;
-  return getAccountCallsRemaining() > 0;
+  return getAccountEvaluationPoints() > 0;
 }
 
 /**

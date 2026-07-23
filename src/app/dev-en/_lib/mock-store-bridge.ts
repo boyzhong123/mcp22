@@ -413,17 +413,11 @@ export function installMutationProxy(): void {
 // ────────────────────────────────────────────────────────────────────────────
 // Hydrate
 
-let inFlight = false;
+const inFlightByToken = new Map<string, Promise<void>>();
 let lastHydrate = 0;
+let lastHydrateToken: string | null = null;
 
-export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<void> {
-  if (typeof window === 'undefined') return;
-  const sessionToken = getToken();
-  if (!sessionToken) return; // not signed in — keep mock seed
-  if (inFlight) return;
-  if (!opts.force && Date.now() - lastHydrate < 2000) return;
-
-  inFlight = true;
+async function hydrateSession(sessionToken: string): Promise<void> {
   __markSeeded(); // prevent seed fallback before first response lands
 
   try {
@@ -478,10 +472,33 @@ export async function hydrateFromApi(opts: { force?: boolean } = {}): Promise<vo
     if (getToken() === sessionToken) {
       __replaceCache(partial);
       lastHydrate = Date.now();
+      lastHydrateToken = sessionToken;
     }
   } catch (err) {
     console.warn('[mock-store-bridge] hydrate failed:', describeError(err));
-  } finally {
-    inFlight = false;
   }
+}
+
+export function hydrateFromApi(opts: { force?: boolean } = {}): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  const sessionToken = getToken();
+  if (!sessionToken) return Promise.resolve();
+
+  const existing = inFlightByToken.get(sessionToken);
+  if (existing) return existing;
+  if (
+    !opts.force
+    && lastHydrateToken === sessionToken
+    && Date.now() - lastHydrate < 2000
+  ) {
+    return Promise.resolve();
+  }
+
+  const task = hydrateSession(sessionToken).finally(() => {
+    if (inFlightByToken.get(sessionToken) === task) {
+      inFlightByToken.delete(sessionToken);
+    }
+  });
+  inFlightByToken.set(sessionToken, task);
+  return task;
 }

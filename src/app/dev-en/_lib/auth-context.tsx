@@ -22,7 +22,7 @@ import {
   setToken,
 } from './api';
 import type { ApiUser, OAuthProvider } from './api';
-import { resetAccountDataForDemo } from './mock-store';
+import { prepareAccountDataForApi, resetAccountDataForDemo } from './mock-store';
 
 export type { ApiUser } from './api';
 
@@ -85,20 +85,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isNewUser, setIsNewUser] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const cancelledRef = useRef(false);
+  const activeAccountRef = useRef<string | null>(null);
 
   const clearIsNewUser = useCallback(() => setIsNewUser(false), []);
+
+  const activateApiUser = useCallback((nextUser: ApiUser) => {
+    const accountIdentity = `api:${nextUser.account_id ?? nextUser.id}`;
+    if (activeAccountRef.current !== accountIdentity) {
+      // Do this before publishing `user`: dashboard pages otherwise mount
+      // against the previous account's legacy localStorage snapshot.
+      prepareAccountDataForApi();
+      activeAccountRef.current = accountIdentity;
+    }
+    setUser(nextUser);
+    setIsDemo(false);
+  }, []);
+
+  const clearActiveAccount = useCallback(() => {
+    prepareAccountDataForApi();
+    activeAccountRef.current = null;
+    setUser(null);
+    setIsDemo(false);
+  }, []);
 
   const refresh = useCallback(async () => {
     const token = getToken();
     if (!token) {
-      setUser(null);
-      setIsDemo(false);
+      clearActiveAccount();
       setLoading(false);
       return;
     }
     // Demo mode: skip API call, restore demo user from token
     if (token === DEMO_TOKEN) {
       if (!cancelledRef.current) {
+        if (activeAccountRef.current !== 'demo') {
+          resetAccountDataForDemo();
+          activeAccountRef.current = 'demo';
+        }
         setUser(DEMO_USER);
         setIsDemo(true);
       }
@@ -107,27 +130,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const u = await authApi.me();
+      if (getToken() !== token) return;
       // backend may wrap as {user: ...} for some envs; normalize
       const normalized = (u as unknown as { user?: ApiUser }).user ?? (u as ApiUser);
       if (!cancelledRef.current) {
-        setUser(normalized);
-        setIsDemo(false);
+        activateApiUser(normalized);
       }
     } catch (err) {
+      // A different login may have replaced the token while /auth/me was in
+      // flight. Never let the stale request clear the newer account.
+      if (getToken() !== token) return;
       if (err instanceof ApiError && err.status === 401) setToken(null);
       if (!cancelledRef.current) {
-        setUser(null);
-        setIsDemo(false);
+        clearActiveAccount();
       }
     } finally {
       if (!cancelledRef.current) setLoading(false);
     }
-  }, []);
+  }, [activateApiUser, clearActiveAccount]);
 
   useEffect(() => {
     cancelledRef.current = false;
-    refresh();
+    // Schedule the initial external-session read after the effect has
+    // subscribed, avoiding a synchronous state cascade inside the effect.
+    const timeoutId = window.setTimeout(() => void refresh(), 0);
     return () => {
+      window.clearTimeout(timeoutId);
       cancelledRef.current = true;
     };
   }, [refresh]);
@@ -139,8 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Demo mode should not trigger logout on 401
       if (getToken() === DEMO_TOKEN) return;
       setToken(null);
-      setUser(null);
-      setIsDemo(false);
+      clearActiveAccount();
       try {
         const path = window.location.pathname;
         const onLogin = path === '/login' || path.startsWith('/login/');
@@ -149,13 +176,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
     });
-  }, [router]);
+  }, [clearActiveAccount, router]);
 
   const applyLogin = useCallback((token: string, u: ApiUser) => {
     setToken(token);
-    setUser(u);
+    activateApiUser(u);
     invalidate('auth');
-  }, []);
+  }, [activateApiUser]);
 
   const loginWithPassword = useCallback(
     async (email: string, password: string) => {
@@ -305,14 +332,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authApi.logout().catch(() => {});
     }
     setToken(null);
-    setUser(null);
-    setIsDemo(false);
+    clearActiveAccount();
     router.push('/login');
-  }, [router, isDemo]);
+  }, [clearActiveAccount, router, isDemo]);
 
   const loginAsDemo = useCallback(() => {
     setToken(DEMO_TOKEN);
     resetAccountDataForDemo();
+    activeAccountRef.current = 'demo';
     setUser(DEMO_USER);
     setIsDemo(true);
     setIsNewUser(true);

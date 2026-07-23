@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '../_lib/auth-context';
 import { onInvalidate, keys as keysApi } from '../_lib/api';
 import { hydrateFromApi, installMutationProxy } from '../_lib/mock-store-bridge';
+import { BrandLoader } from './brand-loader';
 
 // Mounted once inside dashboard layout. After auth is ready, pulls real data
 // from backend and pushes it into the legacy mock-store. Re-hydrates whenever
 // any domain dispatches an `invalidate(...)` event (e.g. after creating a key
 // or topping up). The original UI components don't need to change.
-export function DataHydrator() {
+export function DataHydrator({ children }: { children: ReactNode }) {
   const { user, loading, isDemo } = useAuth();
+  const [ready, setReady] = useState(isDemo);
 
   // Demo mode is a self-contained showcase: it runs purely on the built-in
   // mock data (whose keys carry full plaintext secrets) and never touches the
@@ -23,9 +25,15 @@ export function DataHydrator() {
 
   useEffect(() => {
     if (loading || !user || isDemo) return;
-    void hydrateFromApi({ force: true }).then(() => {
-      void ensureStarterKey(user.id);
-    });
+    let cancelled = false;
+    void hydrateFromApi({ force: true })
+      .then(() => ensureStarterKey(user.id))
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user, loading, isDemo]);
 
   useEffect(() => {
@@ -42,7 +50,15 @@ export function DataHydrator() {
     return () => keys.forEach((off) => off());
   }, [user, isDemo]);
 
-  return null;
+  if (!ready) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center" aria-label="Loading account data">
+        <BrandLoader size={36} />
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 // If the user has no keys at all (new account or all deleted), create one

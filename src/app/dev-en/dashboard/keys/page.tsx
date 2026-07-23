@@ -28,9 +28,9 @@ import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   createKey,
+  getAccountEvaluationPoints,
   formatCalls,
   formatDateShort,
-  getAccountCallsRemaining,
   getAccountTrialRemaining,
   getBillingTier,
   getKeyMonthlyCalls,
@@ -173,6 +173,7 @@ export default function KeysPage() {
   };
 
   const trial = useMockStore(getAccountTrialRemaining, DEFAULT_TRIAL);
+  const accountEvaluationPoints = useMockStore(getAccountEvaluationPoints, 0);
 
   const openCreate = () => {
     setNewName('');
@@ -238,7 +239,7 @@ export default function KeysPage() {
 
       {/* Trial-exhausted banner — surfaces only when the trial package
            is spent/expired AND the wallet is empty. */}
-      {trial.totalExhausted && getAccountCallsRemaining() === 0 && (
+      {trial.totalExhausted && accountEvaluationPoints === 0 && (
         <TrialExhaustedBanner onAddCredits={() => setAddCreditsOpen(true)} />
       )}
 
@@ -246,6 +247,7 @@ export default function KeysPage() {
       {justCreated && (
         <NewKeyToast
           apiKey={justCreated}
+          accountHasAvailablePoints={accountEvaluationPoints > 0}
           copiedId={copiedId}
           onCopy={copy}
           onAddCredits={() => {
@@ -473,12 +475,14 @@ function SectionHeader({
 
 function NewKeyToast({
   apiKey,
+  accountHasAvailablePoints,
   copiedId,
   onCopy,
   onAddCredits,
   onDismiss,
 }: {
   apiKey: ApiKey;
+  accountHasAvailablePoints: boolean;
   copiedId: string | null;
   onCopy: (text: string, id: string) => Promise<void>;
   onAddCredits: () => void;
@@ -524,19 +528,27 @@ function NewKeyToast({
               <X className="h-4 w-4" />
             </button>
           </div>
-          {!apiKey.isStarter && (
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="text-[11px] text-muted-foreground">
-                {t('This key needs purchased calls before it can serve traffic.', '此 Key 需要先购买调用次数才能开始服务请求。')}
-              </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="text-[11px] text-muted-foreground">
+              {accountHasAvailablePoints
+                ? t(
+                    'This key is ready to use and shares the account’s available trial and evaluation points.',
+                    '此 Key 已可立即使用，并共享账户当前可用的试用评测积分与评测积分。',
+                  )
+                : t(
+                    'The account has no trial or evaluation points remaining. Add points to start using this key.',
+                    '账户的试用评测积分与评测积分均已用尽，充值后即可使用此 Key。',
+                  )}
+            </div>
+            {!accountHasAvailablePoints && (
               <button
                 onClick={onAddCredits}
                 className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-foreground text-background text-[11px] font-medium hover:brightness-110"
               >
                 <DollarSign className="h-3 w-3" /> {t('Top up', '充值')}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

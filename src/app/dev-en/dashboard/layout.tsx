@@ -15,7 +15,7 @@ import { ActionToastHost } from '../_components/action-toast';
 import { useUi } from '../_lib/use-ui-store';
 
 export default function DevEnDashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isDemo } = useAuth();
   const router = useRouter();
   const collapsed = useUi((s) => s.sidebarCollapsed);
 
@@ -57,11 +57,12 @@ export default function DevEnDashboardLayout({ children }: { children: React.Rea
       >
         <DevEnTopBar />
         <div className="flex-1 px-4 sm:px-6 lg:px-8 pt-6 pb-10 max-w-[1360px] 2xl:max-w-[1760px] w-full mx-auto">
-          {children}
+          <DataHydrator key={`${isDemo ? 'demo' : 'api'}:${user.account_id ?? user.id}`}>
+            {children}
+          </DataHydrator>
         </div>
       </main>
       <DevEnCommandPalette />
-      <DataHydrator />
       <OnboardingTour />
       <ActionToastHost />
     </div>
